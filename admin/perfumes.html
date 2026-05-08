@@ -38,6 +38,8 @@
     </div>
   </div>
 </div>
+
+<!-- MODAL -->
 <div class="modal-overlay" id="modal">
   <div class="modal-box" style="max-width:640px">
     <div class="modal-header"><h4 id="modal-title">Nuevo Perfume</h4><button class="btn-icon" onclick="closeModal()"><i class="bi bi-x-lg"></i></button></div>
@@ -84,126 +86,180 @@
     </div>
   </div>
 </div>
+
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.x.x/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.x.x/firebase-auth.js";
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-// Guard: si no hay sesión, regresa al login
-onAuthStateChanged(auth, (user) => {
-  if (!user) {
-    window.location.href = "/login.html";
-  }
-});
 import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from '../assets/js/firebase-config.js';
 import { renderSidebar } from './sidebar.js';
 import { toast } from '../assets/js/toast.js';
 import './auth-guard.js';
+
 renderSidebar('perfumes');
-if(window.innerWidth<=768) document.getElementById('menu-btn').style.display='flex';
-let perfumes=[], cats=[], marcas=[], imgMode='url';
-async function loadAll(){
-  const [ps,cs,ms]=await Promise.all([getDocs(collection(db,'perfumes')),getDocs(collection(db,'categorias')),getDocs(collection(db,'marcas'))]);
-  cats=[];cs.forEach(d=>cats.push({id:d.id,...d.data()}));cats.sort((a,b)=>a.nombre.localeCompare(b.nombre));
-  marcas=[];ms.forEach(d=>marcas.push({id:d.id,...d.data()}));marcas.sort((a,b)=>a.nombre.localeCompare(b.nombre));
-  perfumes=[];ps.forEach(d=>perfumes.push({id:d.id,...d.data()}));perfumes.sort((a,b)=>a.nombre.localeCompare(b.nombre));
-  const cOpts=cats.map(c=>`<option>${c.nombre}</option>`).join('');
-  document.getElementById('f-cat').innerHTML=`<option value="">Todas las categorias</option>${cOpts}`;
-  document.getElementById('p-cat').innerHTML=`<option value="">Selecciona</option>${cOpts}`;
-  document.getElementById('f-marca').innerHTML=`<option value="">Todas las marcas</option>`+marcas.map(m=>`<option>${m.nombre}</option>`).join('');
+if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display = 'flex';
+
+let perfumes = [], cats = [], marcas = [], imgMode = 'url';
+
+async function loadAll() {
+  const [ps, cs, ms] = await Promise.all([
+    getDocs(collection(db, 'perfumes')),
+    getDocs(collection(db, 'categorias')),
+    getDocs(collection(db, 'marcas'))
+  ]);
+  cats = []; cs.forEach(d => cats.push({ id: d.id, ...d.data() })); cats.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  marcas = []; ms.forEach(d => marcas.push({ id: d.id, ...d.data() })); marcas.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  perfumes = []; ps.forEach(d => perfumes.push({ id: d.id, ...d.data() })); perfumes.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const cOpts = cats.map(c => `<option>${c.nombre}</option>`).join('');
+  document.getElementById('f-cat').innerHTML = `<option value="">Todas las categorias</option>${cOpts}`;
+  document.getElementById('p-cat').innerHTML = `<option value="">Selecciona</option>${cOpts}`;
+  document.getElementById('f-marca').innerHTML = `<option value="">Todas las marcas</option>` + marcas.map(m => `<option>${m.nombre}</option>`).join('');
   renderTable();
 }
-window.loadMarcas=()=>{
-  const cat=document.getElementById('p-cat').value;
-  const fil=cat?marcas.filter(m=>m.categoria===cat):marcas;
-  document.getElementById('p-marca').innerHTML=`<option value="">Selecciona</option>`+fil.map(m=>`<option>${m.nombre}</option>`).join('');
+
+window.loadMarcas = () => {
+  const cat = document.getElementById('p-cat').value;
+  const fil = cat ? marcas.filter(m => m.categoria === cat) : marcas;
+  document.getElementById('p-marca').innerHTML = `<option value="">Selecciona</option>` + fil.map(m => `<option>${m.nombre}</option>`).join('');
 };
-window.renderTable=()=>{
-  const q=document.getElementById('search').value.toLowerCase();
-  const fg=document.getElementById('f-genero').value;
-  const fc=document.getElementById('f-cat').value;
-  const fm=document.getElementById('f-marca').value;
-  const fil=perfumes.filter(p=>(!q||p.nombre.toLowerCase().includes(q)||(p.marca||'').toLowerCase().includes(q))&&(!fg||p.genero===fg)&&(!fc||p.categoria===fc)&&(!fm||p.marca===fm));
-  document.getElementById('count-label').textContent=fil.length+' perfumes';
-  const tb=document.getElementById('tbody');
-  if(!fil.length){tb.innerHTML='<tr><td colspan="7"><div class="empty-state"><i class="bi bi-droplet"></i><h3>Sin resultados</h3><p>Cambia los filtros o agrega perfumes.</p></div></td></tr>';return;}
-  tb.innerHTML=fil.map(p=>{
-    const pr=p.precios||{};
-    const tags=Object.entries(pr).filter(([,v])=>+v>0).map(([k,v])=>`<span class="badge badge-gold">${k}ml $${v}</span>`).join(' ');
-    const oculto=p.activo===false?'<span class="badge badge-danger" style="margin-left:6px">Oculto</span>':'';
+
+window.renderTable = () => {
+  const q = document.getElementById('search').value.toLowerCase();
+  const fg = document.getElementById('f-genero').value;
+  const fc = document.getElementById('f-cat').value;
+  const fm = document.getElementById('f-marca').value;
+  const fil = perfumes.filter(p =>
+    (!q || p.nombre.toLowerCase().includes(q) || (p.marca || '').toLowerCase().includes(q)) &&
+    (!fg || p.genero === fg) && (!fc || p.categoria === fc) && (!fm || p.marca === fm)
+  );
+  document.getElementById('count-label').textContent = fil.length + ' perfumes';
+  const tb = document.getElementById('tbody');
+  if (!fil.length) {
+    tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="bi bi-droplet"></i><h3>Sin resultados</h3><p>Cambia los filtros o agrega perfumes.</p></div></td></tr>';
+    return;
+  }
+  tb.innerHTML = fil.map(p => {
+    const pr = p.precios || {};
+    const tags = Object.entries(pr).filter(([, v]) => +v > 0).map(([k, v]) => `<span class="badge badge-gold">${k}ml $${v}</span>`).join(' ');
+    const oculto = p.activo === false ? '<span class="badge badge-danger" style="margin-left:6px">Oculto</span>' : '';
     return `<tr>
-      <td>${p.imagen?`<img class="td-img" src="${p.imagen}" alt="" loading="lazy">`:'<div class="td-img-placeholder"><i class="bi bi-droplet"></i></div>'}</td>
+      <td>${p.imagen ? `<img class="td-img" src="${p.imagen}" alt="" loading="lazy">` : '<div class="td-img-placeholder"><i class="bi bi-droplet"></i></div>'}</td>
       <td><strong>${p.nombre}</strong>${oculto}</td>
-      <td><span class="badge badge-gold">${p.marca||'—'}</span></td>
-      <td><span class="badge badge-info">${p.categoria||'—'}</span></td>
-      <td><span class="badge badge-muted">${p.genero||'—'}</span></td>
-      <td>${tags||'<span style="color:var(--text-faint)">Sin precios</span>'}</td>
+      <td><span class="badge badge-gold">${p.marca || '—'}</span></td>
+      <td><span class="badge badge-info">${p.categoria || '—'}</span></td>
+      <td><span class="badge badge-muted">${p.genero || '—'}</span></td>
+      <td>${tags || '<span style="color:var(--text-faint)">Sin precios</span>'}</td>
       <td><div style="display:flex;gap:6px">
         <button class="btn-icon" onclick="edit('${p.id}')" title="Editar"><i class="bi bi-pencil"></i></button>
-        <button class="btn-icon" onclick="toggleV('${p.id}',${p.activo!==false})" title="${p.activo!==false?'Ocultar':'Mostrar'}"><i class="bi bi-eye${p.activo===false?'-slash':''}"></i></button>
-        <button class="btn-icon" onclick="del('${p.id}','${p.nombre.replace(/'/g,\'\')}')"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
+        <button class="btn-icon" onclick="toggleV('${p.id}',${p.activo !== false})" title="${p.activo !== false ? 'Ocultar' : 'Mostrar'}"><i class="bi bi-eye${p.activo === false ? '-slash' : ''}"></i></button>
+        <button class="btn-icon" onclick="del('${p.id}','${p.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
       </div></td>
     </tr>`;
   }).join('');
 };
-window.openModal=()=>{
-  ['p-id','p-nombre','p-desc','p-img-url','px2','px3','px5','px10'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('p-genero').value='';document.getElementById('p-cat').value='';
-  document.getElementById('p-marca').innerHTML='<option>Selecciona</option>';
-  document.getElementById('p-activo').checked=true;
-  document.getElementById('preview-wrap').style.display='none';
-  document.getElementById('modal-title').textContent='Nuevo Perfume';
-  setMode('url');document.getElementById('modal').classList.add('open');
-};
-window.closeModal=()=>document.getElementById('modal').classList.remove('open');
-window.setMode=(m)=>{
-  imgMode=m;
-  document.getElementById('sec-url').style.display=m==='url'?'block':'none';
-  document.getElementById('sec-file').style.display=m==='file'?'block':'none';
-  document.getElementById('btn-url').style.borderColor=m==='url'?'var(--accent)':'var(--border)';
-  document.getElementById('btn-file').style.borderColor=m==='file'?'var(--accent)':'var(--border)';
-};
-window.previewUrl=()=>{const u=document.getElementById('p-img-url').value;document.getElementById('preview-img').src=u;document.getElementById('preview-wrap').style.display=u?'block':'none';};
-window.previewFile=()=>{const f=document.getElementById('p-img-file').files[0];if(!f)return;const r=new FileReader();r.onload=e=>{document.getElementById('preview-img').src=e.target.result;document.getElementById('preview-wrap').style.display='block';};r.readAsDataURL(f);};
-window.edit=(id)=>{
-  const p=perfumes.find(x=>x.id===id);if(!p)return;
-  document.getElementById('p-id').value=p.id;
-  document.getElementById('p-nombre').value=p.nombre;
-  document.getElementById('p-genero').value=p.genero||'';
-  document.getElementById('p-cat').value=p.categoria||'';
-  loadMarcas();
-  setTimeout(()=>document.getElementById('p-marca').value=p.marca||'',80);
-  document.getElementById('p-desc').value=p.descripcion||'';
-  const pr=p.precios||{};
-  ['2','3','5','10'].forEach(k=>document.getElementById('px'+k).value=pr[k]||'');
-  document.getElementById('p-activo').checked=p.activo!==false;
-  if(p.imagen){setMode('url');document.getElementById('p-img-url').value=p.imagen;previewUrl();}else document.getElementById('preview-wrap').style.display='none';
-  document.getElementById('modal-title').textContent='Editar Perfume';
+
+window.openModal = () => {
+  ['p-id', 'p-nombre', 'p-desc', 'p-img-url', 'px2', 'px3', 'px5', 'px10'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('p-genero').value = '';
+  document.getElementById('p-cat').value = '';
+  document.getElementById('p-marca').innerHTML = '<option>Selecciona</option>';
+  document.getElementById('p-activo').checked = true;
+  document.getElementById('preview-wrap').style.display = 'none';
+  document.getElementById('modal-title').textContent = 'Nuevo Perfume';
+  setMode('url');
   document.getElementById('modal').classList.add('open');
 };
-window.save=async()=>{
-  const id=document.getElementById('p-id').value;
-  const nombre=document.getElementById('p-nombre').value.trim();
-  const genero=document.getElementById('p-genero').value;
-  const categoria=document.getElementById('p-cat').value;
-  const marca=document.getElementById('p-marca').value;
-  if(!nombre||!genero||!categoria||!marca){toast('Completa todos los campos (*)','error');return;}
-  let imagen='';
-  if(imgMode==='url')imagen=document.getElementById('p-img-url').value.trim();
-  else{const src=document.getElementById('preview-img').src;imagen=src.startsWith('data:')?src:'';}
-  const precios={'2':+document.getElementById('px2').value||0,'3':+document.getElementById('px3').value||0,'5':+document.getElementById('px5').value||0,'10':+document.getElementById('px10').value||0};
-  const tamanos=Object.keys(precios).filter(k=>precios[k]>0);
-  const data={nombre,genero,categoria,marca,descripcion:document.getElementById('p-desc').value.trim(),imagen,precios,tamanos,activo:document.getElementById('p-activo').checked};
-  try{
-    if(id)await updateDoc(doc(db,'perfumes',id),data);
-    else await addDoc(collection(db,'perfumes'),{...data,creadoEn:Date.now()});
-    toast(id?'Perfume actualizado':'Perfume creado','success');closeModal();loadAll();
-  }catch(e){toast('Error: '+e.message,'error');}
+
+window.closeModal = () => document.getElementById('modal').classList.remove('open');
+
+window.setMode = (m) => {
+  imgMode = m;
+  document.getElementById('sec-url').style.display = m === 'url' ? 'block' : 'none';
+  document.getElementById('sec-file').style.display = m === 'file' ? 'block' : 'none';
+  document.getElementById('btn-url').style.borderColor = m === 'url' ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('btn-file').style.borderColor = m === 'file' ? 'var(--accent)' : 'var(--border)';
 };
-window.toggleV=async(id,activo)=>{await updateDoc(doc(db,'perfumes',id),{activo:!activo});toast(activo?'Perfume ocultado':'Perfume visible','info');loadAll();};
-window.del=async(id,nombre)=>{if(!confirm('Eliminar '+nombre+'?'))return;await deleteDoc(doc(db,'perfumes',id));toast('Eliminado','info');loadAll();};
+
+window.previewUrl = () => {
+  const u = document.getElementById('p-img-url').value;
+  document.getElementById('preview-img').src = u;
+  document.getElementById('preview-wrap').style.display = u ? 'block' : 'none';
+};
+
+window.previewFile = () => {
+  const f = document.getElementById('p-img-file').files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = e => {
+    document.getElementById('preview-img').src = e.target.result;
+    document.getElementById('preview-wrap').style.display = 'block';
+  };
+  r.readAsDataURL(f);
+};
+
+window.edit = (id) => {
+  const p = perfumes.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('p-id').value = p.id;
+  document.getElementById('p-nombre').value = p.nombre;
+  document.getElementById('p-genero').value = p.genero || '';
+  document.getElementById('p-cat').value = p.categoria || '';
+  loadMarcas();
+  setTimeout(() => document.getElementById('p-marca').value = p.marca || '', 80);
+  document.getElementById('p-desc').value = p.descripcion || '';
+  const pr = p.precios || {};
+  ['2', '3', '5', '10'].forEach(k => document.getElementById('px' + k).value = pr[k] || '');
+  document.getElementById('p-activo').checked = p.activo !== false;
+  if (p.imagen) { setMode('url'); document.getElementById('p-img-url').value = p.imagen; previewUrl(); }
+  else document.getElementById('preview-wrap').style.display = 'none';
+  document.getElementById('modal-title').textContent = 'Editar Perfume';
+  document.getElementById('modal').classList.add('open');
+};
+
+window.save = async () => {
+  const id = document.getElementById('p-id').value;
+  const nombre = document.getElementById('p-nombre').value.trim();
+  const genero = document.getElementById('p-genero').value;
+  const categoria = document.getElementById('p-cat').value;
+  const marca = document.getElementById('p-marca').value;
+  if (!nombre || !genero || !categoria || !marca) { toast('Completa todos los campos (*)', 'error'); return; }
+  let imagen = '';
+  if (imgMode === 'url') imagen = document.getElementById('p-img-url').value.trim();
+  else { const src = document.getElementById('preview-img').src; imagen = src.startsWith('data:') ? src : ''; }
+  const precios = {
+    '2': +document.getElementById('px2').value || 0,
+    '3': +document.getElementById('px3').value || 0,
+    '5': +document.getElementById('px5').value || 0,
+    '10': +document.getElementById('px10').value || 0
+  };
+  const tamanos = Object.keys(precios).filter(k => precios[k] > 0);
+  const data = {
+    nombre, genero, categoria, marca,
+    descripcion: document.getElementById('p-desc').value.trim(),
+    imagen, precios, tamanos,
+    activo: document.getElementById('p-activo').checked
+  };
+  try {
+    if (id) await updateDoc(doc(db, 'perfumes', id), data);
+    else await addDoc(collection(db, 'perfumes'), { ...data, creadoEn: Date.now() });
+    toast(id ? 'Perfume actualizado' : 'Perfume creado', 'success');
+    closeModal();
+    loadAll();
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  }
+};
+
+window.toggleV = async (id, activo) => {
+  await updateDoc(doc(db, 'perfumes', id), { activo: !activo });
+  toast(activo ? 'Perfume ocultado' : 'Perfume visible', 'info');
+  loadAll();
+};
+
+window.del = async (id, nombre) => {
+  if (!confirm('Eliminar ' + nombre + '?')) return;
+  await deleteDoc(doc(db, 'perfumes', id));
+  toast('Eliminado', 'info');
+  loadAll();
+};
+
 loadAll();
 </script>
 </body>
