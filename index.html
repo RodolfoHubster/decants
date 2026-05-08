@@ -22,8 +22,11 @@
     .search-wrap i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#555;font-size:14px}
     .search-wrap input{width:100%;background:#161616;border:1px solid rgba(255,255,255,.08);border-radius:99px;padding:10px 16px 10px 38px;color:#f0ece4;font-size:14px;outline:none}
     .search-wrap input:focus{border-color:#c9a84c}
+    .header-actions{display:flex;align-items:center;gap:10px}
     .btn-wa{display:flex;align-items:center;gap:8px;padding:9px 18px;background:#25D366;color:#fff;border-radius:99px;font-size:13px;font-weight:600;border:none}
     .btn-wa:hover{background:#1fbb58}
+    .btn-admin{display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);color:#c9a84c;border-radius:99px;font-size:12px;font-weight:600;transition:all .16s}
+    .btn-admin:hover{background:rgba(201,168,76,.2)}
     .hero{background:linear-gradient(135deg,#1a1400,#0d0d0d 50%,#0d0d12);padding:60px 24px;text-align:center;border-bottom:1px solid rgba(201,168,76,.12)}
     .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.3);color:#c9a84c;border-radius:99px;padding:6px 16px;font-size:12px;font-weight:600;margin-bottom:20px;text-transform:uppercase;letter-spacing:.08em}
     .hero h1{font-size:clamp(28px,5vw,52px);font-weight:700;line-height:1.15;margin-bottom:16px}
@@ -65,6 +68,8 @@
     .empty-state h3{font-size:18px;color:#888;margin-bottom:8px}
     footer{background:#111;border-top:1px solid rgba(255,255,255,.06);padding:32px 24px;text-align:center;margin-top:60px}
     footer p{font-size:13px;color:#555}footer a{color:#c9a84c}
+    /* Admin badge oculto por defecto, visible solo si hay sesion */
+    #btn-admin-wrap{display:none}
     @media(max-width:600px){.search-wrap{display:none}.hero{padding:40px 16px}.catalog{padding:20px 16px}.grid{grid-template-columns:1fr 1fr;gap:12px}}
     @media(max-width:400px){.grid{grid-template-columns:1fr}}
   </style>
@@ -77,7 +82,13 @@
       <div><div class="logo-name">Fitoscents</div><div class="logo-sub">Decants</div></div>
     </div>
     <div class="search-wrap"><i class="bi bi-search"></i><input id="q-search" placeholder="Buscar perfume, marca..." oninput="renderGrid()"></div>
-    <a href="https://wa.me/526648162623" target="_blank" class="btn-wa"><i class="bi bi-whatsapp"></i> WhatsApp</a>
+    <div class="header-actions">
+      <!-- Boton admin: solo visible si hay sesion activa -->
+      <span id="btn-admin-wrap">
+        <a href="./admin/dashboard.html" class="btn-admin"><i class="bi bi-shield-lock"></i> Admin</a>
+      </span>
+      <a href="https://wa.me/526648162623" target="_blank" class="btn-wa"><i class="bi bi-whatsapp"></i> WhatsApp</a>
+    </div>
   </div>
 </header>
 <section class="hero">
@@ -107,66 +118,85 @@
 <footer><p>© 2026 <a href="https://wa.me/526648162623" target="_blank">Fitoscents</a> · Tijuana, B.C. · <a href="https://wa.me/526648162623" target="_blank">664-816-2623</a></p></footer>
 <script type="module">
 import { db, collection, getDocs, query, where } from './assets/js/firebase-config.js';
-let all=[], gF='', catF='', marcaF='';
-async function load(){
-  const [ps,cs,ms]=await Promise.all([
-    getDocs(query(collection(db,'perfumes'),where('activo','==',true))),
-    getDocs(collection(db,'categorias')),getDocs(collection(db,'marcas')),
+import { auth, onAuthStateChanged } from './assets/js/firebase-config.js';
+
+// Mostrar boton Admin solo si hay sesion activa
+onAuthStateChanged(auth, user => {
+  document.getElementById('btn-admin-wrap').style.display = user ? 'inline-flex' : 'none';
+});
+
+let all = [], gF = '', catF = '', marcaF = '';
+
+async function load() {
+  const [ps, cs, ms] = await Promise.all([
+    getDocs(query(collection(db, 'perfumes'), where('activo', '==', true))),
+    getDocs(collection(db, 'categorias')),
+    getDocs(collection(db, 'marcas')),
   ]);
-  all=[];ps.forEach(d=>all.push({id:d.id,...d.data()}));
-  all.sort((a,b)=>a.nombre.localeCompare(b.nombre));
-  const cats=[];cs.forEach(d=>cats.push(d.data().nombre));cats.sort();
-  const marcas=[];ms.forEach(d=>marcas.push(d.data().nombre));marcas.sort();
-  document.getElementById('f-cat').innerHTML='<option value="">Todas las categorias</option>'+cats.map(c=>`<option>${c}</option>`).join('');
-  document.getElementById('f-marca').innerHTML='<option value="">Todas las marcas</option>'+marcas.map(m=>`<option>${m}</option>`).join('');
+  all = []; ps.forEach(d => all.push({ id: d.id, ...d.data() }));
+  all.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const cats = []; cs.forEach(d => cats.push(d.data().nombre)); cats.sort();
+  const marcas = []; ms.forEach(d => marcas.push(d.data().nombre)); marcas.sort();
+  document.getElementById('f-cat').innerHTML = '<option value="">Todas las categorias</option>' + cats.map(c => `<option>${c}</option>`).join('');
+  document.getElementById('f-marca').innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(m => `<option>${m}</option>`).join('');
   renderGrid();
 }
-window.renderGrid=()=>{
-  const q=(document.getElementById('q-search')||{value:''}).value.toLowerCase();
-  catF=document.getElementById('f-cat').value;
-  marcaF=document.getElementById('f-marca').value;
-  const fil=all.filter(p=>(!q||p.nombre.toLowerCase().includes(q)||(p.marca||'').toLowerCase().includes(q))&&(!gF||p.genero===gF)&&(!catF||p.categoria===catF)&&(!marcaF||p.marca===marcaF));
-  document.getElementById('count-badge').textContent=fil.length+' perfume'+(fil.length!==1?'s':'');
-  const g=document.getElementById('grid');
-  if(!fil.length){g.innerHTML='<div class="empty-state"><i class="bi bi-search"></i><h3>Sin resultados</h3><p>Intenta con otros filtros.</p></div>';return;}
-  g.innerHTML=fil.map(p=>{
-    const pr=p.precios||{};
-    const sizes=Object.entries(pr).filter(([,v])=>+v>0).sort((a,b)=>+a[0]-+b[0]);
-    const fp=sizes.length?sizes[0][1]:null;
-    const szBtns=sizes.map(([k,v])=>`<button class="sz-btn" data-size="${k}" data-price="${v}" onclick="selSize(this,'${p.id}')">${k}ml</button>`).join('');
+
+window.renderGrid = () => {
+  const q = (document.getElementById('q-search') || { value: '' }).value.toLowerCase();
+  catF = document.getElementById('f-cat').value;
+  marcaF = document.getElementById('f-marca').value;
+  const fil = all.filter(p =>
+    (!q || p.nombre.toLowerCase().includes(q) || (p.marca || '').toLowerCase().includes(q)) &&
+    (!gF || p.genero === gF) && (!catF || p.categoria === catF) && (!marcaF || p.marca === marcaF)
+  );
+  document.getElementById('count-badge').textContent = fil.length + ' perfume' + (fil.length !== 1 ? 's' : '');
+  const g = document.getElementById('grid');
+  if (!fil.length) { g.innerHTML = '<div class="empty-state"><i class="bi bi-search"></i><h3>Sin resultados</h3><p>Intenta con otros filtros.</p></div>'; return; }
+  g.innerHTML = fil.map(p => {
+    const pr = p.precios || {};
+    const sizes = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
+    const fp = sizes.length ? sizes[0][1] : null;
+    const szBtns = sizes.map(([k, v]) => `<button class="sz-btn" data-size="${k}" data-price="${v}" onclick="selSize(this,'${p.id}')">${k}ml</button>`).join('');
     return `<div class="pcard" id="card-${p.id}">
       <div class="card-img">
-        ${p.imagen?`<img src="${p.imagen}" alt="${p.nombre}" loading="lazy">`:'<div class="card-placeholder"><i class="bi bi-droplet"></i></div>'}
-        <div class="card-cat-badge">${p.categoria||p.genero||''}</div>
+        ${p.imagen ? `<img src="${p.imagen}" alt="${p.nombre}" loading="lazy">` : '<div class="card-placeholder"><i class="bi bi-droplet"></i></div>'}
+        <div class="card-cat-badge">${p.categoria || p.genero || ''}</div>
       </div>
       <div class="card-body">
-        <div class="card-marca">${p.marca||''}</div>
+        <div class="card-marca">${p.marca || ''}</div>
         <div class="card-nombre">${p.nombre}</div>
-        <div class="card-notas">${p.descripcion||'Decant original'}</div>
+        <div class="card-notas">${p.descripcion || 'Decant original'}</div>
         <div class="card-sizes" id="sizes-${p.id}">${szBtns}</div>
-        <div class="card-precio" id="precio-${p.id}">${fp?`$${fp} <span>MXN</span>`:'<span style="font-size:13px;color:#555">Consulta precio</span>'}</div>
-        <button class="btn-pedido" id="btn-${p.id}" onclick="pedir('${p.id}','${p.nombre.replace(/'/g,'')}','${(p.marca||'').replace(/'/g,'')}')" ${sizes.length?'':'disabled'}>
+        <div class="card-precio" id="precio-${p.id}">${fp ? `$${fp} <span>MXN</span>` : '<span style="font-size:13px;color:#555">Consulta precio</span>'}</div>
+        <button class="btn-pedido" id="btn-${p.id}" onclick="pedir('${p.id}','${p.nombre.replace(/'/g, '')}','${(p.marca || '').replace(/'/g, '')}')" ${sizes.length ? '' : 'disabled'}>
           <i class="bi bi-whatsapp"></i> Pedir por WhatsApp
         </button>
       </div>
     </div>`;
   }).join('');
 };
-window.selSize=(btn,id)=>{
-  document.querySelectorAll(`#sizes-${id} .sz-btn`).forEach(b=>b.classList.remove('sel'));
+
+window.selSize = (btn, id) => {
+  document.querySelectorAll(`#sizes-${id} .sz-btn`).forEach(b => b.classList.remove('sel'));
   btn.classList.add('sel');
-  document.getElementById(`precio-${id}`).innerHTML=`$${btn.dataset.price} <span>MXN &middot; ${btn.dataset.size}ml</span>`;
+  document.getElementById(`precio-${id}`).innerHTML = `$${btn.dataset.price} <span>MXN &middot; ${btn.dataset.size}ml</span>`;
 };
-window.pedir=(id,nombre,marca)=>{
-  const sel=document.querySelector(`#sizes-${id} .sz-btn.sel`);
-  if(!sel){const f=document.querySelector(`#sizes-${id} .sz-btn`);if(f){f.classList.add('sel');window.pedir(id,nombre,marca);return;}}
-  const msg=sel?`Hola! Quiero un decant de:\n${marca} - ${nombre}\nTamano: ${sel.dataset.size}ml\nPrecio: $${sel.dataset.price} MXN`:`Hola! Me interesa el decant de:\n${marca} - ${nombre}`;
-  window.open(`https://wa.me/526648162623?text=${encodeURIComponent(msg)}`,'_blank');
+
+window.pedir = (id, nombre, marca) => {
+  const sel = document.querySelector(`#sizes-${id} .sz-btn.sel`);
+  if (!sel) { const f = document.querySelector(`#sizes-${id} .sz-btn`); if (f) { f.classList.add('sel'); window.pedir(id, nombre, marca); return; } }
+  const msg = sel
+    ? `Hola! Quiero un decant de:\n${marca} - ${nombre}\nTamano: ${sel.dataset.size}ml\nPrecio: $${sel.dataset.price} MXN`
+    : `Hola! Me interesa el decant de:\n${marca} - ${nombre}`;
+  window.open(`https://wa.me/526648162623?text=${encodeURIComponent(msg)}`, '_blank');
 };
-window.setG=(btn)=>{
-  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');gF=btn.dataset.g;renderGrid();
+
+window.setG = (btn) => {
+  document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active'); gF = btn.dataset.g; renderGrid();
 };
+
 load();
 </script>
 </body>

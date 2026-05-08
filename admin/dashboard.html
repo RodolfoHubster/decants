@@ -39,33 +39,24 @@
   </div>
 </div>
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.x.x/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.x.x/firebase-auth.js";
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-// Guard: si no hay sesión, regresa al login
-onAuthStateChanged(auth, (user) => {
-  if (!user) {
-    window.location.href = "/login.html";
-  }
-});
 import { db, collection, getDocs, query, where } from '../assets/js/firebase-config.js';
 import { renderSidebar } from './sidebar.js';
 import './auth-guard.js';
+
 renderSidebar('dashboard');
-if(window.innerWidth<=768) document.getElementById('menu-btn').style.display='flex';
-async function loadStats(){
-  const [p,m,c,pv]=await Promise.all([
-    getDocs(collection(db,'perfumes')),getDocs(collection(db,'marcas')),
-    getDocs(collection(db,'categorias')),
-    getDocs(query(collection(db,'perfumes'),where('activo','==',true))),
+if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display = 'flex';
+
+async function loadStats() {
+  const [p, m, c, pv] = await Promise.all([
+    getDocs(collection(db, 'perfumes')),
+    getDocs(collection(db, 'marcas')),
+    getDocs(collection(db, 'categorias')),
+    getDocs(query(collection(db, 'perfumes'), where('activo', '==', true))),
   ]);
-  document.getElementById('s-perf').textContent=p.size;
-  document.getElementById('s-marc').textContent=m.size;
-  document.getElementById('s-cat').textContent=c.size;
-  document.getElementById('s-vis').textContent=pv.size;
+  document.getElementById('s-perf').textContent = p.size;
+  document.getElementById('s-marc').textContent = m.size;
+  document.getElementById('s-cat').textContent = c.size;
+  document.getElementById('s-vis').textContent = pv.size;
 }
 loadStats();
 </script>
