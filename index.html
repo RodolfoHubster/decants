@@ -32,17 +32,16 @@
     /* HERO */
     .hero {
       position: relative;
-      padding: 56px 24px 48px;
+      padding: 64px 24px 56px;
       text-align: center;
       border-bottom: 1px solid rgba(201,168,76,.1);
       overflow: hidden;
-      min-height: 340px;
+      min-height: 360px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
     }
-    /* Imagen de fondo del hero */
     .hero-bg {
       position: absolute;
       inset: 0;
@@ -52,21 +51,66 @@
       filter: brightness(0.22) saturate(1.3);
       z-index: 0;
     }
-    /* Gradiente dorado sutil sobre la imagen */
     .hero-bg::after {
       content: '';
       position: absolute;
       inset: 0;
       background: linear-gradient(135deg, rgba(201,168,76,0.15) 0%, transparent 60%, rgba(15,17,23,0.6) 100%);
     }
-    /* Todo el contenido del hero va encima de la imagen */
     .hero > *:not(.hero-bg) { position: relative; z-index: 1; }
-    .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(201,168,76,.15); border: 1px solid rgba(201,168,76,.35); color: #c9a84c; border-radius: 99px; padding: 5px 16px; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 18px; backdrop-filter: blur(4px); }
-    .hero h1 { font-size: clamp(26px, 4.5vw, 48px); font-weight: 700; line-height: 1.18; margin-bottom: 14px; text-shadow: 0 2px 24px rgba(0,0,0,.8); }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(201,168,76,.12);
+      border: 1px solid rgba(201,168,76,.3);
+      color: #c9a84c;
+      border-radius: 99px;
+      padding: 5px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-bottom: 20px;
+      backdrop-filter: blur(4px);
+    }
+    .hero h1 { font-size: clamp(26px, 4.5vw, 50px); font-weight: 700; line-height: 1.15; margin-bottom: 14px; text-shadow: 0 2px 24px rgba(0,0,0,.8); }
     .hero h1 span { color: #c9a84c; }
-    .hero p { font-size: 14.5px; color: #aaa; max-width: 440px; margin: 0 auto 24px; line-height: 1.65; text-shadow: 0 1px 8px rgba(0,0,0,.9); }
-    .hero-pills { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-    .hpill { background: rgba(15,17,23,.65); border: 1px solid rgba(255,255,255,.12); border-radius: 99px; padding: 5px 14px; font-size: 12px; color: #bbb; backdrop-filter: blur(6px); }
+    .hero p { font-size: 14.5px; color: #999; max-width: 420px; margin: 0 auto 32px; line-height: 1.7; text-shadow: 0 1px 8px rgba(0,0,0,.9); }
+
+    /* Hero features — reemplaza las pills con emojis */
+    .hero-features {
+      display: flex;
+      gap: 28px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .hfeat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .hfeat-icon {
+      width: 40px;
+      height: 40px;
+      background: rgba(201,168,76,.1);
+      border: 1px solid rgba(201,168,76,.2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #c9a84c;
+      backdrop-filter: blur(6px);
+    }
+    .hfeat-text {
+      font-size: 11.5px;
+      color: #bbb;
+      font-weight: 500;
+      text-align: center;
+      line-height: 1.3;
+    }
 
     /* FILTERS */
     .filters { background: #0f1117; border-bottom: 1px solid rgba(255,255,255,.06); padding: 16px 24px; position: sticky; top: 62px; z-index: 100; }
@@ -100,7 +144,6 @@
     .card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s; }
     .pcard:hover .card-img img { transform: scale(1.05); }
     .card-no-img { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #2a2d35; font-size: 52px; }
-    .card-ml-badge { position: absolute; top: 10px; right: 10px; background: rgba(15,17,23,.82); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.12); border-radius: 99px; padding: 4px 12px; font-size: 11px; font-weight: 600; color: #e8e6e1; display: flex; align-items: center; gap: 4px; }
     .card-body { padding: 14px 16px 16px; }
     .card-marca { font-size: 11px; color: #c9a84c; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 3px; }
     .card-nombre { font-size: 15px; font-weight: 600; line-height: 1.3; margin-bottom: 10px; }
@@ -151,11 +194,16 @@
     /* RESPONSIVE */
     @media (max-width: 768px) {
       .filters-row1 { grid-template-columns: 1fr; }
-      .hero { padding: 36px 16px 32px; min-height: 280px; }
+      .hero { padding: 40px 20px 36px; min-height: 300px; }
+      .hero-features { gap: 20px; }
       .catalog { padding: 20px 14px 48px; }
       .grid { grid-template-columns: 1fr 1fr; gap: 12px; }
     }
-    @media (max-width: 420px) { .grid { grid-template-columns: 1fr; } }
+    @media (max-width: 420px) {
+      .grid { grid-template-columns: 1fr; }
+      .hero-features { gap: 14px; }
+      .hfeat-icon { width: 36px; height: 36px; font-size: 16px; }
+    }
   </style>
 </head>
 <body>
@@ -182,16 +230,27 @@
 </header>
 
 <section class="hero">
-  <!-- Imagen de fondo con overlay oscuro -->
   <div class="hero-bg"></div>
-
   <div class="hero-badge"><i class="bi bi-droplet-fill"></i> Decants Originales</div>
   <h1>Perfumes de <span>diseñador</span><br>en tu tamaño ideal</h1>
   <p>Prueba antes de invertir en el frasco completo. Decants 100% originales desde 2ml.</p>
-  <div class="hero-pills">
-    <div class="hpill">✅ 100% Originales</div>
-    <div class="hpill">📦 Envío local · Tijuana</div>
-    <div class="hpill">💬 Pedido por WhatsApp</div>
+  <div class="hero-features">
+    <div class="hfeat">
+      <div class="hfeat-icon"><i class="bi bi-patch-check-fill"></i></div>
+      <div class="hfeat-text">100% Originales</div>
+    </div>
+    <div class="hfeat">
+      <div class="hfeat-icon"><i class="bi bi-droplet-half"></i></div>
+      <div class="hfeat-text">Desde 2ml</div>
+    </div>
+    <div class="hfeat">
+      <div class="hfeat-icon"><i class="bi bi-geo-alt"></i></div>
+      <div class="hfeat-text">Tijuana, B.C.</div>
+    </div>
+    <div class="hfeat">
+      <div class="hfeat-icon"><i class="bi bi-whatsapp"></i></div>
+      <div class="hfeat-text">Pedido por<br>WhatsApp</div>
+    </div>
   </div>
 </section>
 
@@ -323,12 +382,10 @@ window.renderGrid = () => {
   g.innerHTML = fil.map(p => {
     const pr = p.precios || {};
     const sizes = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
-    const mlMax = sizes.length ? sizes[sizes.length - 1][0] + 'ml' : '';
     const pills = sizes.map(([k, v]) => `<div class="cpill">${k}ml — $${v}</div>`).join('');
     return `<div class="pcard" onclick="openModal('${p.id}')">
       <div class="card-img">
         ${p.imagen ? `<img src="${p.imagen}" alt="${p.nombre}" loading="lazy">` : '<div class="card-no-img"><i class="bi bi-droplet"></i></div>'}
-        ${mlMax ? `<div class="card-ml-badge"><i class="bi bi-droplet-fill" style="color:#c9a84c;font-size:9px"></i>${mlMax}</div>` : ''}
       </div>
       <div class="card-body">
         <div class="card-marca">${p.marca || ''}</div>
