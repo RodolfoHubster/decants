@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Fitoscents · Categorias</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-wrap"></div>
+  <div class="main-content">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
+        <span class="topbar-title">Categorias</span>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> Nueva Categoria</button>
+    </div>
+    <div class="page-body">
+      <div class="card">
+        <div class="card-header"><h5>Categorias de Perfume</h5><span class="badge badge-muted" id="count-label">0</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nombre</th><th>Descripcion</th><th>Perfumes</th><th>Acciones</th></tr></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-header"><h4 id="modal-title">Nueva Categoria</h4><button class="btn-icon" onclick="closeModal()"><i class="bi bi-x-lg"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="cat-id">
+      <div class="form-group"><label>Nombre *</label><input class="form-control" id="cat-nombre" placeholder="Arabe, Disenador, Nicho..."></div>
+      <div class="form-group"><label>Descripcion</label><textarea class="form-control" id="cat-desc" rows="2"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="save()"><i class="bi bi-check2"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+<script type="module">
+import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from '../assets/js/firebase-config.js';
+import { renderSidebar } from './sidebar.js';
+import { toast } from '../assets/js/toast.js';
+import './auth-guard.js';
+renderSidebar('categorias');
+if(window.innerWidth<=768) document.getElementById('menu-btn').style.display='flex';
+let cats=[], perfCount={};
+async function load(){
+  const [cs,ps]=await Promise.all([getDocs(collection(db,'categorias')),getDocs(collection(db,'perfumes'))]);
+  perfCount={};ps.forEach(d=>{const c=(d.data().categoria||'');perfCount[c]=(perfCount[c]||0)+1;});
+  cats=[];cs.forEach(d=>cats.push({id:d.id,...d.data()}));
+  cats.sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  document.getElementById('count-label').textContent=cats.length+' categorias';
+  const tb=document.getElementById('tbody');
+  if(!cats.length){tb.innerHTML='<tr><td colspan="4"><div class="empty-state"><i class="bi bi-tags"></i><h3>Sin categorias</h3><p>Agrega la primera.</p></div></td></tr>';return;}
+  tb.innerHTML=cats.map(c=>`<tr>
+    <td><strong>${c.nombre}</strong></td>
+    <td style="color:var(--text-muted);font-size:13px">${c.descripcion||'—'}</td>
+    <td><span class="badge badge-gold">${perfCount[c.nombre]||0} perfumes</span></td>
+    <td><div style="display:flex;gap:8px">
+      <button class="btn-icon" onclick="edit('${c.id}')"><i class="bi bi-pencil"></i></button>
+      <button class="btn-icon" onclick="del('${c.id}','${c.nombre.replace(/'/g,'')}')"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
+    </div></td>
+  </tr>`).join('');
+}
+window.openModal=()=>{document.getElementById('cat-id').value='';document.getElementById('cat-nombre').value='';document.getElementById('cat-desc').value='';document.getElementById('modal-title').textContent='Nueva Categoria';document.getElementById('modal').classList.add('open');};
+window.closeModal=()=>document.getElementById('modal').classList.remove('open');
+window.edit=(id)=>{const c=cats.find(x=>x.id===id);if(!c)return;document.getElementById('cat-id').value=c.id;document.getElementById('cat-nombre').value=c.nombre;document.getElementById('cat-desc').value=c.descripcion||'';document.getElementById('modal-title').textContent='Editar Categoria';document.getElementById('modal').classList.add('open');};
+window.save=async()=>{const id=document.getElementById('cat-id').value;const nombre=document.getElementById('cat-nombre').value.trim();if(!nombre){toast('Nombre obligatorio','error');return;}const data={nombre,descripcion:document.getElementById('cat-desc').value.trim()};try{if(id)await updateDoc(doc(db,'categorias',id),data);else await addDoc(collection(db,'categorias'),{...data,creadoEn:Date.now()});toast(id?'Categoria actualizada':'Categoria creada','success');closeModal();load();}catch(e){toast('Error: '+e.message,'error');}};
+window.del=async(id,nombre)=>{if(!confirm('Eliminar '+nombre+'?'))return;await deleteDoc(doc(db,'categorias',id));toast('Eliminada','info');load();};
+load();
+</script>
+</body>
+</html>

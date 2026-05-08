@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Fitoscents · Perfumes</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-wrap"></div>
+  <div class="main-content">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
+        <span class="topbar-title">Perfumes</span>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> Nuevo Perfume</button>
+    </div>
+    <div class="page-body">
+      <div class="filter-bar">
+        <div class="search-input-wrap"><i class="bi bi-search"></i><input class="form-control" id="search" placeholder="Buscar perfume o marca..." oninput="renderTable()"></div>
+        <select class="form-control" style="max-width:160px" id="f-genero" onchange="renderTable()"><option value="">Todos</option><option>Caballero</option><option>Dama</option><option>Unisex</option></select>
+        <select class="form-control" style="max-width:180px" id="f-cat" onchange="renderTable()"><option value="">Todas las categorias</option></select>
+        <select class="form-control" style="max-width:180px" id="f-marca" onchange="renderTable()"><option value="">Todas las marcas</option></select>
+      </div>
+      <div class="card">
+        <div class="card-header"><h5>Catalogo de Perfumes</h5><span class="badge badge-muted" id="count-label">0 perfumes</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Imagen</th><th>Nombre</th><th>Marca</th><th>Categoria</th><th>Genero</th><th>Precios</th><th>Acciones</th></tr></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal">
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-header"><h4 id="modal-title">Nuevo Perfume</h4><button class="btn-icon" onclick="closeModal()"><i class="bi bi-x-lg"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="p-id">
+      <div class="form-row">
+        <div class="form-group"><label>Nombre *</label><input class="form-control" id="p-nombre" placeholder="Ultra Male, One Million..."></div>
+        <div class="form-group"><label>Genero *</label><select class="form-control" id="p-genero"><option value="">Selecciona</option><option>Caballero</option><option>Dama</option><option>Unisex</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Categoria *</label><select class="form-control" id="p-cat" onchange="loadMarcas()"><option value="">Selecciona</option></select></div>
+        <div class="form-group"><label>Marca *</label><select class="form-control" id="p-marca"><option value="">Selecciona</option></select></div>
+      </div>
+      <div class="form-group"><label>Notas / Descripcion</label><textarea class="form-control" id="p-desc" rows="2" placeholder="Vainilla, madera, ambar..."></textarea></div>
+      <div class="form-group">
+        <label>Imagen</label>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button type="button" class="btn btn-outline btn-sm" id="btn-url" onclick="setMode('url')"><i class="bi bi-link-45deg"></i> URL</button>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-file" onclick="setMode('file')"><i class="bi bi-upload"></i> Subir</button>
+        </div>
+        <div id="sec-url"><input class="form-control" id="p-img-url" placeholder="https://..." oninput="previewUrl()"></div>
+        <div id="sec-file" style="display:none"><input type="file" class="form-control" id="p-img-file" accept="image/*" onchange="previewFile()"></div>
+        <div id="preview-wrap" class="img-preview-wrap" style="display:none;margin-top:10px"><img id="preview-img" src="" alt=""></div>
+      </div>
+      <div class="form-group">
+        <label>Precios por tamano (MXN) — 0 si no aplica</label>
+        <div class="precios-grid">
+          <div class="precio-item"><label>2 ml</label><input class="form-control" type="number" id="px2" min="0" placeholder="0"></div>
+          <div class="precio-item"><label>3 ml</label><input class="form-control" type="number" id="px3" min="0" placeholder="0"></div>
+          <div class="precio-item"><label>5 ml</label><input class="form-control" type="number" id="px5" min="0" placeholder="0"></div>
+          <div class="precio-item"><label>10 ml</label><input class="form-control" type="number" id="px10" min="0" placeholder="0"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="p-activo" checked style="width:16px;height:16px;accent-color:var(--accent)">
+          Visible en la tienda publica
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="save()"><i class="bi bi-check2"></i> Guardar Perfume</button>
+    </div>
+  </div>
+</div>
+<script type="module">
+import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from '../assets/js/firebase-config.js';
+import { renderSidebar } from './sidebar.js';
+import { toast } from '../assets/js/toast.js';
+import './auth-guard.js';
+renderSidebar('perfumes');
+if(window.innerWidth<=768) document.getElementById('menu-btn').style.display='flex';
+let perfumes=[], cats=[], marcas=[], imgMode='url';
+async function loadAll(){
+  const [ps,cs,ms]=await Promise.all([getDocs(collection(db,'perfumes')),getDocs(collection(db,'categorias')),getDocs(collection(db,'marcas'))]);
+  cats=[];cs.forEach(d=>cats.push({id:d.id,...d.data()}));cats.sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  marcas=[];ms.forEach(d=>marcas.push({id:d.id,...d.data()}));marcas.sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  perfumes=[];ps.forEach(d=>perfumes.push({id:d.id,...d.data()}));perfumes.sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const cOpts=cats.map(c=>`<option>${c.nombre}</option>`).join('');
+  document.getElementById('f-cat').innerHTML=`<option value="">Todas las categorias</option>${cOpts}`;
+  document.getElementById('p-cat').innerHTML=`<option value="">Selecciona</option>${cOpts}`;
+  document.getElementById('f-marca').innerHTML=`<option value="">Todas las marcas</option>`+marcas.map(m=>`<option>${m.nombre}</option>`).join('');
+  renderTable();
+}
+window.loadMarcas=()=>{
+  const cat=document.getElementById('p-cat').value;
+  const fil=cat?marcas.filter(m=>m.categoria===cat):marcas;
+  document.getElementById('p-marca').innerHTML=`<option value="">Selecciona</option>`+fil.map(m=>`<option>${m.nombre}</option>`).join('');
+};
+window.renderTable=()=>{
+  const q=document.getElementById('search').value.toLowerCase();
+  const fg=document.getElementById('f-genero').value;
+  const fc=document.getElementById('f-cat').value;
+  const fm=document.getElementById('f-marca').value;
+  const fil=perfumes.filter(p=>(!q||p.nombre.toLowerCase().includes(q)||(p.marca||'').toLowerCase().includes(q))&&(!fg||p.genero===fg)&&(!fc||p.categoria===fc)&&(!fm||p.marca===fm));
+  document.getElementById('count-label').textContent=fil.length+' perfumes';
+  const tb=document.getElementById('tbody');
+  if(!fil.length){tb.innerHTML='<tr><td colspan="7"><div class="empty-state"><i class="bi bi-droplet"></i><h3>Sin resultados</h3><p>Cambia los filtros o agrega perfumes.</p></div></td></tr>';return;}
+  tb.innerHTML=fil.map(p=>{
+    const pr=p.precios||{};
+    const tags=Object.entries(pr).filter(([,v])=>+v>0).map(([k,v])=>`<span class="badge badge-gold">${k}ml $${v}</span>`).join(' ');
+    const oculto=p.activo===false?'<span class="badge badge-danger" style="margin-left:6px">Oculto</span>':'';
+    return `<tr>
+      <td>${p.imagen?`<img class="td-img" src="${p.imagen}" alt="" loading="lazy">`:'<div class="td-img-placeholder"><i class="bi bi-droplet"></i></div>'}</td>
+      <td><strong>${p.nombre}</strong>${oculto}</td>
+      <td><span class="badge badge-gold">${p.marca||'—'}</span></td>
+      <td><span class="badge badge-info">${p.categoria||'—'}</span></td>
+      <td><span class="badge badge-muted">${p.genero||'—'}</span></td>
+      <td>${tags||'<span style="color:var(--text-faint)">Sin precios</span>'}</td>
+      <td><div style="display:flex;gap:6px">
+        <button class="btn-icon" onclick="edit('${p.id}')" title="Editar"><i class="bi bi-pencil"></i></button>
+        <button class="btn-icon" onclick="toggleV('${p.id}',${p.activo!==false})" title="${p.activo!==false?'Ocultar':'Mostrar'}"><i class="bi bi-eye${p.activo===false?'-slash':''}"></i></button>
+        <button class="btn-icon" onclick="del('${p.id}','${p.nombre.replace(/'/g,\'\')}')"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
+      </div></td>
+    </tr>`;
+  }).join('');
+};
+window.openModal=()=>{
+  ['p-id','p-nombre','p-desc','p-img-url','px2','px3','px5','px10'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('p-genero').value='';document.getElementById('p-cat').value='';
+  document.getElementById('p-marca').innerHTML='<option>Selecciona</option>';
+  document.getElementById('p-activo').checked=true;
+  document.getElementById('preview-wrap').style.display='none';
+  document.getElementById('modal-title').textContent='Nuevo Perfume';
+  setMode('url');document.getElementById('modal').classList.add('open');
+};
+window.closeModal=()=>document.getElementById('modal').classList.remove('open');
+window.setMode=(m)=>{
+  imgMode=m;
+  document.getElementById('sec-url').style.display=m==='url'?'block':'none';
+  document.getElementById('sec-file').style.display=m==='file'?'block':'none';
+  document.getElementById('btn-url').style.borderColor=m==='url'?'var(--accent)':'var(--border)';
+  document.getElementById('btn-file').style.borderColor=m==='file'?'var(--accent)':'var(--border)';
+};
+window.previewUrl=()=>{const u=document.getElementById('p-img-url').value;document.getElementById('preview-img').src=u;document.getElementById('preview-wrap').style.display=u?'block':'none';};
+window.previewFile=()=>{const f=document.getElementById('p-img-file').files[0];if(!f)return;const r=new FileReader();r.onload=e=>{document.getElementById('preview-img').src=e.target.result;document.getElementById('preview-wrap').style.display='block';};r.readAsDataURL(f);};
+window.edit=(id)=>{
+  const p=perfumes.find(x=>x.id===id);if(!p)return;
+  document.getElementById('p-id').value=p.id;
+  document.getElementById('p-nombre').value=p.nombre;
+  document.getElementById('p-genero').value=p.genero||'';
+  document.getElementById('p-cat').value=p.categoria||'';
+  loadMarcas();
+  setTimeout(()=>document.getElementById('p-marca').value=p.marca||'',80);
+  document.getElementById('p-desc').value=p.descripcion||'';
+  const pr=p.precios||{};
+  ['2','3','5','10'].forEach(k=>document.getElementById('px'+k).value=pr[k]||'');
+  document.getElementById('p-activo').checked=p.activo!==false;
+  if(p.imagen){setMode('url');document.getElementById('p-img-url').value=p.imagen;previewUrl();}else document.getElementById('preview-wrap').style.display='none';
+  document.getElementById('modal-title').textContent='Editar Perfume';
+  document.getElementById('modal').classList.add('open');
+};
+window.save=async()=>{
+  const id=document.getElementById('p-id').value;
+  const nombre=document.getElementById('p-nombre').value.trim();
+  const genero=document.getElementById('p-genero').value;
+  const categoria=document.getElementById('p-cat').value;
+  const marca=document.getElementById('p-marca').value;
+  if(!nombre||!genero||!categoria||!marca){toast('Completa todos los campos (*)','error');return;}
+  let imagen='';
+  if(imgMode==='url')imagen=document.getElementById('p-img-url').value.trim();
+  else{const src=document.getElementById('preview-img').src;imagen=src.startsWith('data:')?src:'';}
+  const precios={'2':+document.getElementById('px2').value||0,'3':+document.getElementById('px3').value||0,'5':+document.getElementById('px5').value||0,'10':+document.getElementById('px10').value||0};
+  const tamanos=Object.keys(precios).filter(k=>precios[k]>0);
+  const data={nombre,genero,categoria,marca,descripcion:document.getElementById('p-desc').value.trim(),imagen,precios,tamanos,activo:document.getElementById('p-activo').checked};
+  try{
+    if(id)await updateDoc(doc(db,'perfumes',id),data);
+    else await addDoc(collection(db,'perfumes'),{...data,creadoEn:Date.now()});
+    toast(id?'Perfume actualizado':'Perfume creado','success');closeModal();loadAll();
+  }catch(e){toast('Error: '+e.message,'error');}
+};
+window.toggleV=async(id,activo)=>{await updateDoc(doc(db,'perfumes',id),{activo:!activo});toast(activo?'Perfume ocultado':'Perfume visible','info');loadAll();};
+window.del=async(id,nombre)=>{if(!confirm('Eliminar '+nombre+'?'))return;await deleteDoc(doc(db,'perfumes',id));toast('Eliminado','info');loadAll();};
+loadAll();
+</script>
+</body>
+</html>
