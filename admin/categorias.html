@@ -47,6 +47,18 @@
   </div>
 </div>
 <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.x.x/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.x.x/firebase-auth.js";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+// Guard: si no hay sesión, regresa al login
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    window.location.href = "/login.html";
+  }
+});
 import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from '../assets/js/firebase-config.js';
 import { renderSidebar } from './sidebar.js';
 import { toast } from '../assets/js/toast.js';

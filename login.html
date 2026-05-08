@@ -66,6 +66,15 @@ window.togglePass=()=>{
   ic.className=i.type==='password'?'bi bi-eye':'bi bi-eye-slash';
 };
 document.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-login').click();});
+import { signInWithEmailAndPassword } from "...";
+
+signInWithEmailAndPassword(auth, email, password)
+  .then(() => {
+    window.location.href = "/admin/index.html"; // Redirige al panel
+  })
+  .catch((error) => {
+    // Mostrar error al usuario
+  });
 </script>
 </body>
 </html>
