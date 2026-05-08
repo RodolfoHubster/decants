@@ -63,7 +63,7 @@
         <div id="sec-url"><input class="form-control" id="p-img-url" placeholder="https://..." oninput="previewUrl()"></div>
         <div id="sec-file" style="display:none">
           <input type="file" class="form-control" id="p-img-file" accept="image/*" onchange="previewFile()">
-          <p style="font-size:11px;color:#666;margin-top:4px"><i class="bi bi-info-circle"></i> La imagen se subirá a Firebase Storage al guardar.</p>
+          <p style="font-size:11px;color:#666;margin-top:4px"><i class="bi bi-cloud-upload"></i> La imagen se subirá a Cloudinary al guardar.</p>
         </div>
         <div id="preview-wrap" class="img-preview-wrap" style="display:none;margin-top:10px"><img id="preview-img" src="" alt=""></div>
       </div>
@@ -91,12 +91,31 @@
 </div>
 
 <script type="module">
-import { db, storage, collection, addDoc, getDocs, doc, updateDoc, deleteDoc,
-         ref, uploadBytes, getDownloadURL }
+import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc }
   from '../assets/js/firebase-config.js';
 import { renderSidebar } from './sidebar.js';
 import { toast } from '../assets/js/toast.js';
 import './auth-guard.js';
+
+// ── Cloudinary config ──────────────────────────────────────────
+const CLOUDINARY_CLOUD = 'dxo761td7';
+const CLOUDINARY_PRESET = 'FITOSCENTS-DECANTS';
+const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`;
+
+async function uploadToCloudinary(file) {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('upload_preset', CLOUDINARY_PRESET);
+  form.append('folder', 'fitoscents/perfumes');
+  const res = await fetch(CLOUDINARY_URL, { method: 'POST', body: form });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || 'Error al subir imagen');
+  }
+  const data = await res.json();
+  return data.secure_url;
+}
+// ───────────────────────────────────────────────────────────────
 
 renderSidebar('perfumes');
 if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display = 'flex';
@@ -154,7 +173,7 @@ window.renderTable = () => {
       <td><div style="display:flex;gap:6px">
         <button class="btn-icon" onclick="edit('${p.id}')" title="Editar"><i class="bi bi-pencil"></i></button>
         <button class="btn-icon" onclick="toggleV('${p.id}',${p.activo !== false})" title="${p.activo !== false ? 'Ocultar' : 'Mostrar'}"><i class="bi bi-eye${p.activo === false ? '-slash' : ''}"></i></button>
-        <button class="btn-icon" onclick="del('${p.id}','${p.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
+        <button class="btn-icon" onclick="del('${p.id}','${p.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
       </div></td>
     </tr>`;
   }).join('');
@@ -219,15 +238,6 @@ window.edit = (id) => {
   document.getElementById('modal').classList.add('open');
 };
 
-// Sube el archivo a Firebase Storage y regresa la URL publica
-async function uploadImageFile(file) {
-  const ext = file.name.split('.').pop();
-  const path = `perfumes/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-  const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, file);
-  return await getDownloadURL(storageRef);
-}
-
 window.save = async () => {
   const id = document.getElementById('p-id').value;
   const nombre = document.getElementById('p-nombre').value.trim();
@@ -236,7 +246,6 @@ window.save = async () => {
   const marca = document.getElementById('p-marca').value;
   if (!nombre || !genero || !categoria || !marca) { toast('Completa todos los campos (*)', 'error'); return; }
 
-  // Deshabilitar boton para evitar doble click
   const btnSave = document.getElementById('btn-save');
   btnSave.disabled = true;
   btnSave.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
@@ -244,16 +253,13 @@ window.save = async () => {
   try {
     let imagen = '';
     if (imgMode === 'url') {
-      // Modo URL: usar directamente
       imagen = document.getElementById('p-img-url').value.trim();
     } else {
-      // Modo archivo: subir a Firebase Storage primero
       const file = document.getElementById('p-img-file').files[0];
       if (file) {
-        toast('Subiendo imagen...', 'info');
-        imagen = await uploadImageFile(file);
+        toast('Subiendo imagen a Cloudinary...', 'info');
+        imagen = await uploadToCloudinary(file);
       } else {
-        // Si no seleccionaron archivo nuevo en edicion, conservar la imagen actual
         const currentImg = document.getElementById('preview-img').src;
         imagen = currentImg.startsWith('data:') ? '' : currentImg;
       }
