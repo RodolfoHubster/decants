@@ -61,7 +61,10 @@
           <button type="button" class="btn btn-outline btn-sm" id="btn-file" onclick="setMode('file')"><i class="bi bi-upload"></i> Subir</button>
         </div>
         <div id="sec-url"><input class="form-control" id="p-img-url" placeholder="https://..." oninput="previewUrl()"></div>
-        <div id="sec-file" style="display:none"><input type="file" class="form-control" id="p-img-file" accept="image/*" onchange="previewFile()"></div>
+        <div id="sec-file" style="display:none">
+          <input type="file" class="form-control" id="p-img-file" accept="image/*" onchange="previewFile()">
+          <p style="font-size:11px;color:#666;margin-top:4px"><i class="bi bi-info-circle"></i> La imagen se subirá a Firebase Storage al guardar.</p>
+        </div>
         <div id="preview-wrap" class="img-preview-wrap" style="display:none;margin-top:10px"><img id="preview-img" src="" alt=""></div>
       </div>
       <div class="form-group">
@@ -82,13 +85,15 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="save()"><i class="bi bi-check2"></i> Guardar Perfume</button>
+      <button class="btn btn-primary" id="btn-save" onclick="save()"><i class="bi bi-check2"></i> Guardar Perfume</button>
     </div>
   </div>
 </div>
 
 <script type="module">
-import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from '../assets/js/firebase-config.js';
+import { db, storage, collection, addDoc, getDocs, doc, updateDoc, deleteDoc,
+         ref, uploadBytes, getDownloadURL }
+  from '../assets/js/firebase-config.js';
 import { renderSidebar } from './sidebar.js';
 import { toast } from '../assets/js/toast.js';
 import './auth-guard.js';
@@ -149,7 +154,7 @@ window.renderTable = () => {
       <td><div style="display:flex;gap:6px">
         <button class="btn-icon" onclick="edit('${p.id}')" title="Editar"><i class="bi bi-pencil"></i></button>
         <button class="btn-icon" onclick="toggleV('${p.id}',${p.activo !== false})" title="${p.activo !== false ? 'Ocultar' : 'Mostrar'}"><i class="bi bi-eye${p.activo === false ? '-slash' : ''}"></i></button>
-        <button class="btn-icon" onclick="del('${p.id}','${p.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
+        <button class="btn-icon" onclick="del('${p.id}','${p.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
       </div></td>
     </tr>`;
   }).join('');
@@ -157,6 +162,7 @@ window.renderTable = () => {
 
 window.openModal = () => {
   ['p-id', 'p-nombre', 'p-desc', 'p-img-url', 'px2', 'px3', 'px5', 'px10'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('p-img-file').value = '';
   document.getElementById('p-genero').value = '';
   document.getElementById('p-cat').value = '';
   document.getElementById('p-marca').innerHTML = '<option>Selecciona</option>';
@@ -213,6 +219,15 @@ window.edit = (id) => {
   document.getElementById('modal').classList.add('open');
 };
 
+// Sube el archivo a Firebase Storage y regresa la URL publica
+async function uploadImageFile(file) {
+  const ext = file.name.split('.').pop();
+  const path = `perfumes/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+  const storageRef = ref(storage, path);
+  await uploadBytes(storageRef, file);
+  return await getDownloadURL(storageRef);
+}
+
 window.save = async () => {
   const id = document.getElementById('p-id').value;
   const nombre = document.getElementById('p-nombre').value.trim();
@@ -220,30 +235,56 @@ window.save = async () => {
   const categoria = document.getElementById('p-cat').value;
   const marca = document.getElementById('p-marca').value;
   if (!nombre || !genero || !categoria || !marca) { toast('Completa todos los campos (*)', 'error'); return; }
-  let imagen = '';
-  if (imgMode === 'url') imagen = document.getElementById('p-img-url').value.trim();
-  else { const src = document.getElementById('preview-img').src; imagen = src.startsWith('data:') ? src : ''; }
-  const precios = {
-    '2': +document.getElementById('px2').value || 0,
-    '3': +document.getElementById('px3').value || 0,
-    '5': +document.getElementById('px5').value || 0,
-    '10': +document.getElementById('px10').value || 0
-  };
-  const tamanos = Object.keys(precios).filter(k => precios[k] > 0);
-  const data = {
-    nombre, genero, categoria, marca,
-    descripcion: document.getElementById('p-desc').value.trim(),
-    imagen, precios, tamanos,
-    activo: document.getElementById('p-activo').checked
-  };
+
+  // Deshabilitar boton para evitar doble click
+  const btnSave = document.getElementById('btn-save');
+  btnSave.disabled = true;
+  btnSave.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
+
   try {
+    let imagen = '';
+    if (imgMode === 'url') {
+      // Modo URL: usar directamente
+      imagen = document.getElementById('p-img-url').value.trim();
+    } else {
+      // Modo archivo: subir a Firebase Storage primero
+      const file = document.getElementById('p-img-file').files[0];
+      if (file) {
+        toast('Subiendo imagen...', 'info');
+        imagen = await uploadImageFile(file);
+      } else {
+        // Si no seleccionaron archivo nuevo en edicion, conservar la imagen actual
+        const currentImg = document.getElementById('preview-img').src;
+        imagen = currentImg.startsWith('data:') ? '' : currentImg;
+      }
+    }
+
+    const precios = {
+      '2':  +document.getElementById('px2').value  || 0,
+      '3':  +document.getElementById('px3').value  || 0,
+      '5':  +document.getElementById('px5').value  || 0,
+      '10': +document.getElementById('px10').value || 0
+    };
+    const tamanos = Object.keys(precios).filter(k => precios[k] > 0);
+    const data = {
+      nombre, genero, categoria, marca,
+      descripcion: document.getElementById('p-desc').value.trim(),
+      imagen, precios, tamanos,
+      activo: document.getElementById('p-activo').checked
+    };
+
     if (id) await updateDoc(doc(db, 'perfumes', id), data);
     else await addDoc(collection(db, 'perfumes'), { ...data, creadoEn: Date.now() });
-    toast(id ? 'Perfume actualizado' : 'Perfume creado', 'success');
+
+    toast(id ? 'Perfume actualizado ✅' : 'Perfume creado ✅', 'success');
     closeModal();
     loadAll();
   } catch (e) {
+    console.error(e);
     toast('Error: ' + e.message, 'error');
+  } finally {
+    btnSave.disabled = false;
+    btnSave.innerHTML = '<i class="bi bi-check2"></i> Guardar Perfume';
   }
 };
 
