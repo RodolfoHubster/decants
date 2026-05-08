@@ -26,18 +26,47 @@
     .header-right { display: flex; align-items: center; gap: 10px; }
     .btn-wa { display: flex; align-items: center; gap: 7px; padding: 9px 18px; background: #25D366; color: #fff; border-radius: 99px; font-size: 13px; font-weight: 600; border: none; transition: background .15s; }
     .btn-wa:hover { background: #1db954; }
-    /* Admin visible siempre — si no hay sesión lleva a login, si hay sesión lleva a dashboard */
     .btn-admin { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(201,168,76,.1); border: 1px solid rgba(201,168,76,.3); color: #c9a84c; border-radius: 99px; font-size: 12px; font-weight: 600; transition: background .15s; }
     .btn-admin:hover { background: rgba(201,168,76,.2); }
 
     /* HERO */
-    .hero { background: linear-gradient(135deg, #1c1500 0%, #0f1117 55%, #0d0e18 100%); padding: 56px 24px 48px; text-align: center; border-bottom: 1px solid rgba(201,168,76,.1); }
-    .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(201,168,76,.1); border: 1px solid rgba(201,168,76,.25); color: #c9a84c; border-radius: 99px; padding: 5px 16px; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 18px; }
-    .hero h1 { font-size: clamp(26px, 4.5vw, 48px); font-weight: 700; line-height: 1.18; margin-bottom: 14px; }
+    .hero {
+      position: relative;
+      padding: 56px 24px 48px;
+      text-align: center;
+      border-bottom: 1px solid rgba(201,168,76,.1);
+      overflow: hidden;
+      min-height: 340px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Imagen de fondo del hero */
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background-image: url('https://images.unsplash.com/photo-1594035910387-fea47794261f?w=1600&q=80');
+      background-size: cover;
+      background-position: center 30%;
+      filter: brightness(0.22) saturate(1.3);
+      z-index: 0;
+    }
+    /* Gradiente dorado sutil sobre la imagen */
+    .hero-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(201,168,76,0.15) 0%, transparent 60%, rgba(15,17,23,0.6) 100%);
+    }
+    /* Todo el contenido del hero va encima de la imagen */
+    .hero > *:not(.hero-bg) { position: relative; z-index: 1; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(201,168,76,.15); border: 1px solid rgba(201,168,76,.35); color: #c9a84c; border-radius: 99px; padding: 5px 16px; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 18px; backdrop-filter: blur(4px); }
+    .hero h1 { font-size: clamp(26px, 4.5vw, 48px); font-weight: 700; line-height: 1.18; margin-bottom: 14px; text-shadow: 0 2px 24px rgba(0,0,0,.8); }
     .hero h1 span { color: #c9a84c; }
-    .hero p { font-size: 14.5px; color: #666; max-width: 440px; margin: 0 auto 24px; line-height: 1.65; }
+    .hero p { font-size: 14.5px; color: #aaa; max-width: 440px; margin: 0 auto 24px; line-height: 1.65; text-shadow: 0 1px 8px rgba(0,0,0,.9); }
     .hero-pills { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-    .hpill { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 99px; padding: 5px 14px; font-size: 12px; color: #777; }
+    .hpill { background: rgba(15,17,23,.65); border: 1px solid rgba(255,255,255,.12); border-radius: 99px; padding: 5px 14px; font-size: 12px; color: #bbb; backdrop-filter: blur(6px); }
 
     /* FILTERS */
     .filters { background: #0f1117; border-bottom: 1px solid rgba(255,255,255,.06); padding: 16px 24px; position: sticky; top: 62px; z-index: 100; }
@@ -120,7 +149,12 @@
     footer a { color: #c9a84c; }
 
     /* RESPONSIVE */
-    @media (max-width: 768px) { .filters-row1 { grid-template-columns: 1fr; } .hero { padding: 36px 16px 32px; } .catalog { padding: 20px 14px 48px; } .grid { grid-template-columns: 1fr 1fr; gap: 12px; } }
+    @media (max-width: 768px) {
+      .filters-row1 { grid-template-columns: 1fr; }
+      .hero { padding: 36px 16px 32px; min-height: 280px; }
+      .catalog { padding: 20px 14px 48px; }
+      .grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+    }
     @media (max-width: 420px) { .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -136,7 +170,6 @@
       </div>
     </div>
     <div class="header-right">
-      <!-- Boton admin: si hay sesion va al dashboard, si no va al login -->
       <a href="./login.html" id="btn-admin" class="btn-admin">
         <i class="bi bi-shield-lock"></i>
         <span id="btn-admin-label">Admin</span>
@@ -149,12 +182,15 @@
 </header>
 
 <section class="hero">
+  <!-- Imagen de fondo con overlay oscuro -->
+  <div class="hero-bg"></div>
+
   <div class="hero-badge"><i class="bi bi-droplet-fill"></i> Decants Originales</div>
   <h1>Perfumes de <span>diseñador</span><br>en tu tamaño ideal</h1>
   <p>Prueba antes de invertir en el frasco completo. Decants 100% originales desde 2ml.</p>
   <div class="hero-pills">
     <div class="hpill">✅ 100% Originales</div>
-    <div class="hpill">📦 Envío a toda la república</div>
+    <div class="hpill">📦 Envío local · Tijuana</div>
     <div class="hpill">💬 Pedido por WhatsApp</div>
   </div>
 </section>
@@ -220,7 +256,7 @@
 </div>
 
 <footer>
-  <p>© 2026 <a href="https://wa.me/526648162623" target="_blank">Fitoscents</a> · Tijuana, B.C. · <a href="https://wa.me/526648162623" target="_blank">664-816-2623</a></p>
+  <p>© 2026 <a href="https://wa.me/526648162623" target="_blank" rel="noopener">Fitoscents</a> · Tijuana, B.C.</p>
 </footer>
 
 <script type="module">
@@ -229,7 +265,6 @@ import { db, auth, collection, getDocs, query, where, onAuthStateChanged }
 
 const adminBtn = document.getElementById('btn-admin');
 
-// Si hay sesion activa: boton lleva al dashboard. Si no: al login.
 onAuthStateChanged(auth, user => {
   if (user) {
     adminBtn.href = './admin/dashboard.html';
@@ -242,7 +277,6 @@ onAuthStateChanged(auth, user => {
 
 let all = [], gF = '', modalData = null;
 
-// Mostrar skeletons mientras carga
 function showSkeletons() {
   const g = document.getElementById('grid');
   g.innerHTML = Array(8).fill(`
