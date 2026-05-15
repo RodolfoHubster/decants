@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Solo usuarios autenticados pueden acceder al panel admin
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Perfumes — lectura pública (catálogo), escritura solo admin
+    match /perfumes/{id} {
+      allow read: if true;
+      allow write: if isAuth();
+    }
+
+    // Marcas — lectura pública, escritura solo admin
+    match /marcas/{id} {
+      allow read: if true;
+      allow write: if isAuth();
+    }
+
+    // Categorias — lectura pública, escritura solo admin
+    match /categorias/{id} {
+      allow read: if true;
+      allow write: if isAuth();
+    }
+
+    // Ventas — solo admin autenticado
+    match /ventas/{id} {
+      allow read, write: if isAuth();
+    }
+
+    // Pedidos — solo admin autenticado
+    match /pedidos/{id} {
+      allow read, write: if isAuth();
+    }
+  }
+}
