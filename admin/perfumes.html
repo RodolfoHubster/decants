@@ -7,6 +7,13 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="../assets/css/variables.css">
   <link rel="stylesheet" href="../assets/css/global.css">
+  <style>
+    .clicks-badge { display:inline-flex; align-items:center; gap:4px; background:rgba(201,168,76,.1); border:1px solid rgba(201,168,76,.25); color:#c9a84c; border-radius:99px; padding:3px 10px; font-size:11px; font-weight:600; }
+    .clicks-badge i { font-size:11px; }
+    .clicks-zero { color: #444; font-size:12px; }
+    th.col-clicks { width: 90px; text-align:center; }
+    td.col-clicks { text-align:center; }
+  </style>
 </head>
 <body>
 <div class="app-shell">
@@ -25,12 +32,17 @@
         <select class="form-control" style="max-width:160px" id="f-genero" onchange="renderTable()"><option value="">Todos</option><option>Caballero</option><option>Dama</option><option>Unisex</option></select>
         <select class="form-control" style="max-width:180px" id="f-cat" onchange="renderTable()"><option value="">Todas las categorias</option></select>
         <select class="form-control" style="max-width:180px" id="f-marca" onchange="renderTable()"><option value="">Todas las marcas</option></select>
+        <select class="form-control" style="max-width:180px" id="f-orden" onchange="renderTable()">
+          <option value="clicks">🔥 Más populares</option>
+          <option value="az">Nombre A-Z</option>
+          <option value="za">Nombre Z-A</option>
+        </select>
       </div>
       <div class="card">
         <div class="card-header"><h5>Catalogo de Perfumes</h5><span class="badge badge-muted" id="count-label">0 perfumes</span></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Imagen</th><th>Nombre</th><th>Marca</th><th>Categoria</th><th>Genero</th><th>Precios</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Imagen</th><th>Nombre</th><th>Marca</th><th>Categoria</th><th>Genero</th><th class="col-clicks"><i class="bi bi-eye"></i> Clicks</th><th>Precios</th><th>Acciones</th></tr></thead>
             <tbody id="tbody"></tbody>
           </table>
         </div>
@@ -97,7 +109,7 @@ import { renderSidebar } from './sidebar.js';
 import { toast } from '../assets/js/toast.js';
 import './auth-guard.js';
 
-// ── Cloudinary config ──────────────────────────────────────────
+// Cloudinary config
 const CLOUDINARY_CLOUD = 'dxo761td7';
 const CLOUDINARY_PRESET = 'FITOSCENTS-DECANTS';
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`;
@@ -115,7 +127,6 @@ async function uploadToCloudinary(file) {
   const data = await res.json();
   return data.secure_url;
 }
-// ───────────────────────────────────────────────────────────────
 
 renderSidebar('perfumes');
 if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display = 'flex';
@@ -130,7 +141,7 @@ async function loadAll() {
   ]);
   cats = []; cs.forEach(d => cats.push({ id: d.id, ...d.data() })); cats.sort((a, b) => a.nombre.localeCompare(b.nombre));
   marcas = []; ms.forEach(d => marcas.push({ id: d.id, ...d.data() })); marcas.sort((a, b) => a.nombre.localeCompare(b.nombre));
-  perfumes = []; ps.forEach(d => perfumes.push({ id: d.id, ...d.data() })); perfumes.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  perfumes = []; ps.forEach(d => perfumes.push({ id: d.id, ...d.data() }));
   const cOpts = cats.map(c => `<option>${c.nombre}</option>`).join('');
   document.getElementById('f-cat').innerHTML = `<option value="">Todas las categorias</option>${cOpts}`;
   document.getElementById('p-cat').innerHTML = `<option value="">Selecciona</option>${cOpts}`;
@@ -149,26 +160,38 @@ window.renderTable = () => {
   const fg = document.getElementById('f-genero').value;
   const fc = document.getElementById('f-cat').value;
   const fm = document.getElementById('f-marca').value;
-  const fil = perfumes.filter(p =>
+  const orden = document.getElementById('f-orden').value;
+  let fil = perfumes.filter(p =>
     (!q || p.nombre.toLowerCase().includes(q) || (p.marca || '').toLowerCase().includes(q)) &&
     (!fg || p.genero === fg) && (!fc || p.categoria === fc) && (!fm || p.marca === fm)
   );
+  // Ordenar
+  fil.sort((a, b) => {
+    if (orden === 'clicks') return (b.clicks || 0) - (a.clicks || 0);
+    if (orden === 'az') return a.nombre.localeCompare(b.nombre);
+    if (orden === 'za') return b.nombre.localeCompare(a.nombre);
+    return 0;
+  });
   document.getElementById('count-label').textContent = fil.length + ' perfumes';
   const tb = document.getElementById('tbody');
   if (!fil.length) {
-    tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="bi bi-droplet"></i><h3>Sin resultados</h3><p>Cambia los filtros o agrega perfumes.</p></div></td></tr>';
+    tb.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="bi bi-droplet"></i><h3>Sin resultados</h3><p>Cambia los filtros o agrega perfumes.</p></div></td></tr>';
     return;
   }
   tb.innerHTML = fil.map(p => {
     const pr = p.precios || {};
     const tags = Object.entries(pr).filter(([, v]) => +v > 0).map(([k, v]) => `<span class="badge badge-gold">${k}ml $${v}</span>`).join(' ');
     const oculto = p.activo === false ? '<span class="badge badge-danger" style="margin-left:6px">Oculto</span>' : '';
+    const clicks = p.clicks > 0
+      ? `<span class="clicks-badge"><i class="bi bi-eye"></i> ${p.clicks}</span>`
+      : `<span class="clicks-zero">—</span>`;
     return `<tr>
       <td>${p.imagen ? `<img class="td-img" src="${p.imagen}" alt="" loading="lazy">` : '<div class="td-img-placeholder"><i class="bi bi-droplet"></i></div>'}</td>
       <td><strong>${p.nombre}</strong>${oculto}</td>
       <td><span class="badge badge-gold">${p.marca || '—'}</span></td>
       <td><span class="badge badge-info">${p.categoria || '—'}</span></td>
       <td><span class="badge badge-muted">${p.genero || '—'}</span></td>
+      <td class="col-clicks">${clicks}</td>
       <td>${tags || '<span style="color:var(--text-faint)">Sin precios</span>'}</td>
       <td><div style="display:flex;gap:6px">
         <button class="btn-icon" onclick="edit('${p.id}')" title="Editar"><i class="bi bi-pencil"></i></button>
@@ -264,7 +287,6 @@ window.save = async () => {
         imagen = currentImg.startsWith('data:') ? '' : currentImg;
       }
     }
-
     const precios = {
       '2':  +document.getElementById('px2').value  || 0,
       '3':  +document.getElementById('px3').value  || 0,
@@ -278,10 +300,8 @@ window.save = async () => {
       imagen, precios, tamanos,
       activo: document.getElementById('p-activo').checked
     };
-
     if (id) await updateDoc(doc(db, 'perfumes', id), data);
-    else await addDoc(collection(db, 'perfumes'), { ...data, creadoEn: Date.now() });
-
+    else await addDoc(collection(db, 'perfumes'), { ...data, clicks: 0, creadoEn: Date.now() });
     toast(id ? 'Perfume actualizado ✅' : 'Perfume creado ✅', 'success');
     closeModal();
     loadAll();

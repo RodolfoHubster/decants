@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Fitoscents · Ventas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <style>
+    .badge-ml { background:var(--accent-subtle); color:var(--accent); border:1px solid var(--accent); border-radius:20px; padding:2px 10px; font-size:11px; font-weight:600; }
+    .badge-estado { border-radius:20px; padding:2px 10px; font-size:11px; font-weight:600; }
+    .badge-estado.pagada  { background:#16a34a22; color:#16a34a; border:1px solid #16a34a; }
+    .badge-estado.pendiente { background:#d9770622; color:#d97706; border:1px solid #d97706; }
+    .badge-estado.cancelada { background:#dc262622; color:#dc2626; border:1px solid #dc2626; }
+    .kpi-row { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:16px; margin-bottom:24px; }
+    .kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+    .kpi-card .kpi-label { font-size:11px; font-weight:600; color:var(--text-faint); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+    .kpi-card .kpi-value { font-size:26px; font-weight:700; color:var(--text); line-height:1; }
+    .kpi-card .kpi-sub { font-size:12px; color:var(--text-muted); margin-top:4px; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    @media(max-width:560px){ .form-row { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-wrap"></div>
+  <div class="main-content">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
+        <span class="topbar-title">Ventas de Decants</span>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> Nueva Venta</button>
+    </div>
+    <div class="page-body">
+
+      <!-- KPIs -->
+      <div class="kpi-row">
+        <div class="kpi-card"><div class="kpi-label">💰 Total vendido</div><div class="kpi-value" id="k-total">$0</div><div class="kpi-sub">todas las ventas</div></div>
+        <div class="kpi-card"><div class="kpi-label">📦 Decants vendidos</div><div class="kpi-value" id="k-cant">0</div><div class="kpi-sub">unidades</div></div>
+        <div class="kpi-card"><div class="kpi-label">✅ Pagadas</div><div class="kpi-value" id="k-pagadas">0</div><div class="kpi-sub">cobradas</div></div>
+        <div class="kpi-card"><div class="kpi-label">⏳ Pendientes</div><div class="kpi-value" id="k-pend">0</div><div class="kpi-sub">por cobrar</div></div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="filter-bar">
+        <div class="search-input-wrap"><i class="bi bi-search"></i><input class="form-control" id="search" placeholder="Buscar cliente o perfume..." oninput="renderTable()"></div>
+        <select class="form-control" style="max-width:150px" id="f-estado" onchange="renderTable()">
+          <option value="">Todos los estados</option>
+          <option value="pagada">Pagada</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="cancelada">Cancelada</option>
+        </select>
+        <select class="form-control" style="max-width:150px" id="f-periodo" onchange="renderTable()">
+          <option value="">Todo el tiempo</option>
+          <option value="hoy">Hoy</option>
+          <option value="7">Últimos 7 días</option>
+          <option value="30">Últimos 30 días</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h5>Historial de Ventas</h5><span class="badge badge-muted" id="count-label">0 ventas</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Fecha</th><th>Perfume</th><th>Talla</th><th>Precio</th><th>Cliente</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVA VENTA -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-header"><h4 id="modal-title">Nueva Venta</h4><button class="btn-icon" onclick="closeModal()"><i class="bi bi-x-lg"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="v-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Perfume *</label>
+          <select class="form-control" id="v-perfume" onchange="onPerfumeChange()">
+            <option value="">Selecciona perfume</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Talla (ml) *</label>
+          <select class="form-control" id="v-talla">
+            <option value="">Selecciona talla</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Precio de venta ($MXN) *</label>
+          <input class="form-control" type="number" id="v-precio" placeholder="0.00" min="0">
+        </div>
+        <div class="form-group">
+          <label>Cantidad</label>
+          <input class="form-control" type="number" id="v-cantidad" value="1" min="1">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Cliente</label>
+          <input class="form-control" id="v-cliente" placeholder="Nombre del cliente">
+        </div>
+        <div class="form-group">
+          <label>Estado *</label>
+          <select class="form-control" id="v-estado">
+            <option value="pagada">Pagada ✅</option>
+            <option value="pendiente">Pendiente ⏳</option>
+            <option value="cancelada">Cancelada ❌</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notas</label>
+        <textarea class="form-control" id="v-notas" rows="2" placeholder="Observaciones opcionales..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save" onclick="save()"><i class="bi bi-check2"></i> Guardar Venta</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR ESTADO -->
+<div class="modal-overlay" id="modal-estado">
+  <div class="modal-box" style="max-width:360px">
+    <div class="modal-header"><h4>Cambiar Estado</h4><button class="btn-icon" onclick="closeEstado()"><i class="bi bi-x-lg"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="es-id">
+      <div class="form-group">
+        <label>Nuevo estado</label>
+        <select class="form-control" id="es-valor">
+          <option value="pagada">Pagada ✅</option>
+          <option value="pendiente">Pendiente ⏳</option>
+          <option value="cancelada">Cancelada ❌</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeEstado()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEstado()">Actualizar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc }
+  from '../assets/js/firebase-config.js';
+import { renderSidebar } from './sidebar.js';
+import { toast } from '../assets/js/toast.js';
+import './auth-guard.js';
+
+renderSidebar('ventas');
+if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display = 'flex';
+
+let ventas = [], perfumes = [];
+
+async function loadAll() {
+  const [vs, ps] = await Promise.all([
+    getDocs(collection(db, 'ventas')),
+    getDocs(collection(db, 'perfumes'))
+  ]);
+  perfumes = []; ps.forEach(d => perfumes.push({ id: d.id, ...d.data() }));
+  perfumes.sort((a,b) => a.nombre.localeCompare(b.nombre));
+  ventas = []; vs.forEach(d => ventas.push({ id: d.id, ...d.data() }));
+  ventas.sort((a,b) => (b.creadoEn||0) - (a.creadoEn||0));
+
+  const pOpts = perfumes.map(p => `<option value="${p.id}">${p.nombre} — ${p.marca||''}</option>`).join('');
+  document.getElementById('v-perfume').innerHTML = '<option value="">Selecciona perfume</option>' + pOpts;
+
+  updateKPIs();
+  renderTable();
+}
+
+function updateKPIs() {
+  const activas = ventas.filter(v => v.estado !== 'cancelada');
+  document.getElementById('k-total').textContent = '$' + activas.reduce((s,v)=>s+(+v.precio||0)*(+v.cantidad||1),0).toLocaleString('es-MX',{minimumFractionDigits:0});
+  document.getElementById('k-cant').textContent = activas.reduce((s,v)=>s+(+v.cantidad||1),0);
+  document.getElementById('k-pagadas').textContent = ventas.filter(v=>v.estado==='pagada').length;
+  document.getElementById('k-pend').textContent = ventas.filter(v=>v.estado==='pendiente').length;
+}
+
+window.onPerfumeChange = () => {
+  const id = document.getElementById('v-perfume').value;
+  const p = perfumes.find(x => x.id === id);
+  const tallaSel = document.getElementById('v-talla');
+  const precioEl = document.getElementById('v-precio');
+  if (!p) { tallaSel.innerHTML = '<option value="">Selecciona talla</option>'; return; }
+  const precios = p.precios || {};
+  const opts = Object.entries(precios).filter(([,v]) => +v > 0)
+    .map(([k,v]) => `<option value="${k}" data-precio="${v}">${k} ml — $${v}</option>`).join('');
+  tallaSel.innerHTML = '<option value="">Selecciona talla</option>' + opts;
+  tallaSel.onchange = () => {
+    const opt = tallaSel.selectedOptions[0];
+    if (opt && opt.dataset.precio) precioEl.value = opt.dataset.precio;
+  };
+};
+
+window.renderTable = () => {
+  const q = document.getElementById('search').value.toLowerCase();
+  const fe = document.getElementById('f-estado').value;
+  const fp = document.getElementById('f-periodo').value;
+  const ahora = Date.now();
+  const fil = ventas.filter(v => {
+    if (fe && v.estado !== fe) return false;
+    if (fp) {
+      const dias = fp === 'hoy' ? 0 : +fp;
+      const desde = fp === 'hoy' ? new Date().setHours(0,0,0,0) : ahora - dias*86400000;
+      if ((v.creadoEn||0) < desde) return false;
+    }
+    if (q && !(v.cliente||'').toLowerCase().includes(q) && !(v.perfumeNombre||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  document.getElementById('count-label').textContent = fil.length + ' ventas';
+  const tb = document.getElementById('tbody');
+  if (!fil.length) {
+    tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="bi bi-receipt"></i><h3>Sin ventas</h3><p>Registra tu primera venta.</p></div></td></tr>';
+    return;
+  }
+  tb.innerHTML = fil.map(v => {
+    const fecha = v.creadoEn ? new Date(v.creadoEn).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const total = ((+v.precio||0)*(+v.cantidad||1)).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
+    return `<tr>
+      <td style="color:var(--text-muted);font-size:13px">${fecha}</td>
+      <td><strong>${v.perfumeNombre||'—'}</strong></td>
+      <td><span class="badge-ml">${v.talla||'—'} ml × ${v.cantidad||1}</span></td>
+      <td><strong>${total}</strong></td>
+      <td>${v.cliente||'<span style="color:var(--text-faint)">—</span>'}</td>
+      <td><span class="badge-estado ${v.estado||'pendiente'}">${v.estado||'pendiente'}</span></td>
+      <td><div style="display:flex;gap:6px">
+        <button class="btn-icon" onclick="editEstado('${v.id}','${v.estado||'pendiente'}')" title="Cambiar estado"><i class="bi bi-pencil-square"></i></button>
+        <button class="btn-icon" onclick="del('${v.id}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
+      </div></td>
+    </tr>`;
+  }).join('');
+};
+
+window.openModal = () => {
+  ['v-id','v-cliente','v-notas'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('v-precio').value = '';
+  document.getElementById('v-cantidad').value = 1;
+  document.getElementById('v-estado').value = 'pagada';
+  document.getElementById('v-perfume').value = '';
+  document.getElementById('v-talla').innerHTML = '<option value="">Selecciona talla</option>';
+  document.getElementById('modal-title').textContent = 'Nueva Venta';
+  document.getElementById('modal').classList.add('open');
+};
+window.closeModal = () => document.getElementById('modal').classList.remove('open');
+
+window.save = async () => {
+  const perfumeId = document.getElementById('v-perfume').value;
+  const talla = document.getElementById('v-talla').value;
+  const precio = +document.getElementById('v-precio').value;
+  const cantidad = +document.getElementById('v-cantidad').value || 1;
+  const estado = document.getElementById('v-estado').value;
+  if (!perfumeId || !talla || !precio) { toast('Completa perfume, talla y precio (*)', 'error'); return; }
+  const p = perfumes.find(x => x.id === perfumeId);
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
+  try {
+    const data = {
+      perfumeId, perfumeNombre: p?.nombre||'', perfumeMarca: p?.marca||'',
+      talla, precio, cantidad, estado,
+      cliente: document.getElementById('v-cliente').value.trim(),
+      notas: document.getElementById('v-notas').value.trim(),
+      creadoEn: Date.now()
+    };
+    await addDoc(collection(db, 'ventas'), data);
+    toast('Venta registrada ✅', 'success');
+    closeModal();
+    loadAll();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+  finally { btn.disabled=false; btn.innerHTML='<i class="bi bi-check2"></i> Guardar Venta'; }
+};
+
+window.editEstado = (id, estado) => {
+  document.getElementById('es-id').value = id;
+  document.getElementById('es-valor').value = estado;
+  document.getElementById('modal-estado').classList.add('open');
+};
+window.closeEstado = () => document.getElementById('modal-estado').classList.remove('open');
+window.guardarEstado = async () => {
+  const id = document.getElementById('es-id').value;
+  const estado = document.getElementById('es-valor').value;
+  await updateDoc(doc(db,'ventas',id), { estado });
+  toast('Estado actualizado', 'info');
+  closeEstado();
+  loadAll();
+};
+
+window.del = async (id) => {
+  if (!confirm('¿Eliminar esta venta?')) return;
+  await deleteDoc(doc(db,'ventas',id));
+  toast('Venta eliminada', 'info');
+  loadAll();
+};
+
+loadAll();
+</script>
+</body>
+</html>
