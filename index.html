@@ -30,50 +30,11 @@
     .btn-admin:hover { background: rgba(201,168,76,.2); }
 
     /* HERO */
-    .hero {
-      position: relative;
-      padding: 64px 24px 56px;
-      text-align: center;
-      border-bottom: 1px solid rgba(201,168,76,.1);
-      overflow: hidden;
-      min-height: 360px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-    .hero-bg {
-      position: absolute;
-      inset: 0;
-      background-image: url('https://images.unsplash.com/photo-1594035910387-fea47794261f?w=1600&q=80');
-      background-size: cover;
-      background-position: center 30%;
-      filter: brightness(0.22) saturate(1.3);
-      z-index: 0;
-    }
-    .hero-bg::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, rgba(201,168,76,0.15) 0%, transparent 60%, rgba(15,17,23,0.6) 100%);
-    }
+    .hero { position: relative; padding: 64px 24px 56px; text-align: center; border-bottom: 1px solid rgba(201,168,76,.1); overflow: hidden; min-height: 360px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .hero-bg { position: absolute; inset: 0; background-image: url('https://images.unsplash.com/photo-1594035910387-fea47794261f?w=1600&q=80'); background-size: cover; background-position: center 30%; filter: brightness(0.22) saturate(1.3); z-index: 0; }
+    .hero-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(201,168,76,0.15) 0%, transparent 60%, rgba(15,17,23,0.6) 100%); }
     .hero > *:not(.hero-bg) { position: relative; z-index: 1; }
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(201,168,76,.12);
-      border: 1px solid rgba(201,168,76,.3);
-      color: #c9a84c;
-      border-radius: 99px;
-      padding: 5px 16px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .1em;
-      margin-bottom: 20px;
-      backdrop-filter: blur(4px);
-    }
+    .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(201,168,76,.12); border: 1px solid rgba(201,168,76,.3); color: #c9a84c; border-radius: 99px; padding: 5px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 20px; backdrop-filter: blur(4px); }
     .hero h1 { font-size: clamp(26px, 4.5vw, 50px); font-weight: 700; line-height: 1.15; margin-bottom: 14px; text-shadow: 0 2px 24px rgba(0,0,0,.8); }
     .hero h1 span { color: #c9a84c; }
     .hero p { font-size: 14.5px; color: #999; max-width: 420px; margin: 0 auto 32px; line-height: 1.7; text-shadow: 0 1px 8px rgba(0,0,0,.9); }
@@ -85,13 +46,8 @@
     /* FILTERS */
     .filters { background: #0f1117; border-bottom: 1px solid rgba(255,255,255,.06); padding: 14px 24px; position: sticky; top: 62px; z-index: 100; }
     .filters-inner { max-width: 1280px; margin: 0 auto; }
-
-    /* Fila 1: búsqueda + ordenar + limpiar (desktop) */
     .filters-row1 { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; margin-bottom: 12px; }
-
-    /* Fila mobile: solo búsqueda (full width) */
     .filters-row-mobile { display: none; margin-bottom: 10px; }
-
     .filter-label { font-size: 11px; font-weight: 600; color: #c9a84c; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
     .finput { width: 100%; background: #181b23; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 11px 14px 11px 38px; color: #e8e6e1; font-size: 14px; font-family: 'Poppins', sans-serif; outline: none; transition: border-color .15s; }
     .finput:focus { border-color: rgba(201,168,76,.5); }
@@ -102,8 +58,6 @@
     .sinput-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #555; font-size: 14px; pointer-events: none; }
     .btn-clear { display: flex; align-items: center; gap: 6px; padding: 11px 18px; background: transparent; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; color: #666; font-size: 13px; white-space: nowrap; transition: all .15s; }
     .btn-clear:hover { border-color: rgba(201,168,76,.4); color: #c9a84c; }
-
-    /* Tabs género */
     .filter-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
     .ftab { padding: 7px 16px; border-radius: 99px; font-size: 12.5px; font-weight: 500; border: 1px solid rgba(255,255,255,.08); background: transparent; color: #666; transition: all .15s; cursor: pointer; }
     .ftab.active, .ftab:hover { background: rgba(201,168,76,.12); border-color: rgba(201,168,76,.35); color: #c9a84c; }
@@ -124,7 +78,8 @@
     .card-no-img { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #2a2d35; font-size: 52px; }
     .card-body { padding: 14px 16px 16px; }
     .card-marca { font-size: 11px; color: #c9a84c; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 3px; }
-    .card-nombre { font-size: 15px; font-weight: 600; line-height: 1.3; margin-bottom: 10px; }
+    .card-nombre { font-size: 15px; font-weight: 600; line-height: 1.3; margin-bottom: 6px; }
+    .card-clicks { font-size: 11px; color: #555; margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
     .card-pills { display: flex; flex-wrap: wrap; gap: 6px; }
     .cpill { padding: 5px 11px; border-radius: 99px; font-size: 11.5px; font-weight: 500; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); color: #aaa; white-space: nowrap; }
 
@@ -169,23 +124,17 @@
     footer p { font-size: 13px; color: #444; }
     footer a { color: #c9a84c; }
 
-    /* =====================
-       RESPONSIVE MOBILE
-    ===================== */
+    /* RESPONSIVE MOBILE */
     @media (max-width: 768px) {
-      /* Ocultar fila desktop (ordenar + limpiar) */
+      /* Sin sticky en movil: el filtro se queda fijo donde esta */
+      .filters { position: static; padding: 12px 16px; }
       .filters-row1 { display: none; }
-      /* Mostrar fila mobile (solo búsqueda) */
       .filters-row-mobile { display: block; }
-
       .hero { padding: 40px 20px 36px; min-height: 300px; }
       .hero-features { gap: 20px; }
       .catalog { padding: 20px 14px 48px; }
       .grid { grid-template-columns: 1fr 1fr; gap: 12px; }
-
-      /* Tabs un poco más compactos */
       .ftab { padding: 6px 13px; font-size: 12px; }
-      .filters { padding: 12px 16px; }
     }
     @media (max-width: 420px) {
       .grid { grid-template-columns: 1fr; }
@@ -223,29 +172,16 @@
   <h1>Perfumes de <span>diseñador</span><br>en tu tamaño ideal</h1>
   <p>Prueba antes de invertir en el frasco completo. Decants 100% originales desde 2ml.</p>
   <div class="hero-features">
-    <div class="hfeat">
-      <div class="hfeat-icon"><i class="bi bi-patch-check-fill"></i></div>
-      <div class="hfeat-text">100% Originales</div>
-    </div>
-    <div class="hfeat">
-      <div class="hfeat-icon"><i class="bi bi-droplet-half"></i></div>
-      <div class="hfeat-text">Desde 2ml</div>
-    </div>
-    <div class="hfeat">
-      <div class="hfeat-icon"><i class="bi bi-geo-alt"></i></div>
-      <div class="hfeat-text">Tijuana, B.C.</div>
-    </div>
-    <div class="hfeat">
-      <div class="hfeat-icon"><i class="bi bi-whatsapp"></i></div>
-      <div class="hfeat-text">Pedido por<br>WhatsApp</div>
-    </div>
+    <div class="hfeat"><div class="hfeat-icon"><i class="bi bi-patch-check-fill"></i></div><div class="hfeat-text">100% Originales</div></div>
+    <div class="hfeat"><div class="hfeat-icon"><i class="bi bi-droplet-half"></i></div><div class="hfeat-text">Desde 2ml</div></div>
+    <div class="hfeat"><div class="hfeat-icon"><i class="bi bi-geo-alt"></i></div><div class="hfeat-text">Tijuana, B.C.</div></div>
+    <div class="hfeat"><div class="hfeat-icon"><i class="bi bi-whatsapp"></i></div><div class="hfeat-text">Pedido por<br>WhatsApp</div></div>
   </div>
 </section>
 
 <div class="filters">
   <div class="filters-inner">
-
-    <!-- DESKTOP: búsqueda + ordenar + limpiar -->
+    <!-- DESKTOP: busqueda + ordenar + limpiar -->
     <div class="filters-row1">
       <div>
         <div class="filter-label"><i class="bi bi-search"></i> Buscar decant</div>
@@ -257,6 +193,7 @@
       <div>
         <div class="filter-label"><i class="bi bi-sort-down"></i> Ordenar por</div>
         <select class="fselect" id="sort" onchange="renderGrid()">
+          <option value="relevancia">⭐ Más populares</option>
           <option value="az">Nombre A-Z</option>
           <option value="za">Nombre Z-A</option>
           <option value="marca">Marca</option>
@@ -266,17 +203,15 @@
       </div>
       <button class="btn-clear" onclick="clearFilters()"><i class="bi bi-x-circle"></i> Limpiar</button>
     </div>
-
-    <!-- MOBILE: solo búsqueda -->
+    <!-- MOBILE: solo busqueda -->
     <div class="filters-row-mobile">
       <div class="sinput-wrap">
         <i class="bi bi-search"></i>
         <input class="finput" id="q-mobile" placeholder="Buscar perfume..." oninput="syncMobileSearch()" autocomplete="off">
       </div>
     </div>
-
-    <!-- Tabs género: siempre visibles -->
-    <div class="filter-tabs">
+    <!-- Tabs genero -->
+    <div class="filter-tabs" style="margin-top:10px">
       <button class="ftab active" data-g="" onclick="setG(this)">Todos</button>
       <button class="ftab" data-g="Caballero" onclick="setG(this)">Caballero</button>
       <button class="ftab" data-g="Dama" onclick="setG(this)">Dama</button>
@@ -319,11 +254,10 @@
 </footer>
 
 <script type="module">
-import { db, auth, collection, getDocs, query, where, onAuthStateChanged }
+import { db, auth, collection, getDocs, query, where, onAuthStateChanged, doc, updateDoc, increment }
   from './assets/js/firebase-config.js';
 
 const adminBtn = document.getElementById('btn-admin');
-
 onAuthStateChanged(auth, user => {
   if (user) {
     adminBtn.href = './admin/dashboard.html';
@@ -336,7 +270,6 @@ onAuthStateChanged(auth, user => {
 
 let all = [], gF = '', modalData = null;
 
-// Sincroniza el input mobile con el desktop (comparten estado)
 window.syncMobileSearch = () => {
   const val = document.getElementById('q-mobile').value;
   document.getElementById('q').value = val;
@@ -372,6 +305,7 @@ window.renderGrid = () => {
     (!gF || p.genero === gF)
   );
   fil.sort((a, b) => {
+    if (sort === 'relevancia') return (b.clicks || 0) - (a.clicks || 0);
     if (sort === 'az') return a.nombre.localeCompare(b.nombre);
     if (sort === 'za') return b.nombre.localeCompare(a.nombre);
     if (sort === 'marca') return (a.marca || '').localeCompare(b.marca || '');
@@ -390,6 +324,7 @@ window.renderGrid = () => {
     const pr = p.precios || {};
     const sizes = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
     const pills = sizes.map(([k, v]) => `<div class="cpill">${k}ml — $${v}</div>`).join('');
+    const clicksBadge = (p.clicks > 0) ? `<div class="card-clicks"><i class="bi bi-eye"></i> ${p.clicks} vista${p.clicks !== 1 ? 's' : ''}</div>` : '';
     return `<div class="pcard" onclick="openModal('${p.id}')">
       <div class="card-img">
         ${p.imagen ? `<img src="${p.imagen}" alt="${p.nombre}" loading="lazy">` : '<div class="card-no-img"><i class="bi bi-droplet"></i></div>'}
@@ -397,6 +332,7 @@ window.renderGrid = () => {
       <div class="card-body">
         <div class="card-marca">${p.marca || ''}</div>
         <div class="card-nombre">${p.nombre}</div>
+        ${clicksBadge}
         <div class="card-pills">${pills || '<span style="font-size:12px;color:#444">Sin precios</span>'}</div>
       </div>
     </div>`;
@@ -411,15 +347,25 @@ window.setG = btn => {
 window.clearFilters = () => {
   document.getElementById('q').value = '';
   document.getElementById('q-mobile').value = '';
-  document.getElementById('sort').value = 'az';
+  document.getElementById('sort').value = 'relevancia';
   document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
   document.querySelector('.ftab').classList.add('active');
   gF = ''; renderGrid();
 };
 
 window.openModal = id => {
-  const p = all.find(x => x.id === id); if (!p) return;
+  const p = all.find(x => x.id === id);
+  if (!p) return;
   modalData = p;
+
+  // Incrementar clicks en Firestore (en background, no bloquea el modal)
+  updateDoc(doc(db, 'perfumes', id), { clicks: increment(1) })
+    .then(() => {
+      // Actualizar el contador local para que el sort sea inmediato
+      const local = all.find(x => x.id === id);
+      if (local) local.clicks = (local.clicks || 0) + 1;
+    });
+
   document.getElementById('modal-img').innerHTML = p.imagen
     ? `<img src="${p.imagen}" alt="${p.nombre}">`
     : '<div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>';
