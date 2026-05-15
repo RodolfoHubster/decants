@@ -7,6 +7,16 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="../assets/css/variables.css">
   <link rel="stylesheet" href="../assets/css/global.css">
+  <style>
+    .stats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:16px; margin-bottom:24px; }
+    .stat-card  { position:relative; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; overflow:hidden; }
+    .stat-label { font-size:11px; font-weight:600; color:var(--text-faint); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; }
+    .stat-value { font-size:28px; font-weight:700; color:var(--text); line-height:1; margin-bottom:4px; }
+    .stat-sub   { font-size:12px; color:var(--text-muted); }
+    .stat-icon  { position:absolute; right:16px; top:16px; font-size:28px; color:var(--accent); opacity:.18; }
+    .ventas-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+    @media(max-width:640px){ .ventas-row { grid-template-columns:1fr; } }
+  </style>
 </head>
 <body>
 <div class="app-shell">
@@ -20,21 +30,32 @@
       <a href="../index.html" target="_blank" class="btn btn-outline btn-sm"><i class="bi bi-shop"></i> Ver tienda</a>
     </div>
     <div class="page-body">
+
+      <!-- Stats catálogo -->
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">Perfumes</div><div class="stat-value" id="s-perf">—</div><div class="stat-sub">en catalogo</div><i class="bi bi-droplet-fill stat-icon"></i></div>
+        <div class="stat-card"><div class="stat-label">Perfumes</div><div class="stat-value" id="s-perf">—</div><div class="stat-sub">en catálogo</div><i class="bi bi-droplet-fill stat-icon"></i></div>
         <div class="stat-card"><div class="stat-label">Marcas</div><div class="stat-value" id="s-marc">—</div><div class="stat-sub">registradas</div><i class="bi bi-award-fill stat-icon"></i></div>
-        <div class="stat-card"><div class="stat-label">Categorias</div><div class="stat-value" id="s-cat">—</div><div class="stat-sub">activas</div><i class="bi bi-tags-fill stat-icon"></i></div>
-        <div class="stat-card"><div class="stat-label">Visibles en tienda</div><div class="stat-value" id="s-vis">—</div><div class="stat-sub">perfumes activos</div><i class="bi bi-eye stat-icon"></i></div>
+        <div class="stat-card"><div class="stat-label">Categorías</div><div class="stat-value" id="s-cat">—</div><div class="stat-sub">activas</div><i class="bi bi-tags-fill stat-icon"></i></div>
+        <div class="stat-card"><div class="stat-label">Visibles</div><div class="stat-value" id="s-vis">—</div><div class="stat-sub">en la tienda</div><i class="bi bi-eye stat-icon"></i></div>
+        <div class="stat-card"><div class="stat-label">Ventas</div><div class="stat-value" id="s-ventas">—</div><div class="stat-sub">registradas</div><i class="bi bi-receipt stat-icon"></i></div>
+        <div class="stat-card"><div class="stat-label">Total ventas</div><div class="stat-value" id="s-total">—</div><div class="stat-sub">MXN cobrado</div><i class="bi bi-cash-coin stat-icon"></i></div>
+        <div class="stat-card"><div class="stat-label">Pedidos nuevos</div><div class="stat-value" id="s-ped">—</div><div class="stat-sub">por atender</div><i class="bi bi-box-seam-fill stat-icon"></i></div>
+        <div class="stat-card"><div class="stat-label">Por cobrar</div><div class="stat-value" id="s-pend">—</div><div class="stat-sub">ventas pendientes</div><i class="bi bi-hourglass-split stat-icon"></i></div>
       </div>
+
+      <!-- Acciones rapidas -->
       <div class="card">
-        <div class="card-header"><h5>Acciones rapidas</h5></div>
+        <div class="card-header"><h5>Acciones rápidas</h5></div>
         <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap">
           <a href="perfumes.html" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nuevo perfume</a>
+          <a href="ventas.html" class="btn btn-outline"><i class="bi bi-receipt"></i> Registrar venta</a>
+          <a href="pedidos.html" class="btn btn-outline"><i class="bi bi-box-seam"></i> Ver pedidos</a>
           <a href="marcas.html" class="btn btn-outline"><i class="bi bi-award"></i> Agregar marca</a>
-          <a href="categorias.html" class="btn btn-outline"><i class="bi bi-tags"></i> Agregar categoria</a>
-          <a href="../index.html" target="_blank" class="btn btn-outline"><i class="bi bi-shop"></i> Ver tienda publica</a>
+          <a href="categorias.html" class="btn btn-outline"><i class="bi bi-tags"></i> Agregar categoría</a>
+          <a href="../index.html" target="_blank" class="btn btn-outline"><i class="bi bi-shop"></i> Ver tienda pública</a>
         </div>
       </div>
+
     </div>
   </div>
 </div>
@@ -47,16 +68,36 @@ renderSidebar('dashboard');
 if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display = 'flex';
 
 async function loadStats() {
-  const [p, m, c, pv] = await Promise.all([
+  const [p, m, c, pv, v, ped] = await Promise.all([
     getDocs(collection(db, 'perfumes')),
     getDocs(collection(db, 'marcas')),
     getDocs(collection(db, 'categorias')),
     getDocs(query(collection(db, 'perfumes'), where('activo', '==', true))),
+    getDocs(collection(db, 'ventas')),
+    getDocs(collection(db, 'pedidos')),
   ]);
+
   document.getElementById('s-perf').textContent = p.size;
   document.getElementById('s-marc').textContent = m.size;
   document.getElementById('s-cat').textContent = c.size;
   document.getElementById('s-vis').textContent = pv.size;
+
+  let totalVentas = 0, ventasPend = 0, ventasCount = 0;
+  v.forEach(d => {
+    const vd = d.data();
+    if(vd.estado !== 'cancelada') {
+      totalVentas += (+vd.precio||0) * (+vd.cantidad||1);
+      ventasCount++;
+    }
+    if(vd.estado === 'pendiente') ventasPend++;
+  });
+  document.getElementById('s-ventas').textContent = ventasCount;
+  document.getElementById('s-total').textContent = '$' + totalVentas.toLocaleString('es-MX',{minimumFractionDigits:0});
+  document.getElementById('s-pend').textContent = ventasPend;
+
+  let pedNuevos = 0;
+  ped.forEach(d => { if(d.data().estado === 'nuevo') pedNuevos++; });
+  document.getElementById('s-ped').textContent = pedNuevos;
 }
 loadStats();
 </script>

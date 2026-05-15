@@ -5,6 +5,8 @@ const nav = [
   { id:'perfumes',  label:'Perfumes',   icon:'bi-droplet-fill',  href:'perfumes.html' },
   { id:'categorias',label:'Categorias', icon:'bi-tags-fill',     href:'categorias.html' },
   { id:'marcas',    label:'Marcas',     icon:'bi-award-fill',    href:'marcas.html' },
+  { id:'ventas',    label:'Ventas',     icon:'bi-receipt',       href:'ventas.html' },
+  { id:'pedidos',   label:'Pedidos',    icon:'bi-box-seam-fill', href:'pedidos.html' },
 ];
 
 export function renderSidebar(active){
