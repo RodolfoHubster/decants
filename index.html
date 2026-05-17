@@ -46,7 +46,6 @@
 
 <div class="filters">
   <div class="filters-inner">
-    <!-- DESKTOP: busqueda + ordenar + limpiar -->
     <div class="filters-row1">
       <div>
         <div class="filter-label"><i class="bi bi-search"></i> Buscar decant</div>
@@ -68,14 +67,12 @@
       </div>
       <button class="btn-clear" onclick="clearFilters()"><i class="bi bi-x-circle"></i> Limpiar</button>
     </div>
-    <!-- MOBILE: solo busqueda -->
     <div class="filters-row-mobile">
       <div class="sinput-wrap">
         <i class="bi bi-search"></i>
         <input class="finput" id="q-mobile" placeholder="Buscar perfume..." oninput="syncMobileSearch()" autocomplete="off">
       </div>
     </div>
-    <!-- Tabs genero -->
     <div class="filter-tabs" style="margin-top:10px">
       <button class="ftab active" data-g="" onclick="setG(this)">Todos</button>
       <button class="ftab" data-g="Caballero" onclick="setG(this)">Caballero</button>
@@ -114,8 +111,37 @@
   </div>
 </div>
 
+<!-- FOOTER -->
 <footer>
-  <p>© 2026 <a href="https://wa.me/526648162623" target="_blank" rel="noopener">Fitoscents</a> · Tijuana, B.C.</p>
+  <div class="footer-social">
+    <p>Síguenos en redes</p>
+    <div class="social-buttons">
+
+      <!-- Instagram -->
+      <a href="https://www.instagram.com/fitoscents/" target="_blank" rel="noopener noreferrer" class="social-btn instagram">
+        <i class="bi bi-instagram"></i>
+        <span>@fitoscents</span>
+      </a>
+
+      <!-- TikTok -->
+      <a href="https://www.tiktok.com/@fitoscents" target="_blank" rel="noopener noreferrer" class="social-btn tiktok">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M9 0h1.98c.144.715.54 1.617 1.235 2.512C12.895 3.389 13.797 4 15 4v2c-1.753 0-3.07-.814-4-1.829V11a5 5 0 1 1-5-5v2a3 3 0 1 0 3 3z"/>
+        </svg>
+        <span>@fitoscents</span>
+      </a>
+
+      <!-- Facebook -->
+      <a href="https://www.facebook.com/profile.php?id=61584221924570" target="_blank" rel="noopener noreferrer" class="social-btn facebook">
+        <i class="bi bi-facebook"></i>
+        <span>Fitoscents</span>
+      </a>
+
+    </div>
+  </div>
+  <div class="footer-copy">
+    <p>© 2026 <a href="https://wa.me/526648162623" target="_blank" rel="noopener">Fitoscents</a> · Tijuana, B.C.</p>
+  </div>
 </footer>
 
 <script type="module" src="./assets/js/catalog.js"></script>
