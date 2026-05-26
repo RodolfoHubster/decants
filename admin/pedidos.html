@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="../assets/css/variables.css">
   <link rel="stylesheet" href="../assets/css/global.css">
   <link rel="stylesheet" href="../assets/css/pedidos.css">
-
 </head>
 <body>
 <div class="app-shell">
@@ -23,19 +22,17 @@
     </div>
     <div class="page-body">
 
-      <!-- KPIs -->
       <div class="kpi-row">
-        <div class="kpi-card"><div class="kpi-label">📬 Nuevos</div><div class="kpi-value" id="k-nuevo">0</div><div class="kpi-sub">por atender</div></div>
-        <div class="kpi-card"><div class="kpi-label">📦 Preparando</div><div class="kpi-value" id="k-prep">0</div><div class="kpi-sub">en proceso</div></div>
-        <div class="kpi-card"><div class="kpi-label">🚚 Enviados</div><div class="kpi-value" id="k-env">0</div><div class="kpi-sub">en camino</div></div>
-        <div class="kpi-card"><div class="kpi-label">✅ Entregados</div><div class="kpi-value" id="k-ent">0</div><div class="kpi-sub">completados</div></div>
+        <div class="kpi-card"><div class="kpi-label">🆕 Nuevos</div><div class="kpi-value" id="k-nuevo">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">⚙️ Preparando</div><div class="kpi-value" id="k-prep">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">🚚 Enviados</div><div class="kpi-value" id="k-env">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">✅ Entregados</div><div class="kpi-value" id="k-ent">—</div></div>
       </div>
 
-      <!-- Filtros -->
       <div class="filter-bar">
         <div class="search-input-wrap"><i class="bi bi-search"></i><input class="form-control" id="search" placeholder="Buscar cliente o folio..." oninput="renderTable()"></div>
         <select class="form-control" style="max-width:160px" id="f-estado" onchange="renderTable()">
-          <option value="">Todos</option>
+          <option value="">Todos los estados</option>
           <option value="nuevo">Nuevo</option>
           <option value="preparando">Preparando</option>
           <option value="enviado">Enviado</option>
@@ -45,10 +42,10 @@
       </div>
 
       <div class="card">
-        <div class="card-header"><h5>Lista de Pedidos</h5><span class="badge badge-muted" id="count-label">0 pedidos</span></div>
+        <div class="card-header"><h5>Listado de Pedidos</h5><span class="badge badge-muted" id="count-label">0 pedidos</span></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Items</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Items</th><th>Total</th><th>Guía</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody id="tbody"></tbody>
           </table>
         </div>
@@ -59,35 +56,43 @@
 
 <!-- MODAL NUEVO PEDIDO -->
 <div class="modal-overlay" id="modal">
-  <div class="modal-box" style="max-width:600px">
+  <div class="modal-box" style="max-width:640px">
     <div class="modal-header"><h4 id="modal-title">Nuevo Pedido</h4><button class="btn-icon" onclick="closeModal()"><i class="bi bi-x-lg"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="p-id">
       <div class="form-row">
-        <div class="form-group"><label>Cliente *</label><input class="form-control" id="p-cliente" placeholder="Nombre del cliente"></div>
-        <div class="form-group"><label>Teléfono / WhatsApp</label><input class="form-control" id="p-tel" placeholder="664-000-0000"></div>
-      </div>
-      <div class="form-group"><label>Dirección de envío</label><input class="form-control" id="p-dir" placeholder="Calle, colonia, ciudad..."></div>
-      <div class="form-group">
-        <label>Items del pedido</label>
-        <div id="items-container"></div>
-        <button type="button" class="btn btn-outline btn-sm" style="margin-top:8px" onclick="addItem()"><i class="bi bi-plus"></i> Agregar item</button>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Estado</label>
-          <select class="form-control" id="p-estado">
-            <option value="nuevo">Nuevo</option>
-            <option value="preparando">Preparando</option>
-            <option value="enviado">Enviado</option>
-            <option value="entregado">Entregado</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
+        <div class="form-group">
+          <label>Cliente *</label>
+          <input class="form-control" id="p-cliente" placeholder="Nombre del cliente">
         </div>
-        <div class="form-group"><label>Notas</label><input class="form-control" id="p-notas" placeholder="Observaciones..."></div>
+        <div class="form-group">
+          <label>Teléfono</label>
+          <input class="form-control" id="p-tel" placeholder="+52 664...">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Dirección de envío</label>
+        <input class="form-control" id="p-dir" placeholder="Calle, colonia, ciudad...">
+      </div>
+      <div class="form-group">
+        <label>Estado del pedido</label>
+        <select class="form-control" id="p-estado">
+          <option value="nuevo">Nuevo</option>
+          <option value="preparando">Preparando</option>
+          <option value="enviado">Enviado</option>
+          <option value="entregado">Entregado</option>
+        </select>
+      </div>
+      <div style="margin-bottom:8px;font-weight:500">Items</div>
+      <div id="items-container"></div>
+      <button type="button" class="btn btn-outline btn-sm" onclick="addItem()"><i class="bi bi-plus"></i> Agregar item</button>
+      <div style="text-align:right;margin-top:12px;font-weight:600">Total: <span id="lbl-total">$0.00</span></div>
+      <div class="form-group" style="margin-top:12px">
+        <label>Notas</label>
+        <textarea class="form-control" id="p-notas" rows="2" placeholder="Instrucciones de entrega, etc."></textarea>
       </div>
     </div>
     <div class="modal-footer">
-      <div style="font-size:13px;color:var(--text-muted)">Total: <strong id="lbl-total" style="color:var(--accent)">$0.00</strong></div>
       <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-primary" id="btn-save" onclick="save()"><i class="bi bi-check2"></i> Guardar</button>
     </div>
@@ -96,10 +101,29 @@
 
 <!-- MODAL DETALLE -->
 <div class="modal-overlay" id="modal-detalle">
-  <div class="modal-box" style="max-width:500px">
+  <div class="modal-box" style="max-width:520px">
     <div class="modal-header"><h4>Detalle del Pedido</h4><button class="btn-icon" onclick="closeDetalle()"><i class="bi bi-x-lg"></i></button></div>
     <div class="modal-body" id="detalle-body"></div>
     <div class="modal-footer"><button class="btn btn-outline" onclick="closeDetalle()">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- MODAL TRACKING -->
+<div class="modal-overlay" id="modal-tracking">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-header"><h4>Guía de Rastreo</h4><button class="btn-icon" onclick="closeTracking()"><i class="bi bi-x-lg"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="tr-id">
+      <div class="form-group">
+        <label>Número de guía</label>
+        <input class="form-control" id="tr-num" placeholder="Ej. 9400111899223397059926">
+        <small style="color:var(--text-faint)">Se guarda en el historial del pedido automáticamente.</small>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeTracking()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarTracking()"><i class="bi bi-check2"></i> Guardar guía</button>
+    </div>
   </div>
 </div>
 

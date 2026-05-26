@@ -8,8 +8,6 @@
   <link rel="stylesheet" href="../assets/css/variables.css">
   <link rel="stylesheet" href="../assets/css/global.css">
   <link rel="stylesheet" href="../assets/css/ventas.css">
-
-
 </head>
 <body>
 <div class="app-shell">
@@ -20,13 +18,16 @@
         <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
         <span class="topbar-title">Ventas de Decants</span>
       </div>
-      <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> Nueva Venta</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="exportCSV()"><i class="bi bi-download"></i> Exportar CSV</button>
+        <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> Nueva Venta</button>
+      </div>
     </div>
     <div class="page-body">
 
-      <!-- KPIs -->
+      <!-- KPIs (se recalculan al cambiar filtro) -->
       <div class="kpi-row">
-        <div class="kpi-card"><div class="kpi-label">💰 Total vendido</div><div class="kpi-value" id="k-total">$0</div><div class="kpi-sub">todas las ventas</div></div>
+        <div class="kpi-card"><div class="kpi-label">💰 Total vendido</div><div class="kpi-value" id="k-total">$0</div><div class="kpi-sub" id="kpi-periodo-label">todas las ventas</div></div>
         <div class="kpi-card"><div class="kpi-label">📦 Decants vendidos</div><div class="kpi-value" id="k-cant">0</div><div class="kpi-sub">unidades</div></div>
         <div class="kpi-card"><div class="kpi-label">✅ Pagadas</div><div class="kpi-value" id="k-pagadas">0</div><div class="kpi-sub">cobradas</div></div>
         <div class="kpi-card"><div class="kpi-label">⏳ Pendientes</div><div class="kpi-value" id="k-pend">0</div><div class="kpi-sub">por cobrar</div></div>
@@ -41,7 +42,7 @@
           <option value="pendiente">Pendiente</option>
           <option value="cancelada">Cancelada</option>
         </select>
-        <select class="form-control" style="max-width:150px" id="f-periodo" onchange="renderTable()">
+        <select class="form-control" style="max-width:160px" id="f-periodo" onchange="onPeriodoChange()">
           <option value="">Todo el tiempo</option>
           <option value="hoy">Hoy</option>
           <option value="7">Últimos 7 días</option>
@@ -140,6 +141,14 @@
   </div>
 </div>
 
-<script type="module" src="../assets/js/ventas.js"></script>\
+<script>
+window.onPeriodoChange = () => {
+  const val = document.getElementById('f-periodo').value;
+  const labels = { '': 'todas las ventas', 'hoy': 'hoy', '7': 'últimos 7 días', '30': 'últimos 30 días' };
+  document.getElementById('kpi-periodo-label').textContent = labels[val] || 'período seleccionado';
+  window.renderTable && window.renderTable();
+};
+</script>
+<script type="module" src="../assets/js/ventas.js"></script>
 </body>
 </html>

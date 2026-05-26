@@ -22,16 +22,31 @@ async function loadAll() {
   const pOpts = perfumes.map(p => `<option value="${p.id}">${p.nombre} — ${p.marca||''}</option>`).join('');
   document.getElementById('v-perfume').innerHTML = '<option value="">Selecciona perfume</option>' + pOpts;
 
-  updateKPIs();
   renderTable();
 }
 
-function updateKPIs() {
-  const activas = ventas.filter(v => v.estado !== 'cancelada');
+function getFiltered() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const fe = document.getElementById('f-estado').value;
+  const fp = document.getElementById('f-periodo').value;
+  const ahora = Date.now();
+  return ventas.filter(v => {
+    if (fe && v.estado !== fe) return false;
+    if (fp) {
+      const desde = fp === 'hoy' ? new Date().setHours(0,0,0,0) : ahora - (+fp)*86400000;
+      if ((v.creadoEn||0) < desde) return false;
+    }
+    if (q && !(v.cliente||'').toLowerCase().includes(q) && !(v.perfumeNombre||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function updateKPIs(fil) {
+  const activas = fil.filter(v => v.estado !== 'cancelada');
   document.getElementById('k-total').textContent = '$' + activas.reduce((s,v)=>s+(+v.precio||0)*(+v.cantidad||1),0).toLocaleString('es-MX',{minimumFractionDigits:0});
   document.getElementById('k-cant').textContent = activas.reduce((s,v)=>s+(+v.cantidad||1),0);
-  document.getElementById('k-pagadas').textContent = ventas.filter(v=>v.estado==='pagada').length;
-  document.getElementById('k-pend').textContent = ventas.filter(v=>v.estado==='pendiente').length;
+  document.getElementById('k-pagadas').textContent = fil.filter(v=>v.estado==='pagada').length;
+  document.getElementById('k-pend').textContent = fil.filter(v=>v.estado==='pendiente').length;
 }
 
 window.onPerfumeChange = () => {
@@ -51,20 +66,8 @@ window.onPerfumeChange = () => {
 };
 
 window.renderTable = () => {
-  const q = document.getElementById('search').value.toLowerCase();
-  const fe = document.getElementById('f-estado').value;
-  const fp = document.getElementById('f-periodo').value;
-  const ahora = Date.now();
-  const fil = ventas.filter(v => {
-    if (fe && v.estado !== fe) return false;
-    if (fp) {
-      const dias = fp === 'hoy' ? 0 : +fp;
-      const desde = fp === 'hoy' ? new Date().setHours(0,0,0,0) : ahora - dias*86400000;
-      if ((v.creadoEn||0) < desde) return false;
-    }
-    if (q && !(v.cliente||'').toLowerCase().includes(q) && !(v.perfumeNombre||'').toLowerCase().includes(q)) return false;
-    return true;
-  });
+  const fil = getFiltered();
+  updateKPIs(fil);
   document.getElementById('count-label').textContent = fil.length + ' ventas';
   const tb = document.getElementById('tbody');
   if (!fil.length) {
@@ -87,6 +90,30 @@ window.renderTable = () => {
       </div></td>
     </tr>`;
   }).join('');
+};
+
+// ── EXPORT CSV ──────────────────────────────────────────────────────────────
+window.exportCSV = () => {
+  const fil = getFiltered();
+  if (!fil.length) { toast('No hay ventas para exportar', 'error'); return; }
+  const headers = ['Fecha','Perfume','Marca','Talla (ml)','Cantidad','Precio Unit.','Total','Cliente','Estado','Notas'];
+  const rows = fil.map(v => {
+    const fecha = v.creadoEn ? new Date(v.creadoEn).toLocaleDateString('es-MX') : '';
+    const total = (+v.precio||0)*(+v.cantidad||1);
+    return [
+      fecha, v.perfumeNombre||'', v.perfumeMarca||'', v.talla||'',
+      v.cantidad||1, v.precio||0, total,
+      v.cliente||'', v.estado||'', v.notas||''
+    ].map(c => `"${String(c).replace(/"/g,'""')}"`).join(',');
+  });
+  const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const periodo = document.getElementById('f-periodo').value || 'total';
+  a.download = `ventas_${periodo}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('CSV exportado ✅', 'success');
 };
 
 window.openModal = () => {
