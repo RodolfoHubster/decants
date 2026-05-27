@@ -295,40 +295,61 @@ window.addToCart = () => {
   renderGrid();
 };
 
-// Incrementar qty desde el drawer
+// ── Incrementar / Decrementar qty desde el drawer (patch in-place) ──
 window.incrementCartItem = key => {
   const idx = cart.findIndex(i => i.key === key);
   if (idx === -1) return;
   if (cart[idx].qty >= MAX_QTY) { showToast(`Máximo ${MAX_QTY} unidades por talla`); return; }
   const { cart: newCart } = addItem(cart, cart[idx]);
   cart = newCart;
+  // Patch in-place — solo actualiza número sin re-renderizar todo el drawer
+  const qtyEl = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
+  const plusBtn = document.querySelector(`.cart-qty-btn[data-inc="${key}"]`);
+  if (qtyEl) qtyEl.textContent = cart[idx].qty + 1;
+  if (plusBtn) plusBtn.disabled = (cart[idx].qty + 1 >= MAX_QTY);
   updateCartBadge();
-  renderCartDrawer();
   renderGrid();
   if (modalData?.id === cart.find(i => i.key === key)?.id) syncModalCartBtn();
 };
 
-// Decrementar qty desde el drawer
 window.decrementCartItem = key => {
   cart = decrementItem(cart, key);
+  const item = cart.find(i => i.key === key);
+  if (!item) {
+    // item eliminado por decrement a 0 — re-render necesario
+    renderCartDrawer();
+  } else {
+    const qtyEl  = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
+    const minBtn = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
+    const plusBtn = document.querySelector(`.cart-qty-btn[data-inc="${key}"]`);
+    if (qtyEl)  qtyEl.textContent  = item.qty;
+    if (minBtn) minBtn.disabled    = false;
+    if (plusBtn) plusBtn.disabled  = (item.qty >= MAX_QTY);
+  }
   updateCartBadge();
-  renderCartDrawer();
   renderGrid();
   if (modalData) syncModalCartBtn();
 };
 
-// ── Event delegation para el cart-list (trash con doble confirmación) ──
+// ── Event delegation en cart-list: trash (doble confirm) ──
 document.addEventListener('DOMContentLoaded', () => {
   const cartList = document.getElementById('cart-list');
 
   cartList.addEventListener('click', e => {
-    const btn = e.target.closest('.cart-item-remove');
-    if (!btn) return;
-    const key = btn.dataset.key;
+    // Botones +/-
+    const incBtn = e.target.closest('.cart-qty-btn[data-inc]');
+    if (incBtn) { incrementCartItem(incBtn.dataset.inc); return; }
+    const decBtn = e.target.closest('.cart-qty-btn[data-dec]');
+    if (decBtn) { decrementCartItem(decBtn.dataset.dec); return; }
+
+    // Trash
+    const trash = e.target.closest('.cart-item-remove');
+    if (!trash) return;
+    const key = trash.dataset.key;
     if (!key) return;
 
-    if (btn.dataset.confirm === '1') {
-      // Segundo click — confirmar
+    if (trash.dataset.confirm === '1') {
+      // ─ Confirmar: eliminar y re-render
       cart = removeItem(cart, key);
       updateCartBadge();
       renderCartDrawer();
@@ -336,50 +357,49 @@ document.addEventListener('DOMContentLoaded', () => {
       if (modalData) syncModalCartBtn();
       showToast('✓ Item eliminado del pedido');
     } else {
-      // Primer click — pedir confirmación
-      // Resetear otros botones en modo confirmar
-      cartList.querySelectorAll('.cart-item-remove[data-confirm="1"]').forEach(b => {
-        if (b !== btn) resetTrashBtn(b);
+      // ─ Primer click: resetear otros, activar confirming en éste
+      cartList.querySelectorAll('.cart-item-remove.confirming').forEach(b => {
+        if (b !== trash) _resetTrash(b);
       });
-      btn.dataset.confirm = '1';
-      btn.classList.add('confirming');
-      btn.innerHTML = '<i class="bi bi-trash-fill"></i><span>¿Eliminar?</span>';
-      clearTimeout(btn._t);
-      btn._t = setTimeout(() => resetTrashBtn(btn), 2500);
+      trash.dataset.confirm = '1';
+      trash.classList.add('confirming');
+      trash.innerHTML = '<i class="bi bi-trash-fill"></i><span>¿Eliminar?</span>';
+      clearTimeout(trash._t);
+      trash._t = setTimeout(() => _resetTrash(trash), 2500);
     }
   });
 });
 
-function resetTrashBtn(btn) {
+function _resetTrash(btn) {
   btn.dataset.confirm = '0';
   btn.classList.remove('confirming');
   btn.innerHTML = '<i class="bi bi-trash"></i>';
   clearTimeout(btn._t);
 }
 
-// ── Limpiar pedido con doble confirmación ──
+// ── Limpiar pedido: doble confirmación ──
 window.clearCart = () => {
   const btn = document.getElementById('btn-cart-clear');
-  if (!btn) {
-    _doClearCart(); return;
-  }
+  if (!btn) { _doClearCart(); return; }
+
   if (btn.dataset.confirm === '1') {
     _doClearCart();
-    btn.dataset.confirm = '0';
-    btn.classList.remove('confirming');
-    btn.innerHTML = '<i class="bi bi-trash"></i> Limpiar pedido';
+    _resetClearBtn(btn);
   } else {
     btn.dataset.confirm = '1';
     btn.classList.add('confirming');
     btn.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> ¿Limpiar todo?';
     clearTimeout(btn._t);
-    btn._t = setTimeout(() => {
-      btn.dataset.confirm = '0';
-      btn.classList.remove('confirming');
-      btn.innerHTML = '<i class="bi bi-trash"></i> Limpiar pedido';
-    }, 2800);
+    btn._t = setTimeout(() => _resetClearBtn(btn), 2800);
   }
 };
+
+function _resetClearBtn(btn) {
+  btn.dataset.confirm = '0';
+  btn.classList.remove('confirming');
+  btn.innerHTML = '<i class="bi bi-trash"></i> Limpiar pedido';
+  clearTimeout(btn._t);
+}
 
 function _doClearCart() {
   cart = pureCleart();
@@ -390,31 +410,34 @@ function _doClearCart() {
   showToast('✓ Pedido limpiado correctamente');
 }
 
-// ── Cerrar drawer con confirmación si hay items ──
+// ── Cerrar drawer: confirmación si hay items ──
 window.closeCart = (force = false) => {
-  const drawer  = document.getElementById('cart-drawer');
-  const overlay = document.getElementById('cart-overlay');
+  const drawer   = document.getElementById('cart-drawer');
+  const overlay  = document.getElementById('cart-overlay');
   const btnClose = document.getElementById('btn-cart-close');
 
-  if (!force && cart.length > 0) {
-    if (!btnClose) { _doCloseCart(drawer, overlay); return; }
+  if (!force && cart.length > 0 && btnClose) {
     if (btnClose.dataset.confirm === '1') {
       _doCloseCart(drawer, overlay);
-      btnClose.dataset.confirm = '0';
-      btnClose.innerHTML = '<i class="bi bi-x-lg"></i>';
+      _resetCloseBtn(btnClose);
     } else {
       btnClose.dataset.confirm = '1';
-      btnClose.innerHTML = '¿ Cerrar?';
+      btnClose.classList.add('confirming');
+      btnClose.textContent = '¿ Cerrar?';
       clearTimeout(btnClose._t);
-      btnClose._t = setTimeout(() => {
-        btnClose.dataset.confirm = '0';
-        btnClose.innerHTML = '<i class="bi bi-x-lg"></i>';
-      }, 2500);
+      btnClose._t = setTimeout(() => _resetCloseBtn(btnClose), 2500);
     }
     return;
   }
   _doCloseCart(drawer, overlay);
 };
+
+function _resetCloseBtn(btn) {
+  btn.dataset.confirm = '0';
+  btn.classList.remove('confirming');
+  btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+  clearTimeout(btn._t);
+}
 
 function _doCloseCart(drawer, overlay) {
   drawer.classList.remove('open');
@@ -451,6 +474,7 @@ function updateCartBadge() {
   if (totalEl) totalEl.textContent = '$' + calcTotal(cart) + ' MXN';
 }
 
+// ── Render drawer completo ──
 function renderCartDrawer() {
   const list  = document.getElementById('cart-list');
   const empty = document.getElementById('cart-empty');
@@ -466,7 +490,7 @@ function renderCartDrawer() {
   foot.style.display  = 'flex';
 
   list.innerHTML = cart.map(item => `
-    <div class="cart-item">
+    <div class="cart-item" data-key="${item.key}">
       <div class="cart-item-img">
         ${item.imagen
           ? `<img src="${item.imagen}" alt="${item.nombre}" loading="lazy">`
@@ -478,9 +502,9 @@ function renderCartDrawer() {
         <div class="cart-item-size">${item.size}ml — <strong>$${item.price}</strong></div>
       </div>
       <div class="cart-item-controls">
-        <button class="cart-qty-btn" onclick="decrementCartItem('${item.key}')" aria-label="Quitar uno">−</button>
-        <span class="cart-qty-num">${item.qty}</span>
-        <button class="cart-qty-btn" onclick="incrementCartItem('${item.key}')" aria-label="Agregar uno"
+        <button class="cart-qty-btn" data-dec="${item.key}" aria-label="Quitar uno">−</button>
+        <span class="cart-qty-num" data-key="${item.key}">${item.qty}</span>
+        <button class="cart-qty-btn" data-inc="${item.key}" aria-label="Agregar uno"
           ${item.qty >= MAX_QTY ? 'disabled' : ''}>+</button>
         <button class="cart-item-remove" data-key="${item.key}" data-confirm="0" aria-label="Eliminar">
           <i class="bi bi-trash"></i>
