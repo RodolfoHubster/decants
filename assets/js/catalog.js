@@ -167,46 +167,81 @@ window.openModal = id => {
     pillsEl.innerHTML = '<span style="font-size:13px;color:#555">Sin presentaciones disponibles.</span>';
   }
 
-  // Renderizar boton segun talla actualmente seleccionada
   syncModalCartBtn();
 
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow = 'hidden';
 };
 
-// Actualiza el boton del modal segun el pill seleccionado actualmente
+// ── Botón modal: normal si qty=0, controles [ - ] N [ + ] si qty>=1 ──
 function syncModalCartBtn() {
   if (!modalData) return;
-  const sel  = document.querySelector('.mpill.sel');
-  const btn  = document.getElementById('modal-btn-cart');
+  const sel     = document.querySelector('.mpill.sel');
+  const wrapper = document.getElementById('modal-cart-wrapper');
+  if (!wrapper) return;
+
   if (!sel) {
-    btn.innerHTML = '<i class="bi bi-bag-plus"></i> Agregar al pedido';
-    btn.classList.remove('in-cart', 'max-qty');
-    btn.disabled = false;
+    wrapper.innerHTML = `<button class="btn-add-cart" id="modal-btn-cart" onclick="addToCart()">
+      <i class="bi bi-bag-plus"></i> Agregar al pedido
+    </button>`;
     return;
   }
+
   const key = modalData.id + '-' + sel.dataset.size;
   const qty = getItemQty(cart, key);
+
   if (qty === 0) {
-    btn.innerHTML = '<i class="bi bi-bag-plus"></i> Agregar al pedido';
-    btn.classList.remove('in-cart', 'max-qty');
-    btn.disabled = false;
+    wrapper.innerHTML = `<button class="btn-add-cart" id="modal-btn-cart" onclick="addToCart()">
+      <i class="bi bi-bag-plus"></i> Agregar al pedido
+    </button>`;
   } else if (qty >= MAX_QTY) {
-    btn.innerHTML = `<i class="bi bi-bag-check-fill"></i> Máximo alcanzado (${MAX_QTY})`;
-    btn.classList.add('in-cart', 'max-qty');
-    btn.disabled = true;
+    wrapper.innerHTML = `
+      <div class="modal-qty-controls">
+        <button class="mqty-btn" onclick="modalDecrement()" aria-label="Quitar uno">−</button>
+        <span class="mqty-num">${qty}</span>
+        <button class="mqty-btn" disabled aria-label="Agregar uno">+</button>
+      </div>`;
   } else {
-    btn.innerHTML = `<i class="bi bi-bag-plus"></i> Agregar otra (${qty}/${MAX_QTY} en pedido)`;
-    btn.classList.add('in-cart');
-    btn.classList.remove('max-qty');
-    btn.disabled = false;
+    wrapper.innerHTML = `
+      <div class="modal-qty-controls">
+        <button class="mqty-btn" onclick="modalDecrement()" aria-label="Quitar uno">−</button>
+        <span class="mqty-num">${qty}</span>
+        <button class="mqty-btn" onclick="modalIncrement()" aria-label="Agregar uno">+</button>
+      </div>`;
   }
 }
+
+// Incrementar desde modal
+window.modalIncrement = () => {
+  if (!modalData) return;
+  const sel = document.querySelector('.mpill.sel');
+  if (!sel) return;
+  const key = modalData.id + '-' + sel.dataset.size;
+  const idx = cart.findIndex(i => i.key === key);
+  if (idx === -1) return;
+  if (cart[idx].qty >= MAX_QTY) { showToast(`Máximo ${MAX_QTY} unidades`); return; }
+  const { cart: newCart } = addItem(cart, cart[idx]);
+  cart = newCart;
+  syncModalCartBtn();
+  updateCartBadge();
+  renderGrid();
+};
+
+// Decrementar desde modal (si llega a 0 vuelve al botón normal)
+window.modalDecrement = () => {
+  if (!modalData) return;
+  const sel = document.querySelector('.mpill.sel');
+  if (!sel) return;
+  const key = modalData.id + '-' + sel.dataset.size;
+  cart = decrementItem(cart, key);
+  syncModalCartBtn();
+  updateCartBadge();
+  renderGrid();
+};
 
 window.selPill = btn => {
   document.querySelectorAll('.mpill').forEach(b => b.classList.remove('sel'));
   btn.classList.add('sel');
-  // Actualizar boton inmediatamente al cambiar talla
   syncModalCartBtn();
 };
 
@@ -253,32 +288,23 @@ window.addToCart = () => {
   const { cart: newCart, added, reason } = addItem(cart, item);
 
   if (!added) {
-    if (reason === 'max_qty') {
-      showToast(`Máximo ${MAX_QTY} unidades por talla`);
-    }
+    if (reason === 'max_qty') showToast(`Máximo ${MAX_QTY} unidades por talla`);
     return;
   }
 
   cart = newCart;
   const qty = getItemQty(cart, item.key);
-  const msg = reason === 'qty_incremented'
-    ? `✓ ${modalData.nombre} ${sel.dataset.size}ml (${qty} en pedido)`
-    : `✓ ${modalData.nombre} ${sel.dataset.size}ml agregado`;
-
+  showToast(`✓ ${modalData.nombre} ${sel.dataset.size}ml agregado`);
   syncModalCartBtn();
   updateCartBadge();
   renderGrid();
-  showToast(msg);
 };
 
 // Incrementar qty desde el drawer
 window.incrementCartItem = key => {
   const idx = cart.findIndex(i => i.key === key);
   if (idx === -1) return;
-  if (cart[idx].qty >= MAX_QTY) {
-    showToast(`Máximo ${MAX_QTY} unidades por talla`);
-    return;
-  }
+  if (cart[idx].qty >= MAX_QTY) { showToast(`Máximo ${MAX_QTY} unidades por talla`); return; }
   const { cart: newCart } = addItem(cart, cart[idx]);
   cart = newCart;
   updateCartBadge();
@@ -287,7 +313,7 @@ window.incrementCartItem = key => {
   if (modalData?.id === cart.find(i => i.key === key)?.id) syncModalCartBtn();
 };
 
-// Decrementar qty desde el drawer (elimina si llega a 0)
+// Decrementar qty desde el drawer
 window.decrementCartItem = key => {
   cart = decrementItem(cart, key);
   updateCartBadge();
@@ -296,12 +322,31 @@ window.decrementCartItem = key => {
   if (modalData) syncModalCartBtn();
 };
 
+// Eliminar con doble confirmación
 window.removeCartItem = key => {
-  cart = removeItem(cart, key);
-  updateCartBadge();
-  renderCartDrawer();
-  renderGrid();
-  if (modalData) syncModalCartBtn();
+  const btn = document.querySelector(`.cart-item-remove[data-key="${key}"]`);
+  if (!btn) { cart = removeItem(cart, key); updateCartBadge(); renderCartDrawer(); renderGrid(); return; }
+  if (btn.dataset.confirm === '1') {
+    cart = removeItem(cart, key);
+    updateCartBadge();
+    renderCartDrawer();
+    renderGrid();
+    if (modalData) syncModalCartBtn();
+  } else {
+    btn.dataset.confirm = '1';
+    btn.classList.add('confirming');
+    btn.innerHTML = '<i class="bi bi-trash-fill"></i>';
+    btn.title = 'Click para confirmar';
+    clearTimeout(btn._resetTimer);
+    btn._resetTimer = setTimeout(() => {
+      if (btn.dataset.confirm === '1') {
+        btn.dataset.confirm = '0';
+        btn.classList.remove('confirming');
+        btn.innerHTML = '<i class="bi bi-trash"></i>';
+        btn.title = '';
+      }
+    }, 2500);
+  }
 };
 
 window.clearCart = () => {
@@ -374,7 +419,8 @@ function renderCartDrawer() {
         <span class="cart-qty-num">${item.qty}</span>
         <button class="cart-qty-btn" onclick="incrementCartItem('${item.key}')" aria-label="Agregar uno"
           ${item.qty >= MAX_QTY ? 'disabled' : ''}>+</button>
-        <button class="cart-item-remove" onclick="removeCartItem('${item.key}')" aria-label="Eliminar">
+        <button class="cart-item-remove" onclick="removeCartItem('${item.key}')"
+          data-key="${item.key}" data-confirm="0" aria-label="Eliminar">
           <i class="bi bi-trash"></i>
         </button>
       </div>
@@ -396,11 +442,7 @@ function flashPills() {
 
 function showToast(msg) {
   let t = document.getElementById('toast');
-  if (!t) {
-    t = document.createElement('div');
-    t.id = 'toast';
-    document.body.appendChild(t);
-  }
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(t._timer);
