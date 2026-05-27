@@ -56,7 +56,7 @@ function cardHTML(p) {
   const sizes  = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
   const pills  = sizes.map(([k, v]) => `<div class="cpill">${k}ml — $${v}</div>`).join('');
   const units  = cart.filter(i => i.id === p.id).reduce((s, i) => s + i.qty, 0);
-  return `<div class="pcard" onclick="openModal('${p.id}')">
+  return `<div class="pcard" onclick="openModal('${p.id}')" data-id="${p.id}">
     <div class="card-img">
       ${p.imagen
         ? `<img src="${p.imagen}" alt="${p.nombre}" loading="lazy" width="400" height="300">`
@@ -71,7 +71,7 @@ function cardHTML(p) {
   </div>`;
 }
 
-// ── Render grid ───────────────────────────────────────
+// ── Render grid (SOLO al buscar/filtrar/ordenar — resetea paginación) ──
 window.renderGrid = () => {
   currentPage = 1;
   const q    = document.getElementById('q').value.toLowerCase().trim();
@@ -105,6 +105,33 @@ window.renderGrid = () => {
   g.innerHTML = filtered.slice(0, PAGE_SIZE).map(cardHTML).join('');
   updateLoadMore();
 };
+
+// ── Patch badges in-place sin destruir el grid ──────────────────────────────
+// Llama esto en lugar de renderGrid() cuando solo cambia el carrito.
+function patchGridBadges() {
+  const cards = document.querySelectorAll('.pcard[data-id]');
+  cards.forEach(card => {
+    const id    = card.dataset.id;
+    const units = cart.filter(i => i.id === id).reduce((s, i) => s + i.qty, 0);
+    const img   = card.querySelector('.card-img');
+    if (!img) return;
+
+    let badge = img.querySelector('.card-in-cart');
+    if (units > 0) {
+      const html = `<i class="bi bi-bag-check-fill"></i>${units > 1 ? ` <span>${units}</span>` : ''}`;
+      if (badge) {
+        badge.innerHTML = html;
+      } else {
+        badge = document.createElement('div');
+        badge.className = 'card-in-cart';
+        badge.innerHTML = html;
+        img.appendChild(badge);
+      }
+    } else {
+      if (badge) badge.remove();
+    }
+  });
+}
 
 // ── Cargar más ────────────────────────────────────────
 window.loadMore = () => {
@@ -222,7 +249,7 @@ window.modalIncrement = () => {
   cart = newCart;
   syncModalCartBtn();
   updateCartBadge();
-  renderGrid();
+  patchGridBadges();
 };
 
 window.modalDecrement = () => {
@@ -233,7 +260,7 @@ window.modalDecrement = () => {
   cart = decrementItem(cart, key);
   syncModalCartBtn();
   updateCartBadge();
-  renderGrid();
+  patchGridBadges();
 };
 
 window.selPill = btn => {
@@ -292,7 +319,7 @@ window.addToCart = () => {
   showToast(`✓ ${modalData.nombre} ${sel.dataset.size}ml agregado`);
   syncModalCartBtn();
   updateCartBadge();
-  renderGrid();
+  patchGridBadges();
 };
 
 // ── Incrementar qty desde el drawer ──
@@ -302,7 +329,6 @@ window.incrementCartItem = key => {
   if (cart[idx].qty >= MAX_QTY) { showToast(`Máximo ${MAX_QTY} unidades por talla`); return; }
   const { cart: newCart } = addItem(cart, cart[idx]);
   cart = newCart;
-  // Patch in-place
   const qtyEl   = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
   const plusBtn = document.querySelector(`.cart-qty-btn[data-inc="${key}"]`);
   const newQty  = cart[idx].qty + 1;
@@ -310,7 +336,7 @@ window.incrementCartItem = key => {
   if (plusBtn) plusBtn.disabled  = (newQty >= MAX_QTY);
   _updateDecBtn(key, newQty);
   updateCartBadge();
-  renderGrid();
+  patchGridBadges();
   if (modalData?.id === cart.find(i => i.key === key)?.id) syncModalCartBtn();
 };
 
@@ -320,14 +346,13 @@ window.decrementCartItem = key => {
   if (!item) return;
 
   if (item.qty === 1) {
-    // qty=1 → botón actúa como trash con doble confirmación
     const decBtn = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
     if (!decBtn) return;
     if (decBtn.dataset.confirm === '1') {
       cart = removeItem(cart, key);
       updateCartBadge();
       renderCartDrawer();
-      renderGrid();
+      patchGridBadges();
       if (modalData) syncModalCartBtn();
       showToast('✓ Item eliminado del pedido');
     } else {
@@ -336,7 +361,6 @@ window.decrementCartItem = key => {
     return;
   }
 
-  // qty > 1 → decremento normal
   cart = decrementItem(cart, key);
   const updated = cart.find(i => i.key === key);
   if (!updated) {
@@ -349,7 +373,7 @@ window.decrementCartItem = key => {
     _updateDecBtn(key, updated.qty);
   }
   updateCartBadge();
-  renderGrid();
+  patchGridBadges();
   if (modalData) syncModalCartBtn();
 };
 
@@ -404,16 +428,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const cartList = document.getElementById('cart-list');
 
   cartList.addEventListener('click', e => {
-    // Botón +
     const incBtn = e.target.closest('.cart-qty-btn[data-inc]');
     if (incBtn) { incrementCartItem(incBtn.dataset.inc); return; }
 
-    // Botón − / trash (qty=1)
     const decBtn = e.target.closest('.cart-qty-btn[data-dec]');
     if (decBtn) { decrementCartItem(decBtn.dataset.dec); return; }
 
-    // Botón trash explícito (columna aparte) — ya no se usa en el render
-    // pero se mantiene por compatibilidad
     const trash = e.target.closest('.cart-item-remove');
     if (!trash) return;
     const key = trash.dataset.key;
@@ -422,7 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
       cart = removeItem(cart, key);
       updateCartBadge();
       renderCartDrawer();
-      renderGrid();
+      patchGridBadges();
       if (modalData) syncModalCartBtn();
       showToast('✓ Item eliminado del pedido');
     } else {
@@ -473,7 +493,7 @@ function _doClearCart() {
   cart = pureCleart();
   updateCartBadge();
   renderCartDrawer();
-  renderGrid();
+  patchGridBadges();
   if (modalData) syncModalCartBtn();
   showToast('✓ Pedido limpiado correctamente');
 }
