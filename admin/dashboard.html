@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="../assets/css/variables.css">
   <link rel="stylesheet" href="../assets/css/global.css">
   <link rel="stylesheet" href="../assets/css/dashboard.css">
-
 </head>
 <body>
 <div class="app-shell">
@@ -33,6 +32,7 @@
         <div class="stat-card"><div class="stat-label">Total ventas</div><div class="stat-value" id="s-total">—</div><div class="stat-sub">MXN cobrado</div><i class="bi bi-cash-coin stat-icon"></i></div>
         <div class="stat-card"><div class="stat-label">Pedidos nuevos</div><div class="stat-value" id="s-ped">—</div><div class="stat-sub">por atender</div><i class="bi bi-box-seam-fill stat-icon"></i></div>
         <div class="stat-card"><div class="stat-label">Por cobrar</div><div class="stat-value" id="s-pend">—</div><div class="stat-sub">ventas pendientes</div><i class="bi bi-hourglass-split stat-icon"></i></div>
+        <div class="stat-card" id="card-sin-precio"><div class="stat-label">Sin precio</div><div class="stat-value" id="s-sin-precio">—</div><div class="stat-sub">activos sin precios</div><i class="bi bi-exclamation-triangle-fill stat-icon" style="color:var(--danger)"></i></div>
       </div>
 
       <!-- Acciones rapidas -->
@@ -45,6 +45,17 @@
           <a href="marcas.html" class="btn btn-outline"><i class="bi bi-award"></i> Agregar marca</a>
           <a href="categorias.html" class="btn btn-outline"><i class="bi bi-tags"></i> Agregar categoría</a>
           <a href="../index.html" target="_blank" class="btn btn-outline"><i class="bi bi-shop"></i> Ver tienda pública</a>
+        </div>
+      </div>
+
+      <!-- Top 5 perfumes más vendidos -->
+      <div class="card">
+        <div class="card-header"><h5>🏆 Top 5 más vendidos</h5></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Perfume</th><th style="text-align:right">Unidades / Total</th></tr></thead>
+            <tbody id="top5-body"><tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-faint)">Cargando...</td></tr></tbody>
+          </table>
         </div>
       </div>
 

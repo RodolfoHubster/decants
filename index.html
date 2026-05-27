@@ -7,6 +7,44 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="./assets/css/catalog.css">
+  <style>
+    /* ── Controles qty en modal ───────────────────── */
+    .modal-qty-controls {
+      display:flex; align-items:center; justify-content:center;
+      gap:0; margin-bottom:10px;
+      background:rgba(201,168,76,.08); border:1.5px solid rgba(201,168,76,.4);
+      border-radius:12px; overflow:hidden;
+    }
+    .mqty-btn {
+      width:48px; height:46px; font-size:22px; font-weight:300;
+      background:transparent; border:none; color:#c9a84c;
+      display:flex; align-items:center; justify-content:center;
+      transition:background .15s; flex-shrink:0;
+    }
+    .mqty-btn:hover:not(:disabled) { background:rgba(201,168,76,.18); }
+    .mqty-btn:disabled { color:#444; cursor:not-allowed; }
+    .mqty-num {
+      flex:1; text-align:center; font-size:16px; font-weight:700;
+      color:#e8e6e1; border-left:1px solid rgba(201,168,76,.2);
+      border-right:1px solid rgba(201,168,76,.2); padding:0 8px;
+    }
+    /* ── Confirmar eliminar en drawer ─────────────── */
+    .cart-item-remove.confirming {
+      background:rgba(255,60,60,.15);
+      border:1px solid rgba(255,60,60,.5);
+      color:#ff6060;
+      border-radius:8px;
+      width:auto; padding:0 8px;
+      font-size:11px; font-weight:700;
+      gap:4px; display:flex; align-items:center;
+      animation:shake .3s ease;
+    }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      25%{transform:translateX(-3px)}
+      75%{transform:translateX(3px)}
+    }
+  </style>
 </head>
 <body>
 
@@ -24,6 +62,10 @@
         <i class="bi bi-shield-lock"></i>
         <span id="btn-admin-label">Admin</span>
       </a>
+      <button class="btn-cart-header" onclick="toggleCart()" aria-label="Ver pedido">
+        <i class="bi bi-bag"></i>
+        <span id="cart-badge" class="cart-badge" style="display:none">0</span>
+      </button>
       <a href="https://wa.me/526648162623" target="_blank" rel="noopener" class="btn-wa">
         <i class="bi bi-whatsapp"></i> WhatsApp
       </a>
@@ -73,11 +115,25 @@
         <input class="finput" id="q-mobile" placeholder="Buscar perfume..." oninput="syncMobileSearch()" autocomplete="off">
       </div>
     </div>
-    <div class="filter-tabs" style="margin-top:10px">
+    <div class="filter-tabs">
       <button class="ftab active" data-g="" onclick="setG(this)">Todos</button>
       <button class="ftab" data-g="Caballero" onclick="setG(this)">Caballero</button>
       <button class="ftab" data-g="Dama" onclick="setG(this)">Dama</button>
       <button class="ftab" data-g="Unisex" onclick="setG(this)">Unisex</button>
+    </div>
+    <div class="filters-row-sort-mobile">
+      <span class="fsort-label"><i class="bi bi-sort-down-alt"></i> Ordenar por</span>
+      <select class="fselect fsort-select" id="sort-mobile" onchange="onSortMobile()">
+        <option value="relevancia">⭐ Más populares</option>
+        <option value="az">Nombre A-Z</option>
+        <option value="za">Nombre Z-A</option>
+        <option value="marca">Marca</option>
+        <option value="precio_asc">Precio: menor a mayor</option>
+        <option value="precio_desc">Precio: mayor a menor</option>
+      </select>
+      <button class="btn-clear btn-clear-sm" onclick="clearFilters()">
+        <i class="bi bi-x-circle"></i> Limpiar
+      </button>
     </div>
   </div>
 </div>
@@ -88,8 +144,15 @@
     <span class="count-badge" id="count-badge">Cargando...</span>
   </div>
   <div class="grid" id="grid"></div>
+  <div class="load-more-wrap" id="load-more-wrap" style="display:none">
+    <button class="btn-load-more" id="btn-load-more" onclick="loadMore()">
+      <i class="bi bi-arrow-down-circle"></i> Cargar más perfumes
+    </button>
+    <span class="load-more-info" id="load-more-info"></span>
+  </div>
 </main>
 
+<!-- ═══════════════ MODAL PERFUME ═══════════════ -->
 <div class="modal-overlay" id="modal" onclick="closeModal(event)">
   <div class="modal-box">
     <div class="modal-img" id="modal-img">
@@ -98,12 +161,21 @@
     <div class="modal-content">
       <div class="modal-top">
         <div class="modal-nombre" id="modal-nombre"></div>
-        <button class="btn-close" onclick="document.getElementById('modal').classList.remove('open');document.body.style.overflow=''"><i class="bi bi-x-lg"></i></button>
+        <button class="btn-close" onclick="document.getElementById('modal').classList.remove('open');document.body.style.overflow=''" aria-label="Cerrar">
+          <i class="bi bi-x-lg"></i>
+        </button>
       </div>
       <div class="modal-marca" id="modal-marca"></div>
       <div class="modal-desc" id="modal-desc"></div>
       <div class="modal-sizes-label">Elige tu presentación</div>
       <div class="modal-pills" id="modal-pills"></div>
+      <!-- Wrapper dinámico: botón normal o controles [ - ] N [ + ] -->
+      <div id="modal-cart-wrapper">
+        <button class="btn-add-cart" id="modal-btn-cart" onclick="addToCart()">
+          <i class="bi bi-bag-plus"></i> Agregar al pedido
+        </button>
+      </div>
+      <div class="modal-or"><span>o</span></div>
       <button class="btn-wa-modal" id="modal-btn" onclick="pedirModal()">
         <i class="bi bi-whatsapp"></i> Consultar por WhatsApp
       </button>
@@ -111,32 +183,61 @@
   </div>
 </div>
 
-<!-- FOOTER -->
+<!-- ═══════════════ CART DRAWER ═══════════════ -->
+<div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+<div class="cart-drawer" id="cart-drawer">
+  <div class="cart-header">
+    <div class="cart-title"><i class="bi bi-bag"></i> Tu pedido</div>
+    <button class="btn-close" onclick="closeCart()" aria-label="Cerrar pedido">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+  <div class="cart-body">
+    <div class="cart-empty" id="cart-empty">
+      <i class="bi bi-bag-x"></i>
+      <p>Tu pedido está vacío</p>
+      <span>Abre un perfume y elige tu talla para agregar</span>
+    </div>
+    <div class="cart-list" id="cart-list"></div>
+  </div>
+  <div class="cart-footer" id="cart-footer" style="display:none">
+    <div class="cart-total-row">
+      <span>Total estimado</span>
+      <strong id="cart-total">$0 MXN</strong>
+    </div>
+    <p class="cart-disclaimer">* Precios sujetos a confirmación de disponibilidad</p>
+    <button class="btn-cart-wa" onclick="sendCartWA()">
+      <i class="bi bi-whatsapp"></i> Enviar pedido por WhatsApp
+    </button>
+    <button class="btn-cart-clear" onclick="clearCart()">
+      <i class="bi bi-trash"></i> Limpiar pedido
+    </button>
+  </div>
+</div>
+
+<!-- FAB flotante (mobile) -->
+<button class="cart-fab" id="cart-fab" onclick="toggleCart()" aria-label="Ver pedido">
+  <i class="bi bi-bag"></i>
+  <span class="cart-badge" id="cart-badge-fab" style="display:none">0</span>
+</button>
+
+<!-- ═══════════════ FOOTER ═══════════════ -->
 <footer>
   <div class="footer-social">
     <p>Síguenos en redes</p>
     <div class="social-buttons">
-
-      <!-- Instagram -->
       <a href="https://www.instagram.com/fitoscents/" target="_blank" rel="noopener noreferrer" class="social-btn instagram">
-        <i class="bi bi-instagram"></i>
-        <span>@fitoscents</span>
+        <i class="bi bi-instagram"></i><span>@fitoscents</span>
       </a>
-
-      <!-- TikTok -->
       <a href="https://www.tiktok.com/@fitoscents" target="_blank" rel="noopener noreferrer" class="social-btn tiktok">
         <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
           <path d="M9 0h1.98c.144.715.54 1.617 1.235 2.512C12.895 3.389 13.797 4 15 4v2c-1.753 0-3.07-.814-4-1.829V11a5 5 0 1 1-5-5v2a3 3 0 1 0 3 3z"/>
         </svg>
         <span>@fitoscents</span>
       </a>
-
-      <!-- Facebook -->
       <a href="https://www.facebook.com/profile.php?id=61584221924570" target="_blank" rel="noopener noreferrer" class="social-btn facebook">
-        <i class="bi bi-facebook"></i>
-        <span>Fitoscents</span>
+        <i class="bi bi-facebook"></i><span>Fitoscents</span>
       </a>
-
     </div>
   </div>
   <div class="footer-copy">
@@ -145,5 +246,13 @@
 </footer>
 
 <script type="module" src="./assets/js/catalog.js"></script>
+<script>
+function onSortMobile() {
+  const val = document.getElementById('sort-mobile').value;
+  const desk = document.getElementById('sort');
+  if (desk) desk.value = val;
+  if (typeof renderGrid === 'function') renderGrid();
+}
+</script>
 </body>
 </html>

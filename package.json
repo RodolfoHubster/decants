@@ -1,0 +1,18 @@
+{
+  "name": "decants",
+  "version": "1.0.0",
+  "description": "Fitoscents Decants - Unit Tests",
+  "scripts": {
+    "test": "jest --coverage",
+    "test:watch": "jest --watch"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "testMatch": ["**/tests/**/*.test.js"],
+    "collectCoverageFrom": ["assets/js/cart.js"]
+  }
+}

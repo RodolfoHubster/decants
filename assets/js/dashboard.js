@@ -17,17 +17,38 @@ async function loadStats() {
 
   document.getElementById('s-perf').textContent = p.size;
   document.getElementById('s-marc').textContent = m.size;
-  document.getElementById('s-cat').textContent = c.size;
-  document.getElementById('s-vis').textContent = pv.size;
+  document.getElementById('s-cat').textContent  = c.size;
+  document.getElementById('s-vis').textContent  = pv.size;
+
+  // ── Perfumes sin precio (activos pero todos los precios en 0) ─────────────
+  let sinPrecio = 0;
+  p.forEach(d => {
+    const pd = d.data();
+    if (pd.activo === false) return;
+    const precios = pd.precios || {};
+    const tieneAlguno = Object.values(precios).some(val => +val > 0);
+    if (!tieneAlguno) sinPrecio++;
+  });
+  const alerta = document.getElementById('s-sin-precio');
+  if (alerta) {
+    alerta.textContent = sinPrecio;
+    const card = alerta.closest('.stat-card');
+    if (card) card.style.borderColor = sinPrecio > 0 ? 'var(--danger)' : '';
+  }
 
   let totalVentas = 0, ventasPend = 0, ventasCount = 0;
+  const ventasPorPerfume = {};
   v.forEach(d => {
     const vd = d.data();
-    if(vd.estado !== 'cancelada') {
+    if (vd.estado !== 'cancelada') {
       totalVentas += (+vd.precio||0) * (+vd.cantidad||1);
       ventasCount++;
+      const nombre = vd.perfumeNombre || 'Sin nombre';
+      if (!ventasPorPerfume[nombre]) ventasPorPerfume[nombre] = { unidades: 0, total: 0 };
+      ventasPorPerfume[nombre].unidades += (+vd.cantidad||1);
+      ventasPorPerfume[nombre].total += (+vd.precio||0)*(+vd.cantidad||1);
     }
-    if(vd.estado === 'pendiente') ventasPend++;
+    if (vd.estado === 'pendiente') ventasPend++;
   });
   document.getElementById('s-ventas').textContent = ventasCount;
   document.getElementById('s-total').textContent = '$' + totalVentas.toLocaleString('es-MX',{minimumFractionDigits:0});
@@ -36,5 +57,26 @@ async function loadStats() {
   let pedNuevos = 0;
   ped.forEach(d => { if(d.data().estado === 'nuevo') pedNuevos++; });
   document.getElementById('s-ped').textContent = pedNuevos;
+
+  // ── Top 5 perfumes más vendidos ───────────────────────────────────────────
+  const top5El = document.getElementById('top5-body');
+  if (top5El) {
+    const sorted = Object.entries(ventasPorPerfume)
+      .sort((a,b) => b[1].unidades - a[1].unidades)
+      .slice(0,5);
+    if (!sorted.length) {
+      top5El.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-faint);padding:16px">Sin ventas aún</td></tr>';
+    } else {
+      top5El.innerHTML = sorted.map(([nombre, data], i) => `
+        <tr>
+          <td><span style="font-weight:600;color:var(--accent)">#${i+1}</span></td>
+          <td><strong>${nombre}</strong></td>
+          <td style="text-align:right">
+            <span style="font-size:13px;color:var(--text-muted)">${data.unidades} uds</span>
+            <span style="margin-left:8px;font-weight:600">${data.total.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}</span>
+          </td>
+        </tr>`).join('');
+    }
+  }
 }
 loadStats();
