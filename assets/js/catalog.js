@@ -168,7 +168,6 @@ window.openModal = id => {
   }
 
   syncModalCartBtn();
-
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow = 'hidden';
 };
@@ -211,7 +210,6 @@ function syncModalCartBtn() {
   }
 }
 
-// Incrementar desde modal
 window.modalIncrement = () => {
   if (!modalData) return;
   const sel = document.querySelector('.mpill.sel');
@@ -227,7 +225,6 @@ window.modalIncrement = () => {
   renderGrid();
 };
 
-// Decrementar desde modal (si llega a 0 vuelve al botón normal)
 window.modalDecrement = () => {
   if (!modalData) return;
   const sel = document.querySelector('.mpill.sel');
@@ -286,14 +283,12 @@ window.addToCart = () => {
   };
 
   const { cart: newCart, added, reason } = addItem(cart, item);
-
   if (!added) {
     if (reason === 'max_qty') showToast(`Máximo ${MAX_QTY} unidades por talla`);
     return;
   }
 
   cart = newCart;
-  const qty = getItemQty(cart, item.key);
   showToast(`✓ ${modalData.nombre} ${sel.dataset.size}ml agregado`);
   syncModalCartBtn();
   updateCartBadge();
@@ -322,54 +317,122 @@ window.decrementCartItem = key => {
   if (modalData) syncModalCartBtn();
 };
 
-// Eliminar con doble confirmación
-window.removeCartItem = key => {
-  const btn = document.querySelector(`.cart-item-remove[data-key="${key}"]`);
-  if (!btn) { cart = removeItem(cart, key); updateCartBadge(); renderCartDrawer(); renderGrid(); return; }
+// ── Event delegation para el cart-list (trash con doble confirmación) ──
+document.addEventListener('DOMContentLoaded', () => {
+  const cartList = document.getElementById('cart-list');
+
+  cartList.addEventListener('click', e => {
+    const btn = e.target.closest('.cart-item-remove');
+    if (!btn) return;
+    const key = btn.dataset.key;
+    if (!key) return;
+
+    if (btn.dataset.confirm === '1') {
+      // Segundo click — confirmar
+      cart = removeItem(cart, key);
+      updateCartBadge();
+      renderCartDrawer();
+      renderGrid();
+      if (modalData) syncModalCartBtn();
+      showToast('✓ Item eliminado del pedido');
+    } else {
+      // Primer click — pedir confirmación
+      // Resetear otros botones en modo confirmar
+      cartList.querySelectorAll('.cart-item-remove[data-confirm="1"]').forEach(b => {
+        if (b !== btn) resetTrashBtn(b);
+      });
+      btn.dataset.confirm = '1';
+      btn.classList.add('confirming');
+      btn.innerHTML = '<i class="bi bi-trash-fill"></i><span>¿Eliminar?</span>';
+      clearTimeout(btn._t);
+      btn._t = setTimeout(() => resetTrashBtn(btn), 2500);
+    }
+  });
+});
+
+function resetTrashBtn(btn) {
+  btn.dataset.confirm = '0';
+  btn.classList.remove('confirming');
+  btn.innerHTML = '<i class="bi bi-trash"></i>';
+  clearTimeout(btn._t);
+}
+
+// ── Limpiar pedido con doble confirmación ──
+window.clearCart = () => {
+  const btn = document.getElementById('btn-cart-clear');
+  if (!btn) {
+    _doClearCart(); return;
+  }
   if (btn.dataset.confirm === '1') {
-    cart = removeItem(cart, key);
-    updateCartBadge();
-    renderCartDrawer();
-    renderGrid();
-    if (modalData) syncModalCartBtn();
+    _doClearCart();
+    btn.dataset.confirm = '0';
+    btn.classList.remove('confirming');
+    btn.innerHTML = '<i class="bi bi-trash"></i> Limpiar pedido';
   } else {
     btn.dataset.confirm = '1';
     btn.classList.add('confirming');
-    btn.innerHTML = '<i class="bi bi-trash-fill"></i>';
-    btn.title = 'Click para confirmar';
-    clearTimeout(btn._resetTimer);
-    btn._resetTimer = setTimeout(() => {
-      if (btn.dataset.confirm === '1') {
-        btn.dataset.confirm = '0';
-        btn.classList.remove('confirming');
-        btn.innerHTML = '<i class="bi bi-trash"></i>';
-        btn.title = '';
-      }
-    }, 2500);
+    btn.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> ¿Limpiar todo?';
+    clearTimeout(btn._t);
+    btn._t = setTimeout(() => {
+      btn.dataset.confirm = '0';
+      btn.classList.remove('confirming');
+      btn.innerHTML = '<i class="bi bi-trash"></i> Limpiar pedido';
+    }, 2800);
   }
 };
 
-window.clearCart = () => {
+function _doClearCart() {
   cart = pureCleart();
   updateCartBadge();
   renderCartDrawer();
   renderGrid();
   if (modalData) syncModalCartBtn();
+  showToast('✓ Pedido limpiado correctamente');
+}
+
+// ── Cerrar drawer con confirmación si hay items ──
+window.closeCart = (force = false) => {
+  const drawer  = document.getElementById('cart-drawer');
+  const overlay = document.getElementById('cart-overlay');
+  const btnClose = document.getElementById('btn-cart-close');
+
+  if (!force && cart.length > 0) {
+    if (!btnClose) { _doCloseCart(drawer, overlay); return; }
+    if (btnClose.dataset.confirm === '1') {
+      _doCloseCart(drawer, overlay);
+      btnClose.dataset.confirm = '0';
+      btnClose.innerHTML = '<i class="bi bi-x-lg"></i>';
+    } else {
+      btnClose.dataset.confirm = '1';
+      btnClose.innerHTML = '¿ Cerrar?';
+      clearTimeout(btnClose._t);
+      btnClose._t = setTimeout(() => {
+        btnClose.dataset.confirm = '0';
+        btnClose.innerHTML = '<i class="bi bi-x-lg"></i>';
+      }, 2500);
+    }
+    return;
+  }
+  _doCloseCart(drawer, overlay);
 };
+
+function _doCloseCart(drawer, overlay) {
+  drawer.classList.remove('open');
+  overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
 
 window.toggleCart = () => {
   const drawer  = document.getElementById('cart-drawer');
   const overlay = document.getElementById('cart-overlay');
-  const open    = drawer.classList.toggle('open');
-  overlay.classList.toggle('open', open);
-  document.body.style.overflow = open ? 'hidden' : '';
-  if (open) renderCartDrawer();
-};
-
-window.closeCart = () => {
-  document.getElementById('cart-drawer').classList.remove('open');
-  document.getElementById('cart-overlay').classList.remove('open');
-  document.body.style.overflow = '';
+  if (drawer.classList.contains('open')) {
+    closeCart();
+  } else {
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    renderCartDrawer();
+  }
 };
 
 function updateCartBadge() {
@@ -419,8 +482,7 @@ function renderCartDrawer() {
         <span class="cart-qty-num">${item.qty}</span>
         <button class="cart-qty-btn" onclick="incrementCartItem('${item.key}')" aria-label="Agregar uno"
           ${item.qty >= MAX_QTY ? 'disabled' : ''}>+</button>
-        <button class="cart-item-remove" onclick="removeCartItem('${item.key}')"
-          data-key="${item.key}" data-confirm="0" aria-label="Eliminar">
+        <button class="cart-item-remove" data-key="${item.key}" data-confirm="0" aria-label="Eliminar">
           <i class="bi bi-trash"></i>
         </button>
       </div>
