@@ -295,61 +295,120 @@ window.addToCart = () => {
   renderGrid();
 };
 
-// ── Incrementar / Decrementar qty desde el drawer (patch in-place) ──
+// ── Incrementar qty desde el drawer (patch in-place) ──
 window.incrementCartItem = key => {
   const idx = cart.findIndex(i => i.key === key);
   if (idx === -1) return;
   if (cart[idx].qty >= MAX_QTY) { showToast(`Máximo ${MAX_QTY} unidades por talla`); return; }
   const { cart: newCart } = addItem(cart, cart[idx]);
   cart = newCart;
-  // Patch in-place — solo actualiza número sin re-renderizar todo el drawer
-  const qtyEl = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
+  // Patch in-place
+  const qtyEl  = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
   const plusBtn = document.querySelector(`.cart-qty-btn[data-inc="${key}"]`);
-  if (qtyEl) qtyEl.textContent = cart[idx].qty + 1;
-  if (plusBtn) plusBtn.disabled = (cart[idx].qty + 1 >= MAX_QTY);
+  const decBtn  = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
+  const newQty  = cart[idx].qty + 1;
+  if (qtyEl)   qtyEl.textContent  = newQty;
+  if (plusBtn) plusBtn.disabled   = (newQty >= MAX_QTY);
+  // Si qty pasó de 1 → 2, el botón − ya no debe ser bote: re-render ese item
+  if (newQty === 2) renderCartDrawer();
   updateCartBadge();
   renderGrid();
   if (modalData?.id === cart.find(i => i.key === key)?.id) syncModalCartBtn();
 };
 
+// ── Decrementar qty desde el drawer ──────────────────
+// Si qty > 1: decrementa normal (patch in-place)
+// Si qty = 1: activa doble confirmación de eliminación en el botón 🗑️
 window.decrementCartItem = key => {
-  cart = decrementItem(cart, key);
-  const item = cart.find(i => i.key === key);
-  if (!item) {
-    // item eliminado por decrement a 0 — re-render necesario
-    renderCartDrawer();
-  } else {
-    const qtyEl  = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
-    const minBtn = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
+  const idx = cart.findIndex(i => i.key === key);
+  if (idx === -1) return;
+
+  if (cart[idx].qty > 1) {
+    // Decremento normal
+    cart = decrementItem(cart, key);
+    const item    = cart.find(i => i.key === key);
+    const qtyEl   = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
+    const decBtn  = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
     const plusBtn = document.querySelector(`.cart-qty-btn[data-inc="${key}"]`);
-    if (qtyEl)  qtyEl.textContent  = item.qty;
-    if (minBtn) minBtn.disabled    = false;
-    if (plusBtn) plusBtn.disabled  = (item.qty >= MAX_QTY);
+    if (qtyEl)   qtyEl.textContent = item.qty;
+    if (plusBtn) plusBtn.disabled  = false;
+    // Si qty llegó a 1, convertir botón − en bote de basura
+    if (item.qty === 1 && decBtn) _convertDecToTrash(decBtn, key);
+    updateCartBadge();
+    renderGrid();
+    if (modalData) syncModalCartBtn();
+  } else {
+    // qty = 1 → el botón ya es 🗑️, manejar confirmación
+    const trashBtn = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
+    if (!trashBtn) return;
+    _handleTrashConfirm(trashBtn, key);
   }
-  updateCartBadge();
-  renderGrid();
-  if (modalData) syncModalCartBtn();
 };
 
-// ── Event delegation en cart-list: trash (doble confirm) ──
+// ── Convierte el botón − en bote de basura ──
+function _convertDecToTrash(btn, key) {
+  btn.classList.add('is-trash');
+  btn.innerHTML = '<i class="bi bi-trash"></i>';
+  btn.setAttribute('aria-label', 'Eliminar item');
+  btn.dataset.confirm = '0';
+}
+
+// ── Convierte el bote de basura de vuelta a − ──
+function _convertTrashToDec(btn) {
+  btn.classList.remove('is-trash', 'confirming');
+  btn.innerHTML = '−';
+  btn.setAttribute('aria-label', 'Quitar uno');
+  delete btn.dataset.confirm;
+  clearTimeout(btn._t);
+}
+
+// ── Lógica de doble confirmación en el bote del drawer item ──
+function _handleTrashConfirm(btn, key) {
+  if (btn.dataset.confirm === '1') {
+    // Confirmar: eliminar
+    cart = removeItem(cart, key);
+    updateCartBadge();
+    renderCartDrawer();
+    renderGrid();
+    if (modalData) syncModalCartBtn();
+    showToast('✓ Item eliminado del pedido');
+  } else {
+    // Primer click: activar confirming, resetear otros
+    document.querySelectorAll('.cart-qty-btn.is-trash.confirming').forEach(b => {
+      if (b !== btn) _convertDecToTrash(b, b.dataset.dec);
+    });
+    btn.dataset.confirm = '1';
+    btn.classList.add('confirming');
+    btn.innerHTML = '<i class="bi bi-trash-fill"></i><span style="font-size:10px;font-weight:700;margin-left:3px">¿Eliminar?</span>';
+    clearTimeout(btn._t);
+    btn._t = setTimeout(() => {
+      btn.dataset.confirm = '0';
+      btn.classList.remove('confirming');
+      btn.innerHTML = '<i class="bi bi-trash"></i>';
+    }, 2500);
+  }
+}
+
+// ── Event delegation en cart-list ─────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   const cartList = document.getElementById('cart-list');
 
   cartList.addEventListener('click', e => {
-    // Botones +/-
+    // Botón +
     const incBtn = e.target.closest('.cart-qty-btn[data-inc]');
     if (incBtn) { incrementCartItem(incBtn.dataset.inc); return; }
+
+    // Botón − (o bote si es-trash)
     const decBtn = e.target.closest('.cart-qty-btn[data-dec]');
     if (decBtn) { decrementCartItem(decBtn.dataset.dec); return; }
 
-    // Trash
+    // Botón 🗑️ standalone (cart-item-remove)
     const trash = e.target.closest('.cart-item-remove');
     if (!trash) return;
     const key = trash.dataset.key;
     if (!key) return;
 
     if (trash.dataset.confirm === '1') {
-      // ─ Confirmar: eliminar y re-render
       cart = removeItem(cart, key);
       updateCartBadge();
       renderCartDrawer();
@@ -357,7 +416,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (modalData) syncModalCartBtn();
       showToast('✓ Item eliminado del pedido');
     } else {
-      // ─ Primer click: resetear otros, activar confirming en éste
       cartList.querySelectorAll('.cart-item-remove.confirming').forEach(b => {
         if (b !== trash) _resetTrash(b);
       });
@@ -489,7 +547,12 @@ function renderCartDrawer() {
   empty.style.display = 'none';
   foot.style.display  = 'flex';
 
-  list.innerHTML = cart.map(item => `
+  list.innerHTML = cart.map(item => {
+    const isOne = item.qty === 1;
+    const decBtnClass = isOne ? 'cart-qty-btn is-trash' : 'cart-qty-btn';
+    const decBtnIcon  = isOne ? '<i class="bi bi-trash"></i>' : '−';
+    const decBtnLabel = isOne ? 'Eliminar item' : 'Quitar uno';
+    return `
     <div class="cart-item" data-key="${item.key}">
       <div class="cart-item-img">
         ${item.imagen
@@ -502,15 +565,13 @@ function renderCartDrawer() {
         <div class="cart-item-size">${item.size}ml — <strong>$${item.price}</strong></div>
       </div>
       <div class="cart-item-controls">
-        <button class="cart-qty-btn" data-dec="${item.key}" aria-label="Quitar uno">−</button>
+        <button class="${decBtnClass}" data-dec="${item.key}" data-confirm="0" aria-label="${decBtnLabel}">${decBtnIcon}</button>
         <span class="cart-qty-num" data-key="${item.key}">${item.qty}</span>
         <button class="cart-qty-btn" data-inc="${item.key}" aria-label="Agregar uno"
           ${item.qty >= MAX_QTY ? 'disabled' : ''}>+</button>
-        <button class="cart-item-remove" data-key="${item.key}" data-confirm="0" aria-label="Eliminar">
-          <i class="bi bi-trash"></i>
-        </button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   document.getElementById('cart-total').textContent = '$' + calcTotal(cart) + ' MXN';
 }
