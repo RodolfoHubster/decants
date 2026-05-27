@@ -31,6 +31,23 @@
   </div>
 </header>
 
+<!-- BARRA STICKY MOBILE: Ordenar + Limpiar -->
+<!-- Solo visible en mobile (<= 768px), se oculta/muestra con scroll -->
+<div class="sort-bar-mobile" id="sort-bar-mobile" aria-label="Ordenar resultados">
+  <span class="sb-label"><i class="bi bi-sort-down-alt"></i> Ordenar por</span>
+  <select class="sb-select" id="sort-mobile" onchange="onSortMobile()">
+    <option value="relevancia">⭐ Más populares</option>
+    <option value="az">Nombre A-Z</option>
+    <option value="za">Nombre Z-A</option>
+    <option value="marca">Marca</option>
+    <option value="precio_asc">Precio: menor a mayor</option>
+    <option value="precio_desc">Precio: mayor a menor</option>
+  </select>
+  <button class="sb-clear" onclick="clearFilters()" aria-label="Limpiar filtros">
+    <i class="bi bi-x-circle"></i> Limpiar
+  </button>
+</div>
+
 <section class="hero">
   <div class="hero-bg"></div>
   <div class="hero-badge"><i class="bi bi-droplet-fill"></i> Decants Originales</div>
@@ -116,27 +133,20 @@
   <div class="footer-social">
     <p>Síguenos en redes</p>
     <div class="social-buttons">
-
-      <!-- Instagram -->
       <a href="https://www.instagram.com/fitoscents/" target="_blank" rel="noopener noreferrer" class="social-btn instagram">
         <i class="bi bi-instagram"></i>
         <span>@fitoscents</span>
       </a>
-
-      <!-- TikTok -->
       <a href="https://www.tiktok.com/@fitoscents" target="_blank" rel="noopener noreferrer" class="social-btn tiktok">
         <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
           <path d="M9 0h1.98c.144.715.54 1.617 1.235 2.512C12.895 3.389 13.797 4 15 4v2c-1.753 0-3.07-.814-4-1.829V11a5 5 0 1 1-5-5v2a3 3 0 1 0 3 3z"/>
         </svg>
         <span>@fitoscents</span>
       </a>
-
-      <!-- Facebook -->
       <a href="https://www.facebook.com/profile.php?id=61584221924570" target="_blank" rel="noopener noreferrer" class="social-btn facebook">
         <i class="bi bi-facebook"></i>
         <span>Fitoscents</span>
       </a>
-
     </div>
   </div>
   <div class="footer-copy">
@@ -145,5 +155,59 @@
 </footer>
 
 <script type="module" src="./assets/js/catalog.js"></script>
+
+<!-- SORT BAR MOBILE: hide/show on scroll -->
+<script>
+(function () {
+  // Solo en mobile
+  if (window.innerWidth > 768) return;
+
+  const bar  = document.getElementById('sort-bar-mobile');
+  const THRESHOLD = 60;   // px de scroll antes de reaccionar
+  let lastY = 0;
+  let ticking = false;
+
+  // Mostrar barra al pasar el hero (aprox 300px de scroll)
+  const SHOW_AFTER = 280;
+
+  function update() {
+    const y = window.scrollY;
+    const delta = y - lastY;
+
+    if (y < SHOW_AFTER) {
+      // Arriba del hero: siempre oculta
+      bar.classList.add('hidden');
+    } else if (delta > THRESHOLD) {
+      // Scroll hacia ABAJO: ocultar
+      bar.classList.add('hidden');
+    } else if (delta < -THRESHOLD) {
+      // Scroll hacia ARRIBA: mostrar
+      bar.classList.remove('hidden');
+    }
+
+    lastY = y;
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', function () {
+    if (!ticking) {
+      requestAnimationFrame(update);
+      ticking = true;
+    }
+  }, { passive: true });
+
+  // Estado inicial: oculta (arriba del hero)
+  bar.classList.add('hidden');
+})();
+
+// Sincroniza el select mobile con el select desktop
+function onSortMobile() {
+  const val = document.getElementById('sort-mobile').value;
+  const desk = document.getElementById('sort');
+  if (desk) desk.value = val;
+  if (typeof renderGrid === 'function') renderGrid();
+}
+</script>
+
 </body>
 </html>

@@ -803,9 +803,17 @@ footer a {
 }
 
 /* ============================================
+   MOBILE SORT BAR (sticky hide/show on scroll)
+   ============================================ */
+.sort-bar-mobile {
+    display: none; /* solo visible en mobile, ver @media */
+}
+
+/* ============================================
    RESPONSIVE - TABLET (768px)
    ============================================ */
 @media (max-width: 768px) {
+    /* Barra de filtros principal -> estatica, solo muestra busqueda + tabs */
     .filters {
         position: static;
         padding: 12px 16px;
@@ -829,6 +837,7 @@ footer a {
     }
 
     .catalog {
+        /* padding-top extra para que el contenido no quede bajo la sort-bar-mobile */
         padding: 20px 14px 48px;
     }
 
@@ -840,6 +849,97 @@ footer a {
     .ftab {
         padding: 6px 13px;
         font-size: 12px;
+    }
+
+    /* ---- SORT BAR MOBILE ---- */
+    .sort-bar-mobile {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        position: fixed;
+        /* empieza justo debajo del header (62px) */
+        top: 62px;
+        left: 0;
+        right: 0;
+        z-index: 150;
+        background: rgba(15, 17, 23, 0.96);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        padding: 8px 14px;
+        /* animacion hide/show */
+        transform: translateY(0);
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    opacity  0.28s cubic-bezier(0.4, 0, 0.2, 1);
+        opacity: 1;
+    }
+
+    .sort-bar-mobile.hidden {
+        transform: translateY(-110%);
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    /* label dorado a la izquierda */
+    .sort-bar-mobile .sb-label {
+        font-size: 10px;
+        font-weight: 700;
+        color: #c9a84c;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        white-space: nowrap;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    /* select ocupa todo el espacio disponible */
+    .sort-bar-mobile .sb-select {
+        flex: 1;
+        background: #181b23;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 8px 30px 8px 10px;
+        color: #e8e6e1;
+        font-size: 13px;
+        font-family: 'Poppins', sans-serif;
+        outline: none;
+        appearance: none;
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+    }
+
+    .sort-bar-mobile .sb-select option {
+        background: #181b23;
+    }
+
+    /* boton limpiar compacto */
+    .sort-bar-mobile .sb-clear {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 8px 12px;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        color: #666;
+        font-size: 12px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: all 0.15s;
+    }
+
+    .sort-bar-mobile .sb-clear:hover,
+    .sort-bar-mobile .sb-clear:active {
+        border-color: rgba(201, 168, 76, 0.4);
+        color: #c9a84c;
+    }
+
+    /* espacio reservado para que el contenido no quede tapado cuando la barra es visible */
+    body.sort-bar-visible .catalog {
+        padding-top: 68px;
     }
 }
 
