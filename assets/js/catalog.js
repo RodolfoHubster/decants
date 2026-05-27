@@ -196,14 +196,21 @@ function syncModalCartBtn() {
   } else if (qty >= MAX_QTY) {
     wrapper.innerHTML = `
       <div class="modal-qty-controls">
-        <button class="mqty-btn" onclick="modalDecrement()" aria-label="Quitar uno">−</button>
+        <button class="mqty-btn mqty-remove" data-key="${key}" data-confirm="0"
+          onclick="modalDecrement()" aria-label="Quitar uno">
+          <i class="bi bi-trash"></i>
+        </button>
         <span class="mqty-num">${qty}</span>
         <button class="mqty-btn" disabled aria-label="Agregar uno">+</button>
       </div>`;
   } else {
+    const isLast = qty === 1;
     wrapper.innerHTML = `
       <div class="modal-qty-controls">
-        <button class="mqty-btn" onclick="modalDecrement()" aria-label="Quitar uno">−</button>
+        <button class="mqty-btn ${isLast ? 'mqty-remove' : ''}" data-key="${key}" data-confirm="0"
+          onclick="modalDecrement()" aria-label="${isLast ? 'Eliminar del pedido' : 'Quitar uno'}">
+          ${isLast ? '<i class="bi bi-trash"></i>' : '−'}
+        </button>
         <span class="mqty-num">${qty}</span>
         <button class="mqty-btn" onclick="modalIncrement()" aria-label="Agregar uno">+</button>
       </div>`;
@@ -230,11 +237,44 @@ window.modalDecrement = () => {
   const sel = document.querySelector('.mpill.sel');
   if (!sel) return;
   const key = modalData.id + '-' + sel.dataset.size;
+
+  const item = cart.find(i => i.key === key);
+  if (!item) return;
+
+  if (item.qty === 1) {
+    // qty=1 → confirmar antes de eliminar
+    const removeBtn = document.querySelector('.mqty-remove[data-key="' + key + '"]');
+    if (!removeBtn) return;
+    if (removeBtn.dataset.confirm === '1') {
+      cart = removeItem(cart, key);
+      syncModalCartBtn();
+      updateCartBadge();
+      renderGrid();
+      showToast('✓ Decant eliminado del pedido');
+    } else {
+      _activateModalRemoveConfirm(removeBtn);
+    }
+    return;
+  }
+
+  // qty > 1 → decremento normal
   cart = decrementItem(cart, key);
   syncModalCartBtn();
   updateCartBadge();
   renderGrid();
 };
+
+function _activateModalRemoveConfirm(btn) {
+  btn.dataset.confirm = '1';
+  btn.classList.add('confirming');
+  btn.innerHTML = '<i class="bi bi-trash-fill"></i><span>¿Quitar?</span>';
+  clearTimeout(btn._t);
+  btn._t = setTimeout(() => {
+    btn.dataset.confirm = '0';
+    btn.classList.remove('confirming');
+    btn.innerHTML = '<i class="bi bi-trash"></i>';
+  }, 2500);
+}
 
 window.selPill = btn => {
   document.querySelectorAll('.mpill').forEach(b => b.classList.remove('sel'));
@@ -302,7 +342,6 @@ window.incrementCartItem = key => {
   if (cart[idx].qty >= MAX_QTY) { showToast(`Máximo ${MAX_QTY} unidades por talla`); return; }
   const { cart: newCart } = addItem(cart, cart[idx]);
   cart = newCart;
-  // Patch in-place
   const qtyEl   = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
   const plusBtn = document.querySelector(`.cart-qty-btn[data-inc="${key}"]`);
   const newQty  = cart[idx].qty + 1;
@@ -320,7 +359,6 @@ window.decrementCartItem = key => {
   if (!item) return;
 
   if (item.qty === 1) {
-    // qty=1 → botón actúa como trash con doble confirmación
     const decBtn = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
     if (!decBtn) return;
     if (decBtn.dataset.confirm === '1') {
@@ -336,7 +374,6 @@ window.decrementCartItem = key => {
     return;
   }
 
-  // qty > 1 → decremento normal
   cart = decrementItem(cart, key);
   const updated = cart.find(i => i.key === key);
   if (!updated) {
@@ -353,7 +390,6 @@ window.decrementCartItem = key => {
   if (modalData) syncModalCartBtn();
 };
 
-// ── Actualiza visualmente el botón − según qty ──
 function _updateDecBtn(key, qty) {
   const decBtn = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
   if (!decBtn) return;
@@ -370,7 +406,6 @@ function _updateDecBtn(key, qty) {
   }
 }
 
-// ── Activa modo confirmar en botón trash ──
 function _activateTrashConfirm(btn) {
   document.querySelectorAll('.cart-qty-btn.is-trash.confirming').forEach(b => {
     if (b !== btn) _resetDecBtn(b);
@@ -404,16 +439,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const cartList = document.getElementById('cart-list');
 
   cartList.addEventListener('click', e => {
-    // Botón +
     const incBtn = e.target.closest('.cart-qty-btn[data-inc]');
     if (incBtn) { incrementCartItem(incBtn.dataset.inc); return; }
 
-    // Botón − / trash (qty=1)
     const decBtn = e.target.closest('.cart-qty-btn[data-dec]');
     if (decBtn) { decrementCartItem(decBtn.dataset.dec); return; }
 
-    // Botón trash explícito (columna aparte) — ya no se usa en el render
-    // pero se mantiene por compatibilidad
     const trash = e.target.closest('.cart-item-remove');
     if (!trash) return;
     const key = trash.dataset.key;
