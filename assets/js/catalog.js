@@ -1,5 +1,8 @@
 import { db, auth, collection, getDocs, query, where, onAuthStateChanged, doc, updateDoc, increment }
   from './firebase-config.js';
+import { addItem, decrementItem, removeItem, clearCart as pureCleart,
+         calcTotal, totalUnits, buildWhatsAppURL, getItemQty, MAX_QTY }
+  from './cart.js';
 
 // ── Auth ──────────────────────────────────────────────
 const adminBtn = document.getElementById('btn-admin');
@@ -12,8 +15,6 @@ onAuthStateChanged(auth, user => {
 const PAGE_SIZE = 10;
 let all = [], gF = '', modalData = null;
 let currentPage = 1, filtered = [];
-
-// Carrito: [{ id, nombre, marca, imagen, size, price }]
 let cart = [];
 
 // ── Helpers ───────────────────────────────────────────
@@ -51,16 +52,16 @@ async function load() {
 
 // ── Card HTML ─────────────────────────────────────────
 function cardHTML(p) {
-  const pr    = p.precios || {};
-  const sizes = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
-  const pills = sizes.map(([k, v]) => `<div class="cpill">${k}ml — $${v}</div>`).join('');
-  const inCart = cart.some(i => i.id === p.id);
+  const pr     = p.precios || {};
+  const sizes  = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
+  const pills  = sizes.map(([k, v]) => `<div class="cpill">${k}ml — $${v}</div>`).join('');
+  const units  = cart.filter(i => i.id === p.id).reduce((s, i) => s + i.qty, 0);
   return `<div class="pcard" onclick="openModal('${p.id}')">
     <div class="card-img">
       ${p.imagen
         ? `<img src="${p.imagen}" alt="${p.nombre}" loading="lazy" width="400" height="300">`
         : '<div class="card-no-img"><i class="bi bi-droplet"></i></div>'}
-      ${inCart ? '<div class="card-in-cart"><i class="bi bi-bag-check-fill"></i></div>' : ''}
+      ${units > 0 ? `<div class="card-in-cart"><i class="bi bi-bag-check-fill"></i>${units > 1 ? ` <span>${units}</span>` : ''}</div>` : ''}
     </div>
     <div class="card-body">
       <div class="card-marca">${p.marca || ''}</div>
@@ -147,8 +148,7 @@ window.openModal = id => {
   const p = all.find(x => x.id === id);
   if (!p) return;
   modalData = p;
-  updateDoc(doc(db, 'perfumes', id), { clicks: increment(1) })
-    .catch(() => {}); // silenciar error de permisos si no está autenticado
+  updateDoc(doc(db, 'perfumes', id), { clicks: increment(1) }).catch(() => {});
 
   document.getElementById('modal-img').innerHTML = p.imagen
     ? `<img src="${p.imagen}" alt="${p.nombre}">`
@@ -167,27 +167,47 @@ window.openModal = id => {
     pillsEl.innerHTML = '<span style="font-size:13px;color:#555">Sin presentaciones disponibles.</span>';
   }
 
-  renderModalCartBtn(p.id);
+  // Renderizar boton segun talla actualmente seleccionada
+  syncModalCartBtn();
 
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow = 'hidden';
 };
 
-function renderModalCartBtn(id) {
-  const btn    = document.getElementById('modal-btn-cart');
-  const inCart = cart.some(i => i.id === id);
-  if (inCart) {
-    btn.innerHTML = '<i class="bi bi-bag-check-fill"></i> Ya está en tu pedido';
-    btn.classList.add('in-cart');
-  } else {
+// Actualiza el boton del modal segun el pill seleccionado actualmente
+function syncModalCartBtn() {
+  if (!modalData) return;
+  const sel  = document.querySelector('.mpill.sel');
+  const btn  = document.getElementById('modal-btn-cart');
+  if (!sel) {
     btn.innerHTML = '<i class="bi bi-bag-plus"></i> Agregar al pedido';
-    btn.classList.remove('in-cart');
+    btn.classList.remove('in-cart', 'max-qty');
+    btn.disabled = false;
+    return;
+  }
+  const key = modalData.id + '-' + sel.dataset.size;
+  const qty = getItemQty(cart, key);
+  if (qty === 0) {
+    btn.innerHTML = '<i class="bi bi-bag-plus"></i> Agregar al pedido';
+    btn.classList.remove('in-cart', 'max-qty');
+    btn.disabled = false;
+  } else if (qty >= MAX_QTY) {
+    btn.innerHTML = `<i class="bi bi-bag-check-fill"></i> Máximo alcanzado (${MAX_QTY})`;
+    btn.classList.add('in-cart', 'max-qty');
+    btn.disabled = true;
+  } else {
+    btn.innerHTML = `<i class="bi bi-bag-plus"></i> Agregar otra (${qty}/${MAX_QTY} en pedido)`;
+    btn.classList.add('in-cart');
+    btn.classList.remove('max-qty');
+    btn.disabled = false;
   }
 }
 
 window.selPill = btn => {
   document.querySelectorAll('.mpill').forEach(b => b.classList.remove('sel'));
   btn.classList.add('sel');
+  // Actualizar boton inmediatamente al cambiar talla
+  syncModalCartBtn();
 };
 
 window.closeModal = e => {
@@ -219,47 +239,83 @@ window.addToCart = () => {
   const sel = document.querySelector('.mpill.sel');
   if (!sel) { flashPills(); return; }
 
-  const key = modalData.id + '-' + sel.dataset.size;
-  if (cart.find(i => i.key === key)) {
-    showToast(`"${modalData.nombre} ${sel.dataset.size}ml" ya está en tu pedido`);
-    return;
-  }
-
-  cart.push({
-    key,
+  const item = {
+    key:    modalData.id + '-' + sel.dataset.size,
     id:     modalData.id,
     nombre: modalData.nombre,
     marca:  modalData.marca  || '',
     imagen: modalData.imagen || '',
     size:   sel.dataset.size,
-    price:  +sel.dataset.price
-  });
+    price:  +sel.dataset.price,
+    qty:    1,
+  };
 
-  renderModalCartBtn(modalData.id);
+  const { cart: newCart, added, reason } = addItem(cart, item);
+
+  if (!added) {
+    if (reason === 'max_qty') {
+      showToast(`Máximo ${MAX_QTY} unidades por talla`);
+    }
+    return;
+  }
+
+  cart = newCart;
+  const qty = getItemQty(cart, item.key);
+  const msg = reason === 'qty_incremented'
+    ? `✓ ${modalData.nombre} ${sel.dataset.size}ml (${qty} en pedido)`
+    : `✓ ${modalData.nombre} ${sel.dataset.size}ml agregado`;
+
+  syncModalCartBtn();
   updateCartBadge();
   renderGrid();
-  showToast(`✓ ${modalData.nombre} ${sel.dataset.size}ml agregado`);
+  showToast(msg);
+};
+
+// Incrementar qty desde el drawer
+window.incrementCartItem = key => {
+  const idx = cart.findIndex(i => i.key === key);
+  if (idx === -1) return;
+  if (cart[idx].qty >= MAX_QTY) {
+    showToast(`Máximo ${MAX_QTY} unidades por talla`);
+    return;
+  }
+  const { cart: newCart } = addItem(cart, cart[idx]);
+  cart = newCart;
+  updateCartBadge();
+  renderCartDrawer();
+  renderGrid();
+  if (modalData?.id === cart.find(i => i.key === key)?.id) syncModalCartBtn();
+};
+
+// Decrementar qty desde el drawer (elimina si llega a 0)
+window.decrementCartItem = key => {
+  cart = decrementItem(cart, key);
+  updateCartBadge();
+  renderCartDrawer();
+  renderGrid();
+  if (modalData) syncModalCartBtn();
 };
 
 window.removeCartItem = key => {
-  cart = cart.filter(i => i.key !== key);
+  cart = removeItem(cart, key);
   updateCartBadge();
   renderCartDrawer();
   renderGrid();
+  if (modalData) syncModalCartBtn();
 };
 
-// ── Limpiar pedido (expuesto en window para onclick inline) ──
 window.clearCart = () => {
-  cart = [];
+  cart = pureCleart();
   updateCartBadge();
   renderCartDrawer();
   renderGrid();
+  if (modalData) syncModalCartBtn();
 };
 
 window.toggleCart = () => {
-  const drawer = document.getElementById('cart-drawer');
+  const drawer  = document.getElementById('cart-drawer');
   const overlay = document.getElementById('cart-overlay');
-  const open   = drawer.classList.toggle('open');
+  const open    = drawer.classList.toggle('open');
   overlay.classList.toggle('open', open);
   document.body.style.overflow = open ? 'hidden' : '';
   if (open) renderCartDrawer();
@@ -274,8 +330,9 @@ window.closeCart = () => {
 function updateCartBadge() {
   const badge = document.getElementById('cart-badge');
   const fab   = document.getElementById('cart-fab');
-  if (cart.length > 0) {
-    badge.textContent = cart.length;
+  const units = totalUnits(cart);
+  if (units > 0) {
+    badge.textContent = units;
     badge.style.display = 'flex';
     fab.classList.add('has-items');
   } else {
@@ -283,17 +340,13 @@ function updateCartBadge() {
     fab.classList.remove('has-items');
   }
   const totalEl = document.getElementById('cart-total');
-  if (totalEl) {
-    const total = cart.reduce((s, i) => s + i.price, 0);
-    totalEl.textContent = '$' + total + ' MXN';
-  }
+  if (totalEl) totalEl.textContent = '$' + calcTotal(cart) + ' MXN';
 }
 
 function renderCartDrawer() {
   const list  = document.getElementById('cart-list');
   const empty = document.getElementById('cart-empty');
   const foot  = document.getElementById('cart-footer');
-  const total = cart.reduce((s, i) => s + i.price, 0);
 
   if (!cart.length) {
     list.innerHTML      = '';
@@ -316,20 +369,23 @@ function renderCartDrawer() {
         <div class="cart-item-nombre">${item.nombre}</div>
         <div class="cart-item-size">${item.size}ml — <strong>$${item.price}</strong></div>
       </div>
-      <button class="cart-item-remove" onclick="removeCartItem('${item.key}')" aria-label="Quitar">
-        <i class="bi bi-x"></i>
-      </button>
+      <div class="cart-item-controls">
+        <button class="cart-qty-btn" onclick="decrementCartItem('${item.key}')" aria-label="Quitar uno">−</button>
+        <span class="cart-qty-num">${item.qty}</span>
+        <button class="cart-qty-btn" onclick="incrementCartItem('${item.key}')" aria-label="Agregar uno"
+          ${item.qty >= MAX_QTY ? 'disabled' : ''}>+</button>
+        <button class="cart-item-remove" onclick="removeCartItem('${item.key}')" aria-label="Eliminar">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
     </div>`).join('');
 
-  document.getElementById('cart-total').textContent = '$' + total + ' MXN';
+  document.getElementById('cart-total').textContent = '$' + calcTotal(cart) + ' MXN';
 }
 
 window.sendCartWA = () => {
-  if (!cart.length) return;
-  const total = cart.reduce((s, i) => s + i.price, 0);
-  const lines = cart.map(i => `• ${i.marca} - ${i.nombre} (${i.size}ml) — $${i.price} MXN`).join('\n');
-  const msg   = `Hola! Quisiera hacer el siguiente pedido de decants:\n\n${lines}\n\n*Total estimado: $${total} MXN*\n\n¿Tienen disponibilidad? 🙏`;
-  window.open(`https://wa.me/526648162623?text=${encodeURIComponent(msg)}`, '_blank');
+  const url = buildWhatsAppURL(cart, '526648162623');
+  if (url) window.open(url, '_blank');
 };
 
 function flashPills() {
