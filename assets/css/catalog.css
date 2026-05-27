@@ -1177,27 +1177,36 @@ header {
     gap: 10px;
 }
 
+/* Fila total: label izquierda, precio dorado derecha */
 .cart-total-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     font-size: 14px;
+    padding: 2px 0;
 }
 
+.cart-total-row span,
 .cart-total-label {
-    color: #666;
+    color: #999;
+    font-size: 14px;
 }
 
+/* El <strong id="cart-total"> y .cart-total-price son el mismo elemento */
+.cart-total-row strong,
+#cart-total,
 .cart-total-price {
     font-size: 18px;
     font-weight: 700;
     color: #c9a84c;
 }
 
+/* Disclaimer "* Precios sujetos..." */
+.cart-disclaimer,
 .cart-total-note {
     font-size: 11px;
     color: #444;
-    text-align: center;
+    line-height: 1.5;
 }
 
 /* ── Drawer: botón "Enviar pedido por WhatsApp" ── */
@@ -1223,17 +1232,20 @@ header {
     background: #1db954;
 }
 
+/* Botón limpiar: mismo padding que WA para altura idéntica */
 .btn-cart-clear {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 11px;
+    padding: 14px;
     background: transparent;
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 12px;
     color: #555;
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 500;
+    width: 100%;
     transition: all 0.15s;
 }
 
