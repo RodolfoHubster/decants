@@ -7,6 +7,44 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="./assets/css/catalog.css">
+  <style>
+    /* ── Controles qty en modal ───────────────────── */
+    .modal-qty-controls {
+      display:flex; align-items:center; justify-content:center;
+      gap:0; margin-bottom:10px;
+      background:rgba(201,168,76,.08); border:1.5px solid rgba(201,168,76,.4);
+      border-radius:12px; overflow:hidden;
+    }
+    .mqty-btn {
+      width:48px; height:46px; font-size:22px; font-weight:300;
+      background:transparent; border:none; color:#c9a84c;
+      display:flex; align-items:center; justify-content:center;
+      transition:background .15s; flex-shrink:0;
+    }
+    .mqty-btn:hover:not(:disabled) { background:rgba(201,168,76,.18); }
+    .mqty-btn:disabled { color:#444; cursor:not-allowed; }
+    .mqty-num {
+      flex:1; text-align:center; font-size:16px; font-weight:700;
+      color:#e8e6e1; border-left:1px solid rgba(201,168,76,.2);
+      border-right:1px solid rgba(201,168,76,.2); padding:0 8px;
+    }
+    /* ── Confirmar eliminar en drawer ─────────────── */
+    .cart-item-remove.confirming {
+      background:rgba(255,60,60,.15);
+      border:1px solid rgba(255,60,60,.5);
+      color:#ff6060;
+      border-radius:8px;
+      width:auto; padding:0 8px;
+      font-size:11px; font-weight:700;
+      gap:4px; display:flex; align-items:center;
+      animation:shake .3s ease;
+    }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      25%{transform:translateX(-3px)}
+      75%{transform:translateX(3px)}
+    }
+  </style>
 </head>
 <body>
 
@@ -24,7 +62,6 @@
         <i class="bi bi-shield-lock"></i>
         <span id="btn-admin-label">Admin</span>
       </a>
-      <!-- Botón carrito en header (desktop) -->
       <button class="btn-cart-header" onclick="toggleCart()" aria-label="Ver pedido">
         <i class="bi bi-bag"></i>
         <span id="cart-badge" class="cart-badge" style="display:none">0</span>
@@ -132,13 +169,13 @@
       <div class="modal-desc" id="modal-desc"></div>
       <div class="modal-sizes-label">Elige tu presentación</div>
       <div class="modal-pills" id="modal-pills"></div>
-      <!-- Botón agregar al pedido -->
-      <button class="btn-add-cart" id="modal-btn-cart" onclick="addToCart()">
-        <i class="bi bi-bag-plus"></i> Agregar al pedido
-      </button>
-      <!-- Separador -->
+      <!-- Wrapper dinámico: botón normal o controles [ - ] N [ + ] -->
+      <div id="modal-cart-wrapper">
+        <button class="btn-add-cart" id="modal-btn-cart" onclick="addToCart()">
+          <i class="bi bi-bag-plus"></i> Agregar al pedido
+        </button>
+      </div>
       <div class="modal-or"><span>o</span></div>
-      <!-- Botón WA individual -->
       <button class="btn-wa-modal" id="modal-btn" onclick="pedirModal()">
         <i class="bi bi-whatsapp"></i> Consultar por WhatsApp
       </button>
@@ -156,13 +193,11 @@
     </button>
   </div>
   <div class="cart-body">
-    <!-- Empty state -->
     <div class="cart-empty" id="cart-empty">
       <i class="bi bi-bag-x"></i>
       <p>Tu pedido está vacío</p>
       <span>Abre un perfume y elige tu talla para agregar</span>
     </div>
-    <!-- Lista de items -->
     <div class="cart-list" id="cart-list"></div>
   </div>
   <div class="cart-footer" id="cart-footer" style="display:none">
