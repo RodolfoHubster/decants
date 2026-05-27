@@ -874,6 +874,29 @@ header {
     cursor: not-allowed;
 }
 
+/* ── Modal: separador "o" ── */
+.modal-or,
+.modal-btn-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    color: #444;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.modal-or::before,
+.modal-or::after,
+.modal-btn-divider::before,
+.modal-btn-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.07);
+}
+
 /* ── Modal: botón WhatsApp directo (verde sólido) ── */
 .btn-wa-modal {
     width: 100%;
@@ -899,26 +922,6 @@ header {
     background: #1e2128;
     color: #444;
     cursor: not-allowed;
-}
-
-/* ── Modal: separador entre botones ── */
-.modal-btn-divider {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-    color: #444;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-}
-
-.modal-btn-divider::before,
-.modal-btn-divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: rgba(255,255,255,0.07);
 }
 
 /* ============================================
@@ -1164,7 +1167,7 @@ header {
     font-weight: 700;
 }
 
-/* Footer carrito */
+/* ── Drawer footer ── */
 .cart-footer {
     border-top: 1px solid rgba(255,255,255,0.07);
     padding: 16px 20px;
@@ -1197,7 +1200,9 @@ header {
     text-align: center;
 }
 
-.btn-send-wa {
+/* ── Drawer: botón "Enviar pedido por WhatsApp" ── */
+.btn-send-wa,
+.btn-cart-wa {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1209,10 +1214,12 @@ header {
     border-radius: 12px;
     font-size: 15px;
     font-weight: 600;
+    width: 100%;
     transition: background 0.15s;
 }
 
-.btn-send-wa:hover {
+.btn-send-wa:hover,
+.btn-cart-wa:hover {
     background: #1db954;
 }
 
