@@ -1,7 +1,8 @@
 import { db, auth, collection, getDocs, query, where, onAuthStateChanged, doc, updateDoc, increment }
   from './firebase-config.js';
 import { addItem, decrementItem, removeItem, clearCart as pureCleart,
-         calcTotal, totalUnits, buildWhatsAppURL, getItemQty, MAX_QTY }
+         calcTotal, totalUnits, buildWhatsAppURL, getItemQty, MAX_QTY,
+         saveCart, loadCart, clearSavedCart, cartExpiresInMinutes }
   from './cart.js';
 
 // ── Auth ──────────────────────────────────────────────
@@ -15,7 +16,7 @@ onAuthStateChanged(auth, user => {
 const PAGE_SIZE = 10;
 let all = [], gF = '', modalData = null;
 let currentPage = 1, filtered = [];
-let cart = [];
+let cart = loadCart(); // ← restaurar desde localStorage al iniciar
 
 // ── Helpers ───────────────────────────────────────────
 function minPrecio(p) {
@@ -48,6 +49,12 @@ async function load() {
   all = [];
   snap.forEach(d => all.push({ id: d.id, ...d.data() }));
   renderGrid();
+  // Mostrar toast si se restauró un carrito guardado
+  if (cart.length) {
+    const mins = cartExpiresInMinutes();
+    showToast(`🛒 Pedido restaurado (${cart.length} item${cart.length > 1 ? 's' : ''})${mins ? ` · expira en ${mins} min` : ''}`);
+    updateCartBadge();
+  }
 }
 
 // ── Card HTML ─────────────────────────────────────────
@@ -106,7 +113,7 @@ window.renderGrid = () => {
   updateLoadMore();
 };
 
-// ── Patch badges in-place sin destruir el grid ──────────────────────────────
+// ── Patch badges in-place sin destruir el grid ───────────────────────────────
 function patchGridBadges() {
   const cards = document.querySelectorAll('.pcard[data-id]');
   cards.forEach(card => {
@@ -129,6 +136,15 @@ function patchGridBadges() {
       if (badge) badge.remove();
     }
   });
+}
+
+// ── Guardar carrito tras cada cambio ─────────────────────────────────────────
+function persistCart() {
+  if (cart.length) {
+    saveCart(cart);
+  } else {
+    clearSavedCart();
+  }
 }
 
 // ── Cargar más ────────────────────────────────────────
@@ -197,7 +213,7 @@ window.openModal = id => {
   document.body.style.overflow = 'hidden';
 };
 
-// ── Botón modal: normal si qty=0, controles [ - ] N [ + ] si qty>=1 ──
+// ── Botón modal ───────────────────────────────────────
 function syncModalCartBtn() {
   if (!modalData) return;
   const sel     = document.querySelector('.mpill.sel');
@@ -245,6 +261,7 @@ window.modalIncrement = () => {
   if (cart[idx].qty >= MAX_QTY) { showToast(`Máximo ${MAX_QTY} unidades`); return; }
   const { cart: newCart } = addItem(cart, cart[idx]);
   cart = newCart;
+  persistCart();
   syncModalCartBtn();
   updateCartBadge();
   patchGridBadges();
@@ -256,6 +273,7 @@ window.modalDecrement = () => {
   if (!sel) return;
   const key = modalData.id + '-' + sel.dataset.size;
   cart = decrementItem(cart, key);
+  persistCart();
   syncModalCartBtn();
   updateCartBadge();
   patchGridBadges();
@@ -314,6 +332,7 @@ window.addToCart = () => {
   }
 
   cart = newCart;
+  persistCart();
   showToast(`✓ ${modalData.nombre} ${sel.dataset.size}ml agregado`);
   syncModalCartBtn();
   updateCartBadge();
@@ -327,7 +346,8 @@ window.incrementCartItem = key => {
   if (cart[idx].qty >= MAX_QTY) { showToast(`Máximo ${MAX_QTY} unidades por talla`); return; }
   const { cart: newCart } = addItem(cart, cart[idx]);
   cart = newCart;
-  // FIX: leer qty directamente del nuevo estado, NO calcular +1 manualmente
+  persistCart();
+  // FIX: leer qty del nuevo estado, NO calcular +1
   const newQty = cart.find(i => i.key === key).qty;
   const qtyEl   = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
   const plusBtn = document.querySelector(`.cart-qty-btn[data-inc="${key}"]`);
@@ -349,6 +369,7 @@ window.decrementCartItem = key => {
     if (!decBtn) return;
     if (decBtn.dataset.confirm === '1') {
       cart = removeItem(cart, key);
+      persistCart();
       updateCartBadge();
       renderCartDrawer();
       patchGridBadges();
@@ -361,6 +382,7 @@ window.decrementCartItem = key => {
   }
 
   cart = decrementItem(cart, key);
+  persistCart();
   const updated = cart.find(i => i.key === key);
   if (!updated) {
     renderCartDrawer();
@@ -439,6 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!key) return;
     if (trash.dataset.confirm === '1') {
       cart = removeItem(cart, key);
+      persistCart();
       updateCartBadge();
       renderCartDrawer();
       patchGridBadges();
@@ -464,7 +487,7 @@ function _resetTrash(btn) {
   clearTimeout(btn._t);
 }
 
-// ── Limpiar pedido: doble confirmación ──
+// ── Limpiar pedido ──
 window.clearCart = () => {
   const btn = document.getElementById('btn-cart-clear');
   if (!btn) { _doClearCart(); return; }
@@ -490,6 +513,7 @@ function _resetClearBtn(btn) {
 
 function _doClearCart() {
   cart = pureCleart();
+  clearSavedCart(); // borrar localStorage también
   updateCartBadge();
   renderCartDrawer();
   patchGridBadges();
@@ -497,7 +521,7 @@ function _doClearCart() {
   showToast('✓ Pedido limpiado correctamente');
 }
 
-// ── Cerrar drawer: confirmación si hay items ──
+// ── Cerrar drawer ──
 window.closeCart = (force = false) => {
   const drawer   = document.getElementById('cart-drawer');
   const overlay  = document.getElementById('cart-overlay');
@@ -604,7 +628,10 @@ function renderCartDrawer() {
 
 window.sendCartWA = () => {
   const url = buildWhatsAppURL(cart, '526648162623');
-  if (url) window.open(url, '_blank');
+  if (url) {
+    clearSavedCart(); // pedido enviado = limpiar guardado
+    window.open(url, '_blank');
+  }
 };
 
 function flashPills() {
