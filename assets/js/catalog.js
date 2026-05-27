@@ -295,7 +295,7 @@ window.addToCart = () => {
   renderGrid();
 };
 
-// ── Incrementar qty desde el drawer (patch in-place) ──
+// ── Incrementar qty desde el drawer ──
 window.incrementCartItem = key => {
   const idx = cart.findIndex(i => i.key === key);
   if (idx === -1) return;
@@ -303,93 +303,103 @@ window.incrementCartItem = key => {
   const { cart: newCart } = addItem(cart, cart[idx]);
   cart = newCart;
   // Patch in-place
-  const qtyEl  = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
+  const qtyEl   = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
   const plusBtn = document.querySelector(`.cart-qty-btn[data-inc="${key}"]`);
-  const decBtn  = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
   const newQty  = cart[idx].qty + 1;
-  if (qtyEl)   qtyEl.textContent  = newQty;
-  if (plusBtn) plusBtn.disabled   = (newQty >= MAX_QTY);
-  // Si qty pasó de 1 → 2, el botón − ya no debe ser bote: re-render ese item
-  if (newQty === 2) renderCartDrawer();
+  if (qtyEl)   qtyEl.textContent = newQty;
+  if (plusBtn) plusBtn.disabled  = (newQty >= MAX_QTY);
+  _updateDecBtn(key, newQty);
   updateCartBadge();
   renderGrid();
   if (modalData?.id === cart.find(i => i.key === key)?.id) syncModalCartBtn();
 };
 
-// ── Decrementar qty desde el drawer ──────────────────
-// Si qty > 1: decrementa normal (patch in-place)
-// Si qty = 1: activa doble confirmación de eliminación en el botón 🗑️
+// ── Decrementar qty desde el drawer ──
 window.decrementCartItem = key => {
-  const idx = cart.findIndex(i => i.key === key);
-  if (idx === -1) return;
+  const item = cart.find(i => i.key === key);
+  if (!item) return;
 
-  if (cart[idx].qty > 1) {
-    // Decremento normal
-    cart = decrementItem(cart, key);
-    const item    = cart.find(i => i.key === key);
-    const qtyEl   = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
-    const decBtn  = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
-    const plusBtn = document.querySelector(`.cart-qty-btn[data-inc="${key}"]`);
-    if (qtyEl)   qtyEl.textContent = item.qty;
-    if (plusBtn) plusBtn.disabled  = false;
-    // Si qty llegó a 1, convertir botón − en bote de basura
-    if (item.qty === 1 && decBtn) _convertDecToTrash(decBtn, key);
-    updateCartBadge();
-    renderGrid();
-    if (modalData) syncModalCartBtn();
-  } else {
-    // qty = 1 → el botón ya es 🗑️, manejar confirmación
-    const trashBtn = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
-    if (!trashBtn) return;
-    _handleTrashConfirm(trashBtn, key);
+  if (item.qty === 1) {
+    // qty=1 → botón actúa como trash con doble confirmación
+    const decBtn = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
+    if (!decBtn) return;
+    if (decBtn.dataset.confirm === '1') {
+      cart = removeItem(cart, key);
+      updateCartBadge();
+      renderCartDrawer();
+      renderGrid();
+      if (modalData) syncModalCartBtn();
+      showToast('✓ Item eliminado del pedido');
+    } else {
+      _activateTrashConfirm(decBtn);
+    }
+    return;
   }
+
+  // qty > 1 → decremento normal
+  cart = decrementItem(cart, key);
+  const updated = cart.find(i => i.key === key);
+  if (!updated) {
+    renderCartDrawer();
+  } else {
+    const qtyEl   = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
+    const plusBtn = document.querySelector(`.cart-qty-btn[data-inc="${key}"]`);
+    if (qtyEl)   qtyEl.textContent = updated.qty;
+    if (plusBtn) plusBtn.disabled  = (updated.qty >= MAX_QTY);
+    _updateDecBtn(key, updated.qty);
+  }
+  updateCartBadge();
+  renderGrid();
+  if (modalData) syncModalCartBtn();
 };
 
-// ── Convierte el botón − en bote de basura ──
-function _convertDecToTrash(btn, key) {
-  btn.classList.add('is-trash');
-  btn.innerHTML = '<i class="bi bi-trash"></i>';
-  btn.setAttribute('aria-label', 'Eliminar item');
-  btn.dataset.confirm = '0';
+// ── Actualiza visualmente el botón − según qty ──
+function _updateDecBtn(key, qty) {
+  const decBtn = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
+  if (!decBtn) return;
+  if (qty === 1) {
+    decBtn.classList.add('is-trash');
+    decBtn.innerHTML = '<i class="bi bi-trash"></i>';
+    decBtn.setAttribute('aria-label', 'Eliminar item');
+    decBtn.dataset.confirm = '0';
+  } else {
+    decBtn.classList.remove('is-trash', 'confirming');
+    decBtn.innerHTML = '−';
+    decBtn.setAttribute('aria-label', 'Quitar uno');
+    decBtn.dataset.confirm = '0';
+  }
 }
 
-// ── Convierte el bote de basura de vuelta a − ──
-function _convertTrashToDec(btn) {
-  btn.classList.remove('is-trash', 'confirming');
-  btn.innerHTML = '−';
-  btn.setAttribute('aria-label', 'Quitar uno');
-  delete btn.dataset.confirm;
+// ── Activa modo confirmar en botón trash ──
+function _activateTrashConfirm(btn) {
+  document.querySelectorAll('.cart-qty-btn.is-trash.confirming').forEach(b => {
+    if (b !== btn) _resetDecBtn(b);
+  });
+  btn.dataset.confirm = '1';
+  btn.classList.add('confirming');
+  btn.innerHTML = '<i class="bi bi-trash-fill"></i><span>¿Quitar?</span>';
+  clearTimeout(btn._t);
+  btn._t = setTimeout(() => _resetDecBtn(btn), 2500);
+}
+
+function _resetDecBtn(btn) {
+  const key  = btn.dataset.dec;
+  const item = cart.find(i => i.key === key);
+  btn.dataset.confirm = '0';
+  btn.classList.remove('confirming');
+  if (item && item.qty === 1) {
+    btn.classList.add('is-trash');
+    btn.innerHTML = '<i class="bi bi-trash"></i>';
+    btn.setAttribute('aria-label', 'Eliminar item');
+  } else {
+    btn.classList.remove('is-trash');
+    btn.innerHTML = '−';
+    btn.setAttribute('aria-label', 'Quitar uno');
+  }
   clearTimeout(btn._t);
 }
 
-// ── Lógica de doble confirmación en el bote del drawer item ──
-function _handleTrashConfirm(btn, key) {
-  if (btn.dataset.confirm === '1') {
-    // Confirmar: eliminar
-    cart = removeItem(cart, key);
-    updateCartBadge();
-    renderCartDrawer();
-    renderGrid();
-    if (modalData) syncModalCartBtn();
-    showToast('✓ Item eliminado del pedido');
-  } else {
-    // Primer click: activar confirming, resetear otros
-    document.querySelectorAll('.cart-qty-btn.is-trash.confirming').forEach(b => {
-      if (b !== btn) _convertDecToTrash(b, b.dataset.dec);
-    });
-    btn.dataset.confirm = '1';
-    btn.classList.add('confirming');
-    btn.innerHTML = '<i class="bi bi-trash-fill"></i><span style="font-size:10px;font-weight:700;margin-left:3px">¿Eliminar?</span>';
-    clearTimeout(btn._t);
-    btn._t = setTimeout(() => {
-      btn.dataset.confirm = '0';
-      btn.classList.remove('confirming');
-      btn.innerHTML = '<i class="bi bi-trash"></i>';
-    }, 2500);
-  }
-}
-
-// ── Event delegation en cart-list ─────────────────────
+// ── Event delegation en cart-list ──
 document.addEventListener('DOMContentLoaded', () => {
   const cartList = document.getElementById('cart-list');
 
@@ -398,16 +408,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const incBtn = e.target.closest('.cart-qty-btn[data-inc]');
     if (incBtn) { incrementCartItem(incBtn.dataset.inc); return; }
 
-    // Botón − (o bote si es-trash)
+    // Botón − / trash (qty=1)
     const decBtn = e.target.closest('.cart-qty-btn[data-dec]');
     if (decBtn) { decrementCartItem(decBtn.dataset.dec); return; }
 
-    // Botón 🗑️ standalone (cart-item-remove)
+    // Botón trash explícito (columna aparte) — ya no se usa en el render
+    // pero se mantiene por compatibilidad
     const trash = e.target.closest('.cart-item-remove');
     if (!trash) return;
     const key = trash.dataset.key;
     if (!key) return;
-
     if (trash.dataset.confirm === '1') {
       cart = removeItem(cart, key);
       updateCartBadge();
@@ -547,12 +557,7 @@ function renderCartDrawer() {
   empty.style.display = 'none';
   foot.style.display  = 'flex';
 
-  list.innerHTML = cart.map(item => {
-    const isOne = item.qty === 1;
-    const decBtnClass = isOne ? 'cart-qty-btn is-trash' : 'cart-qty-btn';
-    const decBtnIcon  = isOne ? '<i class="bi bi-trash"></i>' : '−';
-    const decBtnLabel = isOne ? 'Eliminar item' : 'Quitar uno';
-    return `
+  list.innerHTML = cart.map(item => `
     <div class="cart-item" data-key="${item.key}">
       <div class="cart-item-img">
         ${item.imagen
@@ -565,13 +570,15 @@ function renderCartDrawer() {
         <div class="cart-item-size">${item.size}ml — <strong>$${item.price}</strong></div>
       </div>
       <div class="cart-item-controls">
-        <button class="${decBtnClass}" data-dec="${item.key}" data-confirm="0" aria-label="${decBtnLabel}">${decBtnIcon}</button>
+        <button class="cart-qty-btn ${item.qty === 1 ? 'is-trash' : ''}" data-dec="${item.key}" data-confirm="0"
+          aria-label="${item.qty === 1 ? 'Eliminar item' : 'Quitar uno'}">
+          ${item.qty === 1 ? '<i class="bi bi-trash"></i>' : '−'}
+        </button>
         <span class="cart-qty-num" data-key="${item.key}">${item.qty}</span>
         <button class="cart-qty-btn" data-inc="${item.key}" aria-label="Agregar uno"
           ${item.qty >= MAX_QTY ? 'disabled' : ''}>+</button>
       </div>
-    </div>`;
-  }).join('');
+    </div>`).join('');
 
   document.getElementById('cart-total').textContent = '$' + calcTotal(cart) + ' MXN';
 }
