@@ -107,7 +107,6 @@ window.renderGrid = () => {
 };
 
 // ── Patch badges in-place sin destruir el grid ──────────────────────────────
-// Llama esto en lugar de renderGrid() cuando solo cambia el carrito.
 function patchGridBadges() {
   const cards = document.querySelectorAll('.pcard[data-id]');
   cards.forEach(card => {
@@ -115,7 +114,6 @@ function patchGridBadges() {
     const units = cart.filter(i => i.id === id).reduce((s, i) => s + i.qty, 0);
     const img   = card.querySelector('.card-img');
     if (!img) return;
-
     let badge = img.querySelector('.card-in-cart');
     if (units > 0) {
       const html = `<i class="bi bi-bag-check-fill"></i>${units > 1 ? ` <span>${units}</span>` : ''}`;
@@ -329,9 +327,10 @@ window.incrementCartItem = key => {
   if (cart[idx].qty >= MAX_QTY) { showToast(`Máximo ${MAX_QTY} unidades por talla`); return; }
   const { cart: newCart } = addItem(cart, cart[idx]);
   cart = newCart;
+  // FIX: leer qty directamente del nuevo estado, NO calcular +1 manualmente
+  const newQty = cart.find(i => i.key === key).qty;
   const qtyEl   = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
   const plusBtn = document.querySelector(`.cart-qty-btn[data-inc="${key}"]`);
-  const newQty  = cart[idx].qty + 1;
   if (qtyEl)   qtyEl.textContent = newQty;
   if (plusBtn) plusBtn.disabled  = (newQty >= MAX_QTY);
   _updateDecBtn(key, newQty);
