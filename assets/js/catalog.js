@@ -148,7 +148,7 @@ window.openModal = id => {
   if (!p) return;
   modalData = p;
   updateDoc(doc(db, 'perfumes', id), { clicks: increment(1) })
-    .then(() => { const l = all.find(x => x.id === id); if (l) l.clicks = (l.clicks || 0) + 1; });
+    .catch(() => {}); // silenciar error de permisos si no está autenticado
 
   document.getElementById('modal-img').innerHTML = p.imagen
     ? `<img src="${p.imagen}" alt="${p.nombre}">`
@@ -167,7 +167,6 @@ window.openModal = id => {
     pillsEl.innerHTML = '<span style="font-size:13px;color:#555">Sin presentaciones disponibles.</span>';
   }
 
-  // Boton agregar al carrito
   renderModalCartBtn(p.id);
 
   document.getElementById('modal').classList.add('open');
@@ -175,7 +174,7 @@ window.openModal = id => {
 };
 
 function renderModalCartBtn(id) {
-  const btn   = document.getElementById('modal-btn-cart');
+  const btn    = document.getElementById('modal-btn-cart');
   const inCart = cart.some(i => i.id === id);
   if (inCart) {
     btn.innerHTML = '<i class="bi bi-bag-check-fill"></i> Ya está en tu pedido';
@@ -204,7 +203,6 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// Boton verde original WhatsApp (pedido individual)
 window.pedirModal = () => {
   if (!modalData) return;
   const sel = document.querySelector('.mpill.sel');
@@ -216,16 +214,13 @@ window.pedirModal = () => {
 
 // ── CARRITO ───────────────────────────────────────────
 
-// Agregar desde modal
 window.addToCart = () => {
   if (!modalData) return;
   const sel = document.querySelector('.mpill.sel');
   if (!sel) { flashPills(); return; }
 
   const key = modalData.id + '-' + sel.dataset.size;
-  const exists = cart.find(i => i.key === key);
-  if (exists) {
-    // Ya existe ese perfume+talla → solo notificar
+  if (cart.find(i => i.key === key)) {
     showToast(`"${modalData.nombre} ${sel.dataset.size}ml" ya está en tu pedido`);
     return;
   }
@@ -242,11 +237,10 @@ window.addToCart = () => {
 
   renderModalCartBtn(modalData.id);
   updateCartBadge();
-  renderGrid(); // refrescar badge en card
+  renderGrid();
   showToast(`✓ ${modalData.nombre} ${sel.dataset.size}ml agregado`);
 };
 
-// Quitar item del carrito
 window.removeCartItem = key => {
   cart = cart.filter(i => i.key !== key);
   updateCartBadge();
@@ -254,10 +248,19 @@ window.removeCartItem = key => {
   renderGrid();
 };
 
-// Abrir/cerrar drawer
+// ── Limpiar pedido (expuesto en window para onclick inline) ──
+window.clearCart = () => {
+  cart = [];
+  updateCartBadge();
+  renderCartDrawer();
+  renderGrid();
+};
+
 window.toggleCart = () => {
   const drawer = document.getElementById('cart-drawer');
+  const overlay = document.getElementById('cart-overlay');
   const open   = drawer.classList.toggle('open');
+  overlay.classList.toggle('open', open);
   document.body.style.overflow = open ? 'hidden' : '';
   if (open) renderCartDrawer();
 };
@@ -279,7 +282,6 @@ function updateCartBadge() {
     badge.style.display = 'none';
     fab.classList.remove('has-items');
   }
-  // Actualizar total en drawer si está abierto
   const totalEl = document.getElementById('cart-total');
   if (totalEl) {
     const total = cart.reduce((s, i) => s + i.price, 0);
@@ -294,7 +296,7 @@ function renderCartDrawer() {
   const total = cart.reduce((s, i) => s + i.price, 0);
 
   if (!cart.length) {
-    list.innerHTML  = '';
+    list.innerHTML      = '';
     empty.style.display = 'flex';
     foot.style.display  = 'none';
     return;
@@ -322,7 +324,6 @@ function renderCartDrawer() {
   document.getElementById('cart-total').textContent = '$' + total + ' MXN';
 }
 
-// Enviar pedido por WhatsApp
 window.sendCartWA = () => {
   if (!cart.length) return;
   const total = cart.reduce((s, i) => s + i.price, 0);
@@ -331,14 +332,12 @@ window.sendCartWA = () => {
   window.open(`https://wa.me/526648162623?text=${encodeURIComponent(msg)}`, '_blank');
 };
 
-// Flash animacion en pills si no eligio talla
 function flashPills() {
   const pills = document.getElementById('modal-pills');
   pills.classList.add('flash');
   setTimeout(() => pills.classList.remove('flash'), 600);
 }
 
-// Toast notificacion
 function showToast(msg) {
   let t = document.getElementById('toast');
   if (!t) {

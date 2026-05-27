@@ -174,7 +174,7 @@
     <button class="btn-cart-wa" onclick="sendCartWA()">
       <i class="bi bi-whatsapp"></i> Enviar pedido por WhatsApp
     </button>
-    <button class="btn-cart-clear" onclick="cart=[];updateCartBadge();renderCartDrawer();renderGrid()">
+    <button class="btn-cart-clear" onclick="clearCart()">
       <i class="bi bi-trash"></i> Limpiar pedido
     </button>
   </div>
@@ -183,7 +183,7 @@
 <!-- FAB flotante (mobile) -->
 <button class="cart-fab" id="cart-fab" onclick="toggleCart()" aria-label="Ver pedido">
   <i class="bi bi-bag"></i>
-  <span class="cart-badge" id="cart-badge" style="display:none">0</span>
+  <span class="cart-badge" id="cart-badge-fab" style="display:none">0</span>
 </button>
 
 <!-- ═══════════════ FOOTER ═══════════════ -->
