@@ -12,7 +12,10 @@ onAuthStateChanged(auth, user => {
   }
 });
 
+const PAGE_SIZE = 10;
 let all = [], gF = '', modalData = null;
+let currentPage = 1;   // cuantas "paginas" de PAGE_SIZE hemos mostrado
+let filtered = [];     // resultado filtrado/ordenado completo
 
 window.syncMobileSearch = () => {
   const val = document.getElementById('q-mobile').value;
@@ -41,82 +44,125 @@ async function load() {
   renderGrid();
 }
 
+function cardHTML(p) {
+  const pr    = p.precios || {};
+  const sizes = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
+  const pills = sizes.map(([k, v]) => `<div class="cpill">${k}ml — $${v}</div>`).join('');
+  return `<div class="pcard" onclick="openModal('${p.id}')">
+    <div class="card-img">
+      ${p.imagen
+        ? `<img src="${p.imagen}" alt="${p.nombre}" loading="lazy" width="400" height="300">`
+        : '<div class="card-no-img"><i class="bi bi-droplet"></i></div>'}
+    </div>
+    <div class="card-body">
+      <div class="card-marca">${p.marca || ''}</div>
+      <div class="card-nombre">${p.nombre}</div>
+      <div class="card-pills">${pills || '<span style="font-size:12px;color:#444">Sin precios</span>'}</div>
+    </div>
+  </div>`;
+}
+
 window.renderGrid = () => {
-  const q = document.getElementById('q').value.toLowerCase().trim();
+  currentPage = 1; // resetear paginacion al cambiar filtros
+  const q    = document.getElementById('q').value.toLowerCase().trim();
   const sort = document.getElementById('sort').value;
-  let fil = all.filter(p =>
+
+  // Sincronizar select mobile con desktop
+  const sm = document.getElementById('sort-mobile');
+  if (sm && sm.value !== sort) sm.value = sort;
+
+  filtered = all.filter(p =>
     (!q || p.nombre.toLowerCase().includes(q) || (p.marca || '').toLowerCase().includes(q)) &&
     (!gF || p.genero === gF)
   );
-  fil.sort((a, b) => {
+
+  filtered.sort((a, b) => {
     if (sort === 'relevancia') return (b.clicks || 0) - (a.clicks || 0);
-    if (sort === 'az') return a.nombre.localeCompare(b.nombre);
-    if (sort === 'za') return b.nombre.localeCompare(a.nombre);
-    if (sort === 'marca') return (a.marca || '').localeCompare(b.marca || '');
+    if (sort === 'az')         return a.nombre.localeCompare(b.nombre);
+    if (sort === 'za')         return b.nombre.localeCompare(a.nombre);
+    if (sort === 'marca')      return (a.marca || '').localeCompare(b.marca || '');
     const pa = minPrecio(a), pb = minPrecio(b);
-    if (sort === 'precio_asc') return pa - pb;
+    if (sort === 'precio_asc')  return pa - pb;
     if (sort === 'precio_desc') return pb - pa;
     return 0;
   });
-  document.getElementById('count-badge').textContent = fil.length + ' perfume' + (fil.length !== 1 ? 's' : '');
+
+  document.getElementById('count-badge').textContent =
+    filtered.length + ' perfume' + (filtered.length !== 1 ? 's' : '');
+
   const g = document.getElementById('grid');
-  if (!fil.length) {
+  if (!filtered.length) {
     g.innerHTML = `<div class="empty-state"><i class="bi bi-search"></i><h3>Sin resultados</h3><p style="font-size:13px;color:#555">Intenta con otro nombre o quita los filtros.</p></div>`;
+    updateLoadMore();
     return;
   }
-  g.innerHTML = fil.map(p => {
-    const pr = p.precios || {};
-    const sizes = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
-    const pills = sizes.map(([k, v]) => `<div class="cpill">${k}ml — $${v}</div>`).join('');
-    const clicksBadge ='';
-    return `<div class="pcard" onclick="openModal('${p.id}')">
-      <div class="card-img">
-        ${p.imagen ? `<img src="${p.imagen}" alt="${p.nombre}" loading="lazy">` : '<div class="card-no-img"><i class="bi bi-droplet"></i></div>'}
-      </div>
-      <div class="card-body">
-        <div class="card-marca">${p.marca || ''}</div>
-        <div class="card-nombre">${p.nombre}</div>
-        ${clicksBadge}
-        <div class="card-pills">${pills || '<span style="font-size:12px;color:#444">Sin precios</span>'}</div>
-      </div>
-    </div>`;
-  }).join('');
+
+  // Mostrar solo primera pagina
+  const visible = filtered.slice(0, PAGE_SIZE);
+  g.innerHTML = visible.map(cardHTML).join('');
+  updateLoadMore();
 };
+
+window.loadMore = () => {
+  currentPage++;
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const end   = currentPage * PAGE_SIZE;
+  const chunk = filtered.slice(start, end);
+  const g = document.getElementById('grid');
+  // Agregar las nuevas cards al final
+  chunk.forEach(p => {
+    const div = document.createElement('div');
+    div.innerHTML = cardHTML(p);
+    g.appendChild(div.firstElementChild);
+  });
+  updateLoadMore();
+};
+
+function updateLoadMore() {
+  const shown = Math.min(currentPage * PAGE_SIZE, filtered.length);
+  const total = filtered.length;
+  const wrap  = document.getElementById('load-more-wrap');
+  const info  = document.getElementById('load-more-info');
+  if (total > PAGE_SIZE && shown < total) {
+    wrap.style.display = 'flex';
+    info.textContent   = `Mostrando ${shown} de ${total}`;
+  } else {
+    wrap.style.display = 'none';
+  }
+}
 
 window.setG = btn => {
   document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active'); gF = btn.dataset.g; renderGrid();
+  btn.classList.add('active');
+  gF = btn.dataset.g;
+  renderGrid();
 };
 
 window.clearFilters = () => {
-  document.getElementById('q').value = '';
+  document.getElementById('q').value        = '';
   document.getElementById('q-mobile').value = '';
-  document.getElementById('sort').value = 'relevancia';
+  document.getElementById('sort').value     = 'relevancia';
+  const sm = document.getElementById('sort-mobile');
+  if (sm) sm.value = 'relevancia';
   document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
   document.querySelector('.ftab').classList.add('active');
-  gF = ''; renderGrid();
+  gF = '';
+  renderGrid();
 };
 
 window.openModal = id => {
   const p = all.find(x => x.id === id);
   if (!p) return;
   modalData = p;
-
-  // Incrementar clicks en Firestore (en background, no bloquea el modal)
   updateDoc(doc(db, 'perfumes', id), { clicks: increment(1) })
-    .then(() => {
-      // Actualizar el contador local para que el sort sea inmediato
-      const local = all.find(x => x.id === id);
-      if (local) local.clicks = (local.clicks || 0) + 1;
-    });
-
+    .then(() => { const local = all.find(x => x.id === id); if (local) local.clicks = (local.clicks || 0) + 1; });
   document.getElementById('modal-img').innerHTML = p.imagen
     ? `<img src="${p.imagen}" alt="${p.nombre}">`
     : '<div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>';
   document.getElementById('modal-nombre').textContent = p.nombre;
-  document.getElementById('modal-marca').textContent = p.marca || '';
-  document.getElementById('modal-desc').textContent = p.descripcion || 'Sin descripción disponible.';
-  const sizes = Object.entries(p.precios || {}).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
+  document.getElementById('modal-marca').textContent  = p.marca || '';
+  document.getElementById('modal-desc').textContent   = p.descripcion || 'Sin descripci\u00f3n disponible.';
+  const sizes   = Object.entries(p.precios || {}).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
   const pillsEl = document.getElementById('modal-pills');
   if (sizes.length) {
     pillsEl.innerHTML = sizes.map(([k, v], i) =>
@@ -143,14 +189,17 @@ window.closeModal = e => {
 };
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { document.getElementById('modal').classList.remove('open'); document.body.style.overflow = ''; }
+  if (e.key === 'Escape') {
+    document.getElementById('modal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
 });
 
 window.pedirModal = () => {
   if (!modalData) return;
   const sel = document.querySelector('.mpill.sel');
   const msg = sel
-    ? `Hola! Me interesa un decant de:\n*${modalData.marca || ''} - ${modalData.nombre}*\nTamaño: ${sel.dataset.size}ml\nPrecio: $${sel.dataset.price} MXN`
+    ? `Hola! Me interesa un decant de:\n*${modalData.marca || ''} - ${modalData.nombre}*\nTama\u00f1o: ${sel.dataset.size}ml\nPrecio: $${sel.dataset.price} MXN`
     : `Hola! Me interesa el decant de:\n*${modalData.marca || ''} - ${modalData.nombre}*`;
   window.open(`https://wa.me/526648162623?text=${encodeURIComponent(msg)}`, '_blank');
 };
