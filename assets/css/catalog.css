@@ -801,28 +801,7 @@ header {
     color: #000;
 }
 
-/* Botón agregar al pedido en modal */
-.btn-add-cart {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    padding: 14px;
-    background: #25D366;
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 600;
-    transition: background 0.15s;
-}
-
-.btn-add-cart:hover {
-    background: #1db954;
-}
-
-/* Controles qty en modal */
+/* ── Modal: controles qty ── */
 .modal-qty-controls {
     display: flex;
     align-items: center;
@@ -831,6 +810,7 @@ header {
     border-radius: 12px;
     overflow: hidden;
     width: 100%;
+    margin-bottom: 12px;
 }
 
 .mqty-btn {
@@ -864,6 +844,37 @@ header {
     color: #e8e6e1;
 }
 
+/* ── Modal: botón agregar al pedido (dorado/outline) ── */
+.btn-add-cart {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 13px 14px;
+    background: rgba(201, 168, 76, 0.1);
+    color: #c9a84c;
+    border: 1.5px solid rgba(201, 168, 76, 0.45);
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    transition: background 0.15s, border-color 0.15s;
+    margin-bottom: 10px;
+}
+
+.btn-add-cart:hover {
+    background: rgba(201, 168, 76, 0.18);
+    border-color: rgba(201, 168, 76, 0.7);
+}
+
+.btn-add-cart:disabled {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.08);
+    color: #444;
+    cursor: not-allowed;
+}
+
+/* ── Modal: botón WhatsApp directo (verde sólido) ── */
 .btn-wa-modal {
     width: 100%;
     display: flex;
@@ -888,6 +899,26 @@ header {
     background: #1e2128;
     color: #444;
     cursor: not-allowed;
+}
+
+/* ── Modal: separador entre botones ── */
+.modal-btn-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    color: #444;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.modal-btn-divider::before,
+.modal-btn-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.07);
 }
 
 /* ============================================
@@ -1059,74 +1090,78 @@ header {
     margin-top: 2px;
 }
 
+/* ── Drawer: controles de cantidad ── */
 .cart-item-controls {
     display: flex;
     align-items: center;
-    gap: 6px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    overflow: hidden;
     flex-shrink: 0;
 }
 
 .cart-qty-btn {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.1);
+    width: 34px;
+    height: 34px;
+    background: transparent;
+    border: none;
     color: #aaa;
-    font-size: 16px;
+    font-size: 17px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.15s;
+    transition: background 0.15s, color 0.15s;
     line-height: 1;
 }
 
 .cart-qty-btn:hover:not(:disabled) {
     background: rgba(201,168,76,0.15);
-    border-color: rgba(201,168,76,0.3);
     color: #c9a84c;
 }
 
 .cart-qty-btn:disabled {
-    opacity: 0.3;
+    opacity: 0.25;
     cursor: not-allowed;
 }
 
 .cart-qty-num {
     font-size: 14px;
     font-weight: 700;
-    min-width: 22px;
+    min-width: 28px;
     text-align: center;
+    color: #e8e6e1;
+    border-left: 1px solid rgba(255,255,255,0.08);
+    border-right: 1px solid rgba(255,255,255,0.08);
+    line-height: 34px;
 }
 
 /* Botón trash (qty=1) */
 .cart-qty-btn.is-trash {
-    color: #e53935;
-    border-color: rgba(229, 57, 53, 0.3);
+    color: #e06060;
 }
 
 .cart-qty-btn.is-trash:hover {
     background: rgba(229, 57, 53, 0.15);
-    border-color: rgba(229, 57, 53, 0.5);
     color: #e53935;
 }
 
-/* Modo confirmar */
+/* Modo confirmar eliminar */
 .cart-qty-btn.confirming {
     background: #e53935 !important;
-    border-color: #e53935 !important;
     color: #fff !important;
     width: auto;
-    padding: 0 8px;
+    padding: 0 10px;
     gap: 4px;
     font-size: 11px;
-    font-weight: 600;
-    min-width: 64px;
+    font-weight: 700;
+    min-width: 68px;
+    border-radius: 0;
 }
 
 .cart-qty-btn.confirming span {
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 /* Footer carrito */
@@ -1190,14 +1225,14 @@ header {
     background: transparent;
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 12px;
-    color: #666;
+    color: #555;
     font-size: 13px;
     transition: all 0.15s;
 }
 
 .btn-cart-clear:hover {
     border-color: rgba(229,57,53,0.4);
-    color: #e53935;
+    color: #e06060;
 }
 
 .btn-cart-clear.confirming {
