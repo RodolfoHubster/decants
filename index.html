@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="./assets/css/catalog.css">
   <style>
-    /* ── Controles qty en modal ───────────────────── */
+    /* ── Controles qty modal ───────────────── */
     .modal-qty-controls {
       display:flex; align-items:center; justify-content:center;
       gap:0; margin-bottom:10px;
@@ -19,7 +19,7 @@
       width:48px; height:46px; font-size:22px; font-weight:300;
       background:transparent; border:none; color:#c9a84c;
       display:flex; align-items:center; justify-content:center;
-      transition:background .15s; flex-shrink:0;
+      transition:background .15s; flex-shrink:0; cursor:pointer;
     }
     .mqty-btn:hover:not(:disabled) { background:rgba(201,168,76,.18); }
     .mqty-btn:disabled { color:#444; cursor:not-allowed; }
@@ -28,21 +28,130 @@
       color:#e8e6e1; border-left:1px solid rgba(201,168,76,.2);
       border-right:1px solid rgba(201,168,76,.2); padding:0 8px;
     }
-    /* ── Confirmar eliminar en drawer ─────────────── */
-    .cart-item-remove.confirming {
-      background:rgba(255,60,60,.15);
-      border:1px solid rgba(255,60,60,.5);
-      color:#ff6060;
-      border-radius:8px;
-      width:auto; padding:0 8px;
-      font-size:11px; font-weight:700;
-      gap:4px; display:flex; align-items:center;
-      animation:shake .3s ease;
+
+    /* ── Toast de Deshacer ─────────────────── */
+    #undo-toast {
+      position:fixed; bottom:88px; left:50%; transform:translateX(-50%) translateY(20px);
+      background:#1a1a1a; border:1px solid rgba(201,168,76,.5);
+      color:#e8e6e1; border-radius:14px; padding:12px 16px;
+      display:flex; align-items:center; gap:12px;
+      font-size:13px; font-weight:500;
+      box-shadow:0 8px 32px rgba(0,0,0,.6);
+      opacity:0; pointer-events:none;
+      transition:opacity .25s, transform .25s;
+      z-index:9999; white-space:nowrap;
+      max-width:calc(100vw - 32px);
     }
-    @keyframes shake {
-      0%,100%{transform:translateX(0)}
-      25%{transform:translateX(-3px)}
-      75%{transform:translateX(3px)}
+    #undo-toast.show {
+      opacity:1; pointer-events:auto;
+      transform:translateX(-50%) translateY(0);
+    }
+    #undo-toast #undo-msg {
+      overflow:hidden; text-overflow:ellipsis; max-width:220px;
+    }
+    #undo-btn {
+      background:rgba(201,168,76,.18); border:1px solid rgba(201,168,76,.45);
+      color:#c9a84c; border-radius:8px; padding:6px 14px;
+      font-size:12px; font-weight:700; cursor:pointer;
+      white-space:nowrap; transition:background .15s;
+      flex-shrink:0;
+    }
+    #undo-btn:hover { background:rgba(201,168,76,.32); }
+
+    /* ── Toast normal ──────────────────────── */
+    #toast {
+      position:fixed; bottom:160px; left:50%; transform:translateX(-50%) translateY(10px);
+      background:#1a1a1a; color:#e8e6e1;
+      border:1px solid rgba(201,168,76,.3);
+      border-radius:10px; padding:10px 20px;
+      font-size:13px; font-weight:500;
+      opacity:0; pointer-events:none;
+      transition:opacity .2s, transform .2s;
+      z-index:10000; white-space:nowrap;
+      max-width:calc(100vw - 32px);
+      text-align:center;
+    }
+    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+    /* ── Cart drawer responsive ────────────── */
+    @media (max-width:600px) {
+      .cart-drawer {
+        width:100% !important;
+        max-width:100% !important;
+        border-radius:20px 20px 0 0 !important;
+        bottom:0 !important; top:auto !important;
+        height:88vh !important;
+        right:0 !important;
+        transform:translateY(100%) !important;
+        transition:transform .3s cubic-bezier(.4,0,.2,1) !important;
+      }
+      .cart-drawer.open {
+        transform:translateY(0) !important;
+      }
+      .cart-header {
+        padding:16px 16px 12px !important;
+      }
+      .cart-header::before {
+        content:'';
+        display:block;
+        width:40px; height:4px;
+        background:rgba(255,255,255,.15);
+        border-radius:2px;
+        margin:0 auto 12px;
+      }
+      .cart-item {
+        padding:10px 12px !important;
+        gap:10px !important;
+      }
+      .cart-item-img {
+        width:52px !important;
+        height:52px !important;
+        flex-shrink:0;
+      }
+      .cart-item-img img {
+        width:100% !important;
+        height:100% !important;
+        object-fit:cover !important;
+        border-radius:8px !important;
+      }
+      .cart-item-info {
+        flex:1;
+        min-width:0;
+      }
+      .cart-item-nombre {
+        font-size:13px !important;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+      }
+      .cart-item-marca { font-size:11px !important; }
+      .cart-item-size  { font-size:12px !important; }
+      .cart-item-controls {
+        display:flex;
+        align-items:center;
+        gap:4px;
+        flex-shrink:0;
+      }
+      .cart-qty-btn {
+        width:34px !important;
+        height:34px !important;
+        font-size:18px !important;
+      }
+      .cart-qty-num { font-size:14px !important; min-width:20px; text-align:center; }
+      .cart-footer {
+        padding:14px 16px !important;
+        gap:10px !important;
+      }
+      .btn-cart-wa {
+        font-size:14px !important;
+        padding:14px !important;
+      }
+      .btn-cart-clear {
+        font-size:13px !important;
+        padding:11px !important;
+      }
+      #undo-toast { bottom:72px; }
+      #toast       { bottom:140px; }
     }
   </style>
 </head>
@@ -169,7 +278,6 @@
       <div class="modal-desc" id="modal-desc"></div>
       <div class="modal-sizes-label">Elige tu presentación</div>
       <div class="modal-pills" id="modal-pills"></div>
-      <!-- Wrapper dinámico: botón normal o controles [ - ] N [ + ] -->
       <div id="modal-cart-wrapper">
         <button class="btn-add-cart" id="modal-btn-cart" onclick="addToCart()">
           <i class="bi bi-bag-plus"></i> Agregar al pedido
@@ -188,7 +296,7 @@
 <div class="cart-drawer" id="cart-drawer">
   <div class="cart-header">
     <div class="cart-title"><i class="bi bi-bag"></i> Tu pedido</div>
-    <button class="btn-close" onclick="closeCart()" aria-label="Cerrar pedido">
+    <button class="btn-close" id="btn-cart-close" onclick="closeCart()" aria-label="Cerrar pedido">
       <i class="bi bi-x-lg"></i>
     </button>
   </div>
@@ -209,7 +317,7 @@
     <button class="btn-cart-wa" onclick="sendCartWA()">
       <i class="bi bi-whatsapp"></i> Enviar pedido por WhatsApp
     </button>
-    <button class="btn-cart-clear" onclick="clearCart()">
+    <button class="btn-cart-clear" id="btn-cart-clear" onclick="clearCart()">
       <i class="bi bi-trash"></i> Limpiar pedido
     </button>
   </div>
