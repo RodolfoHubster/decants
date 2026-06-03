@@ -5,20 +5,65 @@ import { addItem, decrementItem, removeItem, clearCart as pureCleart,
          saveCart, loadCart, clearSavedCart, cartExpiresInMinutes }
   from './cart.js';
 
-// ── Auth ──────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────
 const adminBtn = document.getElementById('btn-admin');
 onAuthStateChanged(auth, user => {
   adminBtn.href = user ? './admin/dashboard.html' : './login.html';
   document.getElementById('btn-admin-label').textContent = user ? 'Dashboard' : 'Admin';
 });
 
-// ── Estado global ─────────────────────────────────────
+// ── Estado global ─────────────────────────────────
 const PAGE_SIZE = 10;
 let all = [], gF = '', modalData = null;
 let currentPage = 1, filtered = [];
-let cart = loadCart(); // ← restaurar desde localStorage al iniciar
+let cart = loadCart();
 
-// ── Helpers ───────────────────────────────────────────
+// ── Undo stack ────────────────────────────────────
+// Cada entrada: { cart: [...], label: 'Bleu de Chanel 5ml eliminado' }
+let undoStack = [];
+let undoTimer = null;
+const UNDO_TIMEOUT = 5000; // ms que aparece el botón Deshacer
+
+function pushUndo(prevCart, label) {
+  undoStack.push({ cart: prevCart, label });
+  // Solo guardamos el último estado
+  if (undoStack.length > 1) undoStack.shift();
+  showUndoToast(label);
+}
+
+function showUndoToast(label) {
+  clearTimeout(undoTimer);
+  let t = document.getElementById('undo-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'undo-toast';
+    t.innerHTML = `<span id="undo-msg"></span><button id="undo-btn" onclick="undoDelete()">Deshacer</button>`;
+    document.body.appendChild(t);
+  }
+  document.getElementById('undo-msg').textContent = label;
+  t.classList.add('show');
+  undoTimer = setTimeout(() => {
+    t.classList.remove('show');
+    undoStack = [];
+  }, UNDO_TIMEOUT);
+}
+
+window.undoDelete = () => {
+  if (!undoStack.length) return;
+  const { cart: prev } = undoStack.pop();
+  cart = prev;
+  persistCart();
+  updateCartBadge();
+  renderCartDrawer();
+  patchGridBadges();
+  if (modalData) syncModalCartBtn();
+  const t = document.getElementById('undo-toast');
+  if (t) t.classList.remove('show');
+  clearTimeout(undoTimer);
+  showToast('↩ Acción deshecha');
+};
+
+// ── Helpers ───────────────────────────────────────
 function minPrecio(p) {
   const vals = Object.values(p.precios || {}).map(Number).filter(v => v > 0);
   return vals.length ? Math.min(...vals) : 9999;
@@ -29,7 +74,7 @@ window.syncMobileSearch = () => {
   renderGrid();
 };
 
-// ── Skeletons ─────────────────────────────────────────
+// ── Skeletons ─────────────────────────────────────
 function showSkeletons() {
   document.getElementById('grid').innerHTML = Array(8).fill(`
     <div class="skel-card">
@@ -42,14 +87,13 @@ function showSkeletons() {
     </div>`).join('');
 }
 
-// ── Load data ─────────────────────────────────────────
+// ── Load data ─────────────────────────────────────
 async function load() {
   showSkeletons();
   const snap = await getDocs(query(collection(db, 'perfumes'), where('activo', '==', true)));
   all = [];
   snap.forEach(d => all.push({ id: d.id, ...d.data() }));
   renderGrid();
-  // Mostrar toast si se restauró un carrito guardado
   if (cart.length) {
     const mins = cartExpiresInMinutes();
     showToast(`🛒 Pedido restaurado (${cart.length} item${cart.length > 1 ? 's' : ''})${mins ? ` · expira en ${mins} min` : ''}`);
@@ -57,12 +101,12 @@ async function load() {
   }
 }
 
-// ── Card HTML ─────────────────────────────────────────
+// ── Card HTML ─────────────────────────────────────
 function cardHTML(p) {
-  const pr     = p.precios || {};
-  const sizes  = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
-  const pills  = sizes.map(([k, v]) => `<div class="cpill">${k}ml — $${v}</div>`).join('');
-  const units  = cart.filter(i => i.id === p.id).reduce((s, i) => s + i.qty, 0);
+  const pr    = p.precios || {};
+  const sizes = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
+  const pills = sizes.map(([k, v]) => `<div class="cpill">${k}ml — $${v}</div>`).join('');
+  const units = cart.filter(i => i.id === p.id).reduce((s, i) => s + i.qty, 0);
   return `<div class="pcard" onclick="openModal('${p.id}')" data-id="${p.id}">
     <div class="card-img">
       ${p.imagen
@@ -78,7 +122,7 @@ function cardHTML(p) {
   </div>`;
 }
 
-// ── Render grid (SOLO al buscar/filtrar/ordenar — resetea paginación) ──
+// ── Render grid ───────────────────────────────────
 window.renderGrid = () => {
   currentPage = 1;
   const q    = document.getElementById('q').value.toLowerCase().trim();
@@ -113,7 +157,7 @@ window.renderGrid = () => {
   updateLoadMore();
 };
 
-// ── Patch badges in-place sin destruir el grid ───────────────────────────────
+// ── Patch badges in-place ─────────────────────────
 function patchGridBadges() {
   const cards = document.querySelectorAll('.pcard[data-id]');
   cards.forEach(card => {
@@ -124,9 +168,8 @@ function patchGridBadges() {
     let badge = img.querySelector('.card-in-cart');
     if (units > 0) {
       const html = `<i class="bi bi-bag-check-fill"></i>${units > 1 ? ` <span>${units}</span>` : ''}`;
-      if (badge) {
-        badge.innerHTML = html;
-      } else {
+      if (badge) { badge.innerHTML = html; }
+      else {
         badge = document.createElement('div');
         badge.className = 'card-in-cart';
         badge.innerHTML = html;
@@ -138,16 +181,13 @@ function patchGridBadges() {
   });
 }
 
-// ── Guardar carrito tras cada cambio ─────────────────────────────────────────
+// ── Persistir carrito ─────────────────────────────
 function persistCart() {
-  if (cart.length) {
-    saveCart(cart);
-  } else {
-    clearSavedCart();
-  }
+  if (cart.length) saveCart(cart);
+  else clearSavedCart();
 }
 
-// ── Cargar más ────────────────────────────────────────
+// ── Cargar más ────────────────────────────────────
 window.loadMore = () => {
   currentPage++;
   const chunk = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -168,7 +208,7 @@ function updateLoadMore() {
   }
 }
 
-// ── Filtros ───────────────────────────────────────────
+// ── Filtros ───────────────────────────────────────
 window.setG = btn => {
   document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active'); gF = btn.dataset.g; renderGrid();
@@ -184,7 +224,7 @@ window.clearFilters = () => {
   gF = ''; renderGrid();
 };
 
-// ── Modal ─────────────────────────────────────────────
+// ── Modal ─────────────────────────────────────────
 window.openModal = id => {
   const p = all.find(x => x.id === id);
   if (!p) return;
@@ -213,7 +253,6 @@ window.openModal = id => {
   document.body.style.overflow = 'hidden';
 };
 
-// ── Botón modal ───────────────────────────────────────
 function syncModalCartBtn() {
   if (!modalData) return;
   const sel     = document.querySelector('.mpill.sel');
@@ -271,9 +310,20 @@ window.modalDecrement = () => {
   if (!modalData) return;
   const sel = document.querySelector('.mpill.sel');
   if (!sel) return;
-  const key = modalData.id + '-' + sel.dataset.size;
-  cart = decrementItem(cart, key);
-  persistCart();
+  const key  = modalData.id + '-' + sel.dataset.size;
+  const item = cart.find(i => i.key === key);
+  if (!item) return;
+  if (item.qty === 1) {
+    // eliminar con undo
+    const prev  = [...cart];
+    const label = `${item.nombre} ${item.size}ml eliminado`;
+    cart = removeItem(cart, key);
+    persistCart();
+    pushUndo(prev, label);
+  } else {
+    cart = decrementItem(cart, key);
+    persistCart();
+  }
   syncModalCartBtn();
   updateCartBadge();
   patchGridBadges();
@@ -307,7 +357,7 @@ window.pedirModal = () => {
   window.open(`https://wa.me/526648162623?text=${encodeURIComponent(msg)}`, '_blank');
 };
 
-// ── CARRITO ───────────────────────────────────────────
+// ── CARRITO ────────────────────────────────────────
 
 window.addToCart = () => {
   if (!modalData) return;
@@ -339,7 +389,6 @@ window.addToCart = () => {
   patchGridBadges();
 };
 
-// ── Incrementar qty desde el drawer ──
 window.incrementCartItem = key => {
   const idx = cart.findIndex(i => i.key === key);
   if (idx === -1) return;
@@ -347,8 +396,7 @@ window.incrementCartItem = key => {
   const { cart: newCart } = addItem(cart, cart[idx]);
   cart = newCart;
   persistCart();
-  // FIX: leer qty del nuevo estado, NO calcular +1
-  const newQty = cart.find(i => i.key === key).qty;
+  const newQty  = cart.find(i => i.key === key).qty;
   const qtyEl   = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
   const plusBtn = document.querySelector(`.cart-qty-btn[data-inc="${key}"]`);
   if (qtyEl)   qtyEl.textContent = newQty;
@@ -359,25 +407,21 @@ window.incrementCartItem = key => {
   if (modalData?.id === cart.find(i => i.key === key)?.id) syncModalCartBtn();
 };
 
-// ── Decrementar qty desde el drawer ──
 window.decrementCartItem = key => {
   const item = cart.find(i => i.key === key);
   if (!item) return;
 
   if (item.qty === 1) {
-    const decBtn = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
-    if (!decBtn) return;
-    if (decBtn.dataset.confirm === '1') {
-      cart = removeItem(cart, key);
-      persistCart();
-      updateCartBadge();
-      renderCartDrawer();
-      patchGridBadges();
-      if (modalData) syncModalCartBtn();
-      showToast('✓ Item eliminado del pedido');
-    } else {
-      _activateTrashConfirm(decBtn);
-    }
+    // eliminar con undo
+    const prev  = [...cart];
+    const label = `${item.nombre} ${item.size}ml eliminado`;
+    cart = removeItem(cart, key);
+    persistCart();
+    pushUndo(prev, label);
+    updateCartBadge();
+    renderCartDrawer();
+    patchGridBadges();
+    if (modalData) syncModalCartBtn();
     return;
   }
 
@@ -398,7 +442,6 @@ window.decrementCartItem = key => {
   if (modalData) syncModalCartBtn();
 };
 
-// ── Actualiza visualmente el botón − según qty ──
 function _updateDecBtn(key, qty) {
   const decBtn = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
   if (!decBtn) return;
@@ -406,155 +449,46 @@ function _updateDecBtn(key, qty) {
     decBtn.classList.add('is-trash');
     decBtn.innerHTML = '<i class="bi bi-trash"></i>';
     decBtn.setAttribute('aria-label', 'Eliminar item');
-    decBtn.dataset.confirm = '0';
   } else {
-    decBtn.classList.remove('is-trash', 'confirming');
+    decBtn.classList.remove('is-trash');
     decBtn.innerHTML = '−';
     decBtn.setAttribute('aria-label', 'Quitar uno');
-    decBtn.dataset.confirm = '0';
   }
 }
 
-// ── Activa modo confirmar en botón trash ──
-function _activateTrashConfirm(btn) {
-  document.querySelectorAll('.cart-qty-btn.is-trash.confirming').forEach(b => {
-    if (b !== btn) _resetDecBtn(b);
-  });
-  btn.dataset.confirm = '1';
-  btn.classList.add('confirming');
-  btn.innerHTML = '<i class="bi bi-trash-fill"></i><span>¿Quitar?</span>';
-  clearTimeout(btn._t);
-  btn._t = setTimeout(() => _resetDecBtn(btn), 2500);
-}
-
-function _resetDecBtn(btn) {
-  const key  = btn.dataset.dec;
-  const item = cart.find(i => i.key === key);
-  btn.dataset.confirm = '0';
-  btn.classList.remove('confirming');
-  if (item && item.qty === 1) {
-    btn.classList.add('is-trash');
-    btn.innerHTML = '<i class="bi bi-trash"></i>';
-    btn.setAttribute('aria-label', 'Eliminar item');
-  } else {
-    btn.classList.remove('is-trash');
-    btn.innerHTML = '−';
-    btn.setAttribute('aria-label', 'Quitar uno');
-  }
-  clearTimeout(btn._t);
-}
-
-// ── Event delegation en cart-list ──
+// ── Event delegation en cart-list ──────────────────
 document.addEventListener('DOMContentLoaded', () => {
   const cartList = document.getElementById('cart-list');
-
   cartList.addEventListener('click', e => {
     const incBtn = e.target.closest('.cart-qty-btn[data-inc]');
     if (incBtn) { incrementCartItem(incBtn.dataset.inc); return; }
-
     const decBtn = e.target.closest('.cart-qty-btn[data-dec]');
     if (decBtn) { decrementCartItem(decBtn.dataset.dec); return; }
-
-    const trash = e.target.closest('.cart-item-remove');
-    if (!trash) return;
-    const key = trash.dataset.key;
-    if (!key) return;
-    if (trash.dataset.confirm === '1') {
-      cart = removeItem(cart, key);
-      persistCart();
-      updateCartBadge();
-      renderCartDrawer();
-      patchGridBadges();
-      if (modalData) syncModalCartBtn();
-      showToast('✓ Item eliminado del pedido');
-    } else {
-      cartList.querySelectorAll('.cart-item-remove.confirming').forEach(b => {
-        if (b !== trash) _resetTrash(b);
-      });
-      trash.dataset.confirm = '1';
-      trash.classList.add('confirming');
-      trash.innerHTML = '<i class="bi bi-trash-fill"></i><span>¿Eliminar?</span>';
-      clearTimeout(trash._t);
-      trash._t = setTimeout(() => _resetTrash(trash), 2500);
-    }
   });
 });
 
-function _resetTrash(btn) {
-  btn.dataset.confirm = '0';
-  btn.classList.remove('confirming');
-  btn.innerHTML = '<i class="bi bi-trash"></i>';
-  clearTimeout(btn._t);
-}
-
-// ── Limpiar pedido ──
+// ── Limpiar pedido ────────────────────────────────
 window.clearCart = () => {
-  const btn = document.getElementById('btn-cart-clear');
-  if (!btn) { _doClearCart(); return; }
-
-  if (btn.dataset.confirm === '1') {
-    _doClearCart();
-    _resetClearBtn(btn);
-  } else {
-    btn.dataset.confirm = '1';
-    btn.classList.add('confirming');
-    btn.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> ¿Limpiar todo?';
-    clearTimeout(btn._t);
-    btn._t = setTimeout(() => _resetClearBtn(btn), 2800);
-  }
-};
-
-function _resetClearBtn(btn) {
-  btn.dataset.confirm = '0';
-  btn.classList.remove('confirming');
-  btn.innerHTML = '<i class="bi bi-trash"></i> Limpiar pedido';
-  clearTimeout(btn._t);
-}
-
-function _doClearCart() {
+  if (!cart.length) return;
+  const prev  = [...cart];
+  const label = `Pedido limpiado (${prev.length} item${prev.length > 1 ? 's' : ''})`;
   cart = pureCleart();
-  clearSavedCart(); // borrar localStorage también
+  clearSavedCart();
   updateCartBadge();
   renderCartDrawer();
   patchGridBadges();
   if (modalData) syncModalCartBtn();
-  showToast('✓ Pedido limpiado correctamente');
-}
-
-// ── Cerrar drawer ──
-window.closeCart = (force = false) => {
-  const drawer   = document.getElementById('cart-drawer');
-  const overlay  = document.getElementById('cart-overlay');
-  const btnClose = document.getElementById('btn-cart-close');
-
-  if (!force && cart.length > 0 && btnClose) {
-    if (btnClose.dataset.confirm === '1') {
-      _doCloseCart(drawer, overlay);
-      _resetCloseBtn(btnClose);
-    } else {
-      btnClose.dataset.confirm = '1';
-      btnClose.classList.add('confirming');
-      btnClose.textContent = '¿ Cerrar?';
-      clearTimeout(btnClose._t);
-      btnClose._t = setTimeout(() => _resetCloseBtn(btnClose), 2500);
-    }
-    return;
-  }
-  _doCloseCart(drawer, overlay);
+  pushUndo(prev, label);
 };
 
-function _resetCloseBtn(btn) {
-  btn.dataset.confirm = '0';
-  btn.classList.remove('confirming');
-  btn.innerHTML = '<i class="bi bi-x-lg"></i>';
-  clearTimeout(btn._t);
-}
-
-function _doCloseCart(drawer, overlay) {
+// ── Drawer ────────────────────────────────────────
+window.closeCart = () => {
+  const drawer  = document.getElementById('cart-drawer');
+  const overlay = document.getElementById('cart-overlay');
   drawer.classList.remove('open');
   overlay.classList.remove('open');
   document.body.style.overflow = '';
-}
+};
 
 window.toggleCart = () => {
   const drawer  = document.getElementById('cart-drawer');
@@ -570,22 +504,20 @@ window.toggleCart = () => {
 };
 
 function updateCartBadge() {
-  const badge = document.getElementById('cart-badge');
-  const fab   = document.getElementById('cart-fab');
-  const units = totalUnits(cart);
-  if (units > 0) {
-    badge.textContent = units;
-    badge.style.display = 'flex';
-    fab.classList.add('has-items');
-  } else {
-    badge.style.display = 'none';
-    fab.classList.remove('has-items');
-  }
+  const badge    = document.getElementById('cart-badge');
+  const fabBadge = document.getElementById('cart-badge-fab');
+  const fab      = document.getElementById('cart-fab');
+  const units    = totalUnits(cart);
+  [badge, fabBadge].forEach(b => {
+    if (!b) return;
+    b.textContent   = units;
+    b.style.display = units > 0 ? 'flex' : 'none';
+  });
+  if (fab) fab.classList.toggle('has-items', units > 0);
   const totalEl = document.getElementById('cart-total');
   if (totalEl) totalEl.textContent = '$' + calcTotal(cart) + ' MXN';
 }
 
-// ── Render drawer completo ──
 function renderCartDrawer() {
   const list  = document.getElementById('cart-list');
   const empty = document.getElementById('cart-empty');
@@ -613,7 +545,7 @@ function renderCartDrawer() {
         <div class="cart-item-size">${item.size}ml — <strong>$${item.price}</strong></div>
       </div>
       <div class="cart-item-controls">
-        <button class="cart-qty-btn ${item.qty === 1 ? 'is-trash' : ''}" data-dec="${item.key}" data-confirm="0"
+        <button class="cart-qty-btn ${item.qty === 1 ? 'is-trash' : ''}" data-dec="${item.key}"
           aria-label="${item.qty === 1 ? 'Eliminar item' : 'Quitar uno'}">
           ${item.qty === 1 ? '<i class="bi bi-trash"></i>' : '−'}
         </button>
@@ -629,7 +561,7 @@ function renderCartDrawer() {
 window.sendCartWA = () => {
   const url = buildWhatsAppURL(cart, '526648162623');
   if (url) {
-    clearSavedCart(); // pedido enviado = limpiar guardado
+    clearSavedCart();
     window.open(url, '_blank');
   }
 };
