@@ -9,7 +9,7 @@ if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display 
 
 let ventas = [], perfumes = [];
 
-// ── Cargar datos ─────────────────────────────────────────────────────────────
+// ── Cargar datos ──────────────────────────────────────────────────────────────
 async function loadAll() {
   const [vs, ps] = await Promise.all([
     getDocs(collection(db, 'ventas')),
@@ -92,7 +92,7 @@ window.renderTable = () => {
       <td><span class="badge-canal ${canalClass[canal]}">${canalLabel[canal]||canal}</span></td>
       <td><span class="badge-estado ${v.estado||'pendiente'}">${v.estado||'pendiente'}</span></td>
       <td><div style="display:flex;gap:6px">
-        <button class="btn-icon" onclick="editEstado('${v.id}','${v.estado||'pendiente'}')" title="Cambiar estado"><i class="bi bi-pencil-square"></i></button>
+        <button class="btn-icon" onclick="editEstado('${v.id}','${v.estado||'pendiente}')" title="Cambiar estado"><i class="bi bi-pencil-square"></i></button>
         <button class="btn-icon" onclick="del('${v.id}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
       </div></td>
     </tr>`;
@@ -178,20 +178,15 @@ window.guardarEstado = async () => {
 };
 
 window.del = async (id) => {
-  if (!confirm('¿Eliminar esta venta?')) return; 
+  if (!confirm('¿Eliminar esta venta?')) return;
   await deleteDoc(doc(db,'ventas',id));
   toast('Venta eliminada', 'info');
   loadAll();
 };
 
-// ── REGISTRO DEL DÍA (batch) ─────────────────────────────────────────────────
-let batchRows = [];   // [{ id, perfumeId, talla, cantidad, precio, cliente, estado, notas }]
+// ── REGISTRO DEL DÍA (batch) ──────────────────────────────────────────────────
+let batchRows = [];
 let batchRowCounter = 0;
-
-function perfumeOptsHtml() {
-  return '<option value="">— Perfume —</option>' +
-    perfumes.map(p => `<option value="${p.id}">${p.nombre}${p.marca ? ' · '+p.marca : ''}</option>`).join('');
-}
 
 function tallaOptsHtml(perfumeId) {
   if (!perfumeId) return '<option value="">— Talla —</option>';
@@ -202,48 +197,124 @@ function tallaOptsHtml(perfumeId) {
   return '<option value="">— Talla —</option>' + opts;
 }
 
-function renderBatchRow(row) {
-  const { rid, perfumeId, talla, cantidad, precio, cliente, estado, notas } = row;
-  const total = precio && cantidad ? `$${(+precio*(+cantidad||1)).toLocaleString('es-MX')}` : '—';
-  return `<tr data-rid="${rid}">
-    <td>
-      <select onchange="batchOnPerfume(${rid},this.value)">
-        ${perfumeOptsHtml().replace(`value="${perfumeId}"`, `value="${perfumeId}" selected`)}
-      </select>
-    </td>
-    <td>
-      <select id="brow-talla-${rid}" onchange="batchOnTalla(${rid},this)">
-        ${tallaOptsHtml(perfumeId).replace(`value="${talla}"`, `value="${talla}" selected`)}
-      </select>
-    </td>
-    <td class="td-cant">
-      <input type="number" min="1" value="${cantidad||1}" onchange="batchSet(${rid},'cantidad',this.value);batchRefreshTotal(${rid})">
-    </td>
-    <td class="td-precio">
-      <input type="number" min="0" id="brow-precio-${rid}" value="${precio||''}" placeholder="$" onchange="batchSet(${rid},'precio',this.value);batchRefreshTotal(${rid})">
-    </td>
-    <td class="td-total" id="brow-total-${rid}">${total}</td>
-    <td class="td-cliente">
-      <input type="text" value="${cliente||''}" placeholder="Cliente" onchange="batchSet(${rid},'cliente',this.value)">
-    </td>
-    <td class="td-estado">
-      <select onchange="batchSet(${rid},'estado',this.value)">
-        <option value="pagada"  ${estado==='pagada'  ?'selected':''}>Pagada ✅</option>
-        <option value="pendiente" ${estado==='pendiente'?'selected':''}>Pendiente ⏳</option>
-        <option value="cancelada" ${estado==='cancelada'?'selected':''}>Cancelada ❌</option>
-      </select>
-    </td>
-    <td class="td-notas">
-      <input type="text" value="${notas||''}" placeholder="Nota" onchange="batchSet(${rid},'notas',this.value)">
-    </td>
-    <td class="td-rm">
-      <button onclick="removeBatchRow(${rid})" title="Quitar"><i class="bi bi-trash"></i></button>
-    </td>
-  </tr>`;
+function buildBatchRowEl(row) {
+  const { rid, talla, cantidad, precio, cliente, estado, notas } = row;
+
+  const tr = document.createElement('tr');
+  tr.dataset.rid = rid;
+
+  // Celda perfume (picker personalizado)
+  const tdPerf = document.createElement('td');
+  const perfWrap = document.createElement('div');
+  tr.appendChild(tdPerf);
+  tdPerf.appendChild(perfWrap);
+
+  // Celda talla
+  const tdTalla = document.createElement('td');
+  const selTalla = document.createElement('select');
+  selTalla.id = `brow-talla-${rid}`;
+  selTalla.innerHTML = tallaOptsHtml('');
+  tdTalla.appendChild(selTalla);
+  tr.appendChild(tdTalla);
+
+  // Celda cantidad
+  const tdCant = document.createElement('td');
+  tdCant.className = 'td-cant';
+  const inCant = document.createElement('input');
+  inCant.type = 'number'; inCant.min = '1'; inCant.value = cantidad || 1;
+  inCant.oninput = () => { batchSet(rid,'cantidad',inCant.value); batchRefreshTotal(rid); };
+  tdCant.appendChild(inCant);
+  tr.appendChild(tdCant);
+
+  // Celda precio
+  const tdPrecio = document.createElement('td');
+  tdPrecio.className = 'td-precio';
+  const inPrecio = document.createElement('input');
+  inPrecio.type = 'number'; inPrecio.min = '0'; inPrecio.id = `brow-precio-${rid}`;
+  inPrecio.value = precio || ''; inPrecio.placeholder = '$';
+  inPrecio.oninput = () => { batchSet(rid,'precio',inPrecio.value); batchRefreshTotal(rid); };
+  tdPrecio.appendChild(inPrecio);
+  tr.appendChild(tdPrecio);
+
+  // Celda total
+  const tdTotal = document.createElement('td');
+  tdTotal.className = 'td-total'; tdTotal.id = `brow-total-${rid}`;
+  tdTotal.textContent = '—';
+  tr.appendChild(tdTotal);
+
+  // Celda cliente
+  const tdCliente = document.createElement('td');
+  tdCliente.className = 'td-cliente';
+  const inCliente = document.createElement('input');
+  inCliente.type = 'text'; inCliente.value = cliente || ''; inCliente.placeholder = 'Cliente';
+  inCliente.oninput = () => batchSet(rid,'cliente',inCliente.value);
+  tdCliente.appendChild(inCliente);
+  tr.appendChild(tdCliente);
+
+  // Celda estado
+  const tdEstado = document.createElement('td');
+  tdEstado.className = 'td-estado';
+  const selEstado = document.createElement('select');
+  selEstado.innerHTML = `
+    <option value="pagada"   ${estado==='pagada'    ?'selected':''}>Pagada ✅</option>
+    <option value="pendiente" ${estado==='pendiente'?'selected':''}>Pendiente ⏳</option>
+    <option value="cancelada" ${estado==='cancelada'?'selected':''}>Cancelada ❌</option>`;
+  selEstado.onchange = () => batchSet(rid,'estado',selEstado.value);
+  tdEstado.appendChild(selEstado);
+  tr.appendChild(tdEstado);
+
+  // Celda nota
+  const tdNota = document.createElement('td');
+  tdNota.className = 'td-notas';
+  const inNota = document.createElement('input');
+  inNota.type = 'text'; inNota.value = notas || ''; inNota.placeholder = 'Nota';
+  inNota.oninput = () => batchSet(rid,'notas',inNota.value);
+  tdNota.appendChild(inNota);
+  tr.appendChild(tdNota);
+
+  // Celda borrar
+  const tdRm = document.createElement('td');
+  tdRm.className = 'td-rm';
+  const btnRm = document.createElement('button');
+  btnRm.title = 'Quitar';
+  btnRm.innerHTML = '<i class="bi bi-trash"></i>';
+  btnRm.onclick = () => removeBatchRow(rid);
+  tdRm.appendChild(btnRm);
+  tr.appendChild(tdRm);
+
+  // Montar picker DESPUÉS de insertar en DOM
+  requestAnimationFrame(() => {
+    if (typeof window.buildPerfumePicker === 'function') {
+      window.buildPerfumePicker(perfWrap, perfumes, (p) => {
+        const r = batchRows.find(x => x.rid === rid);
+        if (!r) return;
+        r.perfumeId = p ? p.id : '';
+        r.talla = ''; r.precio = '';
+        selTalla.innerHTML = tallaOptsHtml(p ? p.id : '');
+        inPrecio.value = '';
+        tdTotal.textContent = '—';
+        // auto-seleccionar talla si solo hay una
+        selTalla.onchange = () => {
+          const opt = selTalla.selectedOptions[0];
+          r.talla = selTalla.value;
+          if (opt?.dataset.precio) {
+            r.precio = opt.dataset.precio;
+            inPrecio.value = opt.dataset.precio;
+          }
+          batchRefreshTotal(rid);
+        };
+        updateBatchResumen();
+      });
+    }
+  });
+
+  return tr;
 }
 
 function refreshBatchTable() {
-  document.getElementById('batch-tbody').innerHTML = batchRows.map(renderBatchRow).join('');
+  const tbody = document.getElementById('batch-tbody');
+  tbody.innerHTML = '';
+  batchRows.forEach(row => tbody.appendChild(buildBatchRowEl(row)));
   updateBatchResumen();
 }
 
@@ -256,47 +327,24 @@ function updateBatchResumen() {
 
 window.addBatchRow = () => {
   const rid = ++batchRowCounter;
-  batchRows.push({ rid, perfumeId:'', talla:'', cantidad:1, precio:'', cliente:'', estado:'pagada', notas:'' });
-  refreshBatchTable();
-  // scroll to new row
-  const tb = document.getElementById('batch-tbody');
-  tb.lastElementChild?.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  const row = { rid, perfumeId:'', talla:'', cantidad:1, precio:'', cliente:'', estado:'pagada', notas:'' };
+  batchRows.push(row);
+  const tbody = document.getElementById('batch-tbody');
+  tbody.appendChild(buildBatchRowEl(row));
+  updateBatchResumen();
+  tbody.lastElementChild?.scrollIntoView({ behavior:'smooth', block:'nearest' });
 };
 
 window.removeBatchRow = (rid) => {
   batchRows = batchRows.filter(r => r.rid !== rid);
-  refreshBatchTable();
+  document.querySelector(`#batch-tbody tr[data-rid="${rid}"]`)?.remove();
+  updateBatchResumen();
 };
 
 window.batchSet = (rid, field, value) => {
   const row = batchRows.find(r => r.rid === rid);
   if (row) row[field] = value;
   updateBatchResumen();
-};
-
-window.batchOnPerfume = (rid, perfumeId) => {
-  const row = batchRows.find(r => r.rid === rid);
-  if (!row) return;
-  row.perfumeId = perfumeId;
-  row.talla = ''; row.precio = '';
-  // update talla select in place
-  const tallaEl = document.getElementById(`brow-talla-${rid}`);
-  if (tallaEl) tallaEl.innerHTML = tallaOptsHtml(perfumeId);
-  document.getElementById(`brow-precio-${rid}`).value = '';
-  document.getElementById(`brow-total-${rid}`).textContent = '—';
-  updateBatchResumen();
-};
-
-window.batchOnTalla = (rid, sel) => {
-  const row = batchRows.find(r => r.rid === rid);
-  if (!row) return;
-  row.talla = sel.value;
-  const opt = sel.selectedOptions[0];
-  if (opt?.dataset.precio) {
-    row.precio = opt.dataset.precio;
-    document.getElementById(`brow-precio-${rid}`).value = opt.dataset.precio;
-  }
-  batchRefreshTotal(rid);
 };
 
 window.batchRefreshTotal = (rid) => {
@@ -309,13 +357,13 @@ window.batchRefreshTotal = (rid) => {
 };
 
 window.openDia = () => {
-  // fecha de hoy por defecto
   const hoy = new Date().toISOString().slice(0,10);
   document.getElementById('dia-fecha').value = hoy;
   document.getElementById('dia-nota-global').value = '';
   batchRows = []; batchRowCounter = 0;
-  refreshBatchTable();
-  // agregar 3 filas iniciales para arrancar rápido
+  document.getElementById('batch-tbody').innerHTML = '';
+  updateBatchResumen();
+  // 3 filas iniciales
   addBatchRow(); addBatchRow(); addBatchRow();
   document.getElementById('modal-dia').classList.add('open');
 };
@@ -326,16 +374,14 @@ window.closeDia = () => {
 };
 
 window.saveDia = async () => {
-  const fechaStr  = document.getElementById('dia-fecha').value;
+  const fechaStr   = document.getElementById('dia-fecha').value;
   const notaGlobal = document.getElementById('dia-nota-global').value.trim();
 
   if (!fechaStr) { toast('Pon la fecha del evento', 'error'); return; }
 
-  // Validar filas con perfume seleccionado
   const validas = batchRows.filter(r => r.perfumeId && r.talla && +r.precio > 0);
   if (!validas.length) { toast('Agrega al menos una venta con perfume, talla y precio', 'error'); return; }
 
-  // Convertir fecha a timestamp (mediodia local para evitar desfases de timezone)
   const [y,m,d] = fechaStr.split('-').map(Number);
   const fechaTs = new Date(y, m-1, d, 12, 0, 0).getTime();
 
@@ -356,8 +402,8 @@ window.saveDia = async () => {
         cantidad: +r.cantidad || 1,
         estado:   r.estado,
         canal:    'mercado',
-        cliente:  r.cliente.trim(),
-        notas:    [r.notas.trim(), notaGlobal].filter(Boolean).join(' | '),
+        cliente:  (r.cliente||'').trim(),
+        notas:    [r.notas?.trim(), notaGlobal].filter(Boolean).join(' | '),
         creadoEn: fechaTs
       });
     });
