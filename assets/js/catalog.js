@@ -4,6 +4,7 @@ import { addItem, decrementItem, removeItem, clearCart as pureCleart,
          calcTotal, totalUnits, buildWhatsAppURL, getItemQty, MAX_QTY,
          saveCart, loadCart, clearSavedCart, cartExpiresInMinutes }
   from './cart.js';
+import { perfumeURL, getSlugFromURL, findBySlug } from './slug.js';
 
 // ── Auth ──────────────────────────────────────────
 const adminBtn = document.getElementById('btn-admin');
@@ -47,10 +48,7 @@ window.undoDelete = () => {
   if (!undoStack.length) return;
   const { cart: prev } = undoStack.pop();
   cart = prev;
-  persistCart();
-  updateCartBadge();
-  renderCartDrawer();
-  patchGridBadges();
+  persistCart(); updateCartBadge(); renderCartDrawer(); patchGridBadges();
   if (modalData) syncModalCartBtn();
   const t = document.getElementById('undo-toast');
   if (t) t.classList.remove('show');
@@ -68,6 +66,38 @@ window.syncMobileSearch = () => {
   document.getElementById('q').value = document.getElementById('q-mobile').value;
   renderGrid();
 };
+
+// ── Meta tags OG dinámicos ────────────────────────
+function setMetaTags({ title, description, image, url }) {
+  const set = (sel, attr, val) => {
+    let el = document.querySelector(sel);
+    if (!el) { el = document.createElement('meta'); document.head.appendChild(el); }
+    el.setAttribute(attr, val);
+  };
+  document.title = title;
+  set('meta[property="og:title"]',       'content', title);
+  set('meta[property="og:description"]', 'content', description);
+  set('meta[property="og:image"]',       'content', image || 'https://fitoscents.com/assets/img/og-default.jpg');
+  set('meta[property="og:url"]',         'content', url || window.location.href);
+  set('meta[property="og:type"]',        'content', 'product');
+  set('meta[name="description"]',        'content', description);
+
+  // Añadir atributos al head si no existen
+  ['og:title','og:description','og:image','og:url','og:type'].forEach(prop => {
+    let el = document.querySelector(`meta[property="${prop}"]`);
+    if (el && !el.getAttribute('property')) el.setAttribute('property', prop);
+  });
+}
+
+function resetMetaTags() {
+  document.title = 'Fitoscents · Decants';
+  setMetaTags({
+    title:       'Fitoscents · Decants',
+    description: 'Decants 100% originales de perfumes de diseñador desde 2ml. Tijuana, B.C.',
+    image:       'https://fitoscents.com/assets/img/og-default.jpg',
+    url:         'https://fitoscents.com/'
+  });
+}
 
 // ── Skeletons ─────────────────────────────────────
 function showSkeletons() {
@@ -93,6 +123,18 @@ async function load() {
     const mins = cartExpiresInMinutes();
     showToast(`🛒 Pedido restaurado (${cart.length} item${cart.length > 1 ? 's' : ''})${mins ? ` · expira en ${mins} min` : ''}`);
     updateCartBadge();
+  }
+
+  // ── Deep link: abrir modal si la URL tiene slug ──
+  const slug = getSlugFromURL();
+  if (slug) {
+    const p = findBySlug(all, slug);
+    if (p) {
+      openModal(p.id);
+    } else {
+      // Slug no encontrado → regresar al inicio limpio
+      history.replaceState(null, '', '/');
+    }
   }
 }
 
@@ -219,6 +261,17 @@ window.openModal = id => {
   modalData = p;
   updateDoc(doc(db, 'perfumes', id), { clicks: increment(1) }).catch(() => {});
 
+  // Actualizar URL y meta tags
+  const url = perfumeURL(p);
+  history.pushState({ perfumeId: id }, '', url);
+  const precio = minPrecio(p);
+  setMetaTags({
+    title:       `${p.nombre}${p.marca ? ' · ' + p.marca : ''} — Fitoscents`,
+    description: `Decant original de ${p.nombre}${p.marca ? ' de ' + p.marca : ''} desde $${precio} MXN. ${p.descripcion || ''}`.trim(),
+    image:       p.imagen || '',
+    url:         'https://fitoscents.com' + url
+  });
+
   document.getElementById('modal-img').innerHTML = p.imagen
     ? `<img src="${p.imagen}" alt="${p.nombre}">`
     : '<div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>';
@@ -246,15 +299,12 @@ function syncModalCartBtn() {
   const sel     = document.querySelector('.mpill.sel');
   const wrapper = document.getElementById('modal-cart-wrapper');
   if (!wrapper) return;
-
   if (!sel) {
     wrapper.innerHTML = `<button class="btn-add-cart" onclick="addToCart()"><i class="bi bi-bag-plus"></i> Agregar al pedido</button>`;
     return;
   }
-
   const key = modalData.id + '-' + sel.dataset.size;
   const qty = getItemQty(cart, key);
-
   if (qty === 0) {
     wrapper.innerHTML = `<button class="btn-add-cart" onclick="addToCart()"><i class="bi bi-bag-plus"></i> Agregar al pedido</button>`;
   } else if (qty >= MAX_QTY) {
@@ -299,29 +349,49 @@ window.selPill = btn => {
   btn.classList.add('sel'); syncModalCartBtn();
 };
 
-window.closeModal = e => {
-  if (e && e.target !== document.getElementById('modal')) return;
+// Al cerrar modal → restaurar URL y meta tags
+function doCloseModal() {
   document.getElementById('modal').classList.remove('open');
   document.body.style.overflow = '';
+  modalData = null;
+  history.pushState(null, '', '/');
+  resetMetaTags();
+}
+
+window.closeModal = e => {
+  if (e && e.target !== document.getElementById('modal')) return;
+  doCloseModal();
 };
 
+// Botón X del modal llama a doCloseModal directamente
+window.doCloseModal = doCloseModal;
+
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    document.getElementById('modal').classList.remove('open');
+  if (e.key === 'Escape') doCloseModal();
+});
+
+// Botón atrás del navegador cierra modal si estaba abierto
+window.addEventListener('popstate', () => {
+  const modal = document.getElementById('modal');
+  if (modal && modal.classList.contains('open')) {
+    modal.classList.remove('open');
     document.body.style.overflow = '';
+    modalData = null;
+    resetMetaTags();
   }
 });
 
 window.pedirModal = () => {
   if (!modalData) return;
   const sel = document.querySelector('.mpill.sel');
+  const url = 'https://fitoscents.com' + perfumeURL(modalData);
   const msg = sel
-    ? `Hola! Me interesa un decant de:\n*${modalData.marca || ''} - ${modalData.nombre}*\nTamaño: ${sel.dataset.size}ml\nPrecio: $${sel.dataset.price} MXN`
-    : `Hola! Me interesa el decant de:\n*${modalData.marca || ''} - ${modalData.nombre}*`;
+    ? `Hola! Me interesa un decant de:\n*${modalData.marca || ''} - ${modalData.nombre}*\nTamaño: ${sel.dataset.size}ml\nPrecio: $${sel.dataset.price} MXN\n${url}`
+    : `Hola! Me interesa el decant de:\n*${modalData.marca || ''} - ${modalData.nombre}*\n${url}`;
   window.open(`https://wa.me/526648162623?text=${encodeURIComponent(msg)}`, '_blank');
 };
 
-// ── CARRITO ────────────────────────────────────────
+// ── CARRITO ───────────────────────────────────────
 
 window.addToCart = () => {
   if (!modalData) return;
@@ -412,7 +482,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ── Limpiar pedido ────────────────────────────────
 window.clearCart = () => {
   if (!cart.length) return;
   const prev  = [...cart];
@@ -426,26 +495,20 @@ window.clearCart = () => {
 
 // ── Drawer ────────────────────────────────────────
 window.closeCart = () => {
-  const drawer  = document.getElementById('cart-drawer');
-  const overlay = document.getElementById('cart-overlay');
-  drawer.classList.remove('open');
-  overlay.classList.remove('open');
-  document.body.classList.remove('cart-open');  // muestra WA FAB de nuevo
+  document.getElementById('cart-drawer').classList.remove('open');
+  document.getElementById('cart-overlay').classList.remove('open');
+  document.body.classList.remove('cart-open');
   document.body.style.overflow = '';
 };
 
 window.toggleCart = () => {
-  const drawer  = document.getElementById('cart-drawer');
-  const overlay = document.getElementById('cart-overlay');
-  if (drawer.classList.contains('open')) {
-    closeCart();
-  } else {
-    drawer.classList.add('open');
-    overlay.classList.add('open');
-    document.body.classList.add('cart-open');   // oculta WA FAB
-    document.body.style.overflow = 'hidden';
-    renderCartDrawer();
-  }
+  const drawer = document.getElementById('cart-drawer');
+  if (drawer.classList.contains('open')) { closeCart(); return; }
+  drawer.classList.add('open');
+  document.getElementById('cart-overlay').classList.add('open');
+  document.body.classList.add('cart-open');
+  document.body.style.overflow = 'hidden';
+  renderCartDrawer();
 };
 
 function updateCartBadge() {
@@ -502,7 +565,6 @@ function renderCartDrawer() {
     </div>`).join('');
 
   document.getElementById('cart-total').textContent = '$' + calcTotal(cart) + ' MXN';
-  // scroll al top cada vez que se renderiza
   if (body) body.scrollTop = 0;
 }
 
