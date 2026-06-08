@@ -1,44 +1,49 @@
 /**
  * slug.js — utilidades de URL por perfume
- * Genera slugs y construye/lee URLs limpias.
+ * Usa hash routing (#/perfumes/slug) para compatibilidad con GitHub Pages.
  */
 
 /**
  * toSlug('Jean Lowe Summer Vibes') → 'jean-lowe-summer-vibes'
- * Elimina acentos, caracteres especiales y espacios.
  */
 export function toSlug(str) {
   return (str || '')
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')   // quita tildes
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')      // solo letras, números, guión
+    .replace(/[^a-z0-9\s-]/g, '')
     .trim()
-    .replace(/\s+/g, '-')              // espacios → guión
-    .replace(/-+/g, '-');              // guiones múltiples → uno
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
 }
 
 /**
- * perfumeURL(perfume) → '/perfumes/hawas-london'
- * Combina marca + nombre para el slug.
+ * perfumeURL(p) → '#/perfumes/hawas-london'
  */
 export function perfumeURL(p) {
   const base = [p.marca, p.nombre].filter(Boolean).join(' ');
-  return '/perfumes/' + toSlug(base);
+  return '#/perfumes/' + toSlug(base);
 }
 
 /**
- * getSlugFromURL() → 'hawas-london' | null
- * Lee el slug actual de window.location.pathname.
+ * perfumeFullURL(p) → 'https://rodolfohubster.github.io/decants/#/perfumes/hawas-london'
  */
-export function getSlugFromURL() {
-  const match = window.location.pathname.match(/^\/perfumes\/([^\/]+)/);
+export function perfumeFullURL(p) {
+  const origin = window.location.origin + window.location.pathname.replace(/\/$/, '');
+  return origin + perfumeURL(p);
+}
+
+/**
+ * getSlugFromHash() → 'hawas-london' | null
+ * Lee el slug del hash actual: #/perfumes/hawas-london
+ */
+export function getSlugFromHash() {
+  const match = window.location.hash.match(/^#\/perfumes\/([^\/]+)/);
   return match ? match[1] : null;
 }
 
 /**
  * findBySlug(all, slug) → perfume | undefined
- * Busca en el arreglo 'all' el perfume cuyo slug coincida.
  */
 export function findBySlug(all, slug) {
   if (!slug) return undefined;

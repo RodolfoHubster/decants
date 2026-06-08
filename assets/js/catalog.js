@@ -4,7 +4,7 @@ import { addItem, decrementItem, removeItem, clearCart as pureCleart,
          calcTotal, totalUnits, buildWhatsAppURL, getItemQty, MAX_QTY,
          saveCart, loadCart, clearSavedCart, cartExpiresInMinutes }
   from './cart.js';
-import { perfumeURL, getSlugFromURL, findBySlug } from './slug.js';
+import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug } from './slug.js';
 
 // ── Auth ──────────────────────────────────────────
 const adminBtn = document.getElementById('btn-admin');
@@ -69,24 +69,20 @@ window.syncMobileSearch = () => {
 
 // ── Meta tags OG dinámicos ────────────────────────
 function setMetaTags({ title, description, image, url }) {
-  const set = (sel, attr, val) => {
+  const set = (sel, attr, prop, val) => {
     let el = document.querySelector(sel);
-    if (!el) { el = document.createElement('meta'); document.head.appendChild(el); }
+    if (!el) { el = document.createElement('meta'); if (prop) el.setAttribute(prop === 'name' ? 'name' : 'property', prop === 'name' ? sel.match(/name="([^"]+)"/)?.[1] || '' : sel.match(/property="([^"]+)"/)?.[1] || ''); document.head.appendChild(el); }
     el.setAttribute(attr, val);
   };
   document.title = title;
-  set('meta[property="og:title"]',       'content', title);
-  set('meta[property="og:description"]', 'content', description);
-  set('meta[property="og:image"]',       'content', image || 'https://fitoscents.com/assets/img/og-default.jpg');
-  set('meta[property="og:url"]',         'content', url || window.location.href);
-  set('meta[property="og:type"]',        'content', 'product');
-  set('meta[name="description"]',        'content', description);
-
-  // Añadir atributos al head si no existen
-  ['og:title','og:description','og:image','og:url','og:type'].forEach(prop => {
-    let el = document.querySelector(`meta[property="${prop}"]`);
-    if (el && !el.getAttribute('property')) el.setAttribute('property', prop);
-  });
+  const og = (prop, val) => { let el = document.querySelector(`meta[property="${prop}"]`); if (!el) { el = document.createElement('meta'); el.setAttribute('property', prop); document.head.appendChild(el); } el.setAttribute('content', val); };
+  const nm = (name, val) => { let el = document.querySelector(`meta[name="${name}"]`); if (!el) { el = document.createElement('meta'); el.setAttribute('name', name); document.head.appendChild(el); } el.setAttribute('content', val); };
+  og('og:title',       title);
+  og('og:description', description);
+  og('og:image',       image || '');
+  og('og:url',         url || window.location.href);
+  og('og:type',        'product');
+  nm('description',    description);
 }
 
 function resetMetaTags() {
@@ -94,8 +90,8 @@ function resetMetaTags() {
   setMetaTags({
     title:       'Fitoscents · Decants',
     description: 'Decants 100% originales de perfumes de diseñador desde 2ml. Tijuana, B.C.',
-    image:       'https://fitoscents.com/assets/img/og-default.jpg',
-    url:         'https://fitoscents.com/'
+    image:       '',
+    url:         window.location.origin + window.location.pathname
   });
 }
 
@@ -125,18 +121,31 @@ async function load() {
     updateCartBadge();
   }
 
-  // ── Deep link: abrir modal si la URL tiene slug ──
-  const slug = getSlugFromURL();
+  // Deep link: abrir modal si el hash tiene un slug
+  const slug = getSlugFromHash();
   if (slug) {
     const p = findBySlug(all, slug);
-    if (p) {
-      openModal(p.id);
-    } else {
-      // Slug no encontrado → regresar al inicio limpio
-      history.replaceState(null, '', '/');
-    }
+    if (p) openModal(p.id, false); // false = no hacer pushState, ya está en el hash
+    else window.location.hash = '';
   }
 }
+
+// Escuchar cambios de hash (navegación atrás/adelante)
+window.addEventListener('hashchange', () => {
+  const slug = getSlugFromHash();
+  const modal = document.getElementById('modal');
+  if (slug) {
+    const p = findBySlug(all, slug);
+    if (p && (!modal || !modal.classList.contains('open'))) openModal(p.id, false);
+  } else {
+    if (modal && modal.classList.contains('open')) {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+      modalData = null;
+      resetMetaTags();
+    }
+  }
+});
 
 // ── Card HTML ─────────────────────────────────────
 function cardHTML(p) {
@@ -194,7 +203,6 @@ window.renderGrid = () => {
   updateLoadMore();
 };
 
-// ── Patch badges in-place ─────────────────────────
 function patchGridBadges() {
   document.querySelectorAll('.pcard[data-id]').forEach(card => {
     const id    = card.dataset.id;
@@ -206,9 +214,7 @@ function patchGridBadges() {
       const html = `<i class="bi bi-bag-check-fill"></i>${units > 1 ? ` <span>${units}</span>` : ''}`;
       if (badge) { badge.innerHTML = html; }
       else { badge = document.createElement('div'); badge.className = 'card-in-cart'; badge.innerHTML = html; img.appendChild(badge); }
-    } else {
-      if (badge) badge.remove();
-    }
+    } else { if (badge) badge.remove(); }
   });
 }
 
@@ -217,7 +223,6 @@ function persistCart() {
   else clearSavedCart();
 }
 
-// ── Cargar más ────────────────────────────────────
 window.loadMore = () => {
   currentPage++;
   const chunk = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -233,12 +238,9 @@ function updateLoadMore() {
   if (filtered.length > PAGE_SIZE && shown < filtered.length) {
     wrap.style.display = 'flex';
     info.textContent   = `Mostrando ${shown} de ${filtered.length}`;
-  } else {
-    wrap.style.display = 'none';
-  }
+  } else { wrap.style.display = 'none'; }
 }
 
-// ── Filtros ───────────────────────────────────────
 window.setG = btn => {
   document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active'); gF = btn.dataset.g; renderGrid();
@@ -255,21 +257,21 @@ window.clearFilters = () => {
 };
 
 // ── Modal ─────────────────────────────────────────
-window.openModal = id => {
+// pushHash: true (default) actualiza el hash, false lo deja como está (deep link)
+window.openModal = (id, pushHash = true) => {
   const p = all.find(x => x.id === id);
   if (!p) return;
   modalData = p;
   updateDoc(doc(db, 'perfumes', id), { clicks: increment(1) }).catch(() => {});
 
-  // Actualizar URL y meta tags
-  const url = perfumeURL(p);
-  history.pushState({ perfumeId: id }, '', url);
+  // Actualizar hash y meta tags
+  if (pushHash) window.location.hash = '/perfumes/' + perfumeURL(p).replace('#/perfumes/', '');
   const precio = minPrecio(p);
   setMetaTags({
     title:       `${p.nombre}${p.marca ? ' · ' + p.marca : ''} — Fitoscents`,
     description: `Decant original de ${p.nombre}${p.marca ? ' de ' + p.marca : ''} desde $${precio} MXN. ${p.descripcion || ''}`.trim(),
     image:       p.imagen || '',
-    url:         'https://fitoscents.com' + url
+    url:         perfumeFullURL(p)
   });
 
   document.getElementById('modal-img').innerHTML = p.imagen
@@ -281,13 +283,9 @@ window.openModal = id => {
 
   const sizes = Object.entries(p.precios || {}).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
   const pillsEl = document.getElementById('modal-pills');
-  if (sizes.length) {
-    pillsEl.innerHTML = sizes.map(([k, v], i) =>
-      `<button class="mpill ${i===0?'sel':''}" data-size="${k}" data-price="${v}" onclick="selPill(this)">${k}ml — $${v}</button>`
-    ).join('');
-  } else {
-    pillsEl.innerHTML = '<span style="font-size:13px;color:#555">Sin presentaciones disponibles.</span>';
-  }
+  pillsEl.innerHTML = sizes.length
+    ? sizes.map(([k, v], i) => `<button class="mpill ${i===0?'sel':''}" data-size="${k}" data-price="${v}" onclick="selPill(this)">${k}ml — $${v}</button>`).join('')
+    : '<span style="font-size:13px;color:#555">Sin presentaciones disponibles.</span>';
 
   syncModalCartBtn();
   document.getElementById('modal').classList.add('open');
@@ -336,11 +334,8 @@ window.modalDecrement = () => {
   if (!item) return;
   if (item.qty === 1) {
     const prev = [...cart], label = `${item.nombre} ${item.size}ml eliminado`;
-    cart = removeItem(cart, key);
-    persistCart(); pushUndo(prev, label);
-  } else {
-    cart = decrementItem(cart, key); persistCart();
-  }
+    cart = removeItem(cart, key); persistCart(); pushUndo(prev, label);
+  } else { cart = decrementItem(cart, key); persistCart(); }
   syncModalCartBtn(); updateCartBadge(); patchGridBadges();
 };
 
@@ -349,12 +344,12 @@ window.selPill = btn => {
   btn.classList.add('sel'); syncModalCartBtn();
 };
 
-// Al cerrar modal → restaurar URL y meta tags
 function doCloseModal() {
   document.getElementById('modal').classList.remove('open');
   document.body.style.overflow = '';
   modalData = null;
-  history.pushState(null, '', '/');
+  // Limpiar hash sin recargar
+  history.pushState(null, '', window.location.pathname + window.location.search);
   resetMetaTags();
 }
 
@@ -362,29 +357,14 @@ window.closeModal = e => {
   if (e && e.target !== document.getElementById('modal')) return;
   doCloseModal();
 };
-
-// Botón X del modal llama a doCloseModal directamente
 window.doCloseModal = doCloseModal;
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') doCloseModal();
-});
-
-// Botón atrás del navegador cierra modal si estaba abierto
-window.addEventListener('popstate', () => {
-  const modal = document.getElementById('modal');
-  if (modal && modal.classList.contains('open')) {
-    modal.classList.remove('open');
-    document.body.style.overflow = '';
-    modalData = null;
-    resetMetaTags();
-  }
-});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') doCloseModal(); });
 
 window.pedirModal = () => {
   if (!modalData) return;
   const sel = document.querySelector('.mpill.sel');
-  const url = 'https://fitoscents.com' + perfumeURL(modalData);
+  const url = perfumeFullURL(modalData);
   const msg = sel
     ? `Hola! Me interesa un decant de:\n*${modalData.marca || ''} - ${modalData.nombre}*\nTamaño: ${sel.dataset.size}ml\nPrecio: $${sel.dataset.price} MXN\n${url}`
     : `Hola! Me interesa el decant de:\n*${modalData.marca || ''} - ${modalData.nombre}*\n${url}`;
@@ -392,7 +372,6 @@ window.pedirModal = () => {
 };
 
 // ── CARRITO ───────────────────────────────────────
-
 window.addToCart = () => {
   if (!modalData) return;
   const sel = document.querySelector('.mpill.sel');
@@ -409,8 +388,7 @@ window.addToCart = () => {
   };
   const { cart: newCart, added, reason } = addItem(cart, item);
   if (!added) { if (reason === 'max_qty') showToast(`Máximo ${MAX_QTY} unidades por talla`); return; }
-  cart = newCart;
-  persistCart();
+  cart = newCart; persistCart();
   showToast(`✓ ${modalData.nombre} ${sel.dataset.size}ml agregado`);
   syncModalCartBtn(); updateCartBadge(); patchGridBadges();
 };
@@ -420,8 +398,7 @@ window.incrementCartItem = key => {
   if (idx === -1) return;
   if (cart[idx].qty >= MAX_QTY) { showToast(`Máximo ${MAX_QTY} unidades por talla`); return; }
   const { cart: newCart } = addItem(cart, cart[idx]);
-  cart = newCart;
-  persistCart();
+  cart = newCart; persistCart();
   const newQty  = cart.find(i => i.key === key).qty;
   const qtyEl   = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
   const plusBtn = document.querySelector(`.cart-qty-btn[data-inc="${key}"]`);
@@ -437,14 +414,11 @@ window.decrementCartItem = key => {
   if (!item) return;
   if (item.qty === 1) {
     const prev = [...cart], label = `${item.nombre} ${item.size}ml eliminado`;
-    cart = removeItem(cart, key);
-    persistCart(); pushUndo(prev, label);
+    cart = removeItem(cart, key); persistCart(); pushUndo(prev, label);
     updateCartBadge(); renderCartDrawer(); patchGridBadges();
-    if (modalData) syncModalCartBtn();
-    return;
+    if (modalData) syncModalCartBtn(); return;
   }
-  cart = decrementItem(cart, key);
-  persistCart();
+  cart = decrementItem(cart, key); persistCart();
   const updated = cart.find(i => i.key === key);
   if (!updated) { renderCartDrawer(); }
   else {
@@ -462,12 +436,10 @@ function _updateDecBtn(key, qty) {
   const decBtn = document.querySelector(`.cart-qty-btn[data-dec="${key}"]`);
   if (!decBtn) return;
   if (qty === 1) {
-    decBtn.classList.add('is-trash');
-    decBtn.innerHTML = '<i class="bi bi-trash"></i>';
+    decBtn.classList.add('is-trash'); decBtn.innerHTML = '<i class="bi bi-trash"></i>';
     decBtn.setAttribute('aria-label', 'Eliminar item');
   } else {
-    decBtn.classList.remove('is-trash');
-    decBtn.innerHTML = '−';
+    decBtn.classList.remove('is-trash'); decBtn.innerHTML = '−';
     decBtn.setAttribute('aria-label', 'Quitar uno');
   }
 }
@@ -486,14 +458,12 @@ window.clearCart = () => {
   if (!cart.length) return;
   const prev  = [...cart];
   const label = `Pedido limpiado (${prev.length} item${prev.length > 1 ? 's' : ''})`;
-  cart = pureCleart();
-  clearSavedCart();
+  cart = pureCleart(); clearSavedCart();
   updateCartBadge(); renderCartDrawer(); patchGridBadges();
   if (modalData) syncModalCartBtn();
   pushUndo(prev, label);
 };
 
-// ── Drawer ────────────────────────────────────────
 window.closeCart = () => {
   document.getElementById('cart-drawer').classList.remove('open');
   document.getElementById('cart-overlay').classList.remove('open');
@@ -516,11 +486,7 @@ function updateCartBadge() {
   const fabBadge = document.getElementById('cart-badge-fab');
   const fab      = document.getElementById('cart-fab');
   const units    = totalUnits(cart);
-  [badge, fabBadge].forEach(b => {
-    if (!b) return;
-    b.textContent   = units;
-    b.style.display = units > 0 ? 'flex' : 'none';
-  });
+  [badge, fabBadge].forEach(b => { if (!b) return; b.textContent = units; b.style.display = units > 0 ? 'flex' : 'none'; });
   if (fab) fab.classList.toggle('has-items', units > 0);
   const totalEl = document.getElementById('cart-total');
   if (totalEl) totalEl.textContent = '$' + calcTotal(cart) + ' MXN';
@@ -531,22 +497,14 @@ function renderCartDrawer() {
   const empty = document.getElementById('cart-empty');
   const foot  = document.getElementById('cart-footer');
   const body  = document.querySelector('.cart-body');
-
   if (!cart.length) {
-    list.innerHTML      = '';
-    empty.style.display = 'flex';
-    foot.style.display  = 'none';
-    return;
+    list.innerHTML = ''; empty.style.display = 'flex'; foot.style.display = 'none'; return;
   }
-  empty.style.display = 'none';
-  foot.style.display  = 'flex';
-
+  empty.style.display = 'none'; foot.style.display = 'flex';
   list.innerHTML = cart.map(item => `
     <div class="cart-item" data-key="${item.key}">
       <div class="cart-item-img">
-        ${item.imagen
-          ? `<img src="${item.imagen}" alt="${item.nombre}" loading="lazy">`
-          : '<div class="cart-item-no-img"><i class="bi bi-droplet"></i></div>'}
+        ${item.imagen ? `<img src="${item.imagen}" alt="${item.nombre}" loading="lazy">` : '<div class="cart-item-no-img"><i class="bi bi-droplet"></i></div>'}
       </div>
       <div class="cart-item-info">
         <div class="cart-item-marca">${item.marca}</div>
@@ -554,16 +512,13 @@ function renderCartDrawer() {
         <div class="cart-item-size">${item.size}ml — <strong>$${item.price}</strong></div>
       </div>
       <div class="cart-item-controls">
-        <button class="cart-qty-btn ${item.qty === 1 ? 'is-trash' : ''}" data-dec="${item.key}"
-          aria-label="${item.qty === 1 ? 'Eliminar item' : 'Quitar uno'}">
+        <button class="cart-qty-btn ${item.qty === 1 ? 'is-trash' : ''}" data-dec="${item.key}" aria-label="${item.qty === 1 ? 'Eliminar item' : 'Quitar uno'}">
           ${item.qty === 1 ? '<i class="bi bi-trash"></i>' : '−'}
         </button>
         <span class="cart-qty-num" data-key="${item.key}">${item.qty}</span>
-        <button class="cart-qty-btn" data-inc="${item.key}" aria-label="Agregar uno"
-          ${item.qty >= MAX_QTY ? 'disabled' : ''}>+</button>
+        <button class="cart-qty-btn" data-inc="${item.key}" aria-label="Agregar uno" ${item.qty >= MAX_QTY ? 'disabled' : ''}>+</button>
       </div>
     </div>`).join('');
-
   document.getElementById('cart-total').textContent = '$' + calcTotal(cart) + ' MXN';
   if (body) body.scrollTop = 0;
 }
