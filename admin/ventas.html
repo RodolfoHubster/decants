@@ -8,6 +8,56 @@
   <link rel="stylesheet" href="../assets/css/variables.css">
   <link rel="stylesheet" href="../assets/css/global.css">
   <link rel="stylesheet" href="../assets/css/ventas.css">
+  <style>
+    /* ── Registro del Día ─────────────────────────────────── */
+    .modal-box.modal-xl { max-width: 820px; width: 95vw; }
+    .dia-header { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+    .dia-header label { font-size:13px; font-weight:600; color:var(--text-muted); white-space:nowrap; }
+    .dia-header input[type="date"] { padding:6px 10px; border:1px solid var(--border); border-radius:8px;
+      font-size:14px; background:var(--surface); color:var(--text); }
+    .dia-header .dia-notas-wrap { flex:1; min-width:160px; }
+    .dia-header .dia-notas-wrap input { width:100%; padding:6px 10px; border:1px solid var(--border);
+      border-radius:8px; font-size:14px; background:var(--surface); color:var(--text);
+      placeholder-color:var(--text-faint); }
+
+    .batch-table-wrap { overflow-x:auto; margin-bottom:12px; }
+    .batch-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .batch-table th { text-align:left; padding:8px 6px; border-bottom:2px solid var(--border);
+      font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--text-muted); white-space:nowrap; }
+    .batch-table td { padding:5px 4px; vertical-align:middle; }
+    .batch-table tr:not(:last-child) td { border-bottom:1px solid var(--border-light,#f0f0f0); }
+    .batch-table select, .batch-table input { width:100%; padding:5px 8px; border:1px solid var(--border);
+      border-radius:6px; font-size:13px; background:var(--surface); color:var(--text); }
+    .batch-table select:focus, .batch-table input:focus { outline:2px solid var(--primary); outline-offset:1px; }
+    .batch-table .td-rm { width:36px; text-align:center; }
+    .batch-table .td-rm button { background:none; border:none; cursor:pointer; color:var(--danger);
+      padding:4px; border-radius:6px; transition:background .15s; }
+    .batch-table .td-rm button:hover { background:var(--danger-bg,#fee2e2); }
+    .batch-table .td-estado { width:130px; }
+    .batch-table .td-cliente { min-width:110px; }
+    .batch-table .td-precio { width:90px; }
+    .batch-table .td-cant { width:60px; }
+    .batch-table .td-notas { min-width:100px; }
+    .batch-table .td-total { width:80px; text-align:right; font-weight:600; color:var(--primary); white-space:nowrap; }
+
+    .batch-footer { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+      padding:10px 0 0; border-top:1px solid var(--border); margin-top:4px; }
+    .batch-resumen { font-size:14px; color:var(--text-muted); }
+    .batch-resumen strong { color:var(--text); font-size:16px; }
+    .btn-add-row { display:inline-flex; align-items:center; gap:6px; padding:6px 14px;
+      background:none; border:1.5px dashed var(--border); border-radius:8px; font-size:13px;
+      color:var(--text-muted); cursor:pointer; transition:all .15s; }
+    .btn-add-row:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-bg,#f0fafa); }
+    .batch-saving { opacity:.6; pointer-events:none; }
+    .row-invalid select, .row-invalid input { border-color: var(--danger) !important; }
+
+    /* badge canal */
+    .badge-canal { display:inline-block; font-size:11px; padding:2px 8px; border-radius:20px;
+      font-weight:600; letter-spacing:.02em; }
+    .badge-canal.mercado { background:#fef3c7; color:#92400e; }
+    .badge-canal.online { background:#dbeafe; color:#1e40af; }
+    .badge-canal.otro { background:#f3f4f6; color:#374151; }
+  </style>
 </head>
 <body>
 <div class="app-shell">
@@ -18,14 +68,14 @@
         <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
         <span class="topbar-title">Ventas de Decants</span>
       </div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" onclick="exportCSV()"><i class="bi bi-download"></i> Exportar CSV</button>
+        <button class="btn btn-outline btn-sm" style="border-color:var(--warning,#d97706);color:var(--warning,#d97706)" onclick="openDia()"><i class="bi bi-truck"></i> Registro del Día</button>
         <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> Nueva Venta</button>
       </div>
     </div>
     <div class="page-body">
 
-      <!-- KPIs (se recalculan al cambiar filtro) -->
       <div class="kpi-row">
         <div class="kpi-card"><div class="kpi-label">💰 Total vendido</div><div class="kpi-value" id="k-total">$0</div><div class="kpi-sub" id="kpi-periodo-label">todas las ventas</div></div>
         <div class="kpi-card"><div class="kpi-label">📦 Decants vendidos</div><div class="kpi-value" id="k-cant">0</div><div class="kpi-sub">unidades</div></div>
@@ -33,7 +83,6 @@
         <div class="kpi-card"><div class="kpi-label">⏳ Pendientes</div><div class="kpi-value" id="k-pend">0</div><div class="kpi-sub">por cobrar</div></div>
       </div>
 
-      <!-- Filtros -->
       <div class="filter-bar">
         <div class="search-input-wrap"><i class="bi bi-search"></i><input class="form-control" id="search" placeholder="Buscar cliente o perfume..." oninput="renderTable()"></div>
         <select class="form-control" style="max-width:150px" id="f-estado" onchange="renderTable()">
@@ -41,6 +90,12 @@
           <option value="pagada">Pagada</option>
           <option value="pendiente">Pendiente</option>
           <option value="cancelada">Cancelada</option>
+        </select>
+        <select class="form-control" style="max-width:150px" id="f-canal" onchange="renderTable()">
+          <option value="">Todos los canales</option>
+          <option value="mercado">Sobre ruedas</option>
+          <option value="online">Online / WhatsApp</option>
+          <option value="otro">Otro</option>
         </select>
         <select class="form-control" style="max-width:160px" id="f-periodo" onchange="onPeriodoChange()">
           <option value="">Todo el tiempo</option>
@@ -54,7 +109,7 @@
         <div class="card-header"><h5>Historial de Ventas</h5><span class="badge badge-muted" id="count-label">0 ventas</span></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Fecha</th><th>Perfume</th><th>Talla</th><th>Precio</th><th>Cliente</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Perfume</th><th>Talla</th><th>Precio</th><th>Cliente</th><th>Canal</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody id="tbody"></tbody>
           </table>
         </div>
@@ -63,7 +118,7 @@
   </div>
 </div>
 
-<!-- MODAL NUEVA VENTA -->
+<!-- MODAL NUEVA VENTA (individual) -->
 <div class="modal-overlay" id="modal">
   <div class="modal-box" style="max-width:560px">
     <div class="modal-header"><h4 id="modal-title">Nueva Venta</h4><button class="btn-icon" onclick="closeModal()"><i class="bi bi-x-lg"></i></button></div>
@@ -72,15 +127,11 @@
       <div class="form-row">
         <div class="form-group">
           <label>Perfume *</label>
-          <select class="form-control" id="v-perfume" onchange="onPerfumeChange()">
-            <option value="">Selecciona perfume</option>
-          </select>
+          <select class="form-control" id="v-perfume" onchange="onPerfumeChange()"><option value="">Selecciona perfume</option></select>
         </div>
         <div class="form-group">
           <label>Talla (ml) *</label>
-          <select class="form-control" id="v-talla">
-            <option value="">Selecciona talla</option>
-          </select>
+          <select class="form-control" id="v-talla"><option value="">Selecciona talla</option></select>
         </div>
       </div>
       <div class="form-row">
@@ -98,6 +149,16 @@
           <label>Cliente</label>
           <input class="form-control" id="v-cliente" placeholder="Nombre del cliente">
         </div>
+        <div class="form-group">
+          <label>Canal</label>
+          <select class="form-control" id="v-canal">
+            <option value="online">Online / WhatsApp</option>
+            <option value="mercado">Sobre ruedas</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
         <div class="form-group">
           <label>Estado *</label>
           <select class="form-control" id="v-estado">
@@ -119,7 +180,7 @@
   </div>
 </div>
 
-<!-- MODAL EDITAR ESTADO -->
+<!-- MODAL CAMBIAR ESTADO -->
 <div class="modal-overlay" id="modal-estado">
   <div class="modal-box" style="max-width:360px">
     <div class="modal-header"><h4>Cambiar Estado</h4><button class="btn-icon" onclick="closeEstado()"><i class="bi bi-x-lg"></i></button></div>
@@ -137,6 +198,62 @@
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeEstado()">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarEstado()">Actualizar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REGISTRO DEL DÍA -->
+<div class="modal-overlay" id="modal-dia">
+  <div class="modal-box modal-xl">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <i class="bi bi-truck" style="font-size:20px;color:var(--warning,#d97706)"></i>
+        <h4>Registro del Día — Sobre Ruedas</h4>
+      </div>
+      <button class="btn-icon" onclick="closeDia()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <!-- Cabecera del evento -->
+      <div class="dia-header">
+        <label>Fecha del evento</label>
+        <input type="date" id="dia-fecha">
+        <div class="dia-notas-wrap">
+          <input type="text" id="dia-nota-global" placeholder="Nota del día (ej. Mercado Centro, lluvia…) — opcional">
+        </div>
+      </div>
+
+      <!-- Tabla de renglones -->
+      <div class="batch-table-wrap">
+        <table class="batch-table" id="batch-table">
+          <thead>
+            <tr>
+              <th style="min-width:160px">Perfume *</th>
+              <th style="width:110px">Talla *</th>
+              <th class="td-cant">Cant.</th>
+              <th class="td-precio">Precio *</th>
+              <th class="td-total">Total</th>
+              <th class="td-cliente">Cliente</th>
+              <th class="td-estado">Estado</th>
+              <th class="td-notas">Nota</th>
+              <th class="td-rm"></th>
+            </tr>
+          </thead>
+          <tbody id="batch-tbody"></tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+        <button class="btn-add-row" onclick="addBatchRow()"><i class="bi bi-plus-circle"></i> Agregar renglón</button>
+        <div class="batch-resumen">
+          <span id="batch-count">0 ventas</span> · Total: <strong id="batch-total">$0</strong>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeDia()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-dia-save" onclick="saveDia()">
+        <i class="bi bi-cloud-upload"></i> Guardar todo
+      </button>
     </div>
   </div>
 </div>
