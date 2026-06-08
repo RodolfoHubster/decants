@@ -111,7 +111,7 @@ window.exportCSV = () => {
       fecha, v.perfumeNombre||'', v.perfumeMarca||'', v.talla||'',
       v.cantidad||1, v.precio||0, total,
       v.cliente||'', v.canal||'', v.estado||'', v.notas||''
-    ].map(c => `"${String(c).replace(/"/g,'""')}"`).join(',');
+    ].map(c => `"${String(c).replace(/"/g,'""')}"` ).join(',');
   });
   const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -188,6 +188,155 @@ window.del = async (id) => {
 let batchRows = [];
 let batchRowCounter = 0;
 
+// ── Combobox con portal: el dropdown se monta en document.body
+//    para que nunca quede atrapado dentro del modal ─────────────────────────────
+function buildCombobox(container, onSelect) {
+  // Wrapper
+  container.style.cssText = 'position:relative;width:100%;';
+
+  // Input visible
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.placeholder = '— Perfume —';
+  inp.autocomplete = 'off';
+  inp.style.cssText = 'width:100%;min-width:160px;';
+  container.appendChild(inp);
+
+  // Dropdown montado en body (portal)
+  const dd = document.createElement('ul');
+  dd.style.cssText = [
+    'position:fixed',
+    'z-index:9999',
+    'background:var(--card-bg,#1c1b19)',
+    'border:1px solid var(--border,rgba(255,255,255,.12))',
+    'border-radius:8px',
+    'box-shadow:0 8px 32px rgba(0,0,0,.55)',
+    'max-height:260px',
+    'overflow-y:auto',
+    'padding:4px 0',
+    'margin:0',
+    'list-style:none',
+    'display:none',
+    'min-width:220px',
+  ].join(';');
+  document.body.appendChild(dd);
+
+  let selectedPerfume = null;
+  let activeIdx = -1;
+
+  function reposition() {
+    const r = inp.getBoundingClientRect();
+    dd.style.top  = (r.bottom + 4) + 'px';
+    dd.style.left = r.left + 'px';
+    dd.style.width = Math.max(r.width, 220) + 'px';
+  }
+
+  function renderItems(q) {
+    const list = q
+      ? perfumes.filter(p => (p.nombre + ' ' + (p.marca||'')).toLowerCase().includes(q.toLowerCase()))
+      : perfumes;
+    dd.innerHTML = '';
+    activeIdx = -1;
+    if (!list.length) {
+      const li = document.createElement('li');
+      li.textContent = 'Sin resultados';
+      li.style.cssText = 'padding:10px 14px;color:var(--text-muted,#888);font-size:13px;';
+      dd.appendChild(li);
+      return;
+    }
+    list.forEach((p, i) => {
+      const li = document.createElement('li');
+      li.style.cssText = 'padding:8px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);';
+      li.innerHTML = `<span style="color:var(--text,#e0e0e0);font-size:14px;font-weight:500;">${p.nombre}</span><br>
+        <span style="color:var(--text-muted,#888);font-size:12px;">${p.marca||''}</span>`;
+      li.addEventListener('mousedown', e => {
+        e.preventDefault();
+        choose(p);
+      });
+      li.addEventListener('mouseover', () => {
+        setActive(i, list);
+      });
+      dd.appendChild(li);
+    });
+  }
+
+  function setActive(i, list) {
+    const items = dd.querySelectorAll('li');
+    items.forEach((el, idx) => {
+      el.style.background = idx === i ? 'var(--primary,#4f98a3)' : '';
+      el.style.color = idx === i ? '#fff' : '';
+      const spans = el.querySelectorAll('span');
+      if (spans.length) {
+        spans[0].style.color = idx === i ? '#fff' : 'var(--text,#e0e0e0)';
+        spans[1].style.color = idx === i ? 'rgba(255,255,255,.7)' : 'var(--text-muted,#888)';
+      }
+    });
+    activeIdx = i;
+  }
+
+  function choose(p) {
+    selectedPerfume = p;
+    inp.value = p ? `${p.nombre} · ${p.marca||''}` : '';
+    closeDD();
+    onSelect(p);
+  }
+
+  function openDD() {
+    reposition();
+    dd.style.display = 'block';
+    renderItems(inp.value);
+  }
+
+  function closeDD() {
+    dd.style.display = 'none';
+  }
+
+  inp.addEventListener('focus', openDD);
+  inp.addEventListener('input', () => {
+    selectedPerfume = null;
+    openDD();
+    renderItems(inp.value);
+  });
+  inp.addEventListener('blur', () => {
+    // pequeño delay para que mousedown en item se procese primero
+    setTimeout(closeDD, 150);
+  });
+
+  inp.addEventListener('keydown', e => {
+    const items = dd.querySelectorAll('li');
+    const q = inp.value;
+    const list = q
+      ? perfumes.filter(p => (p.nombre + ' ' + (p.marca||'')).toLowerCase().includes(q.toLowerCase()))
+      : perfumes;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const next = Math.min(activeIdx + 1, items.length - 1);
+      setActive(next, list);
+      items[next]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prev = Math.max(activeIdx - 1, 0);
+      setActive(prev, list);
+      items[prev]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIdx >= 0 && list[activeIdx]) choose(list[activeIdx]);
+    } else if (e.key === 'Escape') {
+      closeDD();
+    }
+  });
+
+  // reposicionar si el modal hace scroll
+  document.getElementById('modal-dia')?.addEventListener('scroll', () => {
+    if (dd.style.display !== 'none') reposition();
+  }, { passive: true });
+
+  // limpiar el nodo del body cuando la fila se elimine
+  container._destroyCombobox = () => dd.remove();
+
+  return { inp, clear: () => { inp.value = ''; selectedPerfume = null; } };
+}
+
 function tallaOptsHtml(perfumeId) {
   if (!perfumeId) return '<option value="">— Talla —</option>';
   const p = perfumes.find(x => x.id === perfumeId);
@@ -203,13 +352,14 @@ function buildBatchRowEl(row) {
   const tr = document.createElement('tr');
   tr.dataset.rid = rid;
 
-  // Celda perfume (picker personalizado)
+  // ── Celda perfume: combobox con portal ────────────────────────────────────
   const tdPerf = document.createElement('td');
+  tdPerf.style.minWidth = '180px';
   const perfWrap = document.createElement('div');
-  tr.appendChild(tdPerf);
   tdPerf.appendChild(perfWrap);
+  tr.appendChild(tdPerf);
 
-  // Celda talla
+  // ── Celda talla
   const tdTalla = document.createElement('td');
   const selTalla = document.createElement('select');
   selTalla.id = `brow-talla-${rid}`;
@@ -217,7 +367,7 @@ function buildBatchRowEl(row) {
   tdTalla.appendChild(selTalla);
   tr.appendChild(tdTalla);
 
-  // Celda cantidad
+  // ── Celda cantidad
   const tdCant = document.createElement('td');
   tdCant.className = 'td-cant';
   const inCant = document.createElement('input');
@@ -226,7 +376,7 @@ function buildBatchRowEl(row) {
   tdCant.appendChild(inCant);
   tr.appendChild(tdCant);
 
-  // Celda precio
+  // ── Celda precio
   const tdPrecio = document.createElement('td');
   tdPrecio.className = 'td-precio';
   const inPrecio = document.createElement('input');
@@ -236,13 +386,13 @@ function buildBatchRowEl(row) {
   tdPrecio.appendChild(inPrecio);
   tr.appendChild(tdPrecio);
 
-  // Celda total
+  // ── Celda total
   const tdTotal = document.createElement('td');
   tdTotal.className = 'td-total'; tdTotal.id = `brow-total-${rid}`;
   tdTotal.textContent = '—';
   tr.appendChild(tdTotal);
 
-  // Celda cliente
+  // ── Celda cliente
   const tdCliente = document.createElement('td');
   tdCliente.className = 'td-cliente';
   const inCliente = document.createElement('input');
@@ -251,19 +401,19 @@ function buildBatchRowEl(row) {
   tdCliente.appendChild(inCliente);
   tr.appendChild(tdCliente);
 
-  // Celda estado
+  // ── Celda estado
   const tdEstado = document.createElement('td');
   tdEstado.className = 'td-estado';
   const selEstado = document.createElement('select');
   selEstado.innerHTML = `
-    <option value="pagada"   ${estado==='pagada'    ?'selected':''}>Pagada ✅</option>
-    <option value="pendiente" ${estado==='pendiente'?'selected':''}>Pendiente ⏳</option>
-    <option value="cancelada" ${estado==='cancelada'?'selected':''}>Cancelada ❌</option>`;
+    <option value="pagada"    ${estado==='pagada'    ?'selected':''}>Pagada ✅</option>
+    <option value="pendiente" ${estado==='pendiente' ?'selected':''}>Pendiente ⏳</option>
+    <option value="cancelada" ${estado==='cancelada' ?'selected':''}>Cancelada ❌</option>`;
   selEstado.onchange = () => batchSet(rid,'estado',selEstado.value);
   tdEstado.appendChild(selEstado);
   tr.appendChild(tdEstado);
 
-  // Celda nota
+  // ── Celda nota
   const tdNota = document.createElement('td');
   tdNota.className = 'td-notas';
   const inNota = document.createElement('input');
@@ -272,7 +422,7 @@ function buildBatchRowEl(row) {
   tdNota.appendChild(inNota);
   tr.appendChild(tdNota);
 
-  // Celda borrar
+  // ── Celda borrar
   const tdRm = document.createElement('td');
   tdRm.className = 'td-rm';
   const btnRm = document.createElement('button');
@@ -282,30 +432,25 @@ function buildBatchRowEl(row) {
   tdRm.appendChild(btnRm);
   tr.appendChild(tdRm);
 
-  // Montar picker DESPUÉS de insertar en DOM
-  requestAnimationFrame(() => {
-    if (typeof window.buildPerfumePicker === 'function') {
-      window.buildPerfumePicker(perfWrap, perfumes, (p) => {
-        const r = batchRows.find(x => x.rid === rid);
-        if (!r) return;
-        r.perfumeId = p ? p.id : '';
-        r.talla = ''; r.precio = '';
-        selTalla.innerHTML = tallaOptsHtml(p ? p.id : '');
-        inPrecio.value = '';
-        tdTotal.textContent = '—';
-        // auto-seleccionar talla si solo hay una
-        selTalla.onchange = () => {
-          const opt = selTalla.selectedOptions[0];
-          r.talla = selTalla.value;
-          if (opt?.dataset.precio) {
-            r.precio = opt.dataset.precio;
-            inPrecio.value = opt.dataset.precio;
-          }
-          batchRefreshTotal(rid);
-        };
-        updateBatchResumen();
-      });
-    }
+  // ── Montar combobox portal ────────────────────────────────────────────────
+  buildCombobox(perfWrap, (p) => {
+    const r = batchRows.find(x => x.rid === rid);
+    if (!r) return;
+    r.perfumeId = p ? p.id : '';
+    r.talla = ''; r.precio = '';
+    selTalla.innerHTML = tallaOptsHtml(p ? p.id : '');
+    inPrecio.value = '';
+    tdTotal.textContent = '—';
+    selTalla.onchange = () => {
+      const opt = selTalla.selectedOptions[0];
+      r.talla = selTalla.value;
+      if (opt?.dataset.precio) {
+        r.precio = opt.dataset.precio;
+        inPrecio.value = opt.dataset.precio;
+      }
+      batchRefreshTotal(rid);
+    };
+    updateBatchResumen();
   });
 
   return tr;
@@ -337,7 +482,10 @@ window.addBatchRow = () => {
 
 window.removeBatchRow = (rid) => {
   batchRows = batchRows.filter(r => r.rid !== rid);
-  document.querySelector(`#batch-tbody tr[data-rid="${rid}"]`)?.remove();
+  const row = document.querySelector(`#batch-tbody tr[data-rid="${rid}"]`);
+  // destruir el dropdown portal antes de quitar la fila
+  row?.querySelector('div[style]')?._destroyCombobox?.();
+  row?.remove();
   updateBatchResumen();
 };
 
@@ -357,19 +505,26 @@ window.batchRefreshTotal = (rid) => {
 };
 
 window.openDia = () => {
+  // limpiar dropdowns portal previos
+  document.querySelectorAll('#batch-tbody tr').forEach(tr => {
+    tr.querySelector('div[style]')?._destroyCombobox?.();
+  });
   const hoy = new Date().toISOString().slice(0,10);
   document.getElementById('dia-fecha').value = hoy;
   document.getElementById('dia-nota-global').value = '';
   batchRows = []; batchRowCounter = 0;
   document.getElementById('batch-tbody').innerHTML = '';
   updateBatchResumen();
-  // 3 filas iniciales
   addBatchRow(); addBatchRow(); addBatchRow();
   document.getElementById('modal-dia').classList.add('open');
 };
 
 window.closeDia = () => {
   if (batchRows.some(r => r.perfumeId) && !confirm('¿Cerrar sin guardar?')) return;
+  // limpiar portales
+  document.querySelectorAll('#batch-tbody tr').forEach(tr => {
+    tr.querySelector('div[style]')?._destroyCombobox?.();
+  });
   document.getElementById('modal-dia').classList.remove('open');
 };
 
