@@ -92,7 +92,7 @@ window.renderTable = () => {
       <td><span class="badge-canal ${canalClass[canal]}">${canalLabel[canal]||canal}</span></td>
       <td><span class="badge-estado ${v.estado||'pendiente'}">${v.estado||'pendiente'}</span></td>
       <td><div style="display:flex;gap:6px">
-        <button class="btn-icon" onclick="editEstado('${v.id}','${v.estado||'pendiente}')" title="Cambiar estado"><i class="bi bi-pencil-square"></i></button>
+        <button class="btn-icon" onclick="editEstado('${v.id}','${v.estado||'pendiente'}')" title="Cambiar estado"><i class="bi bi-pencil-square"></i></button>
         <button class="btn-icon" onclick="del('${v.id}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
       </div></td>
     </tr>`;
