@@ -10,29 +10,29 @@
   <link rel="stylesheet" href="../assets/css/ventas.css">
   <style>
     /* ── Registro del Día ─────────────────────────────────── */
-    .modal-box.modal-xl { max-width: 820px; width: 95vw; }
+    .modal-box.modal-xl { max-width: 860px; width: 97vw; }
     .dia-header { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
     .dia-header label { font-size:13px; font-weight:600; color:var(--text-muted); white-space:nowrap; }
     .dia-header input[type="date"] { padding:6px 10px; border:1px solid var(--border); border-radius:8px;
       font-size:14px; background:var(--surface); color:var(--text); }
     .dia-header .dia-notas-wrap { flex:1; min-width:160px; }
     .dia-header .dia-notas-wrap input { width:100%; padding:6px 10px; border:1px solid var(--border);
-      border-radius:8px; font-size:14px; background:var(--surface); color:var(--text);
-      placeholder-color:var(--text-faint); }
+      border-radius:8px; font-size:14px; background:var(--surface); color:var(--text); }
 
     .batch-table-wrap { overflow-x:auto; margin-bottom:12px; }
     .batch-table { width:100%; border-collapse:collapse; font-size:13px; }
     .batch-table th { text-align:left; padding:8px 6px; border-bottom:2px solid var(--border);
       font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--text-muted); white-space:nowrap; }
     .batch-table td { padding:5px 4px; vertical-align:middle; }
-    .batch-table tr:not(:last-child) td { border-bottom:1px solid var(--border-light,#f0f0f0); }
-    .batch-table select, .batch-table input { width:100%; padding:5px 8px; border:1px solid var(--border);
+    .batch-table tr:not(:last-child) td { border-bottom:1px solid var(--border-light,rgba(255,255,255,.06)); }
+    .batch-table select, .batch-table input[type="number"], .batch-table input[type="text"] {
+      width:100%; padding:5px 8px; border:1px solid var(--border);
       border-radius:6px; font-size:13px; background:var(--surface); color:var(--text); }
     .batch-table select:focus, .batch-table input:focus { outline:2px solid var(--primary); outline-offset:1px; }
     .batch-table .td-rm { width:36px; text-align:center; }
     .batch-table .td-rm button { background:none; border:none; cursor:pointer; color:var(--danger);
       padding:4px; border-radius:6px; transition:background .15s; }
-    .batch-table .td-rm button:hover { background:var(--danger-bg,#fee2e2); }
+    .batch-table .td-rm button:hover { background:rgba(239,68,68,.15); }
     .batch-table .td-estado { width:130px; }
     .batch-table .td-cliente { min-width:110px; }
     .batch-table .td-precio { width:90px; }
@@ -47,7 +47,7 @@
     .btn-add-row { display:inline-flex; align-items:center; gap:6px; padding:6px 14px;
       background:none; border:1.5px dashed var(--border); border-radius:8px; font-size:13px;
       color:var(--text-muted); cursor:pointer; transition:all .15s; }
-    .btn-add-row:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-bg,#f0fafa); }
+    .btn-add-row:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-bg,rgba(20,184,166,.08)); }
     .batch-saving { opacity:.6; pointer-events:none; }
     .row-invalid select, .row-invalid input { border-color: var(--danger) !important; }
 
@@ -55,8 +55,82 @@
     .badge-canal { display:inline-block; font-size:11px; padding:2px 8px; border-radius:20px;
       font-weight:600; letter-spacing:.02em; }
     .badge-canal.mercado { background:#fef3c7; color:#92400e; }
-    .badge-canal.online { background:#dbeafe; color:#1e40af; }
-    .badge-canal.otro { background:#f3f4f6; color:#374151; }
+    .badge-canal.online  { background:#dbeafe; color:#1e40af; }
+    .badge-canal.otro    { background:#f3f4f6; color:#374151; }
+
+    /* ── Searchable Perfume Dropdown ─────────────────────── */
+    .perf-wrap { position:relative; }
+    .perf-input {
+      width:100%; padding:5px 28px 5px 8px;
+      border:1px solid var(--border); border-radius:6px;
+      font-size:13px; background:var(--surface); color:var(--text);
+      cursor:pointer;
+    }
+    .perf-input::placeholder { color:var(--text-muted); }
+    .perf-input:focus { outline:2px solid var(--primary); outline-offset:1px; }
+    .perf-arrow {
+      position:absolute; right:7px; top:50%; transform:translateY(-50%);
+      pointer-events:none; color:var(--text-muted); font-size:12px;
+    }
+    .perf-dropdown {
+      display:none;
+      position:absolute; left:0; top:calc(100% + 3px); z-index:9999;
+      width:260px; max-height:240px;
+      background:var(--surface-raised, var(--card-bg, #1e1e2e));
+      border:1px solid var(--border);
+      border-radius:8px;
+      box-shadow:0 8px 24px rgba(0,0,0,.45);
+      overflow:hidden;
+      flex-direction:column;
+    }
+    .perf-dropdown.open { display:flex; }
+    .perf-search-box {
+      padding:8px 10px;
+      border-bottom:1px solid var(--border);
+      flex-shrink:0;
+    }
+    .perf-search-box input {
+      width:100%; padding:5px 10px;
+      border:1px solid var(--border); border-radius:6px;
+      font-size:13px;
+      background:var(--bg, #131320);
+      color:var(--text);
+    }
+    .perf-search-box input::placeholder { color:var(--text-muted); }
+    .perf-search-box input:focus { outline:2px solid var(--primary); }
+    .perf-list {
+      overflow-y:auto;
+      flex:1;
+    }
+    .perf-option {
+      padding:8px 12px;
+      font-size:13px;
+      color:var(--text);
+      cursor:pointer;
+      transition:background .1s;
+      line-height:1.3;
+    }
+    .perf-option:hover, .perf-option.focused {
+      background:var(--primary-bg, rgba(20,184,166,.15));
+      color:var(--primary);
+    }
+    .perf-option .perf-brand {
+      font-size:11px;
+      color:var(--text-muted);
+      display:block;
+    }
+    .perf-empty {
+      padding:12px;
+      font-size:13px;
+      color:var(--text-muted);
+      text-align:center;
+    }
+    /* highlight búsqueda */
+    .perf-option mark {
+      background:transparent;
+      color:var(--primary);
+      font-weight:600;
+    }
   </style>
 </head>
 <body>
@@ -118,7 +192,7 @@
   </div>
 </div>
 
-<!-- MODAL NUEVA VENTA (individual) -->
+<!-- MODAL NUEVA VENTA -->
 <div class="modal-overlay" id="modal">
   <div class="modal-box" style="max-width:560px">
     <div class="modal-header"><h4 id="modal-title">Nueva Venta</h4><button class="btn-icon" onclick="closeModal()"><i class="bi bi-x-lg"></i></button></div>
@@ -213,7 +287,6 @@
       <button class="btn-icon" onclick="closeDia()"><i class="bi bi-x-lg"></i></button>
     </div>
     <div class="modal-body">
-      <!-- Cabecera del evento -->
       <div class="dia-header">
         <label>Fecha del evento</label>
         <input type="date" id="dia-fecha">
@@ -222,12 +295,11 @@
         </div>
       </div>
 
-      <!-- Tabla de renglones -->
       <div class="batch-table-wrap">
         <table class="batch-table" id="batch-table">
           <thead>
             <tr>
-              <th style="min-width:160px">Perfume *</th>
+              <th style="min-width:175px">Perfume *</th>
               <th style="width:110px">Talla *</th>
               <th class="td-cant">Cant.</th>
               <th class="td-precio">Precio *</th>
@@ -264,6 +336,129 @@ window.onPeriodoChange = () => {
   const labels = { '': 'todas las ventas', 'hoy': 'hoy', '7': 'últimos 7 días', '30': 'últimos 30 días' };
   document.getElementById('kpi-periodo-label').textContent = labels[val] || 'período seleccionado';
   window.renderTable && window.renderTable();
+};
+
+/* ── Searchable Perfume Picker ─────────────────────────────
+   Usado por addBatchRow() en ventas.js.
+   buildPerfumePicker(containerEl, perfumesList, onChange)
+   perfumesList = [{ id, nombre, marca, tallas:[{ml,precio}] }]
+   onChange(perfumeObj | null)
+──────────────────────────────────────────────────────────── */
+window.buildPerfumePicker = function(wrap, perfumes, onChange) {
+  // Limpiar
+  wrap.innerHTML = '';
+
+  // Estado
+  let selectedId = null;
+  let focusIdx = -1;
+  let filtered = [];
+
+  // Markup
+  wrap.innerHTML = `
+    <div class="perf-wrap">
+      <input type="text" class="perf-input" placeholder="— Perfume —" readonly>
+      <span class="perf-arrow"><i class="bi bi-chevron-down"></i></span>
+      <div class="perf-dropdown">
+        <div class="perf-search-box">
+          <input type="text" placeholder="Buscar perfume..." autocomplete="off">
+        </div>
+        <div class="perf-list"></div>
+      </div>
+    </div>
+  `;
+
+  const trigger  = wrap.querySelector('.perf-input');
+  const dropdown = wrap.querySelector('.perf-dropdown');
+  const searchIn = wrap.querySelector('.perf-search-box input');
+  const list     = wrap.querySelector('.perf-list');
+  const arrow    = wrap.querySelector('.perf-arrow i');
+
+  function highlight(text, q) {
+    if (!q) return text;
+    const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+    return text.replace(re, '<mark>$1</mark>');
+  }
+
+  function renderList(q) {
+    q = (q || '').trim().toLowerCase();
+    filtered = q
+      ? perfumes.filter(p =>
+          (p.nombre||'').toLowerCase().includes(q) ||
+          (p.marca||'').toLowerCase().includes(q))
+      : [...perfumes];
+    focusIdx = -1;
+
+    if (!filtered.length) {
+      list.innerHTML = `<div class="perf-empty">Sin resultados</div>`;
+      return;
+    }
+    list.innerHTML = filtered.map((p, i) => `
+      <div class="perf-option" data-idx="${i}">
+        ${highlight(p.nombre || '', q)}
+        <span class="perf-brand">${highlight(p.marca || '', q)}</span>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.perf-option').forEach(el => {
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        select(filtered[+el.dataset.idx]);
+      });
+    });
+  }
+
+  function select(p) {
+    selectedId = p ? p.id : null;
+    trigger.value = p ? `${p.nombre}${p.marca ? ' · ' + p.marca : ''}` : '';
+    close();
+    onChange(p || null);
+  }
+
+  function open() {
+    dropdown.classList.add('open');
+    arrow.classList.replace('bi-chevron-down','bi-chevron-up');
+    searchIn.value = '';
+    renderList('');
+    setTimeout(() => searchIn.focus(), 30);
+  }
+
+  function close() {
+    dropdown.classList.remove('open');
+    arrow.classList.replace('bi-chevron-up','bi-chevron-down');
+  }
+
+  function moveFocus(dir) {
+    const opts = list.querySelectorAll('.perf-option');
+    if (!opts.length) return;
+    opts[focusIdx]?.classList.remove('focused');
+    focusIdx = Math.max(0, Math.min(opts.length - 1, focusIdx + dir));
+    const el = opts[focusIdx];
+    el.classList.add('focused');
+    el.scrollIntoView({ block: 'nearest' });
+  }
+
+  trigger.addEventListener('click', () => dropdown.classList.contains('open') ? close() : open());
+
+  searchIn.addEventListener('input', () => renderList(searchIn.value));
+
+  searchIn.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); moveFocus(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); moveFocus(-1); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      const f = list.querySelector('.perf-option.focused');
+      if (f) f.dispatchEvent(new MouseEvent('mousedown'));
+    } else if (e.key === 'Escape') close();
+  });
+
+  // Cerrar al hacer click fuera
+  document.addEventListener('mousedown', e => {
+    if (!wrap.contains(e.target)) close();
+  });
+
+  // API pública: reset
+  wrap._perfReset = () => select(null);
+  wrap._perfGetId = () => selectedId;
 };
 </script>
 <script type="module" src="../assets/js/ventas.js"></script>
