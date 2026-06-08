@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="./assets/css/catalog.css">
   <style>
-    /* Controles qty modal */
+    /* ── Controles qty modal ── */
     .modal-qty-controls {
       display:flex; align-items:center; justify-content:center;
       gap:0; margin-bottom:10px;
@@ -24,14 +24,13 @@
     .mqty-btn:hover:not(:disabled){background:rgba(201,168,76,.18);}
     .mqty-btn:disabled{color:#444;cursor:not-allowed;}
     .mqty-num {
-      flex:1; text-align:center; font-size:16px; font-weight:700;
-      color:#e8e6e1;
+      flex:1; text-align:center; font-size:16px; font-weight:700; color:#e8e6e1;
       border-left:1px solid rgba(201,168,76,.2);
       border-right:1px solid rgba(201,168,76,.2);
       padding:0 8px;
     }
 
-    /* Toast Deshacer */
+    /* ── Toast Deshacer ── */
     #undo-toast {
       position:fixed; bottom:88px; left:50%;
       transform:translateX(-50%) translateY(20px);
@@ -55,7 +54,7 @@
     }
     #undo-btn:hover{background:rgba(201,168,76,.32);}
 
-    /* Toast normal */
+    /* ── Toast normal ── */
     #toast {
       position:fixed; bottom:160px; left:50%;
       transform:translateX(-50%) translateY(10px);
@@ -70,6 +69,118 @@
     }
     #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
+    /* ── FAB WhatsApp ── */
+    #wa-fab {
+      position:fixed;
+      bottom:24px; left:24px;
+      width:52px; height:52px;
+      border-radius:50%;
+      background:#25D366;
+      border:none;
+      color:#fff; font-size:24px;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 6px 20px rgba(0,0,0,.45);
+      z-index:300;
+      cursor:pointer;
+      transition:transform .2s, box-shadow .2s, opacity .25s;
+      text-decoration:none;
+    }
+    #wa-fab:hover {
+      transform:scale(1.1);
+      box-shadow:0 10px 28px rgba(37,211,102,.35);
+      background:#1db954;
+    }
+    /* Tooltip solo en desktop */
+    #wa-fab::after {
+      content: '¿Tienes dudas?';
+      position:absolute;
+      left:calc(100% + 10px);
+      top:50%; transform:translateY(-50%);
+      background:#1a1a1a;
+      border:1px solid rgba(255,255,255,.12);
+      color:#e8e6e1;
+      font-size:12px; font-weight:500;
+      white-space:nowrap;
+      padding:6px 12px;
+      border-radius:8px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .18s;
+      font-family:'Poppins',sans-serif;
+    }
+    #wa-fab:hover::after { opacity:1; }
+    /* Ocultar tooltip en touch/mobile */
+    @media (max-width:480px) {
+      #wa-fab::after { display:none; }
+      #wa-fab { width:46px; height:46px; font-size:21px; bottom:20px; left:16px; }
+    }
+    /* Ocultarse cuando drawer abierto */
+    body.cart-open #wa-fab { opacity:0; pointer-events:none; }
+
+    /* ── Cart body scroll ── */
+    .cart-drawer {
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;  /* el hijo .cart-body es quien scrollea */
+    }
+    .cart-body {
+      flex:1;
+      overflow-y:auto;
+      -webkit-overflow-scrolling:touch;
+      overscroll-behavior:contain;
+      padding:12px 16px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      min-height:0;      /* clave para que flex no desborde */
+    }
+    /* Quitamos el scroll del viejo #cart-list para que lo controle .cart-body */
+    #cart-list {
+      display:contents; /* transparente al layout */
+    }
+
+    /* ── Botón cerrar drawer (grande, abajo) en mobile ── */
+    .cart-close-row {
+      display:none;
+      padding:0 16px 14px;
+      flex-shrink:0;
+    }
+    .btn-cart-close-bottom {
+      width:100%;
+      padding:13px;
+      border-radius:12px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.1);
+      color:#888;
+      font-size:14px;
+      font-weight:600;
+      display:flex; align-items:center; justify-content:center;
+      gap:8px;
+      transition:background .15s;
+      cursor:pointer;
+      font-family:'Poppins',sans-serif;
+    }
+    .btn-cart-close-bottom:hover { background:rgba(255,255,255,.1); color:#e8e6e1; }
+    @media (max-width:480px) {
+      .cart-close-row { display:block; }
+    }
+
+    /* Ocultar X del header solo en mobile */
+    @media (max-width:480px) {
+      #btn-cart-close { display:none; }
+    }
+
+    /* Handle swipe */
+    .cart-handle {
+      display:none;
+      width:40px; height:4px;
+      background:rgba(255,255,255,.18);
+      border-radius:2px;
+      margin:10px auto 4px;
+      flex-shrink:0;
+      cursor:pointer;
+    }
+    @media (max-width:480px) { .cart-handle { display:block; } }
   </style>
 </head>
 <body>
@@ -78,7 +189,6 @@
   <div class="header-inner">
     <div class="logo">
       <div class="logo-mark">FS</div>
-      <!-- logo-text oculto en <=480px via CSS -->
       <div class="logo-text">
         <div class="name">Fitoscents</div>
         <div class="sub">Decants</div>
@@ -93,7 +203,6 @@
         <i class="bi bi-bag"></i>
         <span id="cart-badge" class="cart-badge" style="display:none">0</span>
       </button>
-      <!-- Solo el icono WA visible en mobile (texto oculto via CSS) -->
       <a href="https://wa.me/526648162623" target="_blank" rel="noopener" class="btn-wa" aria-label="WhatsApp">
         <i class="bi bi-whatsapp"></i>
         <span class="btn-wa-text">WhatsApp</span>
@@ -117,7 +226,6 @@
 
 <div class="filters">
   <div class="filters-inner">
-    <!-- Desktop: search + sort + clear -->
     <div class="filters-row1">
       <div>
         <div class="filter-label"><i class="bi bi-search"></i> Buscar decant</div>
@@ -139,16 +247,12 @@
       </div>
       <button class="btn-clear" onclick="clearFilters()"><i class="bi bi-x-circle"></i> Limpiar</button>
     </div>
-
-    <!-- Mobile: solo búsqueda -->
     <div class="filters-row-mobile">
       <div class="sinput-wrap">
         <i class="bi bi-search"></i>
         <input class="finput" id="q-mobile" placeholder="Buscar perfume..." oninput="syncMobileSearch()" autocomplete="off">
       </div>
     </div>
-
-    <!-- Mobile: sort inline (icono + select + limpiar) -->
     <div class="filters-row-sort-mobile">
       <span class="fsort-label"><i class="bi bi-sort-down-alt"></i></span>
       <select class="fselect fsort-select" id="sort-mobile" onchange="onSortMobile()">
@@ -159,12 +263,8 @@
         <option value="precio_asc">↓ Precio</option>
         <option value="precio_desc">↑ Precio</option>
       </select>
-      <button class="btn-clear btn-clear-sm" onclick="clearFilters()">
-        <i class="bi bi-x-circle"></i>
-      </button>
+      <button class="btn-clear btn-clear-sm" onclick="clearFilters()"><i class="bi bi-x-circle"></i></button>
     </div>
-
-    <!-- Tabs género (scroll sin barra visible) -->
     <div class="filter-tabs">
       <button class="ftab active" data-g="" onclick="setG(this)">Todos</button>
       <button class="ftab" data-g="Caballero" onclick="setG(this)">Caballero</button>
@@ -221,20 +321,27 @@
 <!-- CART DRAWER -->
 <div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
 <div class="cart-drawer" id="cart-drawer">
+  <!-- Handle para swipe-down (mobile) -->
+  <div class="cart-handle" id="cart-handle"></div>
+
   <div class="cart-header">
     <div class="cart-title"><i class="bi bi-bag"></i> Tu pedido</div>
+    <!-- X solo visible en desktop -->
     <button class="btn-close" id="btn-cart-close" onclick="closeCart()" aria-label="Cerrar pedido">
       <i class="bi bi-x-lg"></i>
     </button>
   </div>
+
+  <!-- Zona scrolleable (items + empty) -->
   <div class="cart-body">
-    <div class="cart-empty" id="cart-empty">
+    <div class="cart-empty" id="cart-empty" style="display:none">
       <i class="bi bi-bag-x"></i>
       <p>Tu pedido está vacío</p>
       <span>Abre un perfume y elige tu talla para agregar</span>
     </div>
-    <div class="cart-list" id="cart-list"></div>
+    <div id="cart-list"></div>
   </div>
+
   <div class="cart-footer" id="cart-footer" style="display:none">
     <div class="cart-total-row">
       <span>Total estimado</span>
@@ -248,15 +355,26 @@
       <i class="bi bi-trash"></i> Limpiar pedido
     </button>
   </div>
+
+  <!-- Botón cerrar grande en mobile (abajo del footer) -->
+  <div class="cart-close-row">
+    <button class="btn-cart-close-bottom" onclick="closeCart()">
+      <i class="bi bi-chevron-down"></i> Cerrar pedido
+    </button>
+  </div>
 </div>
 
-<!-- FAB flotante -->
+<!-- FAB carrito -->
 <button class="cart-fab" id="cart-fab" onclick="toggleCart()" aria-label="Ver pedido">
   <i class="bi bi-bag"></i>
   <span class="cart-badge" id="cart-badge-fab" style="display:none">0</span>
 </button>
 
-<!-- FOOTER -->
+<!-- FAB WhatsApp -->
+<a id="wa-fab" href="https://wa.me/526648162623?text=Hola!%20Me%20interesa%20saber%20m%C3%A1s%20sobre%20los%20decants%20%F0%9F%8C%B8" target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">
+  <i class="bi bi-whatsapp"></i>
+</a>
+
 <footer>
   <div class="footer-social">
     <p>Síguenos en redes</p>
@@ -288,6 +406,36 @@ function onSortMobile() {
   if (desk) desk.value = val;
   if (typeof renderGrid === 'function') renderGrid();
 }
+
+// ── Swipe-down para cerrar drawer en mobile ──
+(function(){
+  const handle = document.getElementById('cart-handle');
+  const drawer = document.getElementById('cart-drawer');
+  if (!handle || !drawer) return;
+  let startY = 0, dragging = false;
+  function onStart(e){
+    startY = (e.touches ? e.touches[0].clientY : e.clientY);
+    dragging = true;
+  }
+  function onMove(e){
+    if (!dragging) return;
+    const dy = (e.touches ? e.touches[0].clientY : e.clientY) - startY;
+    if (dy > 0) drawer.style.transform = `translateY(${dy}px)`;
+  }
+  function onEnd(e){
+    if (!dragging) return;
+    dragging = false;
+    const dy = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY) - startY;
+    drawer.style.transform = '';
+    if (dy > 90 && typeof closeCart === 'function') closeCart();
+  }
+  handle.addEventListener('touchstart', onStart, {passive:true});
+  handle.addEventListener('touchmove',  onMove,  {passive:true});
+  handle.addEventListener('touchend',   onEnd);
+  handle.addEventListener('mousedown',  onStart);
+  window.addEventListener('mousemove',  onMove);
+  window.addEventListener('mouseup',    onEnd);
+})();
 </script>
 </body>
 </html>

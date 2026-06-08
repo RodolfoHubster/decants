@@ -19,14 +19,12 @@ let currentPage = 1, filtered = [];
 let cart = loadCart();
 
 // ── Undo stack ────────────────────────────────────
-// Cada entrada: { cart: [...], label: 'Bleu de Chanel 5ml eliminado' }
 let undoStack = [];
 let undoTimer = null;
-const UNDO_TIMEOUT = 5000; // ms que aparece el botón Deshacer
+const UNDO_TIMEOUT = 5000;
 
 function pushUndo(prevCart, label) {
   undoStack.push({ cart: prevCart, label });
-  // Solo guardamos el último estado
   if (undoStack.length > 1) undoStack.shift();
   showUndoToast(label);
 }
@@ -42,10 +40,7 @@ function showUndoToast(label) {
   }
   document.getElementById('undo-msg').textContent = label;
   t.classList.add('show');
-  undoTimer = setTimeout(() => {
-    t.classList.remove('show');
-    undoStack = [];
-  }, UNDO_TIMEOUT);
+  undoTimer = setTimeout(() => { t.classList.remove('show'); undoStack = []; }, UNDO_TIMEOUT);
 }
 
 window.undoDelete = () => {
@@ -159,8 +154,7 @@ window.renderGrid = () => {
 
 // ── Patch badges in-place ─────────────────────────
 function patchGridBadges() {
-  const cards = document.querySelectorAll('.pcard[data-id]');
-  cards.forEach(card => {
+  document.querySelectorAll('.pcard[data-id]').forEach(card => {
     const id    = card.dataset.id;
     const units = cart.filter(i => i.id === id).reduce((s, i) => s + i.qty, 0);
     const img   = card.querySelector('.card-img');
@@ -169,19 +163,13 @@ function patchGridBadges() {
     if (units > 0) {
       const html = `<i class="bi bi-bag-check-fill"></i>${units > 1 ? ` <span>${units}</span>` : ''}`;
       if (badge) { badge.innerHTML = html; }
-      else {
-        badge = document.createElement('div');
-        badge.className = 'card-in-cart';
-        badge.innerHTML = html;
-        img.appendChild(badge);
-      }
+      else { badge = document.createElement('div'); badge.className = 'card-in-cart'; badge.innerHTML = html; img.appendChild(badge); }
     } else {
       if (badge) badge.remove();
     }
   });
 }
 
-// ── Persistir carrito ─────────────────────────────
 function persistCart() {
   if (cart.length) saveCart(cart);
   else clearSavedCart();
@@ -260,9 +248,7 @@ function syncModalCartBtn() {
   if (!wrapper) return;
 
   if (!sel) {
-    wrapper.innerHTML = `<button class="btn-add-cart" id="modal-btn-cart" onclick="addToCart()">
-      <i class="bi bi-bag-plus"></i> Agregar al pedido
-    </button>`;
+    wrapper.innerHTML = `<button class="btn-add-cart" onclick="addToCart()"><i class="bi bi-bag-plus"></i> Agregar al pedido</button>`;
     return;
   }
 
@@ -270,23 +256,11 @@ function syncModalCartBtn() {
   const qty = getItemQty(cart, key);
 
   if (qty === 0) {
-    wrapper.innerHTML = `<button class="btn-add-cart" id="modal-btn-cart" onclick="addToCart()">
-      <i class="bi bi-bag-plus"></i> Agregar al pedido
-    </button>`;
+    wrapper.innerHTML = `<button class="btn-add-cart" onclick="addToCart()"><i class="bi bi-bag-plus"></i> Agregar al pedido</button>`;
   } else if (qty >= MAX_QTY) {
-    wrapper.innerHTML = `
-      <div class="modal-qty-controls">
-        <button class="mqty-btn" onclick="modalDecrement()" aria-label="Quitar uno">−</button>
-        <span class="mqty-num">${qty}</span>
-        <button class="mqty-btn" disabled aria-label="Agregar uno">+</button>
-      </div>`;
+    wrapper.innerHTML = `<div class="modal-qty-controls"><button class="mqty-btn" onclick="modalDecrement()">−</button><span class="mqty-num">${qty}</span><button class="mqty-btn" disabled>+</button></div>`;
   } else {
-    wrapper.innerHTML = `
-      <div class="modal-qty-controls">
-        <button class="mqty-btn" onclick="modalDecrement()" aria-label="Quitar uno">−</button>
-        <span class="mqty-num">${qty}</span>
-        <button class="mqty-btn" onclick="modalIncrement()" aria-label="Agregar uno">+</button>
-      </div>`;
+    wrapper.innerHTML = `<div class="modal-qty-controls"><button class="mqty-btn" onclick="modalDecrement()">−</button><span class="mqty-num">${qty}</span><button class="mqty-btn" onclick="modalIncrement()">+</button></div>`;
   }
 }
 
@@ -300,10 +274,7 @@ window.modalIncrement = () => {
   if (cart[idx].qty >= MAX_QTY) { showToast(`Máximo ${MAX_QTY} unidades`); return; }
   const { cart: newCart } = addItem(cart, cart[idx]);
   cart = newCart;
-  persistCart();
-  syncModalCartBtn();
-  updateCartBadge();
-  patchGridBadges();
+  persistCart(); syncModalCartBtn(); updateCartBadge(); patchGridBadges();
 };
 
 window.modalDecrement = () => {
@@ -314,25 +285,18 @@ window.modalDecrement = () => {
   const item = cart.find(i => i.key === key);
   if (!item) return;
   if (item.qty === 1) {
-    // eliminar con undo
-    const prev  = [...cart];
-    const label = `${item.nombre} ${item.size}ml eliminado`;
+    const prev = [...cart], label = `${item.nombre} ${item.size}ml eliminado`;
     cart = removeItem(cart, key);
-    persistCart();
-    pushUndo(prev, label);
+    persistCart(); pushUndo(prev, label);
   } else {
-    cart = decrementItem(cart, key);
-    persistCart();
+    cart = decrementItem(cart, key); persistCart();
   }
-  syncModalCartBtn();
-  updateCartBadge();
-  patchGridBadges();
+  syncModalCartBtn(); updateCartBadge(); patchGridBadges();
 };
 
 window.selPill = btn => {
   document.querySelectorAll('.mpill').forEach(b => b.classList.remove('sel'));
-  btn.classList.add('sel');
-  syncModalCartBtn();
+  btn.classList.add('sel'); syncModalCartBtn();
 };
 
 window.closeModal = e => {
@@ -363,7 +327,6 @@ window.addToCart = () => {
   if (!modalData) return;
   const sel = document.querySelector('.mpill.sel');
   if (!sel) { flashPills(); return; }
-
   const item = {
     key:    modalData.id + '-' + sel.dataset.size,
     id:     modalData.id,
@@ -374,19 +337,12 @@ window.addToCart = () => {
     price:  +sel.dataset.price,
     qty:    1,
   };
-
   const { cart: newCart, added, reason } = addItem(cart, item);
-  if (!added) {
-    if (reason === 'max_qty') showToast(`Máximo ${MAX_QTY} unidades por talla`);
-    return;
-  }
-
+  if (!added) { if (reason === 'max_qty') showToast(`Máximo ${MAX_QTY} unidades por talla`); return; }
   cart = newCart;
   persistCart();
   showToast(`✓ ${modalData.nombre} ${sel.dataset.size}ml agregado`);
-  syncModalCartBtn();
-  updateCartBadge();
-  patchGridBadges();
+  syncModalCartBtn(); updateCartBadge(); patchGridBadges();
 };
 
 window.incrementCartItem = key => {
@@ -402,43 +358,33 @@ window.incrementCartItem = key => {
   if (qtyEl)   qtyEl.textContent = newQty;
   if (plusBtn) plusBtn.disabled  = (newQty >= MAX_QTY);
   _updateDecBtn(key, newQty);
-  updateCartBadge();
-  patchGridBadges();
+  updateCartBadge(); patchGridBadges();
   if (modalData?.id === cart.find(i => i.key === key)?.id) syncModalCartBtn();
 };
 
 window.decrementCartItem = key => {
   const item = cart.find(i => i.key === key);
   if (!item) return;
-
   if (item.qty === 1) {
-    // eliminar con undo
-    const prev  = [...cart];
-    const label = `${item.nombre} ${item.size}ml eliminado`;
+    const prev = [...cart], label = `${item.nombre} ${item.size}ml eliminado`;
     cart = removeItem(cart, key);
-    persistCart();
-    pushUndo(prev, label);
-    updateCartBadge();
-    renderCartDrawer();
-    patchGridBadges();
+    persistCart(); pushUndo(prev, label);
+    updateCartBadge(); renderCartDrawer(); patchGridBadges();
     if (modalData) syncModalCartBtn();
     return;
   }
-
   cart = decrementItem(cart, key);
   persistCart();
   const updated = cart.find(i => i.key === key);
-  if (!updated) {
-    renderCartDrawer();
-  } else {
+  if (!updated) { renderCartDrawer(); }
+  else {
     const qtyEl   = document.querySelector(`.cart-qty-num[data-key="${key}"]`);
     const plusBtn = document.querySelector(`.cart-qty-btn[data-inc="${key}"]`);
     if (qtyEl)   qtyEl.textContent = updated.qty;
     if (plusBtn) plusBtn.disabled  = (updated.qty >= MAX_QTY);
     _updateDecBtn(key, updated.qty);
   }
-  updateCartBadge();
-  patchGridBadges();
+  updateCartBadge(); patchGridBadges();
   if (modalData) syncModalCartBtn();
 };
 
@@ -456,7 +402,6 @@ function _updateDecBtn(key, qty) {
   }
 }
 
-// ── Event delegation en cart-list ──────────────────
 document.addEventListener('DOMContentLoaded', () => {
   const cartList = document.getElementById('cart-list');
   cartList.addEventListener('click', e => {
@@ -474,9 +419,7 @@ window.clearCart = () => {
   const label = `Pedido limpiado (${prev.length} item${prev.length > 1 ? 's' : ''})`;
   cart = pureCleart();
   clearSavedCart();
-  updateCartBadge();
-  renderCartDrawer();
-  patchGridBadges();
+  updateCartBadge(); renderCartDrawer(); patchGridBadges();
   if (modalData) syncModalCartBtn();
   pushUndo(prev, label);
 };
@@ -487,6 +430,7 @@ window.closeCart = () => {
   const overlay = document.getElementById('cart-overlay');
   drawer.classList.remove('open');
   overlay.classList.remove('open');
+  document.body.classList.remove('cart-open');  // muestra WA FAB de nuevo
   document.body.style.overflow = '';
 };
 
@@ -498,6 +442,7 @@ window.toggleCart = () => {
   } else {
     drawer.classList.add('open');
     overlay.classList.add('open');
+    document.body.classList.add('cart-open');   // oculta WA FAB
     document.body.style.overflow = 'hidden';
     renderCartDrawer();
   }
@@ -522,6 +467,7 @@ function renderCartDrawer() {
   const list  = document.getElementById('cart-list');
   const empty = document.getElementById('cart-empty');
   const foot  = document.getElementById('cart-footer');
+  const body  = document.querySelector('.cart-body');
 
   if (!cart.length) {
     list.innerHTML      = '';
@@ -556,14 +502,13 @@ function renderCartDrawer() {
     </div>`).join('');
 
   document.getElementById('cart-total').textContent = '$' + calcTotal(cart) + ' MXN';
+  // scroll al top cada vez que se renderiza
+  if (body) body.scrollTop = 0;
 }
 
 window.sendCartWA = () => {
   const url = buildWhatsAppURL(cart, '526648162623');
-  if (url) {
-    clearSavedCart();
-    window.open(url, '_blank');
-  }
+  if (url) { clearSavedCart(); window.open(url, '_blank'); }
 };
 
 function flashPills() {
