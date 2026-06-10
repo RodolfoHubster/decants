@@ -54,17 +54,21 @@ window.loadMarcas = () => {
 };
 
 window.renderTable = () => {
-  const q     = document.getElementById('search').value.toLowerCase();
-  const fg    = document.getElementById('f-genero').value;
-  const fc    = document.getElementById('f-cat').value;
-  const fm    = document.getElementById('f-marca').value;
-  const orden = document.getElementById('f-orden').value;
+  const q       = document.getElementById('search').value.toLowerCase();
+  const fg      = document.getElementById('f-genero').value;
+  const fc      = document.getElementById('f-cat').value;
+  const fm      = document.getElementById('f-marca').value;
+  const ffa     = document.getElementById('f-familia').value;
+  const fti     = document.getElementById('f-tipo').value;
+  const orden   = document.getElementById('f-orden').value;
 
   let fil = perfumes.filter(p =>
-    (!q  || p.nombre.toLowerCase().includes(q) || (p.marca || '').toLowerCase().includes(q)) &&
-    (!fg || p.genero === fg) &&
-    (!fc || p.categoria === fc) &&
-    (!fm || p.marca === fm)
+    (!q   || p.nombre.toLowerCase().includes(q) || (p.marca || '').toLowerCase().includes(q)) &&
+    (!fg  || p.genero === fg) &&
+    (!fc  || p.categoria === fc) &&
+    (!fm  || p.marca === fm) &&
+    (!ffa || p.familia === ffa) &&
+    (!fti || p.tipo === fti)
   );
 
   fil.sort((a, b) => {
@@ -78,7 +82,7 @@ window.renderTable = () => {
   const tb = document.getElementById('tbody');
 
   if (!fil.length) {
-    tb.innerHTML = '<tr><td colspan="9"><div class="empty-state"><i class="bi bi-droplet"></i><h3>Sin resultados</h3><p>Cambia los filtros o agrega perfumes.</p></div></td></tr>';
+    tb.innerHTML = '<tr><td colspan="10"><div class="empty-state"><i class="bi bi-droplet"></i><h3>Sin resultados</h3><p>Cambia los filtros o agrega perfumes.</p></div></td></tr>';
     return;
   }
 
@@ -105,10 +109,12 @@ window.renderTable = () => {
       <td><span class="badge badge-gold">${p.marca || '&#8212;'}</span></td>
       <td><span class="badge badge-info">${p.categoria || '&#8212;'}</span></td>
       <td><span class="badge badge-muted">${p.genero || '&#8212;'}</span></td>
+      <td><span class="badge badge-muted">${p.familia || '&#8212;'}</span></td>
+      <td><span class="badge badge-muted">${p.tipo || '&#8212;'}</span></td>
       <td class="col-clicks">${clicks}</td>
       <td>${tags || '<span style="color:var(--text-faint)">Sin precios</span>'}${alertaPrecio}</td>
-      <td><button class="btn btn-outline btn-sm" onclick="copiarLista('${pid}')" title="Copiar lista de precios"><i class="bi bi-clipboard"></i></button></td>
       <td><div style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="copiarLista('${pid}')" title="Copiar lista de precios"><i class="bi bi-clipboard"></i></button>
         <button class="btn-icon" onclick="edit('${pid}')" title="Editar"><i class="bi bi-pencil"></i></button>
         <button class="btn-icon" onclick="toggleV('${pid}',${actv})" title="${actv ? 'Ocultar' : 'Mostrar'}"><i class="bi bi-eye${actv ? '' : '-slash'}"></i></button>
         <button class="btn-icon" onclick="del('${pid}','${pnom}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
@@ -117,7 +123,6 @@ window.renderTable = () => {
   }).join('');
 };
 
-// ─── COPIAR LISTA DE PRECIOS ──────────────────────────────────────────────────
 window.copiarLista = (id) => {
   const p = perfumes.find(x => x.id === id);
   if (!p) return;
@@ -140,6 +145,8 @@ window.openModal = () => {
   document.getElementById('p-img-file').value    = '';
   document.getElementById('p-genero').value       = '';
   document.getElementById('p-cat').value          = '';
+  document.getElementById('p-familia').value      = '';
+  document.getElementById('p-tipo').value         = '';
   document.getElementById('p-marca').innerHTML    = '<option>Selecciona</option>';
   document.getElementById('p-activo').checked     = true;
   document.getElementById('preview-wrap').style.display = 'none';
@@ -178,10 +185,12 @@ window.previewFile = () => {
 window.edit = (id) => {
   const p = perfumes.find(x => x.id === id);
   if (!p) return;
-  document.getElementById('p-id').value     = p.id;
-  document.getElementById('p-nombre').value = p.nombre;
-  document.getElementById('p-genero').value = p.genero || '';
-  document.getElementById('p-cat').value    = p.categoria || '';
+  document.getElementById('p-id').value      = p.id;
+  document.getElementById('p-nombre').value  = p.nombre;
+  document.getElementById('p-genero').value  = p.genero || '';
+  document.getElementById('p-cat').value     = p.categoria || '';
+  document.getElementById('p-familia').value = p.familia || '';
+  document.getElementById('p-tipo').value    = p.tipo || '';
   loadMarcas();
   setTimeout(() => { document.getElementById('p-marca').value = p.marca || ''; }, 80);
   document.getElementById('p-desc').value    = p.descripcion || '';
@@ -235,6 +244,8 @@ window.save = async () => {
     const tamanos = Object.keys(precios).filter(k => precios[k] > 0);
     const data = {
       nombre, genero, categoria, marca,
+      familia:     document.getElementById('p-familia').value || '',
+      tipo:        document.getElementById('p-tipo').value    || '',
       descripcion: document.getElementById('p-desc').value.trim(),
       imagen, precios, tamanos,
       activo: document.getElementById('p-activo').checked

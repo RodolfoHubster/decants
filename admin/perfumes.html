@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="../assets/css/variables.css">
   <link rel="stylesheet" href="../assets/css/global.css">
   <link rel="stylesheet" href="../assets/css/perfumes.css">
-
 </head>
 <body>
 <div class="app-shell">
@@ -27,6 +26,24 @@
         <select class="form-control" style="max-width:160px" id="f-genero" onchange="renderTable()"><option value="">Todos</option><option>Caballero</option><option>Dama</option><option>Unisex</option></select>
         <select class="form-control" style="max-width:180px" id="f-cat" onchange="renderTable()"><option value="">Todas las categorias</option></select>
         <select class="form-control" style="max-width:180px" id="f-marca" onchange="renderTable()"><option value="">Todas las marcas</option></select>
+        <select class="form-control" style="max-width:160px" id="f-familia" onchange="renderTable()">
+          <option value="">Todas las familias</option>
+          <option>Amaderado</option>
+          <option>Citrico</option>
+          <option>Floral</option>
+          <option>Fougere</option>
+          <option>Gourmand</option>
+          <option>Marino</option>
+          <option>Oriental</option>
+          <option>Aromatico</option>
+        </select>
+        <select class="form-control" style="max-width:160px" id="f-tipo" onchange="renderTable()">
+          <option value="">Todos los tipos</option>
+          <option>Eau de Parfum</option>
+          <option>Eau de Toilette</option>
+          <option>Parfum</option>
+          <option>Cologne</option>
+        </select>
         <select class="form-control" style="max-width:180px" id="f-orden" onchange="renderTable()">
           <option value="clicks">🔥 Más populares</option>
           <option value="az">Nombre A-Z</option>
@@ -37,7 +54,7 @@
         <div class="card-header"><h5>Catalogo de Perfumes</h5><span class="badge badge-muted" id="count-label">0 perfumes</span></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Imagen</th><th>Nombre</th><th>Marca</th><th>Categoria</th><th>Genero</th><th class="col-clicks"><i class="bi bi-eye"></i> Clicks</th><th>Precios</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Imagen</th><th>Nombre</th><th>Marca</th><th>Categoria</th><th>Genero</th><th>Familia</th><th>Tipo</th><th class="col-clicks"><i class="bi bi-eye"></i> Clicks</th><th>Precios</th><th>Acciones</th></tr></thead>
             <tbody id="tbody"></tbody>
           </table>
         </div>
@@ -59,6 +76,32 @@
       <div class="form-row">
         <div class="form-group"><label>Categoria *</label><select class="form-control" id="p-cat" onchange="loadMarcas()"><option value="">Selecciona</option></select></div>
         <div class="form-group"><label>Marca *</label><select class="form-control" id="p-marca"><option value="">Selecciona</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Familia Olfativa</label>
+          <select class="form-control" id="p-familia">
+            <option value="">Sin especificar</option>
+            <option>Amaderado</option>
+            <option>Citrico</option>
+            <option>Floral</option>
+            <option>Fougere</option>
+            <option>Gourmand</option>
+            <option>Marino</option>
+            <option>Oriental</option>
+            <option>Aromatico</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tipo</label>
+          <select class="form-control" id="p-tipo">
+            <option value="">Sin especificar</option>
+            <option>Eau de Parfum</option>
+            <option>Eau de Toilette</option>
+            <option>Parfum</option>
+            <option>Cologne</option>
+          </select>
+        </div>
       </div>
       <div class="form-group"><label>Notas / Descripcion</label><textarea class="form-control" id="p-desc" rows="2" placeholder="Vainilla, madera, ambar..."></textarea></div>
       <div class="form-group">

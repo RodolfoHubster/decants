@@ -126,7 +126,6 @@ async function load() {
   all = [];
   snap.forEach(d => all.push({ id: d.id, ...d.data() }));
 
-  // Poblar filtros dinámicos de marcas
   buildFilterPanelDynamic();
 
   renderGrid();
@@ -136,7 +135,6 @@ async function load() {
     updateCartBadge();
   }
 
-  // Deep link
   const slug = getSlugFromHash();
   if (slug) {
     const p = findBySlug(all, slug);
@@ -221,7 +219,6 @@ window.clearAllFilters = () => {
   renderGrid();
 };
 
-// Escuchar cambios de hash
 window.addEventListener('hashchange', () => {
   const slug = getSlugFromHash();
   const modal = document.getElementById('modal');
@@ -266,7 +263,8 @@ window.renderGrid = () => {
   const sEl   = document.getElementById('sort');
   const q     = qEl ? qEl.value.toLowerCase().trim() : '';
   const sort  = sEl ? sEl.value : 'relevancia';
-  const sm    = document.getElementById('sort-mobile');
+  // FIX: sync sort-mobile solo si existe
+  const sm = document.getElementById('sort-mobile');
   if (sm && sm.value !== sort) sm.value = sort;
 
   filtered = all.filter(p => {
