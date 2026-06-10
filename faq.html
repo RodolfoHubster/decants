@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>¿Qué es un decant? · Fitoscents</title>
+  <meta name="description" content="Aprende qué es un decant, cómo se hace, sus beneficios y preguntas frecuentes sobre los decants de Fitoscents Tijuana.">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="./assets/css/catalog.css">
+  <style>
+    /* ── Reset base ── */
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Poppins',sans-serif;background:#0b0a09;color:#e8e6e1;line-height:1.6;min-height:100dvh;}
+
+    /* ── Página ── */
+    .faq-page{max-width:760px;margin:0 auto;padding:32px 20px 80px;}
+
+    /* ── Back ── */
+    .back-btn{display:inline-flex;align-items:center;gap:7px;color:#9a9891;font-size:13px;font-weight:500;text-decoration:none;margin-bottom:36px;transition:color .15s;padding:8px 0;}
+    .back-btn:hover{color:#c9a84c;}
+
+    /* ── Hero compacto ── */
+    .faq-hero{text-align:center;padding:24px 0 48px;}
+    .faq-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);color:#c9a84c;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:5px 14px;border-radius:20px;margin-bottom:20px;}
+    .faq-hero h1{font-size:clamp(1.6rem,5vw,2.6rem);font-weight:700;margin-bottom:12px;line-height:1.15;}
+    .faq-hero h1 span{color:#c9a84c;}
+    .faq-hero p{color:#7a7870;font-size:15px;max-width:520px;margin:0 auto;line-height:1.7;}
+
+    /* ── Cards info ── */
+    .info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:56px;}
+    .info-card{background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.14);border-radius:16px;padding:24px 20px;transition:border-color .2s,background .2s;}
+    .info-card:hover{border-color:rgba(201,168,76,.38);background:rgba(201,168,76,.04);}
+    .info-icon{width:42px;height:42px;border-radius:10px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;font-size:19px;color:#c9a84c;margin-bottom:14px;}
+    .info-card h3{font-size:13.5px;font-weight:700;color:#e8e6e1;margin-bottom:7px;}
+    .info-card p{font-size:12.5px;color:#7a7870;line-height:1.65;}
+
+    /* ── Proceso ── */
+    .process-block{background:rgba(201,168,76,.05);border:1px solid rgba(201,168,76,.18);border-radius:18px;padding:28px 28px 24px;margin-bottom:52px;}
+    .process-block h2{font-size:14px;font-weight:700;color:#c9a84c;margin-bottom:22px;display:flex;align-items:center;gap:8px;}
+    .ps-list{display:flex;flex-direction:column;gap:16px;}
+    .ps-item{display:flex;gap:14px;align-items:flex-start;}
+    .ps-num{width:28px;height:28px;flex-shrink:0;border-radius:50%;background:rgba(201,168,76,.15);border:1.5px solid rgba(201,168,76,.4);color:#c9a84c;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:2px;}
+    .ps-text{font-size:13.5px;color:#9a9891;line-height:1.6;}
+    .ps-text strong{color:#e8e6e1;}
+
+    /* ── Divider ── */
+    .section-divider{border:none;border-top:1px solid rgba(255,255,255,.06);margin:0 0 48px;}
+
+    /* ── FAQ Accordion ── */
+    .faq-title{font-size:clamp(1.2rem,3.5vw,1.7rem);font-weight:700;color:#e8e6e1;margin-bottom:24px;text-align:center;}
+    .faq-title span{color:#c9a84c;}
+    .faq-list{display:flex;flex-direction:column;gap:10px;}
+    .faq-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden;transition:border-color .2s;}
+    .faq-item.open{border-color:rgba(201,168,76,.35);}
+    .faq-q{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;background:transparent;border:none;color:#e8e6e1;font-size:14px;font-weight:600;text-align:left;padding:18px 20px;cursor:pointer;font-family:'Poppins',sans-serif;transition:color .15s;}
+    .faq-q:hover{color:#c9a84c;}
+    .faq-arr{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.25);color:#c9a84c;font-size:12px;display:flex;align-items:center;justify-content:center;transition:transform .25s;}
+    .faq-item.open .faq-arr{transform:rotate(180deg);}
+    .faq-a{max-height:0;overflow:hidden;transition:max-height .32s ease,padding .2s;font-size:13.5px;color:#7a7870;line-height:1.7;padding:0 20px;}
+    .faq-item.open .faq-a{max-height:320px;padding:0 20px 18px;}
+
+    /* ── CTA final ── */
+    .faq-cta{margin-top:56px;text-align:center;padding:36px 24px;background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.18);border-radius:20px;}
+    .faq-cta h3{font-size:16px;font-weight:700;color:#e8e6e1;margin-bottom:8px;}
+    .faq-cta p{font-size:13px;color:#7a7870;margin-bottom:20px;}
+    .faq-cta-btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
+    .btn-cta-catalog{display:inline-flex;align-items:center;gap:7px;background:rgba(201,168,76,.15);border:1.5px solid rgba(201,168,76,.45);color:#c9a84c;font-size:13px;font-weight:700;padding:11px 22px;border-radius:12px;text-decoration:none;transition:background .18s;font-family:'Poppins',sans-serif;cursor:pointer;}
+    .btn-cta-catalog:hover{background:rgba(201,168,76,.28);}
+    .btn-cta-wa{display:inline-flex;align-items:center;gap:7px;background:#25D366;border:1.5px solid #25D366;color:#fff;font-size:13px;font-weight:700;padding:11px 22px;border-radius:12px;text-decoration:none;transition:background .18s;font-family:'Poppins',sans-serif;}
+    .btn-cta-wa:hover{background:#1db954;border-color:#1db954;}
+  </style>
+</head>
+<body>
+
+<!-- Reutilizamos el header de catálogo -->
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-mark">FS</div>
+      <div class="logo-text">
+        <div class="name">Fitoscents</div>
+        <div class="sub">Decants</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <a href="./index.html" class="btn-admin" aria-label="Ir al catálogo">
+        <i class="bi bi-grid" aria-hidden="true"></i>
+        <span>Catálogo</span>
+      </a>
+      <a href="https://wa.me/526648162623" target="_blank" rel="noopener" class="btn-wa" aria-label="WhatsApp">
+        <i class="bi bi-whatsapp" aria-hidden="true"></i>
+        <span class="btn-wa-text">WhatsApp</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main class="faq-page">
+
+  <a href="./index.html" class="back-btn" aria-label="Regresar al catálogo">
+    <i class="bi bi-arrow-left" aria-hidden="true"></i> Regresar al catálogo
+  </a>
+
+  <!-- Hero -->
+  <div class="faq-hero">
+    <div class="faq-tag"><i class="bi bi-droplet-half" aria-hidden="true"></i> Acerca de nuestros Decants</div>
+    <h1>¿Qué es un <span>decant</span>?</h1>
+    <p>Un decant es una porción fraccionada de un perfume original, transferida a un frasco pequeño para
+    que puedas probarlo o llevarlo contigo sin comprar el frasco completo.</p>
+  </div>
+
+  <!-- Cards info -->
+  <div class="info-grid" role="list">
+    <article class="info-card" role="listitem">
+      <div class="info-icon" aria-hidden="true"><i class="bi bi-box-seam"></i></div>
+      <h3>¿Qué recibes?</h3>
+      <p>Frasco pequeño con atomizador o tapa de rosca, etiqueta con nombre, marca y mililitros. Exactamente lo que elegiste.</p>
+    </article>
+    <article class="info-card" role="listitem">
+      <div class="info-icon" aria-hidden="true"><i class="bi bi-currency-dollar"></i></div>
+      <h3>Económico</h3>
+      <p>Prueba perfumes de lujo sin comprar el frasco entero. Desde $50 MXN puedes oler una fragancia premium.</p>
+    </article>
+    <article class="info-card" role="listitem">
+      <div class="info-icon" aria-hidden="true"><i class="bi bi-patch-check-fill"></i></div>
+      <h3>100% Original</h3>
+      <p>El líquido proviene directamente del frasco oficial de la marca. No hay dilución ni mezcla con otros productos.</p>
+    </article>
+    <article class="info-card" role="listitem">
+      <div class="info-icon" aria-hidden="true"><i class="bi bi-airplane"></i></div>
+      <h3>Portátil</h3>
+      <p>2 a 10 ml que caben en cualquier bolsillo. Ideales para viajes: cumplen el límite de líquidos en vuelos.</p>
+    </article>
+  </div>
+
+  <!-- Proceso -->
+  <div class="process-block" role="region" aria-label="Cómo se hace un decant">
+    <h2><i class="bi bi-gear-fill" aria-hidden="true"></i> ¿Cómo se hace un decant?</h2>
+    <div class="ps-list">
+      <div class="ps-item">
+        <div class="ps-num" aria-hidden="true">1</div>
+        <div class="ps-text"><strong>Frasco original verificado.</strong> Partimos siempre del frasco oficial de la marca, adquirido en distribuidores autorizados.</div>
+      </div>
+      <div class="ps-item">
+        <div class="ps-num" aria-hidden="true">2</div>
+        <div class="ps-text"><strong>Higiene estricta.</strong> Todos los instrumentos — jeringas graduadas de 1–10 ml, pipetas dosificadoras, embudos de precisión — se desinfectan antes de cada uso.</div>
+      </div>
+      <div class="ps-item">
+        <div class="ps-num" aria-hidden="true">3</div>
+        <div class="ps-text"><strong>Medición exacta.</strong> Usamos jeringas calibradas para garantizar que el volumen en tu frasco sea exactamente el que pediste: 2 ml, 3 ml, 5 ml o 10 ml.</div>
+      </div>
+      <div class="ps-item">
+        <div class="ps-num" aria-hidden="true">4</div>
+        <div class="ps-text"><strong>Etiquetado claro.</strong> Tu frasco lleva etiqueta con nombre, marca y mililitros del decant para que siempre identifiques lo que llevas.</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- FAQ -->
+  <h2 class="faq-title">Preguntas <span>frecuentes</span></h2>
+  <div class="faq-list" role="list">
+
+    <div class="faq-item" role="listitem">
+      <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+        ¿El decant huele igual que el frasco original?
+        <span class="faq-arr" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-a">Sí. El perfume se transfiere directamente del frasco de la marca sin diluir ni mezclar con nada. Usamos instrumentos limpios y el proceso no altera la composición química de la fragancia.</div>
+    </div>
+
+    <div class="faq-item" role="listitem">
+      <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+        ¿Cuánto dura un decant de 5 ml?
+        <span class="faq-arr" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-a">Depende del uso: si aplicas 3–4 disparos al día, un decant de 5 ml puede durar entre 2 y 4 semanas. Ideal para conocer si el perfume te convence antes de comprar el frasco completo.</div>
+    </div>
+
+    <div class="faq-item" role="listitem">
+      <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+        ¿Cómo sé que es original?
+        <span class="faq-arr" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-a">Nuestros decants provienen de frascos originales adquiridos en distribuidores autorizados. Si tienes dudas sobre algún perfume, escríbenos por WhatsApp y con gusto te mostramos el frasco original.</div>
+    </div>
+
+    <div class="faq-item" role="listitem">
+      <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+        ¿Qué tamaños tienen disponibles?
+        <span class="faq-arr" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-a">Manejamos presentaciones de 2 ml, 3 ml, 5 ml y 10 ml, según el perfume. Los tamaños disponibles aparecen en la ficha del perfume; los agotados se muestran deshabilitados.</div>
+    </div>
+
+    <div class="faq-item" role="listitem">
+      <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+        ¿El frasco trae atomizador?
+        <span class="faq-arr" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-a">La mayoría de presentaciones llevan atomizador tipo spray. Algunas presentaciones pequeñas (2 ml) pueden llevar tapa de rosca para aplicación directa. Se especifica en la descripción de cada perfume.</div>
+    </div>
+
+    <div class="faq-item" role="listitem">
+      <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+        ¿Cómo hago mi pedido?
+        <span class="faq-arr" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-a">Elige tu perfume y tamaño desde el catálogo, agrégalo al carrito y envíanos tu pedido por WhatsApp. Te confirmamos disponibilidad y acordamos punto de entrega o envío en Tijuana.</div>
+    </div>
+
+    <div class="faq-item" role="listitem">
+      <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+        ¿Hacen envíos fuera de Tijuana?
+        <span class="faq-arr" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-a">Principalmente atendemos Tijuana, B.C. Para pedidos foráneos, contáctanos por WhatsApp y revisamos opciones de envío según tu ciudad.</div>
+    </div>
+
+    <div class="faq-item" role="listitem">
+      <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+        ¿Puedo pedir un perfume que no está en el catálogo?
+        <span class="faq-arr" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-a">¡Sí! Escríbenos por WhatsApp con el nombre y marca del perfume que buscas. Si lo tenemos disponible o podemos conseguirlo, te avisamos con gusto.</div>
+    </div>
+
+  </div>
+
+  <!-- CTA -->
+  <div class="faq-cta">
+    <h3>¿Listo para explorar?</h3>
+    <p>Más de 50 fragancias originales te esperan en el catálogo.</p>
+    <div class="faq-cta-btns">
+      <a href="./index.html" class="btn-cta-catalog">
+        <i class="bi bi-grid" aria-hidden="true"></i> Ver catálogo
+      </a>
+      <a href="https://wa.me/526648162623?text=Hola!%20Tengo%20una%20duda%20sobre%20los%20decants%20de%20Fitoscents" target="_blank" rel="noopener" class="btn-cta-wa">
+        <i class="bi bi-whatsapp" aria-hidden="true"></i> Preguntar por WhatsApp
+      </a>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-copy" style="text-align:center;padding:20px;">
+    <p style="color:#555;font-size:13px;">© 2026 <a href="https://wa.me/526648162623" target="_blank" rel="noopener" style="color:#c9a84c;">Fitoscents</a> · Tijuana, B.C.</p>
+  </div>
+</footer>
+
+<script>
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(el => {
+    el.classList.remove('open');
+    el.querySelector('.faq-q').setAttribute('aria-expanded','false');
+  });
+  if (!isOpen) {
+    item.classList.add('open');
+    btn.setAttribute('aria-expanded','true');
+    // Scroll suave si está fuera de vista
+    setTimeout(() => btn.scrollIntoView({behavior:'smooth',block:'nearest'}), 50);
+  }
+}
+</script>
+</body>
+</html>

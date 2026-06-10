@@ -7,438 +7,53 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="./assets/css/catalog.css">
+  <link rel="stylesheet" href="./assets/css/filters.css">
   <style>
     /* ── Controles qty modal ── */
-    .modal-qty-controls {
-      display:flex; align-items:center; justify-content:center;
-      gap:0; margin-bottom:10px;
-      background:rgba(201,168,76,.08); border:1.5px solid rgba(201,168,76,.4);
-      border-radius:12px; overflow:hidden;
+    .modal-qty-controls{
+      display:flex;align-items:center;justify-content:center;
+      gap:0;margin-bottom:10px;
+      background:rgba(201,168,76,.08);border:1.5px solid rgba(201,168,76,.4);
+      border-radius:12px;overflow:hidden;
     }
-    .mqty-btn {
-      width:48px; height:46px; font-size:22px; font-weight:300;
-      background:transparent; border:none; color:#c9a84c;
-      display:flex; align-items:center; justify-content:center;
-      transition:background .15s; flex-shrink:0; cursor:pointer;
-    }
+    .mqty-btn{width:48px;height:46px;font-size:22px;font-weight:300;background:transparent;border:none;color:#c9a84c;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0;cursor:pointer;}
     .mqty-btn:hover:not(:disabled){background:rgba(201,168,76,.18);}
     .mqty-btn:disabled{color:#444;cursor:not-allowed;}
-    .mqty-num {
-      flex:1; text-align:center; font-size:16px; font-weight:700; color:#e8e6e1;
-      border-left:1px solid rgba(201,168,76,.2);
-      border-right:1px solid rgba(201,168,76,.2);
-      padding:0 8px;
-    }
-
+    .mqty-num{flex:1;text-align:center;font-size:16px;font-weight:700;color:#e8e6e1;border-left:1px solid rgba(201,168,76,.2);border-right:1px solid rgba(201,168,76,.2);padding:0 8px;}
     /* ── Toast Deshacer ── */
-    #undo-toast {
-      position:fixed; bottom:88px; left:50%;
-      transform:translateX(-50%) translateY(20px);
-      background:#1a1a1a; border:1px solid rgba(201,168,76,.5);
-      color:#e8e6e1; border-radius:14px; padding:12px 16px;
-      display:flex; align-items:center; gap:12px;
-      font-size:13px; font-weight:500;
-      box-shadow:0 8px 32px rgba(0,0,0,.6);
-      opacity:0; pointer-events:none;
-      transition:opacity .25s,transform .25s;
-      z-index:9999; white-space:nowrap;
-      max-width:calc(100vw - 32px);
-    }
+    #undo-toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;border:1px solid rgba(201,168,76,.5);color:#e8e6e1;border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:12px;font-size:13px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:9999;white-space:nowrap;max-width:calc(100vw - 32px);}
     #undo-toast.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0);}
     #undo-msg{overflow:hidden;text-overflow:ellipsis;max-width:220px;}
-    #undo-btn {
-      background:rgba(201,168,76,.18); border:1px solid rgba(201,168,76,.45);
-      color:#c9a84c; border-radius:8px; padding:6px 14px;
-      font-size:12px; font-weight:700; cursor:pointer;
-      white-space:nowrap; transition:background .15s; flex-shrink:0;
-    }
+    #undo-btn{background:rgba(201,168,76,.18);border:1px solid rgba(201,168,76,.45);color:#c9a84c;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .15s;flex-shrink:0;}
     #undo-btn:hover{background:rgba(201,168,76,.32);}
-
     /* ── Toast normal ── */
-    #toast {
-      position:fixed; bottom:160px; left:50%;
-      transform:translateX(-50%) translateY(10px);
-      background:#1a1a1a; color:#e8e6e1;
-      border:1px solid rgba(201,168,76,.3);
-      border-radius:10px; padding:10px 20px;
-      font-size:13px; font-weight:500;
-      opacity:0; pointer-events:none;
-      transition:opacity .2s,transform .2s;
-      z-index:10000; white-space:nowrap;
-      max-width:calc(100vw - 32px); text-align:center;
-    }
+    #toast{position:fixed;bottom:160px;left:50%;transform:translateX(-50%) translateY(10px);background:#1a1a1a;color:#e8e6e1;border:1px solid rgba(201,168,76,.3);border-radius:10px;padding:10px 20px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:10000;white-space:nowrap;max-width:calc(100vw - 32px);text-align:center;}
     #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-
     /* ── FAB WhatsApp ── */
-    #wa-fab {
-      position:fixed;
-      bottom:24px; left:24px;
-      width:52px; height:52px;
-      border-radius:50%;
-      background:#25D366;
-      border:none;
-      color:#fff; font-size:24px;
-      display:flex; align-items:center; justify-content:center;
-      box-shadow:0 6px 20px rgba(0,0,0,.45);
-      z-index:300;
-      cursor:pointer;
-      transition:transform .2s, box-shadow .2s, opacity .25s;
-      text-decoration:none;
-    }
-    #wa-fab:hover {
-      transform:scale(1.1);
-      box-shadow:0 10px 28px rgba(37,211,102,.35);
-      background:#1db954;
-    }
-    #wa-fab::after {
-      content: '¿Tienes dudas?';
-      position:absolute;
-      left:calc(100% + 10px);
-      top:50%; transform:translateY(-50%);
-      background:#1a1a1a;
-      border:1px solid rgba(255,255,255,.12);
-      color:#e8e6e1;
-      font-size:12px; font-weight:500;
-      white-space:nowrap;
-      padding:6px 12px;
-      border-radius:8px;
-      opacity:0;
-      pointer-events:none;
-      transition:opacity .18s;
-      font-family:'Poppins',sans-serif;
-    }
-    #wa-fab:hover::after { opacity:1; }
-    @media (max-width:480px) {
-      #wa-fab::after { display:none; }
-      #wa-fab { width:46px; height:46px; font-size:21px; bottom:20px; left:16px; }
-    }
-    body.cart-open #wa-fab { opacity:0; pointer-events:none; }
-
-    /* ── Cart body scroll ── */
-    .cart-drawer {
-      display:flex;
-      flex-direction:column;
-      overflow:hidden;
-    }
-    .cart-body {
-      flex:1;
-      overflow-y:auto;
-      -webkit-overflow-scrolling:touch;
-      overscroll-behavior:contain;
-      padding:12px 16px;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      min-height:0;
-    }
-    #cart-list {
-      display:contents;
-    }
-
-    /* ── Botón cerrar drawer (mobile) ── */
-    .cart-close-row {
-      display:none;
-      padding:0 16px 14px;
-      flex-shrink:0;
-    }
-    .btn-cart-close-bottom {
-      width:100%;
-      padding:13px;
-      border-radius:12px;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.1);
-      color:#888;
-      font-size:14px;
-      font-weight:600;
-      display:flex; align-items:center; justify-content:center;
-      gap:8px;
-      transition:background .15s;
-      cursor:pointer;
-      font-family:'Poppins',sans-serif;
-    }
-    .btn-cart-close-bottom:hover { background:rgba(255,255,255,.1); color:#e8e6e1; }
-    @media (max-width:480px) {
-      .cart-close-row { display:block; }
-    }
-    @media (max-width:480px) {
-      #btn-cart-close { display:none; }
-    }
-
-    .cart-handle {
-      display:none;
-      width:40px; height:4px;
-      background:rgba(255,255,255,.18);
-      border-radius:2px;
-      margin:10px auto 4px;
-      flex-shrink:0;
-      cursor:pointer;
-    }
-    @media (max-width:480px) { .cart-handle { display:block; } }
-
-    /* ══════════════════════════════════════════
-       NUEVAS SECCIONES UX / EDUCACIÓN
-    ══════════════════════════════════════════ */
-
-    /* ── Sección ¿Qué es un decant? ── */
-    .section-decant {
-      padding: 64px 20px 48px;
-      background: linear-gradient(180deg, #0e0e0e 0%, #131110 100%);
-      border-top: 1px solid rgba(201,168,76,.12);
-    }
-    .section-decant .inner {
-      max-width: 960px;
-      margin: 0 auto;
-    }
-    .section-decant .sec-tag {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(201,168,76,.1);
-      border: 1px solid rgba(201,168,76,.3);
-      color: #c9a84c;
-      font-size: 11px; font-weight: 600; letter-spacing: .08em;
-      text-transform: uppercase;
-      padding: 5px 12px;
-      border-radius: 20px;
-      margin-bottom: 20px;
-    }
-    .section-decant h2 {
-      font-size: clamp(1.5rem, 4vw, 2.2rem);
-      font-weight: 700;
-      color: #e8e6e1;
-      margin-bottom: 12px;
-      line-height: 1.2;
-    }
-    .section-decant h2 span { color: #c9a84c; }
-    .section-decant .sec-intro {
-      color: #9a9891;
-      font-size: 15px;
-      line-height: 1.7;
-      max-width: 600px;
-      margin-bottom: 48px;
-    }
-
-    /* Cards explicativas */
-    .decant-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px;
-      margin-bottom: 48px;
-    }
-    .dc-card {
-      background: rgba(255,255,255,.03);
-      border: 1px solid rgba(201,168,76,.15);
-      border-radius: 16px;
-      padding: 28px 24px;
-      transition: border-color .2s, background .2s;
-    }
-    .dc-card:hover {
-      border-color: rgba(201,168,76,.4);
-      background: rgba(201,168,76,.04);
-    }
-    .dc-icon {
-      width: 46px; height: 46px;
-      border-radius: 12px;
-      background: rgba(201,168,76,.12);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px; color: #c9a84c;
-      margin-bottom: 16px;
-    }
-    .dc-card h3 {
-      font-size: 14px; font-weight: 700;
-      color: #e8e6e1;
-      margin-bottom: 8px;
-      letter-spacing: .01em;
-    }
-    .dc-card p {
-      font-size: 13px; color: #7a7870;
-      line-height: 1.65;
-    }
-
-    /* Proceso paso a paso */
-    .process-block {
-      background: rgba(201,168,76,.05);
-      border: 1px solid rgba(201,168,76,.18);
-      border-radius: 18px;
-      padding: 32px;
-      margin-bottom: 48px;
-    }
-    .process-block h3 {
-      font-size: 15px; font-weight: 700;
-      color: #c9a84c;
-      margin-bottom: 24px;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .process-steps {
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-    .ps-item {
-      display: flex;
-      gap: 16px;
-      align-items: flex-start;
-    }
-    .ps-num {
-      width: 30px; height: 30px; flex-shrink: 0;
-      border-radius: 50%;
-      background: rgba(201,168,76,.15);
-      border: 1.5px solid rgba(201,168,76,.4);
-      color: #c9a84c;
-      font-size: 12px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .ps-text {
-      font-size: 13.5px;
-      color: #9a9891;
-      line-height: 1.6;
-      padding-top: 4px;
-    }
-    .ps-text strong { color: #e8e6e1; }
-
-    /* ── Filtro Familia Olfativa ── */
-    .filter-scent-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .ftab-scent {
-      display: inline-flex; align-items: center; gap: 5px;
-      background: transparent;
-      border: 1.5px solid rgba(255,255,255,.12);
-      color: #9a9891;
-      font-size: 12px; font-weight: 600;
-      padding: 6px 14px;
-      border-radius: 20px;
-      cursor: pointer;
-      transition: all .18s;
-      font-family: 'Poppins', sans-serif;
-    }
-    .ftab-scent:hover {
-      border-color: rgba(201,168,76,.5);
-      color: #c9a84c;
-    }
-    .ftab-scent.active {
-      background: rgba(201,168,76,.15);
-      border-color: rgba(201,168,76,.6);
-      color: #c9a84c;
-    }
-
-    /* Etiqueta familia olfativa en tarjeta */
-    .scent-badge {
-      display: inline-block;
-      font-size: 10px; font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      padding: 2px 8px;
-      border-radius: 20px;
-      background: rgba(201,168,76,.1);
-      border: 1px solid rgba(201,168,76,.2);
-      color: #a88a3a;
-      margin-bottom: 4px;
-    }
-
-    /* ── Feedback carrito (animación ripple) ── */
-    @keyframes cartPulse {
-      0%   { transform: scale(1); }
-      40%  { transform: scale(1.18); }
-      70%  { transform: scale(.95); }
-      100% { transform: scale(1); }
-    }
-    .cart-badge.pulse {
-      animation: cartPulse .4s ease-out;
-    }
-    @keyframes addedBounce {
-      0%   { transform: translateY(0); }
-      35%  { transform: translateY(-5px); }
-      65%  { transform: translateY(2px); }
-      100% { transform: translateY(0); }
-    }
-    .btn-add-cart.added {
-      background: rgba(39,174,96,.25) !important;
-      border-color: rgba(39,174,96,.6) !important;
-      color: #27ae60 !important;
-      animation: addedBounce .35s ease-out;
-    }
-    .btn-add-cart.added i::before { content: "\F26B"; } /* bi-check-lg */
-
-    /* ── FAQ ── */
-    .section-faq {
-      padding: 56px 20px 64px;
-      background: #0b0a09;
-      border-top: 1px solid rgba(255,255,255,.05);
-    }
-    .section-faq .inner { max-width: 720px; margin: 0 auto; }
-    .section-faq h2 {
-      font-size: clamp(1.4rem, 3.5vw, 2rem);
-      font-weight: 700;
-      color: #e8e6e1;
-      margin-bottom: 32px;
-      text-align: center;
-    }
-    .section-faq h2 span { color: #c9a84c; }
-    .faq-list { display: flex; flex-direction: column; gap: 10px; }
-    .faq-item {
-      background: rgba(255,255,255,.03);
-      border: 1px solid rgba(255,255,255,.07);
-      border-radius: 14px;
-      overflow: hidden;
-      transition: border-color .2s;
-    }
-    .faq-item.open { border-color: rgba(201,168,76,.35); }
-    .faq-q {
-      width: 100%;
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px;
-      background: transparent;
-      border: none;
-      color: #e8e6e1;
-      font-size: 14px; font-weight: 600;
-      text-align: left;
-      padding: 18px 20px;
-      cursor: pointer;
-      font-family: 'Poppins', sans-serif;
-      transition: color .15s;
-    }
-    .faq-q:hover { color: #c9a84c; }
-    .faq-q .faq-arr {
-      flex-shrink: 0;
-      width: 22px; height: 22px;
-      border-radius: 50%;
-      background: rgba(201,168,76,.1);
-      border: 1px solid rgba(201,168,76,.25);
-      color: #c9a84c;
-      font-size: 12px;
-      display: flex; align-items: center; justify-content: center;
-      transition: transform .25s;
-    }
-    .faq-item.open .faq-arr { transform: rotate(180deg); }
-    .faq-a {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height .3s ease, padding .2s;
-      font-size: 13.5px;
-      color: #7a7870;
-      line-height: 1.7;
-      padding: 0 20px;
-    }
-    .faq-item.open .faq-a {
-      max-height: 300px;
-      padding: 0 20px 18px;
-    }
-
-    /* ── Producto final badge en modal ── */
-    .modal-product-badge {
-      display: flex; align-items: center; gap: 8px;
-      background: rgba(201,168,76,.08);
-      border: 1px solid rgba(201,168,76,.2);
-      border-radius: 10px;
-      padding: 10px 14px;
-      margin-bottom: 14px;
-      font-size: 12px;
-      color: #9a9891;
-      line-height: 1.5;
-    }
-    .modal-product-badge i { color: #c9a84c; font-size: 16px; flex-shrink: 0; }
+    #wa-fab{position:fixed;bottom:24px;left:24px;width:52px;height:52px;border-radius:50%;background:#25D366;border:none;color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.45);z-index:300;cursor:pointer;transition:transform .2s,box-shadow .2s,opacity .25s;text-decoration:none;}
+    #wa-fab:hover{transform:scale(1.1);box-shadow:0 10px 28px rgba(37,211,102,.35);background:#1db954;}
+    #wa-fab::after{content:'¿Tienes dudas?';position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#e8e6e1;font-size:12px;font-weight:500;white-space:nowrap;padding:6px 12px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .18s;font-family:'Poppins',sans-serif;}
+    #wa-fab:hover::after{opacity:1;}
+    @media(max-width:480px){#wa-fab::after{display:none;}#wa-fab{width:46px;height:46px;font-size:21px;bottom:20px;left:16px;}}
+    body.cart-open #wa-fab{opacity:0;pointer-events:none;}
+    /* ── Cart ── */
+    .cart-drawer{display:flex;flex-direction:column;overflow:hidden;}
+    .cart-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:12px 16px;display:flex;flex-direction:column;gap:10px;min-height:0;}
+    #cart-list{display:contents;}
+    .cart-close-row{display:none;padding:0 16px 14px;flex-shrink:0;}
+    .btn-cart-close-bottom{width:100%;padding:13px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#888;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s;cursor:pointer;font-family:'Poppins',sans-serif;}
+    .btn-cart-close-bottom:hover{background:rgba(255,255,255,.1);color:#e8e6e1;}
+    @media(max-width:480px){.cart-close-row{display:block;}#btn-cart-close{display:none;}}
+    .cart-handle{display:none;width:40px;height:4px;background:rgba(255,255,255,.18);border-radius:2px;margin:10px auto 4px;flex-shrink:0;cursor:pointer;}
+    @media(max-width:480px){.cart-handle{display:block;}}
+    /* ── Feedback carrito ── */
+    @keyframes cartPulse{0%{transform:scale(1)}40%{transform:scale(1.18)}70%{transform:scale(.95)}100%{transform:scale(1)}}
+    .cart-badge.pulse{animation:cartPulse .4s ease-out;}
+    @keyframes addedBounce{0%{transform:translateY(0)}35%{transform:translateY(-5px)}65%{transform:translateY(2px)}100%{transform:translateY(0)}}
+    .btn-add-cart.added{background:rgba(39,174,96,.25)!important;border-color:rgba(39,174,96,.6)!important;color:#27ae60!important;animation:addedBounce .35s ease-out;}
+    /* ── Modal producto badge ── */
+    .modal-product-badge{display:flex;align-items:center;gap:8px;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.2);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#9a9891;line-height:1.5;}
+    .modal-product-badge i{color:#c9a84c;font-size:16px;flex-shrink:0;}
   </style>
 </head>
 <body>
@@ -454,15 +69,15 @@
     </div>
     <div class="header-right">
       <a href="./login.html" id="btn-admin" class="btn-admin">
-        <i class="bi bi-shield-lock"></i>
+        <i class="bi bi-shield-lock" aria-hidden="true"></i>
         <span id="btn-admin-label">Admin</span>
       </a>
       <button class="btn-cart-header" onclick="toggleCart()" aria-label="Ver pedido">
-        <i class="bi bi-bag"></i>
+        <i class="bi bi-bag" aria-hidden="true"></i>
         <span id="cart-badge" class="cart-badge" style="display:none">0</span>
       </button>
       <a href="https://wa.me/526648162623" target="_blank" rel="noopener" class="btn-wa" aria-label="WhatsApp">
-        <i class="bi bi-whatsapp"></i>
+        <i class="bi bi-whatsapp" aria-hidden="true"></i>
         <span class="btn-wa-text">WhatsApp</span>
       </a>
     </div>
@@ -480,167 +95,129 @@
     <div class="hfeat"><div class="hfeat-icon"><i class="bi bi-geo-alt"></i></div><div class="hfeat-text">Tijuana, B.C.</div></div>
     <div class="hfeat"><div class="hfeat-icon"><i class="bi bi-whatsapp"></i></div><div class="hfeat-text">Pedido por<br>WhatsApp</div></div>
   </div>
-</section>
-
-<!-- ══════════════════════════════════════
-     SECCIÓN: ¿Qué es un decant?
-══════════════════════════════════════ -->
-<section class="section-decant" id="que-es-decant" aria-labelledby="decant-title">
-  <div class="inner">
-    <div class="sec-tag"><i class="bi bi-info-circle"></i> Acerca de nuestros Decants</div>
-    <h2 id="decant-title">¿Qué es un <span>decant</span>?</h2>
-    <p class="sec-intro">
-      Un decant es una porción fraccionada de un perfume original transferida a un frasco más pequeño —
-      normalmente de 2 a 10 ml — para uso personal o para probar la fragancia antes de comprar el frasco completo.
-    </p>
-
-    <div class="decant-cards">
-      <article class="dc-card">
-        <div class="dc-icon" aria-hidden="true"><i class="bi bi-droplet-half"></i></div>
-        <h3>¿Qué recibes?</h3>
-        <p>Un frasco pequeño con atomizador o tapa de rosca con la cantidad que elegiste, y una etiqueta que identifica
-        claramente el perfume original (nombre y marca).</p>
-      </article>
-
-      <article class="dc-card">
-        <div class="dc-icon" aria-hidden="true"><i class="bi bi-currency-dollar"></i></div>
-        <h3>Económico</h3>
-        <p>Prueba perfumes de lujo sin invertir en la botella completa. Ideal para viajes, trabajo o regalar
-        una experiencia olfativa sin gastar de más.</p>
-      </article>
-
-      <article class="dc-card">
-        <div class="dc-icon" aria-hidden="true"><i class="bi bi-patch-check-fill"></i></div>
-        <h3>100% Original</h3>
-        <p>El líquido proviene directamente del frasco original de la marca. El proceso de transferencia
-        no altera la composición ni la intensidad de la fragancia.</p>
-      </article>
-
-      <article class="dc-card">
-        <div class="dc-icon" aria-hidden="true"><i class="bi bi-airplane"></i></div>
-        <h3>Portátil</h3>
-        <p>Tamaños de 2 ml a 10 ml que caben en cualquier bolsillo o bolsa de mano. Perfectos para
-        respetar los límites de líquidos en vuelos.</p>
-      </article>
-    </div>
-
-    <!-- Proceso detallado -->
-    <div class="process-block" role="region" aria-label="Cómo se hace un decant">
-      <h3><i class="bi bi-gear-fill" aria-hidden="true"></i> ¿Cómo se hace?</h3>
-      <div class="process-steps">
-        <div class="ps-item">
-          <div class="ps-num" aria-hidden="true">1</div>
-          <div class="ps-text"><strong>Frasco original verificado.</strong> Partimos siempre del frasco oficial
-          de la marca. Nunca de terceros ni recargas.</div>
-        </div>
-        <div class="ps-item">
-          <div class="ps-num" aria-hidden="true">2</div>
-          <div class="ps-text"><strong>Higiene estricta.</strong> Todos los instrumentos (jeringas graduadas de 1–10 ml,
-          pipetas dosificadoras, embudos de precisión) se desinfectan antes de cada uso.</div>
-        </div>
-        <div class="ps-item">
-          <div class="ps-num" aria-hidden="true">3</div>
-          <div class="ps-text"><strong>Medición exacta.</strong> Usamos jeringas calibradas para garantizar que
-          el volumen en tu frasco sea exactamente el que pediste: 2 ml, 3 ml, 5 ml o 10 ml.</div>
-        </div>
-        <div class="ps-item">
-          <div class="ps-num" aria-hidden="true">4</div>
-          <div class="ps-text"><strong>Etiquetado claro.</strong> Tu frasco lleva una etiqueta con nombre, marca
-          y mililitros del decant para que siempre sepas qué llevas.</div>
-        </div>
-      </div>
-    </div>
+  <div class="hero-links">
+    <a href="./faq.html" class="hero-link">
+      <i class="bi bi-question-circle"></i> ¿Qué es un decant?
+    </a>
   </div>
 </section>
 
-<!-- ══════════════════════════════════════
-     FILTROS DEL CATÁLOGO (actualizado)
-══════════════════════════════════════ -->
-<div class="filters">
+<!-- ══ BARRA DE FILTROS COMPACTA ══ -->
+<div class="filters" id="filters-bar">
   <div class="filters-inner">
-    <div class="filters-row1">
-      <div>
-        <div class="filter-label"><i class="bi bi-search"></i> Buscar decant</div>
-        <div class="sinput-wrap">
-          <i class="bi bi-search"></i>
-          <input class="finput" id="q" placeholder="Nombre, marca..." oninput="renderGrid()" autocomplete="off"
-            aria-label="Buscar decant por nombre o marca">
-        </div>
+    <!-- Búsqueda + Filtros avanzados + Limpiar -->
+    <div class="fbar-row">
+      <div class="sinput-wrap fbar-search">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input class="finput" id="q" placeholder="Buscar perfume..." oninput="renderGrid()" autocomplete="off" aria-label="Buscar decant">
       </div>
-      <div>
-        <div class="filter-label"><i class="bi bi-sort-down"></i> Ordenar por</div>
-        <select class="fselect" id="sort" onchange="renderGrid()" aria-label="Ordenar catálogo">
-          <option value="relevancia">⭐ Más populares</option>
-          <option value="az">Nombre A-Z</option>
-          <option value="za">Nombre Z-A</option>
-          <option value="marca">Marca</option>
-          <option value="precio_asc">Precio: menor a mayor</option>
-          <option value="precio_desc">Precio: mayor a menor</option>
-        </select>
-      </div>
-      <button class="btn-clear" onclick="clearFilters()" aria-label="Limpiar todos los filtros">
-        <i class="bi bi-x-circle"></i> Limpiar
+      <button class="btn-filter-adv" id="btn-filter-adv" onclick="toggleFilterDrawer()" aria-expanded="false" aria-controls="filter-drawer">
+        <i class="bi bi-sliders" aria-hidden="true"></i>
+        <span>Filtros</span>
+        <span class="fad-count" id="fad-count" style="display:none">0</span>
+      </button>
+      <button class="btn-clear fbar-clear" onclick="clearFilters()" aria-label="Limpiar filtros">
+        <i class="bi bi-x-circle" aria-hidden="true"></i>
       </button>
     </div>
-
-    <!-- Filtro mobile búsqueda -->
-    <div class="filters-row-mobile">
-      <div class="sinput-wrap">
-        <i class="bi bi-search"></i>
-        <input class="finput" id="q-mobile" placeholder="Buscar perfume..." oninput="syncMobileSearch()"
-          autocomplete="off" aria-label="Buscar perfume">
-      </div>
-    </div>
-    <div class="filters-row-sort-mobile">
-      <span class="fsort-label"><i class="bi bi-sort-down-alt" aria-hidden="true"></i></span>
-      <select class="fselect fsort-select" id="sort-mobile" onchange="onSortMobile()" aria-label="Ordenar">
-        <option value="relevancia">⭐ Populares</option>
-        <option value="az">A-Z</option>
-        <option value="za">Z-A</option>
-        <option value="marca">Marca</option>
-        <option value="precio_asc">↓ Precio</option>
-        <option value="precio_desc">↑ Precio</option>
-      </select>
-      <button class="btn-clear btn-clear-sm" onclick="clearFilters()" aria-label="Limpiar filtros">
-        <i class="bi bi-x-circle"></i>
-      </button>
-    </div>
-
-    <!-- Tabs género -->
+    <!-- Tabs género (siempre visibles, rápidos) -->
     <div class="filter-tabs" role="group" aria-label="Filtrar por género">
       <button class="ftab active" data-g="" onclick="setG(this)">Todos</button>
       <button class="ftab" data-g="Caballero" onclick="setG(this)">Caballero</button>
       <button class="ftab" data-g="Dama" onclick="setG(this)">Dama</button>
       <button class="ftab" data-g="Unisex" onclick="setG(this)">Unisex</button>
     </div>
+  </div>
+</div>
 
-    <!-- ✦ Nuevo: Filtro familia olfativa -->
-    <div class="filter-tabs filter-scent-row" role="group" aria-label="Filtrar por familia olfativa" id="scent-tabs">
-      <button class="ftab-scent active" data-scent="" onclick="setScent(this)">
-        🌐 Todas
-      </button>
-      <button class="ftab-scent" data-scent="Amaderado" onclick="setScent(this)">
-        🪵 Amaderado
-      </button>
-      <button class="ftab-scent" data-scent="Floral" onclick="setScent(this)">
-        🌸 Floral
-      </button>
-      <button class="ftab-scent" data-scent="Cítrico" onclick="setScent(this)">
-        🍋 Cítrico
-      </button>
-      <button class="ftab-scent" data-scent="Oriental" onclick="setScent(this)">
-        🌙 Oriental
-      </button>
-      <button class="ftab-scent" data-scent="Acuático" onclick="setScent(this)">
-        💧 Acuático
-      </button>
-      <button class="ftab-scent" data-scent="Dulce" onclick="setScent(this)">
-        🍬 Dulce
-      </button>
-      <button class="ftab-scent" data-scent="Fresco" onclick="setScent(this)">
-        🌿 Fresco
-      </button>
+<!-- ══ DRAWER FILTROS AVANZADOS ══ -->
+<div class="fadv-overlay" id="fadv-overlay" onclick="closeFilterDrawer()"></div>
+<div class="fadv-drawer" id="filter-drawer" role="dialog" aria-label="Filtros avanzados" aria-modal="true">
+  <div class="fadv-header">
+    <span class="fadv-title"><i class="bi bi-sliders" aria-hidden="true"></i> Filtros avanzados</span>
+    <button class="fadv-close" onclick="closeFilterDrawer()" aria-label="Cerrar filtros">
+      <i class="bi bi-x-lg" aria-hidden="true"></i>
+    </button>
+  </div>
+  <div class="fadv-body">
+
+    <!-- Ordenar por -->
+    <div class="fadv-section">
+      <div class="fadv-label">Ordenar por</div>
+      <div class="fadv-options" id="fadv-sort" role="group" aria-label="Ordenar">
+        <button class="fadv-opt active" data-sort="relevancia" onclick="setSort(this)">⭐ Más populares</button>
+        <button class="fadv-opt" data-sort="precio_asc" onclick="setSort(this)">↓ Precio menor a mayor</button>
+        <button class="fadv-opt" data-sort="precio_desc" onclick="setSort(this)">↑ Precio mayor a menor</button>
+        <button class="fadv-opt" data-sort="az" onclick="setSort(this)">A → Z</button>
+        <button class="fadv-opt" data-sort="za" onclick="setSort(this)">Z → A</button>
+        <button class="fadv-opt" data-sort="marca" onclick="setSort(this)">Por marca</button>
+      </div>
     </div>
+
+    <!-- Tipo de perfume -->
+    <div class="fadv-section">
+      <div class="fadv-label">Tipo de perfume</div>
+      <div class="fadv-checks" id="fadv-tipo" role="group" aria-label="Tipo de perfume">
+        <label class="fadv-check"><input type="checkbox" value="Diseñador" onchange="applyFilters()"><span>🏛️ Diseñador</span></label>
+        <label class="fadv-check"><input type="checkbox" value="Nicho" onchange="applyFilters()"><span>💎 Nicho</span></label>
+        <label class="fadv-check"><input type="checkbox" value="Árabe" onchange="applyFilters()"><span>🌙 Árabe</span></label>
+        <label class="fadv-check"><input type="checkbox" value="Oriental" onchange="applyFilters()"><span>🕌 Oriental</span></label>
+        <label class="fadv-check"><input type="checkbox" value="Deportivo" onchange="applyFilters()"><span>⚡ Deportivo</span></label>
+        <label class="fadv-check"><input type="checkbox" value="Floral" onchange="applyFilters()"><span>🌸 Floral</span></label>
+      </div>
+    </div>
+
+    <!-- Familia olfativa -->
+    <div class="fadv-section">
+      <div class="fadv-label">Familia olfativa</div>
+      <div class="fadv-checks" id="fadv-scent" role="group" aria-label="Familia olfativa">
+        <label class="fadv-check"><input type="checkbox" value="Amaderado" onchange="applyFilters()"><span>🪵 Amaderado</span></label>
+        <label class="fadv-check"><input type="checkbox" value="Floral" onchange="applyFilters()"><span>🌸 Floral</span></label>
+        <label class="fadv-check"><input type="checkbox" value="Cítrico" onchange="applyFilters()"><span>🍋 Cítrico</span></label>
+        <label class="fadv-check"><input type="checkbox" value="Oriental" onchange="applyFilters()"><span>🌙 Oriental / Oud</span></label>
+        <label class="fadv-check"><input type="checkbox" value="Acuático" onchange="applyFilters()"><span>💧 Acuático</span></label>
+        <label class="fadv-check"><input type="checkbox" value="Dulce" onchange="applyFilters()"><span>🍬 Dulce / Gourmand</span></label>
+        <label class="fadv-check"><input type="checkbox" value="Fresco" onchange="applyFilters()"><span>🌿 Fresco / Verde</span></label>
+        <label class="fadv-check"><input type="checkbox" value="Especiado" onchange="applyFilters()"><span>🌶️ Especiado</span></label>
+        <label class="fadv-check"><input type="checkbox" value="Fougère" onchange="applyFilters()"><span>🌾 Fougère</span></label>
+      </div>
+    </div>
+
+    <!-- Marcas (dinámica) -->
+    <div class="fadv-section">
+      <div class="fadv-label">Marca</div>
+      <div class="fadv-search-mini">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input type="text" id="marca-search" placeholder="Buscar marca..." oninput="filterMarcaList()" autocomplete="off" aria-label="Buscar marca">
+      </div>
+      <div class="fadv-checks fadv-marcas-list" id="fadv-marcas" role="group" aria-label="Marcas"></div>
+    </div>
+
+    <!-- Precio -->
+    <div class="fadv-section">
+      <div class="fadv-label">Precio desde (MXN)</div>
+      <div class="fadv-price-row">
+        <label class="fadv-check"><input type="checkbox" value="0-100" onchange="applyFilters()"><span>Hasta $100</span></label>
+        <label class="fadv-check"><input type="checkbox" value="100-200" onchange="applyFilters()"><span>$100 – $200</span></label>
+        <label class="fadv-check"><input type="checkbox" value="200-400" onchange="applyFilters()"><span>$200 – $400</span></label>
+        <label class="fadv-check"><input type="checkbox" value="400+" onchange="applyFilters()"><span>Más de $400</span></label>
+      </div>
+    </div>
+
+    <!-- Disponibilidad -->
+    <div class="fadv-section">
+      <div class="fadv-label">Disponibilidad</div>
+      <div class="fadv-checks">
+        <label class="fadv-check"><input type="checkbox" id="fadv-stock" onchange="applyFilters()"><span>✅ Solo con stock</span></label>
+      </div>
+    </div>
+
+  </div>
+  <div class="fadv-footer">
+    <button class="fadv-btn-clear" onclick="clearAdvFilters()">Limpiar todo</button>
+    <button class="fadv-btn-apply" onclick="closeFilterDrawer()">
+      <span id="fadv-result-count">Ver resultados</span>
+    </button>
   </div>
 </div>
 
@@ -649,10 +226,12 @@
     <h2>Catálogo</h2>
     <span class="count-badge" id="count-badge">Cargando...</span>
   </div>
+  <!-- Chips filtros activos -->
+  <div class="active-filters" id="active-filters"></div>
   <div class="grid" id="grid" role="list" aria-label="Catálogo de decants"></div>
   <div class="load-more-wrap" id="load-more-wrap" style="display:none">
     <button class="btn-load-more" id="btn-load-more" onclick="loadMore()">
-      <i class="bi bi-arrow-down-circle"></i> Cargar más perfumes
+      <i class="bi bi-arrow-down-circle" aria-hidden="true"></i> Cargar más perfumes
     </button>
     <span class="load-more-info" id="load-more-info"></span>
   </div>
@@ -667,30 +246,26 @@
     <div class="modal-content">
       <div class="modal-top">
         <div class="modal-nombre" id="modal-nombre"></div>
-        <button class="btn-close" onclick="document.getElementById('modal').classList.remove('open');document.body.style.overflow=''"
-          aria-label="Cerrar detalle de perfume">
+        <button class="btn-close" onclick="doCloseModal()" aria-label="Cerrar detalle de perfume">
           <i class="bi bi-x-lg" aria-hidden="true"></i>
         </button>
       </div>
       <div class="modal-marca" id="modal-marca"></div>
       <div class="modal-desc" id="modal-desc"></div>
-
-      <!-- ✦ Nuevo: badge producto final -->
       <div class="modal-product-badge" role="note">
         <i class="bi bi-box-seam" aria-hidden="true"></i>
         <span>Recibirás: frasco con atomizador + etiqueta con nombre, marca y ml del decant.</span>
       </div>
-
       <div class="modal-sizes-label">Elige tu presentación</div>
       <div class="modal-pills" id="modal-pills" role="group" aria-label="Tamaños disponibles"></div>
       <div id="modal-cart-wrapper">
         <button class="btn-add-cart" id="modal-btn-cart" onclick="addToCartWithFeedback()">
-          <i class="bi bi-bag-plus"></i> Agregar al pedido
+          <i class="bi bi-bag-plus" aria-hidden="true"></i> Agregar al pedido
         </button>
       </div>
       <div class="modal-or"><span>o</span></div>
       <button class="btn-wa-modal" id="modal-btn" onclick="pedirModal()">
-        <i class="bi bi-whatsapp"></i> Consultar por WhatsApp
+        <i class="bi bi-whatsapp" aria-hidden="true"></i> Consultar por WhatsApp
       </button>
     </div>
   </div>
@@ -699,15 +274,13 @@
 <!-- CART DRAWER -->
 <div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
 <div class="cart-drawer" id="cart-drawer" role="complementary" aria-label="Tu pedido">
-  <div class="cart-handle" id="cart-handle" role="button" aria-label="Cerrar pedido deslizando hacia abajo" tabindex="0"></div>
-
+  <div class="cart-handle" id="cart-handle" role="button" aria-label="Cerrar pedido" tabindex="0"></div>
   <div class="cart-header">
     <div class="cart-title"><i class="bi bi-bag" aria-hidden="true"></i> Tu pedido</div>
     <button class="btn-close" id="btn-cart-close" onclick="closeCart()" aria-label="Cerrar pedido">
       <i class="bi bi-x-lg" aria-hidden="true"></i>
     </button>
   </div>
-
   <div class="cart-body">
     <div class="cart-empty" id="cart-empty" style="display:none" role="status">
       <i class="bi bi-bag-x" aria-hidden="true"></i>
@@ -716,7 +289,6 @@
     </div>
     <div id="cart-list" aria-live="polite" aria-label="Artículos en tu pedido"></div>
   </div>
-
   <div class="cart-footer" id="cart-footer" style="display:none">
     <div class="cart-total-row">
       <span>Total estimado</span>
@@ -730,7 +302,6 @@
       <i class="bi bi-trash" aria-hidden="true"></i> Limpiar pedido
     </button>
   </div>
-
   <div class="cart-close-row">
     <button class="btn-cart-close-bottom" onclick="closeCart()">
       <i class="bi bi-chevron-down" aria-hidden="true"></i> Cerrar pedido
@@ -745,169 +316,51 @@
 </button>
 
 <!-- FAB WhatsApp -->
-<a id="wa-fab" href="https://wa.me/526648162623?text=Hola!%20Me%20interesa%20saber%20m%C3%A1s%20sobre%20los%20decants%20%F0%9F%8C%B8"
-   target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">
+<a id="wa-fab" href="https://wa.me/526648162623?text=Hola!%20Me%20interesa%20saber%20m%C3%A1s%20sobre%20los%20decants%20%F0%9F%8C%B8" target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">
   <i class="bi bi-whatsapp" aria-hidden="true"></i>
 </a>
-
-<!-- ══════════════════════════════════════
-     SECCIÓN: FAQ
-══════════════════════════════════════ -->
-<section class="section-faq" id="preguntas-frecuentes" aria-labelledby="faq-title">
-  <div class="inner">
-    <h2 id="faq-title">Preguntas <span>frecuentes</span></h2>
-    <div class="faq-list" role="list">
-
-      <div class="faq-item" role="listitem">
-        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false"
-          aria-controls="faq-a-1">
-          ¿El decant huele igual que el frasco original?
-          <span class="faq-arr" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
-        </button>
-        <div class="faq-a" id="faq-a-1" role="region">
-          Sí. El perfume se transfiere directamente del frasco de la marca sin diluir ni mezclar con nada.
-          Usamos instrumentos limpios y el proceso no altera la composición química de la fragancia.
-        </div>
-      </div>
-
-      <div class="faq-item" role="listitem">
-        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false"
-          aria-controls="faq-a-2">
-          ¿Cuánto dura un decant de 5 ml?
-          <span class="faq-arr" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
-        </button>
-        <div class="faq-a" id="faq-a-2" role="region">
-          Depende del uso: si aplicas 3–4 disparos al día, un decant de 5 ml puede durar entre 2 y 4 semanas.
-          Ideal para conocer si el perfume te convence antes de comprar el frasco completo.
-        </div>
-      </div>
-
-      <div class="faq-item" role="listitem">
-        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false"
-          aria-controls="faq-a-3">
-          ¿Cómo sé que es original?
-          <span class="faq-arr" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
-        </button>
-        <div class="faq-a" id="faq-a-3" role="region">
-          Nuestros decants provienen de frascos originales adquiridos en distribuidores autorizados.
-          Si tienes dudas sobre algún perfume específico, escríbenos por WhatsApp y te mostramos el frasco.
-        </div>
-      </div>
-
-      <div class="faq-item" role="listitem">
-        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false"
-          aria-controls="faq-a-4">
-          ¿Qué tamaños tienen disponibles?
-          <span class="faq-arr" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
-        </button>
-        <div class="faq-a" id="faq-a-4" role="region">
-          Manejamos presentaciones de 2 ml, 3 ml, 5 ml y 10 ml, según el perfume.
-          Cada tamaño disponible aparece en la ficha del perfume; los que están agotados se muestran deshabilitados.
-        </div>
-      </div>
-
-      <div class="faq-item" role="listitem">
-        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false"
-          aria-controls="faq-a-5">
-          ¿Cómo hago mi pedido?
-          <span class="faq-arr" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
-        </button>
-        <div class="faq-a" id="faq-a-5" role="region">
-          Elige tu perfume y tamaño desde el catálogo, agrégalo al carrito y envíanos tu pedido por WhatsApp.
-          Te confirmamos disponibilidad y acordamos punto de entrega en Tijuana.
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
 
 <footer>
   <div class="footer-social">
     <p>Síguenos en redes</p>
     <div class="social-buttons">
-      <a href="https://www.instagram.com/fitoscents/" target="_blank" rel="noopener noreferrer"
-         class="social-btn instagram" aria-label="Fitoscents en Instagram">
+      <a href="https://www.instagram.com/fitoscents/" target="_blank" rel="noopener noreferrer" class="social-btn instagram" aria-label="Fitoscents en Instagram">
         <i class="bi bi-instagram" aria-hidden="true"></i><span>@fitoscents</span>
       </a>
-      <a href="https://www.tiktok.com/@fitoscents" target="_blank" rel="noopener noreferrer"
-         class="social-btn tiktok" aria-label="Fitoscents en TikTok">
-        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="currentColor"
-             viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <a href="https://www.tiktok.com/@fitoscents" target="_blank" rel="noopener noreferrer" class="social-btn tiktok" aria-label="Fitoscents en TikTok">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
           <path d="M9 0h1.98c.144.715.54 1.617 1.235 2.512C12.895 3.389 13.797 4 15 4v2c-1.753 0-3.07-.814-4-1.829V11a5 5 0 1 1-5-5v2a3 3 0 1 0 3 3z"/>
         </svg>
         <span>@fitoscents</span>
       </a>
-      <a href="https://www.facebook.com/profile.php?id=61584221924570" target="_blank" rel="noopener noreferrer"
-         class="social-btn facebook" aria-label="Fitoscents en Facebook">
+      <a href="https://www.facebook.com/profile.php?id=61584221924570" target="_blank" rel="noopener noreferrer" class="social-btn facebook" aria-label="Fitoscents en Facebook">
         <i class="bi bi-facebook" aria-hidden="true"></i><span>Fitoscents</span>
       </a>
     </div>
   </div>
   <div class="footer-copy">
     <p>© 2026 <a href="https://wa.me/526648162623" target="_blank" rel="noopener">Fitoscents</a> · Tijuana, B.C. ·
-      <a href="#que-es-decant">¿Qué es un decant?</a> ·
-      <a href="#preguntas-frecuentes">FAQ</a>
+      <a href="./faq.html">¿Qué es un decant?</a>
     </p>
   </div>
 </footer>
 
 <script type="module" src="./assets/js/catalog.js"></script>
+<script src="./assets/js/filters-adv.js"></script>
 <script>
-/* ── Sync mobile search ── */
-function onSortMobile() {
-  const val  = document.getElementById('sort-mobile').value;
-  const desk = document.getElementById('sort');
-  if (desk) desk.value = val;
-  if (typeof renderGrid === 'function') renderGrid();
-}
-
-/* ── Filtro familia olfativa ── */
-let activeScent = '';
-function setScent(btn) {
-  document.querySelectorAll('.ftab-scent').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  activeScent = btn.dataset.scent || '';
-  if (typeof renderGrid === 'function') renderGrid();
-}
-// Exponer para catalog.js
-window.getActiveScentFilter = () => activeScent;
-
 /* ── Feedback visual al agregar al carrito ── */
 function addToCartWithFeedback() {
   if (typeof addToCart === 'function') addToCart();
-  // Animación en botón
   const btn = document.getElementById('modal-btn-cart');
   if (btn) {
     btn.classList.add('added');
     btn.innerHTML = '<i class="bi bi-check-lg"></i> ¡Agregado!';
-    setTimeout(() => {
-      btn.classList.remove('added');
-      btn.innerHTML = '<i class="bi bi-bag-plus"></i> Agregar al pedido';
-    }, 1600);
+    setTimeout(() => { btn.classList.remove('added'); btn.innerHTML = '<i class="bi bi-bag-plus"></i> Agregar al pedido'; }, 1600);
   }
-  // Pulso en badge del carrito
   document.querySelectorAll('.cart-badge').forEach(el => {
-    el.classList.remove('pulse');
-    void el.offsetWidth; // reflow para reiniciar animación
-    el.classList.add('pulse');
+    el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
     setTimeout(() => el.classList.remove('pulse'), 600);
   });
-}
-
-/* ── FAQ accordion ── */
-function toggleFaq(btn) {
-  const item = btn.closest('.faq-item');
-  const isOpen = item.classList.contains('open');
-  // cerrar todos
-  document.querySelectorAll('.faq-item.open').forEach(el => {
-    el.classList.remove('open');
-    el.querySelector('.faq-q').setAttribute('aria-expanded','false');
-  });
-  if (!isOpen) {
-    item.classList.add('open');
-    btn.setAttribute('aria-expanded','true');
-  }
 }
 
 /* ── Swipe-down para cerrar drawer en mobile ── */
@@ -916,27 +369,16 @@ function toggleFaq(btn) {
   const drawer = document.getElementById('cart-drawer');
   if (!handle || !drawer) return;
   let startY = 0, dragging = false;
-  function onStart(e){ startY=(e.touches?e.touches[0].clientY:e.clientY); dragging=true; }
-  function onMove(e){
-    if(!dragging)return;
-    const dy=(e.touches?e.touches[0].clientY:e.clientY)-startY;
-    if(dy>0) drawer.style.transform=`translateY(${dy}px)`;
-  }
-  function onEnd(e){
-    if(!dragging)return;
-    dragging=false;
-    const dy=(e.changedTouches?e.changedTouches[0].clientY:e.clientY)-startY;
-    drawer.style.transform='';
-    if(dy>90&&typeof closeCart==='function') closeCart();
-  }
-  handle.addEventListener('touchstart',onStart,{passive:true});
-  handle.addEventListener('touchmove',onMove,{passive:true});
-  handle.addEventListener('touchend',onEnd);
-  handle.addEventListener('mousedown',onStart);
-  window.addEventListener('mousemove',onMove);
-  window.addEventListener('mouseup',onEnd);
-  // También cierra con Enter/Space (accesibilidad teclado)
-  handle.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){if(typeof closeCart==='function')closeCart();} });
+  const onStart = e => { startY = (e.touches ? e.touches[0].clientY : e.clientY); dragging = true; };
+  const onMove  = e => { if (!dragging) return; const dy = (e.touches ? e.touches[0].clientY : e.clientY) - startY; if (dy > 0) drawer.style.transform = `translateY(${dy}px)`; };
+  const onEnd   = e => { if (!dragging) return; dragging = false; const dy = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY) - startY; drawer.style.transform = ''; if (dy > 90 && typeof closeCart === 'function') closeCart(); };
+  handle.addEventListener('touchstart', onStart, {passive:true});
+  handle.addEventListener('touchmove',  onMove,  {passive:true});
+  handle.addEventListener('touchend',   onEnd);
+  handle.addEventListener('mousedown',  onStart);
+  window.addEventListener('mousemove',  onMove);
+  window.addEventListener('mouseup',    onEnd);
+  handle.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { if (typeof closeCart === 'function') closeCart(); } });
 })();
 </script>
 </body>
