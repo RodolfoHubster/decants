@@ -1,0 +1,90 @@
+/*
+  catalog-ux.css — Estilos extra de accesibilidad y UX
+  (complementa catalog.css, incluido desde index.html via <link>)
+
+  1. Skip-to-content link
+  2. Mejoras focus-visible
+  3. Header nav links
+  4. Hero CTA button
+  5. Reduced-motion
+*/
+
+/* ── 1. Skip to content ─────────────────────────────── */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  background: #c9a84c;
+  color: #0f0e0c;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 0 0 8px 0;
+  z-index: 9999;
+  text-decoration: none;
+  transition: top .2s;
+}
+.skip-link:focus { top: 0; }
+
+/* ── 2. Focus visible global ────────────────────────── */
+:focus-visible {
+  outline: 2px solid #c9a84c;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ── 3. Header nav links ────────────────────────────── */
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 4px;
+}
+.header-nav-link {
+  font-size: 12px;
+  font-weight: 500;
+  color: #9a9590;
+  padding: 5px 10px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: color .15s, background .15s;
+  white-space: nowrap;
+}
+.header-nav-link:hover {
+  color: #e8e6e1;
+  background: rgba(255,255,255,.07);
+}
+@media (max-width: 600px) { .header-nav { display: none; } }
+
+/* ── 4. Hero CTA button ─────────────────────────────── */
+.btn-hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 12px 28px;
+  background: #c9a84c;
+  color: #0f0e0c;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 50px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: background .18s, transform .18s, box-shadow .18s;
+  box-shadow: 0 4px 18px rgba(201,168,76,.3);
+}
+.btn-hero-cta:hover {
+  background: #d9b85c;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(201,168,76,.45);
+}
+.btn-hero-cta:active { transform: translateY(0); }
+
+/* ── 5. Reduced motion ──────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

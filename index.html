@@ -4,38 +4,60 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>Fitoscents · Decants</title>
+  <meta name="description" content="Decants 100% originales de perfumes de diseñador en Tijuana. Prueba antes de comprar el frasco completo. Envíos y sobre ruedas.">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="./assets/css/catalog.css">
   <style>
-    /* ── Controles qty modal ── */
+    /* ════════════════════════════════════════════════
+       VARIABLES EXTRA (complementan catalog.css)
+    ════════════════════════════════════════════════ */
+    :root {
+      --gold:    #c9a84c;
+      --gold-bg: rgba(201,168,76,.10);
+      --gold-border: rgba(201,168,76,.35);
+      --surface: #141210;
+      --surface2: #1c1a17;
+      --surface3: #242119;
+      --text:    #e8e6e1;
+      --muted:   #9a9590;
+      --faint:   #5a5650;
+      --danger:  #e05252;
+      --success: #4caf7d;
+    }
+
+    /* ════════════════════════════════════════════════
+       CONTROLES QTY MODAL
+    ════════════════════════════════════════════════ */
     .modal-qty-controls {
       display:flex; align-items:center; justify-content:center;
       gap:0; margin-bottom:10px;
-      background:rgba(201,168,76,.08); border:1.5px solid rgba(201,168,76,.4);
+      background:var(--gold-bg); border:1.5px solid var(--gold-border);
       border-radius:12px; overflow:hidden;
     }
     .mqty-btn {
       width:48px; height:46px; font-size:22px; font-weight:300;
-      background:transparent; border:none; color:#c9a84c;
+      background:transparent; border:none; color:var(--gold);
       display:flex; align-items:center; justify-content:center;
       transition:background .15s; flex-shrink:0; cursor:pointer;
     }
     .mqty-btn:hover:not(:disabled){background:rgba(201,168,76,.18);}
     .mqty-btn:disabled{color:#444;cursor:not-allowed;}
     .mqty-num {
-      flex:1; text-align:center; font-size:16px; font-weight:700; color:#e8e6e1;
+      flex:1; text-align:center; font-size:16px; font-weight:700; color:var(--text);
       border-left:1px solid rgba(201,168,76,.2);
       border-right:1px solid rgba(201,168,76,.2);
       padding:0 8px;
     }
 
-    /* ── Toast Deshacer ── */
+    /* ════════════════════════════════════════════════
+       TOAST DESHACER
+    ════════════════════════════════════════════════ */
     #undo-toast {
       position:fixed; bottom:88px; left:50%;
       transform:translateX(-50%) translateY(20px);
-      background:#1a1a1a; border:1px solid rgba(201,168,76,.5);
-      color:#e8e6e1; border-radius:14px; padding:12px 16px;
+      background:#1a1a1a; border:1px solid var(--gold-border);
+      color:var(--text); border-radius:14px; padding:12px 16px;
       display:flex; align-items:center; gap:12px;
       font-size:13px; font-weight:500;
       box-shadow:0 8px 32px rgba(0,0,0,.6);
@@ -47,18 +69,20 @@
     #undo-toast.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0);}
     #undo-msg{overflow:hidden;text-overflow:ellipsis;max-width:220px;}
     #undo-btn {
-      background:rgba(201,168,76,.18); border:1px solid rgba(201,168,76,.45);
-      color:#c9a84c; border-radius:8px; padding:6px 14px;
+      background:rgba(201,168,76,.18); border:1px solid var(--gold-border);
+      color:var(--gold); border-radius:8px; padding:6px 14px;
       font-size:12px; font-weight:700; cursor:pointer;
       white-space:nowrap; transition:background .15s; flex-shrink:0;
     }
     #undo-btn:hover{background:rgba(201,168,76,.32);}
 
-    /* ── Toast normal ── */
+    /* ════════════════════════════════════════════════
+       TOAST NORMAL (añadir al carrito, etc.)
+    ════════════════════════════════════════════════ */
     #toast {
       position:fixed; bottom:160px; left:50%;
       transform:translateX(-50%) translateY(10px);
-      background:#1a1a1a; color:#e8e6e1;
+      background:#1a1a1a; color:var(--text);
       border:1px solid rgba(201,168,76,.3);
       border-radius:10px; padding:10px 20px;
       font-size:13px; font-weight:500;
@@ -69,118 +93,310 @@
     }
     #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
-    /* ── FAB WhatsApp ── */
+    /* ════════════════════════════════════════════════
+       FAB WHATSAPP
+    ════════════════════════════════════════════════ */
     #wa-fab {
-      position:fixed;
-      bottom:24px; left:24px;
-      width:52px; height:52px;
-      border-radius:50%;
-      background:#25D366;
-      border:none;
+      position:fixed; bottom:24px; left:24px;
+      width:52px; height:52px; border-radius:50%;
+      background:#25D366; border:none;
       color:#fff; font-size:24px;
       display:flex; align-items:center; justify-content:center;
       box-shadow:0 6px 20px rgba(0,0,0,.45);
-      z-index:300;
-      cursor:pointer;
+      z-index:300; cursor:pointer;
       transition:transform .2s, box-shadow .2s, opacity .25s;
       text-decoration:none;
     }
-    #wa-fab:hover {
-      transform:scale(1.1);
-      box-shadow:0 10px 28px rgba(37,211,102,.35);
-      background:#1db954;
-    }
-    /* Tooltip solo en desktop */
+    #wa-fab:hover { transform:scale(1.1); box-shadow:0 10px 28px rgba(37,211,102,.35); background:#1db954; }
     #wa-fab::after {
-      content: '¿Tienes dudas?';
-      position:absolute;
-      left:calc(100% + 10px);
-      top:50%; transform:translateY(-50%);
-      background:#1a1a1a;
-      border:1px solid rgba(255,255,255,.12);
-      color:#e8e6e1;
-      font-size:12px; font-weight:500;
-      white-space:nowrap;
-      padding:6px 12px;
-      border-radius:8px;
-      opacity:0;
-      pointer-events:none;
-      transition:opacity .18s;
+      content:'¿Tienes dudas?';
+      position:absolute; left:calc(100% + 10px); top:50%; transform:translateY(-50%);
+      background:#1a1a1a; border:1px solid rgba(255,255,255,.12); color:var(--text);
+      font-size:12px; font-weight:500; white-space:nowrap;
+      padding:6px 12px; border-radius:8px;
+      opacity:0; pointer-events:none; transition:opacity .18s;
       font-family:'Poppins',sans-serif;
     }
     #wa-fab:hover::after { opacity:1; }
-    /* Ocultar tooltip en touch/mobile */
     @media (max-width:480px) {
       #wa-fab::after { display:none; }
       #wa-fab { width:46px; height:46px; font-size:21px; bottom:20px; left:16px; }
     }
-    /* Ocultarse cuando drawer abierto */
     body.cart-open #wa-fab { opacity:0; pointer-events:none; }
 
-    /* ── Cart body scroll ── */
-    .cart-drawer {
-      display:flex;
-      flex-direction:column;
-      overflow:hidden;  /* el hijo .cart-body es quien scrollea */
-    }
+    /* ════════════════════════════════════════════════
+       CART DRAWER SCROLL
+    ════════════════════════════════════════════════ */
+    .cart-drawer { display:flex; flex-direction:column; overflow:hidden; }
     .cart-body {
-      flex:1;
-      overflow-y:auto;
-      -webkit-overflow-scrolling:touch;
-      overscroll-behavior:contain;
+      flex:1; overflow-y:auto;
+      -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
       padding:12px 16px;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      min-height:0;      /* clave para que flex no desborde */
+      display:flex; flex-direction:column; gap:10px;
+      min-height:0;
     }
-    /* Quitamos el scroll del viejo #cart-list para que lo controle .cart-body */
-    #cart-list {
-      display:contents; /* transparente al layout */
-    }
-
-    /* ── Botón cerrar drawer (grande, abajo) en mobile ── */
-    .cart-close-row {
-      display:none;
-      padding:0 16px 14px;
-      flex-shrink:0;
-    }
+    #cart-list { display:contents; }
+    .cart-close-row { display:none; padding:0 16px 14px; flex-shrink:0; }
     .btn-cart-close-bottom {
-      width:100%;
-      padding:13px;
-      border-radius:12px;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.1);
-      color:#888;
-      font-size:14px;
-      font-weight:600;
-      display:flex; align-items:center; justify-content:center;
-      gap:8px;
-      transition:background .15s;
-      cursor:pointer;
-      font-family:'Poppins',sans-serif;
+      width:100%; padding:13px; border-radius:12px;
+      background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+      color:#888; font-size:14px; font-weight:600;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      transition:background .15s; cursor:pointer; font-family:'Poppins',sans-serif;
     }
-    .btn-cart-close-bottom:hover { background:rgba(255,255,255,.1); color:#e8e6e1; }
+    .btn-cart-close-bottom:hover { background:rgba(255,255,255,.1); color:var(--text); }
     @media (max-width:480px) {
       .cart-close-row { display:block; }
-    }
-
-    /* Ocultar X del header solo en mobile */
-    @media (max-width:480px) {
       #btn-cart-close { display:none; }
     }
-
-    /* Handle swipe */
     .cart-handle {
-      display:none;
-      width:40px; height:4px;
-      background:rgba(255,255,255,.18);
-      border-radius:2px;
-      margin:10px auto 4px;
-      flex-shrink:0;
-      cursor:pointer;
+      display:none; width:40px; height:4px;
+      background:rgba(255,255,255,.18); border-radius:2px;
+      margin:10px auto 4px; flex-shrink:0; cursor:pointer;
     }
     @media (max-width:480px) { .cart-handle { display:block; } }
+
+    /* ════════════════════════════════════════════════
+       SECCIÓN: ¿QUÉ ES UN DECANT?
+    ════════════════════════════════════════════════ */
+    .what-section {
+      background: var(--surface2);
+      border-top: 1px solid rgba(255,255,255,.06);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      padding: 64px 20px;
+    }
+    .what-inner {
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+    .what-pretitle {
+      font-size: 11px; font-weight: 700;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 10px;
+    }
+    .what-title {
+      font-size: clamp(22px, 4vw, 34px);
+      font-weight: 700; color: var(--text);
+      margin-bottom: 14px; line-height: 1.2;
+    }
+    .what-title span { color: var(--gold); }
+    .what-lead {
+      font-size: 15px; color: var(--muted);
+      max-width: 600px; line-height: 1.7;
+      margin-bottom: 40px;
+    }
+    .what-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .what-card {
+      background: var(--surface3);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 16px;
+      padding: 24px 20px;
+      transition: border-color .2s, transform .2s;
+    }
+    .what-card:hover {
+      border-color: var(--gold-border);
+      transform: translateY(-2px);
+    }
+    .what-card-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--gold-bg); border: 1px solid var(--gold-border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: var(--gold);
+      margin-bottom: 14px;
+    }
+    .what-card h3 {
+      font-size: 14px; font-weight: 700;
+      color: var(--text); margin-bottom: 8px;
+    }
+    .what-card p {
+      font-size: 13px; color: var(--muted); line-height: 1.6;
+      margin: 0;
+    }
+
+    /* ════════════════════════════════════════════════
+       PROCESO (timeline)
+    ════════════════════════════════════════════════ */
+    .process-section {
+      background: var(--surface);
+      padding: 60px 20px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .process-inner {
+      max-width: 860px; margin: 0 auto;
+    }
+    .section-pretitle {
+      font-size: 11px; font-weight: 700;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 10px;
+    }
+    .section-title {
+      font-size: clamp(20px, 3.5vw, 30px);
+      font-weight: 700; color: var(--text); margin-bottom: 36px;
+    }
+    .timeline {
+      display: flex; flex-direction: column; gap: 0;
+      position: relative;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute; left: 21px; top: 0; bottom: 0;
+      width: 2px; background: var(--gold-border);
+      border-radius: 1px;
+    }
+    .tl-step {
+      display: flex; gap: 20px; padding-bottom: 32px;
+      position: relative;
+    }
+    .tl-dot {
+      flex-shrink: 0;
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--surface2); border: 2px solid var(--gold-border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: var(--gold);
+      position: relative; z-index: 1;
+    }
+    .tl-body h4 {
+      font-size: 14px; font-weight: 700; color: var(--text);
+      margin: 10px 0 6px;
+    }
+    .tl-body p {
+      font-size: 13px; color: var(--muted); line-height: 1.65;
+      margin: 0; max-width: 560px;
+    }
+
+    /* ════════════════════════════════════════════════
+       FAQ
+    ════════════════════════════════════════════════ */
+    .faq-section {
+      background: var(--surface2);
+      padding: 60px 20px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .faq-inner { max-width: 720px; margin: 0 auto; }
+    .faq-list { display: flex; flex-direction: column; gap: 0; margin-top: 32px; }
+    .faq-item {
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .faq-q {
+      width: 100%; background: none; border: none;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 4px;
+      font-size: 14px; font-weight: 600; color: var(--text);
+      cursor: pointer; text-align: left;
+      font-family: 'Poppins', sans-serif;
+      gap: 12px;
+      transition: color .15s;
+    }
+    .faq-q:hover { color: var(--gold); }
+    .faq-q i { font-size: 13px; color: var(--gold); flex-shrink: 0; transition: transform .25s; }
+    .faq-item.open .faq-q i { transform: rotate(45deg); }
+    .faq-a {
+      max-height: 0; overflow: hidden;
+      font-size: 13px; color: var(--muted);
+      line-height: 1.7; padding: 0 4px;
+      transition: max-height .3s ease, padding .3s ease;
+    }
+    .faq-item.open .faq-a {
+      max-height: 300px;
+      padding-bottom: 16px;
+    }
+
+    /* ════════════════════════════════════════════════
+       FILTROS FAMILIA OLFATIVA
+    ════════════════════════════════════════════════ */
+    .familia-tabs {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin-top: 10px;
+    }
+    .ftab-familia {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 20px;
+      border: 1.5px solid rgba(255,255,255,.12);
+      background: transparent;
+      font-size: 12px; font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .15s;
+      font-family: 'Poppins', sans-serif;
+    }
+    .ftab-familia.active,
+    .ftab-familia:hover {
+      border-color: var(--gold-border);
+      background: var(--gold-bg);
+      color: var(--gold);
+    }
+    .ftab-familia .fam-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ════════════════════════════════════════════════
+       BADGE STOCK AGOTADO en tarjetas
+    ════════════════════════════════════════════════ */
+    .badge-agotado {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(224,82,82,.15);
+      border: 1px solid rgba(224,82,82,.35);
+      color: var(--danger);
+      font-size: 10px; font-weight: 700;
+      letter-spacing: .06em; text-transform: uppercase;
+      padding: 3px 8px; border-radius: 6px;
+    }
+    /* Pill deshabilitada (talla agotada) */
+    .size-pill.disabled {
+      opacity: .38;
+      cursor: not-allowed;
+      pointer-events: none;
+      text-decoration: line-through;
+    }
+    /* Botón agregar al carrito — animación pulso al añadir */
+    @keyframes cartPulse {
+      0%  { box-shadow: 0 0 0 0 rgba(201,168,76,.5); transform: scale(1); }
+      40% { box-shadow: 0 0 0 12px rgba(201,168,76,0); transform: scale(1.03); }
+      100%{ box-shadow: 0 0 0 0 rgba(201,168,76,0); transform: scale(1); }
+    }
+    .btn-add-cart.added {
+      animation: cartPulse .45s ease;
+      background: var(--success) !important;
+    }
+
+    /* ════════════════════════════════════════════════
+       BENTO DE BENEFICIOS
+    ════════════════════════════════════════════════ */
+    .benefits-section {
+      background: var(--surface);
+      padding: 60px 20px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .benefits-inner { max-width: 1040px; margin: 0 auto; }
+    .benefits-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px; margin-top: 32px;
+    }
+    .benefit-card {
+      background: var(--surface3);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 14px;
+      padding: 20px 18px;
+      display: flex; gap: 14px; align-items: flex-start;
+      transition: border-color .2s;
+    }
+    .benefit-card:hover { border-color: var(--gold-border); }
+    .benefit-icon {
+      font-size: 22px; color: var(--gold); flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .benefit-card h4 {
+      font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px;
+    }
+    .benefit-card p {
+      font-size: 12px; color: var(--muted); line-height: 1.6; margin: 0;
+    }
   </style>
 </head>
 <body>
@@ -195,48 +411,203 @@
       </div>
     </div>
     <div class="header-right">
+      <!-- Navegación interna rápida -->
+      <nav class="header-nav" aria-label="Navegación principal">
+        <a href="#que-es-un-decant" class="header-nav-link">¿Qué es?</a>
+        <a href="#catalogo" class="header-nav-link">Catálogo</a>
+        <a href="#faq" class="header-nav-link">FAQ</a>
+      </nav>
       <a href="./login.html" id="btn-admin" class="btn-admin">
-        <i class="bi bi-shield-lock"></i>
+        <i class="bi bi-shield-lock" aria-hidden="true"></i>
         <span id="btn-admin-label">Admin</span>
       </a>
-      <button class="btn-cart-header" onclick="toggleCart()" aria-label="Ver pedido">
-        <i class="bi bi-bag"></i>
-        <span id="cart-badge" class="cart-badge" style="display:none">0</span>
+      <button class="btn-cart-header" onclick="toggleCart()" aria-label="Ver pedido (carrito)">
+        <i class="bi bi-bag" aria-hidden="true"></i>
+        <span id="cart-badge" class="cart-badge" style="display:none" aria-live="polite">0</span>
       </button>
-      <a href="https://wa.me/526648162623" target="_blank" rel="noopener" class="btn-wa" aria-label="WhatsApp">
-        <i class="bi bi-whatsapp"></i>
+      <a href="https://wa.me/526648162623" target="_blank" rel="noopener" class="btn-wa" aria-label="Contactar por WhatsApp">
+        <i class="bi bi-whatsapp" aria-hidden="true"></i>
         <span class="btn-wa-text">WhatsApp</span>
       </a>
     </div>
   </div>
 </header>
 
-<section class="hero">
-  <div class="hero-bg"></div>
-  <div class="hero-badge"><i class="bi bi-droplet-fill"></i> Decants Originales</div>
-  <h1>Perfumes de <span>diseñador</span><br>en tu tamaño ideal</h1>
+<!-- ═══════════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════════ -->
+<section class="hero" aria-labelledby="hero-heading">
+  <div class="hero-bg" role="presentation"></div>
+  <div class="hero-badge" aria-hidden="true"><i class="bi bi-droplet-fill"></i> Decants Originales</div>
+  <h1 id="hero-heading">Perfumes de <span>diseñador</span><br>en tu tamaño ideal</h1>
   <p>Prueba antes de invertir en el frasco completo. Decants 100% originales desde 2ml.</p>
-  <div class="hero-features">
-    <div class="hfeat"><div class="hfeat-icon"><i class="bi bi-patch-check-fill"></i></div><div class="hfeat-text">100% Originales</div></div>
-    <div class="hfeat"><div class="hfeat-icon"><i class="bi bi-droplet-half"></i></div><div class="hfeat-text">Desde 2ml</div></div>
-    <div class="hfeat"><div class="hfeat-icon"><i class="bi bi-geo-alt"></i></div><div class="hfeat-text">Tijuana, B.C.</div></div>
-    <div class="hfeat"><div class="hfeat-icon"><i class="bi bi-whatsapp"></i></div><div class="hfeat-text">Pedido por<br>WhatsApp</div></div>
+  <div class="hero-features" role="list">
+    <div class="hfeat" role="listitem"><div class="hfeat-icon" aria-hidden="true"><i class="bi bi-patch-check-fill"></i></div><div class="hfeat-text">100% Originales</div></div>
+    <div class="hfeat" role="listitem"><div class="hfeat-icon" aria-hidden="true"><i class="bi bi-droplet-half"></i></div><div class="hfeat-text">Desde 2ml</div></div>
+    <div class="hfeat" role="listitem"><div class="hfeat-icon" aria-hidden="true"><i class="bi bi-geo-alt"></i></div><div class="hfeat-text">Tijuana, B.C.</div></div>
+    <div class="hfeat" role="listitem"><div class="hfeat-icon" aria-hidden="true"><i class="bi bi-whatsapp"></i></div><div class="hfeat-text">Pedido por<br>WhatsApp</div></div>
+  </div>
+  <a href="#catalogo" class="btn-hero-cta" aria-label="Ir al catálogo de decants">
+    <i class="bi bi-search" aria-hidden="true"></i> Ver catálogo
+  </a>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     ¿QUÉ ES UN DECANT? — Sección educativa
+═══════════════════════════════════════════════ -->
+<section class="what-section" id="que-es-un-decant" aria-labelledby="what-title">
+  <div class="what-inner">
+    <p class="what-pretitle" aria-hidden="true">🌸 Aprende sobre nuestros productos</p>
+    <h2 class="what-title" id="what-title">¿Qué es un <span>Decant</span>?</h2>
+    <p class="what-lead">
+      Un decant es una porción fraccionada de un perfume original transferida a un frasco pequeño
+      (de 2 a 10 ml), ideal para probar la fragancia antes de comprar el frasco completo
+      o simplemente disfrutarla sin cargar un frasco grande.
+    </p>
+    <div class="what-cards" role="list">
+      <article class="what-card" role="listitem">
+        <div class="what-card-icon" aria-hidden="true"><i class="bi bi-droplet-half"></i></div>
+        <h3>Porción original</h3>
+        <p>El perfume se extrae directamente del frasco original del diseñador, sin mezclas ni diluciones. Lo que hueles es exactamente la fragancia auténtica.</p>
+      </article>
+      <article class="what-card" role="listitem">
+        <div class="what-card-icon" aria-hidden="true"><i class="bi bi-shield-check"></i></div>
+        <h3>Higiene certificada</h3>
+        <p>Usamos jeringas graduadas estériles de 1 ml a 10 ml y pipetas dosificadoras desechables. El proceso nunca contamina el frasco original ni el decant.</p>
+      </article>
+      <article class="what-card" role="listitem">
+        <div class="what-card-icon" aria-hidden="true"><i class="bi bi-box-seam"></i></div>
+        <h3>Lo que recibes</h3>
+        <p>Un frasco pequeño (con atomizador o tapa de rosca) y una etiqueta que identifica el perfume original: nombre, marca y cantidad en ml.</p>
+      </article>
+      <article class="what-card" role="listitem">
+        <div class="what-card-icon" aria-hidden="true"><i class="bi bi-currency-dollar"></i></div>
+        <h3>Ahorra, sin sacrificar</h3>
+        <p>Prueba perfumes de lujo desde una fracción del precio. Si lo amas, entonces inviertes en el frasco completo — no al revés.</p>
+      </article>
+    </div>
   </div>
 </section>
 
-<div class="filters">
+<!-- ═══════════════════════════════════════════════
+     PROCESO — Timeline
+═══════════════════════════════════════════════ -->
+<section class="process-section" aria-labelledby="process-title">
+  <div class="process-inner">
+    <p class="section-pretitle" aria-hidden="true">🔬 Cómo lo hacemos</p>
+    <h2 class="section-title" id="process-title">Nuestro proceso, paso a paso</h2>
+    <ol class="timeline" aria-label="Pasos del proceso de creación de decants">
+      <li class="tl-step">
+        <div class="tl-dot" aria-hidden="true"><i class="bi bi-patch-check"></i></div>
+        <div class="tl-body">
+          <h4>1. Selección del frasco original</h4>
+          <p>Partimos siempre del perfume original sellado del fabricante. Nunca usamos imitaciones ni mezclas de ningún tipo.</p>
+        </div>
+      </li>
+      <li class="tl-step">
+        <div class="tl-dot" aria-hidden="true"><i class="bi bi-tools"></i></div>
+        <div class="tl-body">
+          <h4>2. Extracción con instrumentos de precisión</h4>
+          <p>Usamos jeringas graduadas estériles (1 ml – 10 ml), pipetas dosificadoras y embudos de acero inoxidable para medir con exactitud la cantidad que pediste.</p>
+        </div>
+      </li>
+      <li class="tl-step">
+        <div class="tl-dot" aria-hidden="true"><i class="bi bi-droplet"></i></div>
+        <div class="tl-body">
+          <h4>3. Transferencia limpia</h4>
+          <p>El perfume pasa directamente al frasco del decant en un ambiente limpio, sin exposición prolongada al aire para conservar las notas originales.</p>
+        </div>
+      </li>
+      <li class="tl-step">
+        <div class="tl-dot" aria-hidden="true"><i class="bi bi-tag"></i></div>
+        <div class="tl-body">
+          <h4>4. Etiquetado e identificación</h4>
+          <p>Cada frasco lleva una etiqueta con el nombre del perfume, la marca y los ml contenidos, para que siempre sepas exactamente qué tienes.</p>
+        </div>
+      </li>
+      <li class="tl-step" style="padding-bottom:0">
+        <div class="tl-dot" aria-hidden="true"><i class="bi bi-box2-heart"></i></div>
+        <div class="tl-body">
+          <h4>5. Empaque y entrega</h4>
+          <p>Te lo entregamos en sobre ruedas (Tijuana) o te informamos por WhatsApp para coordinar la entrega. El frasco viaja seguro para que llegue perfecto.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     BENEFICIOS
+═══════════════════════════════════════════════ -->
+<section class="benefits-section" aria-labelledby="benefits-title">
+  <div class="benefits-inner">
+    <p class="section-pretitle" aria-hidden="true">✨ Por qué elegirnos</p>
+    <h2 class="section-title" id="benefits-title">Ventajas de los decants</h2>
+    <div class="benefits-grid" role="list">
+      <div class="benefit-card" role="listitem">
+        <span class="benefit-icon" aria-hidden="true"><i class="bi bi-luggage"></i></span>
+        <div>
+          <h4>Portátiles</h4>
+          <p>Un frasco de 5 ml cabe en cualquier bolsillo o bolso. Lleva tu perfume favorito a todos lados.</p>
+        </div>
+      </div>
+      <div class="benefit-card" role="listitem">
+        <span class="benefit-icon" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
+        <div>
+          <h4>Económicos</h4>
+          <p>Disfruta perfumes de lujo a una fracción del costo. Sin comprometerte con el frasco completo.</p>
+        </div>
+      </div>
+      <div class="benefit-card" role="listitem">
+        <span class="benefit-icon" aria-hidden="true"><i class="bi bi-airplane"></i></span>
+        <div>
+          <h4>Perfectos para viajes</h4>
+          <p>Pasan los controles de seguridad (menos de 100 ml) sin problema. Ideales para maleta de mano.</p>
+        </div>
+      </div>
+      <div class="benefit-card" role="listitem">
+        <span class="benefit-icon" aria-hidden="true"><i class="bi bi-collection"></i></span>
+        <div>
+          <h4>Colección variada</h4>
+          <p>Con el precio de un frasco grande puedes probar 5 o más decants y armar tu colección personal.</p>
+        </div>
+      </div>
+      <div class="benefit-card" role="listitem">
+        <span class="benefit-icon" aria-hidden="true"><i class="bi bi-star"></i></span>
+        <div>
+          <h4>100% Originales</h4>
+          <p>Siempre perfumes de marca auténtica. Cero imitaciones, cero rellenos. Hueles lo real.</p>
+        </div>
+      </div>
+      <div class="benefit-card" role="listitem">
+        <span class="benefit-icon" aria-hidden="true"><i class="bi bi-whatsapp"></i></span>
+        <div>
+          <h4>Atención directa</h4>
+          <p>¿Tienes dudas sobre qué perfume elegir? Escríbenos por WhatsApp y te asesoramos sin costo.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     CATÁLOGO
+═══════════════════════════════════════════════ -->
+<div class="filters" id="catalogo" role="search" aria-label="Filtros del catálogo">
   <div class="filters-inner">
+    <!-- Fila 1: búsqueda + ordenar (desktop) -->
     <div class="filters-row1">
       <div>
-        <div class="filter-label"><i class="bi bi-search"></i> Buscar decant</div>
+        <div class="filter-label"><i class="bi bi-search" aria-hidden="true"></i> Buscar decant</div>
         <div class="sinput-wrap">
-          <i class="bi bi-search"></i>
-          <input class="finput" id="q" placeholder="Nombre, marca..." oninput="renderGrid()" autocomplete="off">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <input class="finput" id="q" placeholder="Nombre, marca..." oninput="renderGrid()" autocomplete="off"
+            aria-label="Buscar por nombre o marca">
         </div>
       </div>
       <div>
-        <div class="filter-label"><i class="bi bi-sort-down"></i> Ordenar por</div>
-        <select class="fselect" id="sort" onchange="renderGrid()">
+        <div class="filter-label"><i class="bi bi-sort-down" aria-hidden="true"></i> Ordenar por</div>
+        <select class="fselect" id="sort" onchange="renderGrid()" aria-label="Ordenar catálogo">
           <option value="relevancia">⭐ Más populares</option>
           <option value="az">Nombre A-Z</option>
           <option value="za">Nombre Z-A</option>
@@ -245,17 +616,23 @@
           <option value="precio_desc">Precio: mayor a menor</option>
         </select>
       </div>
-      <button class="btn-clear" onclick="clearFilters()"><i class="bi bi-x-circle"></i> Limpiar</button>
+      <button class="btn-clear" onclick="clearFilters()" aria-label="Limpiar todos los filtros">
+        <i class="bi bi-x-circle" aria-hidden="true"></i> Limpiar
+      </button>
     </div>
+
+    <!-- Búsqueda móvil -->
     <div class="filters-row-mobile">
       <div class="sinput-wrap">
-        <i class="bi bi-search"></i>
-        <input class="finput" id="q-mobile" placeholder="Buscar perfume..." oninput="syncMobileSearch()" autocomplete="off">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input class="finput" id="q-mobile" placeholder="Buscar perfume..." oninput="syncMobileSearch()" autocomplete="off"
+          aria-label="Buscar por nombre o marca">
       </div>
     </div>
+    <!-- Ordenar móvil -->
     <div class="filters-row-sort-mobile">
-      <span class="fsort-label"><i class="bi bi-sort-down-alt"></i></span>
-      <select class="fselect fsort-select" id="sort-mobile" onchange="onSortMobile()">
+      <span class="fsort-label" aria-hidden="true"><i class="bi bi-sort-down-alt"></i></span>
+      <select class="fselect fsort-select" id="sort-mobile" onchange="onSortMobile()" aria-label="Ordenar catálogo">
         <option value="relevancia">⭐ Populares</option>
         <option value="az">A-Z</option>
         <option value="za">Z-A</option>
@@ -263,143 +640,301 @@
         <option value="precio_asc">↓ Precio</option>
         <option value="precio_desc">↑ Precio</option>
       </select>
-      <button class="btn-clear btn-clear-sm" onclick="clearFilters()"><i class="bi bi-x-circle"></i></button>
+      <button class="btn-clear btn-clear-sm" onclick="clearFilters()" aria-label="Limpiar filtros">
+        <i class="bi bi-x-circle" aria-hidden="true"></i>
+      </button>
     </div>
-    <div class="filter-tabs">
-      <button class="ftab active" data-g="" onclick="setG(this)">Todos</button>
-      <button class="ftab" data-g="Caballero" onclick="setG(this)">Caballero</button>
-      <button class="ftab" data-g="Dama" onclick="setG(this)">Dama</button>
-      <button class="ftab" data-g="Unisex" onclick="setG(this)">Unisex</button>
+
+    <!-- Tabs género -->
+    <div class="filter-tabs" role="group" aria-label="Filtrar por género">
+      <button class="ftab active" data-g="" onclick="setG(this)" aria-pressed="true">Todos</button>
+      <button class="ftab" data-g="Caballero" onclick="setG(this)" aria-pressed="false">Caballero</button>
+      <button class="ftab" data-g="Dama" onclick="setG(this)" aria-pressed="false">Dama</button>
+      <button class="ftab" data-g="Unisex" onclick="setG(this)" aria-pressed="false">Unisex</button>
+    </div>
+
+    <!-- Tabs familia olfativa (nuevo) -->
+    <div aria-label="Filtrar por familia olfativa">
+      <div class="filter-label" style="margin-top:10px">
+        <i class="bi bi-flower1" aria-hidden="true"></i> Familia olfativa
+      </div>
+      <div class="familia-tabs" id="familia-tabs" role="group" aria-label="Familias olfativas">
+        <button class="ftab-familia active" data-familia="" onclick="setFamilia(this)" aria-pressed="true">
+          Todas
+        </button>
+        <button class="ftab-familia" data-familia="Amaderado" onclick="setFamilia(this)" aria-pressed="false">
+          <span class="fam-dot" style="background:#8B5E3C" aria-hidden="true"></span> Amaderado
+        </button>
+        <button class="ftab-familia" data-familia="Floral" onclick="setFamilia(this)" aria-pressed="false">
+          <span class="fam-dot" style="background:#E891A3" aria-hidden="true"></span> Floral
+        </button>
+        <button class="ftab-familia" data-familia="Cítrico" onclick="setFamilia(this)" aria-pressed="false">
+          <span class="fam-dot" style="background:#F5C542" aria-hidden="true"></span> Cítrico
+        </button>
+        <button class="ftab-familia" data-familia="Oriental" onclick="setFamilia(this)" aria-pressed="false">
+          <span class="fam-dot" style="background:#C0813A" aria-hidden="true"></span> Oriental
+        </button>
+        <button class="ftab-familia" data-familia="Aromático" onclick="setFamilia(this)" aria-pressed="false">
+          <span class="fam-dot" style="background:#5DA68A" aria-hidden="true"></span> Aromático
+        </button>
+        <button class="ftab-familia" data-familia="Acuático" onclick="setFamilia(this)" aria-pressed="false">
+          <span class="fam-dot" style="background:#4A90D9" aria-hidden="true"></span> Acuático
+        </button>
+        <button class="ftab-familia" data-familia="Dulce" onclick="setFamilia(this)" aria-pressed="false">
+          <span class="fam-dot" style="background:#D17EC0" aria-hidden="true"></span> Dulce
+        </button>
+        <button class="ftab-familia" data-familia="Gourmand" onclick="setFamilia(this)" aria-pressed="false">
+          <span class="fam-dot" style="background:#A0522D" aria-hidden="true"></span> Gourmand
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
-<main class="catalog">
+<main class="catalog" aria-labelledby="catalog-heading">
   <div class="cat-header">
-    <h2>Catálogo</h2>
-    <span class="count-badge" id="count-badge">Cargando...</span>
+    <h2 id="catalog-heading">Catálogo</h2>
+    <span class="count-badge" id="count-badge" aria-live="polite" aria-atomic="true">Cargando...</span>
   </div>
-  <div class="grid" id="grid"></div>
+  <div class="grid" id="grid" role="list" aria-label="Perfumes disponibles"></div>
   <div class="load-more-wrap" id="load-more-wrap" style="display:none">
     <button class="btn-load-more" id="btn-load-more" onclick="loadMore()">
-      <i class="bi bi-arrow-down-circle"></i> Cargar más perfumes
+      <i class="bi bi-arrow-down-circle" aria-hidden="true"></i> Cargar más perfumes
     </button>
-    <span class="load-more-info" id="load-more-info"></span>
+    <span class="load-more-info" id="load-more-info" aria-live="polite"></span>
   </div>
 </main>
 
-<!-- MODAL PERFUME -->
-<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+<!-- ═══════════════════════════════════════════════
+     FAQ
+═══════════════════════════════════════════════ -->
+<section class="faq-section" id="faq" aria-labelledby="faq-title">
+  <div class="faq-inner">
+    <p class="section-pretitle" aria-hidden="true">💬 Preguntas frecuentes</p>
+    <h2 class="section-title" id="faq-title">Resolvemos tus dudas</h2>
+    <dl class="faq-list">
+
+      <div class="faq-item" role="presentation">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false"
+          aria-controls="faq-a1" id="faq-q1">
+          ¿El decant es igual al perfume original?
+          <i class="bi bi-plus" aria-hidden="true"></i>
+        </button>
+        <dd class="faq-a" id="faq-a1" role="region" aria-labelledby="faq-q1">
+          Sí. El contenido del decant proviene directamente del frasco original sin ningún aditivo, dilución ni modificación. La fragancia que percibes es exactamente la misma que saldrá del frasco completo de diseñador.
+        </dd>
+      </div>
+
+      <div class="faq-item" role="presentation">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false"
+          aria-controls="faq-a2" id="faq-q2">
+          ¿Cuánto dura un decant de 5 ml?
+          <i class="bi bi-plus" aria-hidden="true"></i>
+        </button>
+        <dd class="faq-a" id="faq-a2" role="region" aria-labelledby="faq-q2">
+          Con uso normal (2–3 sprays por día), un decant de 5 ml rinde aproximadamente 50 aplicaciones, lo que equivale a unas 2–3 semanas de uso diario. Es perfecto para viajes cortos o para probar antes de comprar el frasco completo.
+        </dd>
+      </div>
+
+      <div class="faq-item" role="presentation">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false"
+          aria-controls="faq-a3" id="faq-q3">
+          ¿Cómo garantizan la higiene en el proceso?
+          <i class="bi bi-plus" aria-hidden="true"></i>
+        </button>
+        <dd class="faq-a" id="faq-a3" role="region" aria-labelledby="faq-q3">
+          Utilizamos jeringas graduadas estériles de un solo uso, pipetas desechables y embudos de acero inoxidable. El proceso se realiza en una superficie limpia y los frascos se sellan inmediatamente después del llenado para evitar oxidación o contaminación.
+        </dd>
+      </div>
+
+      <div class="faq-item" role="presentation">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false"
+          aria-controls="faq-a4" id="faq-q4">
+          ¿Dónde puedo comprar? ¿Hacen entregas?
+          <i class="bi bi-plus" aria-hidden="true"></i>
+        </button>
+        <dd class="faq-a" id="faq-a4" role="region" aria-labelledby="faq-q4">
+          Estamos en Tijuana, B.C. Puedes encontrarnos en el mercado sobre ruedas o coordinar la entrega directamente por WhatsApp. Escríbenos y con gusto te indicamos dónde estamos cada semana.
+        </dd>
+      </div>
+
+      <div class="faq-item" role="presentation">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false"
+          aria-controls="faq-a5" id="faq-q5">
+          ¿Puedo pedir un perfume que no veo en el catálogo?
+          <i class="bi bi-plus" aria-hidden="true"></i>
+        </button>
+        <dd class="faq-a" id="faq-a5" role="region" aria-labelledby="faq-q5">
+          ¡Claro! Escríbenos por WhatsApp indicando el perfume que buscas. Si lo tenemos o lo podemos conseguir, con mucho gusto te preparamos el decant. El catálogo online no refleja al 100% todo nuestro inventario.
+        </dd>
+      </div>
+
+      <div class="faq-item" role="presentation">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false"
+          aria-controls="faq-a6" id="faq-q6">
+          ¿Cómo conservo mi decant correctamente?
+          <i class="bi bi-plus" aria-hidden="true"></i>
+        </button>
+        <dd class="faq-a" id="faq-a6" role="region" aria-labelledby="faq-q6">
+          Guárdalo lejos de la luz solar directa, el calor y la humedad. Idealmente en un cajón o estuche oscuro a temperatura ambiente. Si lo tratas como el frasco original, la fragancia puede durar años sin degradarse.
+        </dd>
+      </div>
+
+    </dl>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL PERFUME
+═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)" role="dialog"
+  aria-modal="true" aria-labelledby="modal-nombre" aria-hidden="true">
   <div class="modal-box">
     <div class="modal-img" id="modal-img">
-      <div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>
+      <div class="modal-img-placeholder" aria-hidden="true"><i class="bi bi-droplet"></i></div>
     </div>
     <div class="modal-content">
       <div class="modal-top">
         <div class="modal-nombre" id="modal-nombre"></div>
-        <button class="btn-close" onclick="document.getElementById('modal').classList.remove('open');document.body.style.overflow=''" aria-label="Cerrar">
-          <i class="bi bi-x-lg"></i>
+        <button class="btn-close"
+          onclick="document.getElementById('modal').classList.remove('open');document.getElementById('modal').setAttribute('aria-hidden','true');document.body.style.overflow=''"
+          aria-label="Cerrar detalle del perfume">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
         </button>
       </div>
       <div class="modal-marca" id="modal-marca"></div>
+      <!-- Badge agotado (se muestra si corresponde) -->
+      <div id="modal-agotado-badge" style="display:none;margin-bottom:8px">
+        <span class="badge-agotado"><i class="bi bi-x-circle" aria-hidden="true"></i> Sin stock</span>
+      </div>
       <div class="modal-desc" id="modal-desc"></div>
+      <!-- Familia olfativa del perfume -->
+      <div id="modal-familia-wrap" style="margin-bottom:10px;display:none">
+        <span id="modal-familia-tag" style="font-size:12px;color:var(--gold);font-weight:600;"></span>
+      </div>
       <div class="modal-sizes-label">Elige tu presentación</div>
-      <div class="modal-pills" id="modal-pills"></div>
+      <div class="modal-pills" id="modal-pills" role="group" aria-label="Tamaños disponibles"></div>
       <div id="modal-cart-wrapper">
-        <button class="btn-add-cart" id="modal-btn-cart" onclick="addToCart()">
-          <i class="bi bi-bag-plus"></i> Agregar al pedido
+        <button class="btn-add-cart" id="modal-btn-cart" onclick="addToCart()"
+          aria-label="Agregar al pedido">
+          <i class="bi bi-bag-plus" aria-hidden="true"></i> Agregar al pedido
         </button>
       </div>
-      <div class="modal-or"><span>o</span></div>
-      <button class="btn-wa-modal" id="modal-btn" onclick="pedirModal()">
-        <i class="bi bi-whatsapp"></i> Consultar por WhatsApp
+      <div class="modal-or" aria-hidden="true"><span>o</span></div>
+      <button class="btn-wa-modal" id="modal-btn" onclick="pedirModal()"
+        aria-label="Consultar disponibilidad por WhatsApp">
+        <i class="bi bi-whatsapp" aria-hidden="true"></i> Consultar por WhatsApp
       </button>
     </div>
   </div>
 </div>
 
-<!-- CART DRAWER -->
-<div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
-<div class="cart-drawer" id="cart-drawer">
-  <!-- Handle para swipe-down (mobile) -->
-  <div class="cart-handle" id="cart-handle"></div>
+<!-- ═══════════════════════════════════════════════
+     CART DRAWER
+═══════════════════════════════════════════════ -->
+<div class="cart-overlay" id="cart-overlay" onclick="closeCart()" role="presentation"></div>
+<div class="cart-drawer" id="cart-drawer" role="dialog" aria-modal="true"
+  aria-label="Tu pedido" aria-hidden="true">
+  <div class="cart-handle" id="cart-handle" aria-hidden="true"></div>
 
   <div class="cart-header">
-    <div class="cart-title"><i class="bi bi-bag"></i> Tu pedido</div>
-    <!-- X solo visible en desktop -->
+    <div class="cart-title" aria-hidden="true"><i class="bi bi-bag"></i> Tu pedido</div>
     <button class="btn-close" id="btn-cart-close" onclick="closeCart()" aria-label="Cerrar pedido">
-      <i class="bi bi-x-lg"></i>
+      <i class="bi bi-x-lg" aria-hidden="true"></i>
     </button>
   </div>
 
-  <!-- Zona scrolleable (items + empty) -->
   <div class="cart-body">
-    <div class="cart-empty" id="cart-empty" style="display:none">
-      <i class="bi bi-bag-x"></i>
+    <div class="cart-empty" id="cart-empty" style="display:none" role="status">
+      <i class="bi bi-bag-x" aria-hidden="true"></i>
       <p>Tu pedido está vacío</p>
       <span>Abre un perfume y elige tu talla para agregar</span>
     </div>
-    <div id="cart-list"></div>
+    <div id="cart-list" aria-live="polite" aria-label="Artículos en el pedido"></div>
   </div>
 
   <div class="cart-footer" id="cart-footer" style="display:none">
     <div class="cart-total-row">
       <span>Total estimado</span>
-      <strong id="cart-total">$0 MXN</strong>
+      <strong id="cart-total" aria-live="polite">$0 MXN</strong>
     </div>
     <p class="cart-disclaimer">* Precios sujetos a confirmación de disponibilidad</p>
-    <button class="btn-cart-wa" onclick="sendCartWA()">
-      <i class="bi bi-whatsapp"></i> Enviar pedido por WhatsApp
+    <button class="btn-cart-wa" onclick="sendCartWA()"
+      aria-label="Enviar pedido por WhatsApp">
+      <i class="bi bi-whatsapp" aria-hidden="true"></i> Enviar pedido por WhatsApp
     </button>
-    <button class="btn-cart-clear" id="btn-cart-clear" onclick="clearCart()">
-      <i class="bi bi-trash"></i> Limpiar pedido
+    <button class="btn-cart-clear" id="btn-cart-clear" onclick="clearCart()"
+      aria-label="Limpiar todos los artículos del pedido">
+      <i class="bi bi-trash" aria-hidden="true"></i> Limpiar pedido
     </button>
   </div>
 
-  <!-- Botón cerrar grande en mobile (abajo del footer) -->
   <div class="cart-close-row">
     <button class="btn-cart-close-bottom" onclick="closeCart()">
-      <i class="bi bi-chevron-down"></i> Cerrar pedido
+      <i class="bi bi-chevron-down" aria-hidden="true"></i> Cerrar pedido
     </button>
   </div>
 </div>
 
 <!-- FAB carrito -->
 <button class="cart-fab" id="cart-fab" onclick="toggleCart()" aria-label="Ver pedido">
-  <i class="bi bi-bag"></i>
-  <span class="cart-badge" id="cart-badge-fab" style="display:none">0</span>
+  <i class="bi bi-bag" aria-hidden="true"></i>
+  <span class="cart-badge" id="cart-badge-fab" style="display:none" aria-hidden="true">0</span>
 </button>
 
 <!-- FAB WhatsApp -->
-<a id="wa-fab" href="https://wa.me/526648162623?text=Hola!%20Me%20interesa%20saber%20m%C3%A1s%20sobre%20los%20decants%20%F0%9F%8C%B8" target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">
-  <i class="bi bi-whatsapp"></i>
+<a id="wa-fab"
+  href="https://wa.me/526648162623?text=Hola!%20Me%20interesa%20saber%20m%C3%A1s%20sobre%20los%20decants%20%F0%9F%8C%B8"
+  target="_blank" rel="noopener"
+  aria-label="Contactar a Fitoscents por WhatsApp">
+  <i class="bi bi-whatsapp" aria-hidden="true"></i>
 </a>
+
+<!-- Toasts -->
+<div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+<div id="undo-toast" role="alert" aria-live="assertive">
+  <span id="undo-msg"></span>
+  <button id="undo-btn" onclick="undoRemove()" aria-label="Deshacer eliminación">Deshacer</button>
+</div>
 
 <footer>
   <div class="footer-social">
     <p>Síguenos en redes</p>
     <div class="social-buttons">
-      <a href="https://www.instagram.com/fitoscents/" target="_blank" rel="noopener noreferrer" class="social-btn instagram">
-        <i class="bi bi-instagram"></i><span>@fitoscents</span>
+      <a href="https://www.instagram.com/fitoscents/" target="_blank" rel="noopener noreferrer"
+        class="social-btn instagram" aria-label="Instagram de Fitoscents">
+        <i class="bi bi-instagram" aria-hidden="true"></i><span>@fitoscents</span>
       </a>
-      <a href="https://www.tiktok.com/@fitoscents" target="_blank" rel="noopener noreferrer" class="social-btn tiktok">
-        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+      <a href="https://www.tiktok.com/@fitoscents" target="_blank" rel="noopener noreferrer"
+        class="social-btn tiktok" aria-label="TikTok de Fitoscents">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="currentColor"
+          viewBox="0 0 16 16" aria-hidden="true" focusable="false">
           <path d="M9 0h1.98c.144.715.54 1.617 1.235 2.512C12.895 3.389 13.797 4 15 4v2c-1.753 0-3.07-.814-4-1.829V11a5 5 0 1 1-5-5v2a3 3 0 1 0 3 3z"/>
         </svg>
         <span>@fitoscents</span>
       </a>
-      <a href="https://www.facebook.com/profile.php?id=61584221924570" target="_blank" rel="noopener noreferrer" class="social-btn facebook">
-        <i class="bi bi-facebook"></i><span>Fitoscents</span>
+      <a href="https://www.facebook.com/profile.php?id=61584221924570" target="_blank" rel="noopener noreferrer"
+        class="social-btn facebook" aria-label="Facebook de Fitoscents">
+        <i class="bi bi-facebook" aria-hidden="true"></i><span>Fitoscents</span>
       </a>
     </div>
   </div>
+  <!-- Navegación de accesibilidad en footer -->
+  <nav aria-label="Accesos rápidos" style="margin-bottom:12px;text-align:center">
+    <a href="#que-es-un-decant" style="color:var(--muted);font-size:12px;margin:0 8px">¿Qué es un decant?</a>
+    <a href="#catalogo" style="color:var(--muted);font-size:12px;margin:0 8px">Catálogo</a>
+    <a href="#faq" style="color:var(--muted);font-size:12px;margin:0 8px">Preguntas frecuentes</a>
+  </nav>
   <div class="footer-copy">
     <p>© 2026 <a href="https://wa.me/526648162623" target="_blank" rel="noopener">Fitoscents</a> · Tijuana, B.C.</p>
   </div>
 </footer>
 
-<script type="module" src="./assets/js/catalog.js"></script>
+<!-- ═══════════════════════════════════════════════
+     SCRIPTS INLINE
+═══════════════════════════════════════════════ -->
 <script>
+/* ── Ordenar móvil ── */
 function onSortMobile() {
   const val  = document.getElementById('sort-mobile').value;
   const desk = document.getElementById('sort');
@@ -407,35 +942,103 @@ function onSortMobile() {
   if (typeof renderGrid === 'function') renderGrid();
 }
 
-// ── Swipe-down para cerrar drawer en mobile ──
+/* ── Sincronizar búsqueda móvil con desktop ── */
+function syncMobileSearch() {
+  const v = document.getElementById('q-mobile').value;
+  const d = document.getElementById('q');
+  if (d) d.value = v;
+  if (typeof renderGrid === 'function') renderGrid();
+}
+
+/* ── Filtro familia olfativa ── */
+let currentFamilia = '';
+function setFamilia(btn) {
+  document.querySelectorAll('.ftab-familia').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-pressed','false');
+  });
+  btn.classList.add('active');
+  btn.setAttribute('aria-pressed','true');
+  currentFamilia = btn.dataset.familia || '';
+  if (typeof renderGrid === 'function') renderGrid();
+}
+/* Exponer para catalog.js */
+window.getCurrentFamilia = () => currentFamilia;
+
+/* ── FAQ toggle ── */
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const expanded = item.classList.contains('open');
+  // Cierra todos primero
+  document.querySelectorAll('.faq-item.open').forEach(i => {
+    i.classList.remove('open');
+    i.querySelector('.faq-q').setAttribute('aria-expanded','false');
+  });
+  if (!expanded) {
+    item.classList.add('open');
+    btn.setAttribute('aria-expanded','true');
+  }
+}
+
+/* ── Animación botón "Agregar al carrito" ── */
+window.pulseAddBtn = function() {
+  const btn = document.getElementById('modal-btn-cart');
+  if (!btn) return;
+  btn.innerHTML = '<i class="bi bi-check-lg" aria-hidden="true"></i> ¡Agregado!';
+  btn.classList.add('added');
+  btn.setAttribute('aria-label', 'Producto agregado al pedido');
+  clearTimeout(btn._resetTimer);
+  btn._resetTimer = setTimeout(() => {
+    btn.innerHTML = '<i class="bi bi-bag-plus" aria-hidden="true"></i> Agregar al pedido';
+    btn.classList.remove('added');
+    btn.setAttribute('aria-label', 'Agregar al pedido');
+  }, 1800);
+};
+
+/* ── Mostrar/ocultar modal aria-hidden ── */
+function closeModal(e) {
+  const overlay = document.getElementById('modal');
+  if (e && e.target !== overlay) return;
+  overlay.classList.remove('open');
+  overlay.setAttribute('aria-hidden','true');
+  document.body.style.overflow = '';
+}
+
+/* ── Swipe-down drawer carrito (mobile) ── */
 (function(){
   const handle = document.getElementById('cart-handle');
   const drawer = document.getElementById('cart-drawer');
   if (!handle || !drawer) return;
   let startY = 0, dragging = false;
-  function onStart(e){
-    startY = (e.touches ? e.touches[0].clientY : e.clientY);
-    dragging = true;
-  }
+  function onStart(e){ startY=(e.touches?e.touches[0].clientY:e.clientY); dragging=true; }
   function onMove(e){
-    if (!dragging) return;
-    const dy = (e.touches ? e.touches[0].clientY : e.clientY) - startY;
-    if (dy > 0) drawer.style.transform = `translateY(${dy}px)`;
+    if(!dragging)return;
+    const dy=(e.touches?e.touches[0].clientY:e.clientY)-startY;
+    if(dy>0)drawer.style.transform=`translateY(${dy}px)`;
   }
   function onEnd(e){
-    if (!dragging) return;
-    dragging = false;
-    const dy = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY) - startY;
-    drawer.style.transform = '';
-    if (dy > 90 && typeof closeCart === 'function') closeCart();
+    if(!dragging)return; dragging=false;
+    const dy=(e.changedTouches?e.changedTouches[0].clientY:e.clientY)-startY;
+    drawer.style.transform='';
+    if(dy>90&&typeof closeCart==='function')closeCart();
   }
-  handle.addEventListener('touchstart', onStart, {passive:true});
-  handle.addEventListener('touchmove',  onMove,  {passive:true});
-  handle.addEventListener('touchend',   onEnd);
-  handle.addEventListener('mousedown',  onStart);
-  window.addEventListener('mousemove',  onMove);
-  window.addEventListener('mouseup',    onEnd);
+  handle.addEventListener('touchstart',onStart,{passive:true});
+  handle.addEventListener('touchmove', onMove, {passive:true});
+  handle.addEventListener('touchend',  onEnd);
+  handle.addEventListener('mousedown', onStart);
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup',   onEnd);
 })();
+
+/* ── Scroll suave para links internos ── */
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.getElementById(a.getAttribute('href').slice(1));
+    if (target) { e.preventDefault(); target.scrollIntoView({ behavior:'smooth', block:'start' }); }
+  });
+});
 </script>
+
+<script type="module" src="./assets/js/catalog.js"></script>
 </body>
 </html>
