@@ -9,8 +9,9 @@ import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug } from './slug.
 // ── Auth ──────────────────────────────────────────
 const adminBtn = document.getElementById('btn-admin');
 onAuthStateChanged(auth, user => {
-  adminBtn.href = user ? './admin/dashboard.html' : './login.html';
-  document.getElementById('btn-admin-label').textContent = user ? 'Dashboard' : 'Admin';
+  if (adminBtn) adminBtn.href = user ? './admin/dashboard.html' : './login.html';
+  const lbl = document.getElementById('btn-admin-label');
+  if (lbl) lbl.textContent = user ? 'Dashboard' : 'Admin';
 });
 
 // ── Estado global ─────────────────────────────────
@@ -18,6 +19,13 @@ const PAGE_SIZE = 10;
 let all = [], gF = '', modalData = null;
 let currentPage = 1, filtered = [];
 let cart = loadCart();
+
+// Filtros avanzados
+let activeFilters = {
+  familias: [],
+  tipos: [],
+  marcas: []
+};
 
 // ── Undo stack ────────────────────────────────────
 let undoStack = [];
@@ -62,18 +70,20 @@ function minPrecio(p) {
   return vals.length ? Math.min(...vals) : 9999;
 }
 
+function getVal(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
 window.syncMobileSearch = () => {
-  document.getElementById('q').value = document.getElementById('q-mobile').value;
+  const qEl = document.getElementById('q');
+  const mEl = document.getElementById('q-mobile');
+  if (qEl && mEl) qEl.value = mEl.value;
   renderGrid();
 };
 
 // ── Meta tags OG dinámicos ────────────────────────
 function setMetaTags({ title, description, image, url }) {
-  const set = (sel, attr, prop, val) => {
-    let el = document.querySelector(sel);
-    if (!el) { el = document.createElement('meta'); if (prop) el.setAttribute(prop === 'name' ? 'name' : 'property', prop === 'name' ? sel.match(/name="([^"]+)"/)?.[1] || '' : sel.match(/property="([^"]+)"/)?.[1] || ''); document.head.appendChild(el); }
-    el.setAttribute(attr, val);
-  };
   document.title = title;
   const og = (prop, val) => { let el = document.querySelector(`meta[property="${prop}"]`); if (!el) { el = document.createElement('meta'); el.setAttribute('property', prop); document.head.appendChild(el); } el.setAttribute('content', val); };
   const nm = (name, val) => { let el = document.querySelector(`meta[name="${name}"]`); if (!el) { el = document.createElement('meta'); el.setAttribute('name', name); document.head.appendChild(el); } el.setAttribute('content', val); };
@@ -97,7 +107,8 @@ function resetMetaTags() {
 
 // ── Skeletons ─────────────────────────────────────
 function showSkeletons() {
-  document.getElementById('grid').innerHTML = Array(8).fill(`
+  const g = document.getElementById('grid');
+  if (g) g.innerHTML = Array(8).fill(`
     <div class="skel-card">
       <div class="skel-img skel"></div>
       <div class="skel-body">
@@ -114,6 +125,10 @@ async function load() {
   const snap = await getDocs(query(collection(db, 'perfumes'), where('activo', '==', true)));
   all = [];
   snap.forEach(d => all.push({ id: d.id, ...d.data() }));
+
+  // Poblar filtros dinámicos de marcas
+  buildFilterPanelDynamic();
+
   renderGrid();
   if (cart.length) {
     const mins = cartExpiresInMinutes();
@@ -121,16 +136,92 @@ async function load() {
     updateCartBadge();
   }
 
-  // Deep link: abrir modal si el hash tiene un slug
+  // Deep link
   const slug = getSlugFromHash();
   if (slug) {
     const p = findBySlug(all, slug);
-    if (p) openModal(p.id, false); // false = no hacer pushState, ya está en el hash
+    if (p) openModal(p.id, false);
     else window.location.hash = '';
   }
 }
 
-// Escuchar cambios de hash (navegación atrás/adelante)
+// ── Poblar marcas dinámicas en el panel ─────────────
+function buildFilterPanelDynamic() {
+  const marcasSet = new Set();
+  all.forEach(p => { if (p.marca) marcasSet.add(p.marca.trim()); });
+  const sorted = [...marcasSet].sort();
+  const container = document.getElementById('filter-marcas-list');
+  if (!container) return;
+  container.innerHTML = sorted.map(m => `
+    <label class="fcheck-label">
+      <input type="checkbox" class="fcheck" data-group="marcas" value="${m}" onchange="onFilterChange()">
+      <span>${m}</span>
+    </label>`).join('');
+}
+
+// ── Panel filtros hamburguesa ─────────────────────
+window.toggleFilterPanel = () => {
+  const panel   = document.getElementById('filter-panel');
+  const overlay = document.getElementById('filter-overlay');
+  const isOpen  = panel && panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+    document.body.classList.remove('filters-open');
+  } else {
+    panel.classList.add('open');
+    if (overlay) overlay.classList.add('open');
+    document.body.classList.add('filters-open');
+  }
+  updateFilterBtnBadge();
+};
+
+window.closeFilterPanel = () => {
+  const panel   = document.getElementById('filter-panel');
+  const overlay = document.getElementById('filter-overlay');
+  if (panel)   panel.classList.remove('open');
+  if (overlay) overlay.classList.remove('open');
+  document.body.classList.remove('filters-open');
+};
+
+window.onFilterChange = () => {
+  activeFilters.familias = getChecked('familias');
+  activeFilters.tipos    = getChecked('tipos');
+  activeFilters.marcas   = getChecked('marcas');
+  updateFilterBtnBadge();
+  renderGrid();
+};
+
+function getChecked(group) {
+  return [...document.querySelectorAll(`.fcheck[data-group="${group}"]:checked`)].map(el => el.value);
+}
+
+function updateFilterBtnBadge() {
+  const total = activeFilters.familias.length + activeFilters.tipos.length + activeFilters.marcas.length;
+  const badge = document.getElementById('filter-btn-badge');
+  if (!badge) return;
+  badge.textContent = total;
+  badge.style.display = total > 0 ? 'flex' : 'none';
+}
+
+window.clearAllFilters = () => {
+  document.querySelectorAll('.fcheck').forEach(el => el.checked = false);
+  activeFilters = { familias: [], tipos: [], marcas: [] };
+  const qEl = document.getElementById('q');
+  const qmEl = document.getElementById('q-mobile');
+  const sEl = document.getElementById('sort');
+  if (qEl) qEl.value = '';
+  if (qmEl) qmEl.value = '';
+  if (sEl) sEl.value = 'relevancia';
+  document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
+  const firstTab = document.querySelector('.ftab');
+  if (firstTab) firstTab.classList.add('active');
+  gF = '';
+  updateFilterBtnBadge();
+  renderGrid();
+};
+
+// Escuchar cambios de hash
 window.addEventListener('hashchange', () => {
   const slug = getSlugFromHash();
   const modal = document.getElementById('modal');
@@ -171,15 +262,22 @@ function cardHTML(p) {
 // ── Render grid ───────────────────────────────────
 window.renderGrid = () => {
   currentPage = 1;
-  const q    = document.getElementById('q').value.toLowerCase().trim();
-  const sort = document.getElementById('sort').value;
-  const sm   = document.getElementById('sort-mobile');
+  const qEl   = document.getElementById('q');
+  const sEl   = document.getElementById('sort');
+  const q     = qEl ? qEl.value.toLowerCase().trim() : '';
+  const sort  = sEl ? sEl.value : 'relevancia';
+  const sm    = document.getElementById('sort-mobile');
   if (sm && sm.value !== sort) sm.value = sort;
 
-  filtered = all.filter(p =>
-    (!q || p.nombre.toLowerCase().includes(q) || (p.marca || '').toLowerCase().includes(q)) &&
-    (!gF || p.genero === gF)
-  );
+  filtered = all.filter(p => {
+    if (q && !p.nombre.toLowerCase().includes(q) && !(p.marca || '').toLowerCase().includes(q)) return false;
+    if (gF && p.genero !== gF) return false;
+    if (activeFilters.familias.length && !activeFilters.familias.includes(p.familia)) return false;
+    if (activeFilters.tipos.length    && !activeFilters.tipos.includes(p.tipo))    return false;
+    if (activeFilters.marcas.length   && !activeFilters.marcas.includes(p.marca))  return false;
+    return true;
+  });
+
   filtered.sort((a, b) => {
     if (sort === 'relevancia')  return (b.clicks || 0) - (a.clicks || 0);
     if (sort === 'az')          return a.nombre.localeCompare(b.nombre);
@@ -191,10 +289,11 @@ window.renderGrid = () => {
     return 0;
   });
 
-  document.getElementById('count-badge').textContent =
-    filtered.length + ' perfume' + (filtered.length !== 1 ? 's' : '');
+  const badge = document.getElementById('count-badge');
+  if (badge) badge.textContent = filtered.length + ' perfume' + (filtered.length !== 1 ? 's' : '');
 
   const g = document.getElementById('grid');
+  if (!g) return;
   if (!filtered.length) {
     g.innerHTML = `<div class="empty-state"><i class="bi bi-search"></i><h3>Sin resultados</h3><p style="font-size:13px;color:#555">Intenta con otro nombre o quita los filtros.</p></div>`;
     updateLoadMore(); return;
@@ -227,6 +326,7 @@ window.loadMore = () => {
   currentPage++;
   const chunk = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const g = document.getElementById('grid');
+  if (!g) return;
   chunk.forEach(p => { const d = document.createElement('div'); d.innerHTML = cardHTML(p); g.appendChild(d.firstElementChild); });
   updateLoadMore();
 };
@@ -235,9 +335,10 @@ function updateLoadMore() {
   const shown = Math.min(currentPage * PAGE_SIZE, filtered.length);
   const wrap  = document.getElementById('load-more-wrap');
   const info  = document.getElementById('load-more-info');
+  if (!wrap) return;
   if (filtered.length > PAGE_SIZE && shown < filtered.length) {
     wrap.style.display = 'flex';
-    info.textContent   = `Mostrando ${shown} de ${filtered.length}`;
+    if (info) info.textContent = `Mostrando ${shown} de ${filtered.length}`;
   } else { wrap.style.display = 'none'; }
 }
 
@@ -247,24 +348,16 @@ window.setG = btn => {
 };
 
 window.clearFilters = () => {
-  document.getElementById('q').value = '';
-  document.getElementById('q-mobile').value = '';
-  document.getElementById('sort').value = 'relevancia';
-  const sm = document.getElementById('sort-mobile'); if (sm) sm.value = 'relevancia';
-  document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
-  document.querySelector('.ftab').classList.add('active');
-  gF = ''; renderGrid();
+  clearAllFilters();
 };
 
 // ── Modal ─────────────────────────────────────────
-// pushHash: true (default) actualiza el hash, false lo deja como está (deep link)
 window.openModal = (id, pushHash = true) => {
   const p = all.find(x => x.id === id);
   if (!p) return;
   modalData = p;
   updateDoc(doc(db, 'perfumes', id), { clicks: increment(1) }).catch(() => {});
 
-  // Actualizar hash y meta tags
   if (pushHash) window.location.hash = '/perfumes/' + perfumeURL(p).replace('#/perfumes/', '');
   const precio = minPrecio(p);
   setMetaTags({
@@ -348,7 +441,6 @@ function doCloseModal() {
   document.getElementById('modal').classList.remove('open');
   document.body.style.overflow = '';
   modalData = null;
-  // Limpiar hash sin recargar
   history.pushState(null, '', window.location.pathname + window.location.search);
   resetMetaTags();
 }
@@ -446,12 +538,14 @@ function _updateDecBtn(key, qty) {
 
 document.addEventListener('DOMContentLoaded', () => {
   const cartList = document.getElementById('cart-list');
-  cartList.addEventListener('click', e => {
-    const incBtn = e.target.closest('.cart-qty-btn[data-inc]');
-    if (incBtn) { incrementCartItem(incBtn.dataset.inc); return; }
-    const decBtn = e.target.closest('.cart-qty-btn[data-dec]');
-    if (decBtn) { decrementCartItem(decBtn.dataset.dec); return; }
-  });
+  if (cartList) {
+    cartList.addEventListener('click', e => {
+      const incBtn = e.target.closest('.cart-qty-btn[data-inc]');
+      if (incBtn) { incrementCartItem(incBtn.dataset.inc); return; }
+      const decBtn = e.target.closest('.cart-qty-btn[data-dec]');
+      if (decBtn) { decrementCartItem(decBtn.dataset.dec); return; }
+    });
+  }
 });
 
 window.clearCart = () => {
@@ -497,10 +591,11 @@ function renderCartDrawer() {
   const empty = document.getElementById('cart-empty');
   const foot  = document.getElementById('cart-footer');
   const body  = document.querySelector('.cart-body');
+  if (!list) return;
   if (!cart.length) {
-    list.innerHTML = ''; empty.style.display = 'flex'; foot.style.display = 'none'; return;
+    list.innerHTML = ''; if (empty) empty.style.display = 'flex'; if (foot) foot.style.display = 'none'; return;
   }
-  empty.style.display = 'none'; foot.style.display = 'flex';
+  if (empty) empty.style.display = 'none'; if (foot) foot.style.display = 'flex';
   list.innerHTML = cart.map(item => `
     <div class="cart-item" data-key="${item.key}">
       <div class="cart-item-img">
@@ -519,7 +614,8 @@ function renderCartDrawer() {
         <button class="cart-qty-btn" data-inc="${item.key}" aria-label="Agregar uno" ${item.qty >= MAX_QTY ? 'disabled' : ''}>+</button>
       </div>
     </div>`).join('');
-  document.getElementById('cart-total').textContent = '$' + calcTotal(cart) + ' MXN';
+  const totalEl = document.getElementById('cart-total');
+  if (totalEl) totalEl.textContent = '$' + calcTotal(cart) + ' MXN';
   if (body) body.scrollTop = 0;
 }
 
@@ -530,8 +626,7 @@ window.sendCartWA = () => {
 
 function flashPills() {
   const pills = document.getElementById('modal-pills');
-  pills.classList.add('flash');
-  setTimeout(() => pills.classList.remove('flash'), 600);
+  if (pills) { pills.classList.add('flash'); setTimeout(() => pills.classList.remove('flash'), 600); }
 }
 
 function showToast(msg) {

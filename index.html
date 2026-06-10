@@ -71,116 +71,253 @@
 
     /* ── FAB WhatsApp ── */
     #wa-fab {
-      position:fixed;
-      bottom:24px; left:24px;
-      width:52px; height:52px;
-      border-radius:50%;
-      background:#25D366;
-      border:none;
+      position:fixed; bottom:24px; left:24px;
+      width:52px; height:52px; border-radius:50%;
+      background:#25D366; border:none;
       color:#fff; font-size:24px;
       display:flex; align-items:center; justify-content:center;
       box-shadow:0 6px 20px rgba(0,0,0,.45);
-      z-index:300;
-      cursor:pointer;
+      z-index:300; cursor:pointer;
       transition:transform .2s, box-shadow .2s, opacity .25s;
       text-decoration:none;
     }
-    #wa-fab:hover {
-      transform:scale(1.1);
-      box-shadow:0 10px 28px rgba(37,211,102,.35);
-      background:#1db954;
-    }
-    /* Tooltip solo en desktop */
+    #wa-fab:hover{transform:scale(1.1);box-shadow:0 10px 28px rgba(37,211,102,.35);background:#1db954;}
     #wa-fab::after {
-      content: '¿Tienes dudas?';
-      position:absolute;
-      left:calc(100% + 10px);
-      top:50%; transform:translateY(-50%);
-      background:#1a1a1a;
-      border:1px solid rgba(255,255,255,.12);
-      color:#e8e6e1;
-      font-size:12px; font-weight:500;
-      white-space:nowrap;
-      padding:6px 12px;
-      border-radius:8px;
-      opacity:0;
-      pointer-events:none;
-      transition:opacity .18s;
+      content:'¿Tienes dudas?'; position:absolute;
+      left:calc(100% + 10px); top:50%; transform:translateY(-50%);
+      background:#1a1a1a; border:1px solid rgba(255,255,255,.12);
+      color:#e8e6e1; font-size:12px; font-weight:500;
+      white-space:nowrap; padding:6px 12px; border-radius:8px;
+      opacity:0; pointer-events:none; transition:opacity .18s;
       font-family:'Poppins',sans-serif;
     }
-    #wa-fab:hover::after { opacity:1; }
-    /* Ocultar tooltip en touch/mobile */
-    @media (max-width:480px) {
-      #wa-fab::after { display:none; }
-      #wa-fab { width:46px; height:46px; font-size:21px; bottom:20px; left:16px; }
+    #wa-fab:hover::after{opacity:1;}
+    @media(max-width:480px){
+      #wa-fab::after{display:none;}
+      #wa-fab{width:46px;height:46px;font-size:21px;bottom:20px;left:16px;}
     }
-    /* Ocultarse cuando drawer abierto */
-    body.cart-open #wa-fab { opacity:0; pointer-events:none; }
+    body.cart-open #wa-fab{opacity:0;pointer-events:none;}
 
     /* ── Cart body scroll ── */
-    .cart-drawer {
-      display:flex;
-      flex-direction:column;
-      overflow:hidden;  /* el hijo .cart-body es quien scrollea */
+    .cart-drawer{display:flex;flex-direction:column;overflow:hidden;}
+    .cart-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:12px 16px;display:flex;flex-direction:column;gap:10px;min-height:0;}
+    #cart-list{display:contents;}
+    .cart-close-row{display:none;padding:0 16px 14px;flex-shrink:0;}
+    .btn-cart-close-bottom{
+      width:100%;padding:13px;border-radius:12px;
+      background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+      color:#888;font-size:14px;font-weight:600;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      transition:background .15s;cursor:pointer;font-family:'Poppins',sans-serif;
     }
-    .cart-body {
-      flex:1;
-      overflow-y:auto;
-      -webkit-overflow-scrolling:touch;
-      overscroll-behavior:contain;
-      padding:12px 16px;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      min-height:0;      /* clave para que flex no desborde */
+    .btn-cart-close-bottom:hover{background:rgba(255,255,255,.1);color:#e8e6e1;}
+    @media(max-width:480px){
+      .cart-close-row{display:block;}
+      #btn-cart-close{display:none;}
     }
-    /* Quitamos el scroll del viejo #cart-list para que lo controle .cart-body */
-    #cart-list {
-      display:contents; /* transparente al layout */
-    }
+    .cart-handle{display:none;width:40px;height:4px;background:rgba(255,255,255,.18);border-radius:2px;margin:10px auto 4px;flex-shrink:0;cursor:pointer;}
+    @media(max-width:480px){.cart-handle{display:block;}}
 
-    /* ── Botón cerrar drawer (grande, abajo) en mobile ── */
-    .cart-close-row {
-      display:none;
-      padding:0 16px 14px;
+    /* ════════════════════════════════
+       FILTRO PANEL (hamburguesa)
+    ════════════════════════════════ */
+    .filter-bar {
+      position:sticky; top:60px; z-index:100;
+      background:rgba(16,14,11,.9);
+      backdrop-filter:blur(12px);
+      border-bottom:1px solid rgba(201,168,76,.12);
+      padding:10px 16px;
+    }
+    .filter-bar-inner{
+      max-width:1200px; margin:0 auto;
+      display:flex; align-items:center; gap:10px;
+    }
+    /* Búsqueda */
+    .fbar-search{
+      flex:1; display:flex; align-items:center;
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(201,168,76,.18);
+      border-radius:10px; padding:0 12px; gap:8px;
+      height:40px;
+    }
+    .fbar-search i{color:#888;font-size:14px;flex-shrink:0;}
+    .fbar-search input{
+      background:transparent; border:none; outline:none;
+      color:#e8e6e1; font-size:14px; font-family:'Poppins',sans-serif;
+      width:100%; min-width:0;
+    }
+    .fbar-search input::placeholder{color:#555;}
+    /* Sort select inline */
+    .fbar-sort{
+      height:40px; padding:0 10px;
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(201,168,76,.18);
+      border-radius:10px;
+      color:#e8e6e1; font-size:13px; font-family:'Poppins',sans-serif;
+      cursor:pointer; outline:none;
       flex-shrink:0;
     }
-    .btn-cart-close-bottom {
-      width:100%;
-      padding:13px;
-      border-radius:12px;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.1);
-      color:#888;
-      font-size:14px;
-      font-weight:600;
-      display:flex; align-items:center; justify-content:center;
-      gap:8px;
-      transition:background .15s;
-      cursor:pointer;
+    @media(max-width:600px){ .fbar-sort{display:none;} }
+    /* Btn hamburguesa filtros */
+    .fbar-btn{
+      position:relative;
+      height:40px; padding:0 14px;
+      background:rgba(201,168,76,.08);
+      border:1px solid rgba(201,168,76,.3);
+      border-radius:10px;
+      color:#c9a84c; font-size:13px; font-weight:600;
       font-family:'Poppins',sans-serif;
-    }
-    .btn-cart-close-bottom:hover { background:rgba(255,255,255,.1); color:#e8e6e1; }
-    @media (max-width:480px) {
-      .cart-close-row { display:block; }
-    }
-
-    /* Ocultar X del header solo en mobile */
-    @media (max-width:480px) {
-      #btn-cart-close { display:none; }
-    }
-
-    /* Handle swipe */
-    .cart-handle {
-      display:none;
-      width:40px; height:4px;
-      background:rgba(255,255,255,.18);
-      border-radius:2px;
-      margin:10px auto 4px;
+      display:flex; align-items:center; gap:7px;
+      cursor:pointer; transition:background .15s;
       flex-shrink:0;
-      cursor:pointer;
     }
-    @media (max-width:480px) { .cart-handle { display:block; } }
+    .fbar-btn:hover,.fbar-btn.active{background:rgba(201,168,76,.18);}
+    .fbar-btn .filter-badge{
+      display:none;
+      position:absolute; top:-6px; right:-6px;
+      background:#c9a84c; color:#111;
+      border-radius:50%; width:18px; height:18px;
+      font-size:10px; font-weight:700;
+      align-items:center; justify-content:center;
+    }
+    /* Tabs género */
+    .fbar-tabs{
+      display:flex; gap:6px; overflow-x:auto;
+      scrollbar-width:none; flex-shrink:0;
+    }
+    .fbar-tabs::-webkit-scrollbar{display:none;}
+    .fbar-tab{
+      height:32px; padding:0 12px; border-radius:8px;
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.08);
+      color:#888; font-size:12px; font-weight:600;
+      font-family:'Poppins',sans-serif;
+      white-space:nowrap; cursor:pointer;
+      transition:all .15s;
+    }
+    .fbar-tab.active{
+      background:rgba(201,168,76,.15);
+      border-color:rgba(201,168,76,.4);
+      color:#c9a84c;
+    }
+
+    /* ── Panel lateral ── */
+    #filter-overlay{
+      display:none; position:fixed; inset:0;
+      background:rgba(0,0,0,.6); z-index:500;
+      opacity:0; transition:opacity .3s;
+    }
+    #filter-overlay.open{display:block;opacity:1;}
+    #filter-panel{
+      position:fixed; top:0; right:0; height:100%;
+      width:min(340px, 92vw);
+      background:#141210;
+      border-left:1px solid rgba(201,168,76,.15);
+      z-index:501;
+      transform:translateX(100%);
+      transition:transform .3s cubic-bezier(.16,1,.3,1);
+      display:flex; flex-direction:column;
+      overflow:hidden;
+    }
+    #filter-panel.open{transform:translateX(0);}
+    .fpanel-header{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:18px 20px 14px;
+      border-bottom:1px solid rgba(255,255,255,.07);
+      flex-shrink:0;
+    }
+    .fpanel-title{
+      font-size:16px; font-weight:700; color:#e8e6e1;
+      display:flex; align-items:center; gap:8px;
+    }
+    .fpanel-title i{color:#c9a84c;}
+    .fpanel-close{
+      width:34px; height:34px; border-radius:8px;
+      background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+      color:#888; font-size:18px;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; transition:all .15s;
+    }
+    .fpanel-close:hover{background:rgba(255,255,255,.1);color:#e8e6e1;}
+    .fpanel-body{
+      flex:1; overflow-y:auto; padding:16px 20px;
+      display:flex; flex-direction:column; gap:20px;
+    }
+    .fpanel-section-title{
+      font-size:11px; font-weight:700;
+      color:#c9a84c; letter-spacing:.08em;
+      text-transform:uppercase; margin-bottom:10px;
+    }
+    /* Checkboxes */
+    .fcheck-list{display:flex;flex-wrap:wrap;gap:7px;}
+    .fcheck-label{
+      display:flex; align-items:center; gap:6px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:8px; padding:6px 10px;
+      cursor:pointer; transition:all .15s;
+      font-size:13px; color:#aaa;
+      user-select:none;
+    }
+    .fcheck-label:hover{border-color:rgba(201,168,76,.3);color:#ddd;}
+    .fcheck-label input[type=checkbox]{display:none;}
+    .fcheck-label:has(input:checked){
+      background:rgba(201,168,76,.12);
+      border-color:rgba(201,168,76,.45);
+      color:#e8c96a;
+    }
+    /* Ordenar radios en panel */
+    .fsort-list{display:flex;flex-direction:column;gap:6px;}
+    .fsort-label{
+      display:flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:8px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.06);
+      cursor:pointer; transition:all .15s;
+      font-size:13px; color:#aaa;
+      user-select:none;
+    }
+    .fsort-label:hover{border-color:rgba(201,168,76,.25);color:#ddd;}
+    .fsort-label input[type=radio]{display:none;}
+    .fsort-label:has(input:checked){
+      background:rgba(201,168,76,.1);
+      border-color:rgba(201,168,76,.4);
+      color:#e8c96a;
+    }
+    .fsort-dot{
+      width:8px; height:8px; border-radius:50%;
+      border:2px solid #555; flex-shrink:0;
+      transition:all .15s;
+    }
+    .fsort-label:has(input:checked) .fsort-dot{
+      background:#c9a84c; border-color:#c9a84c;
+    }
+    /* Footer del panel */
+    .fpanel-footer{
+      padding:14px 20px;
+      border-top:1px solid rgba(255,255,255,.07);
+      display:flex; gap:10px; flex-shrink:0;
+    }
+    .fpanel-btn-clear{
+      flex:1; height:42px; border-radius:10px;
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.1);
+      color:#888; font-size:13px; font-weight:600;
+      font-family:'Poppins',sans-serif; cursor:pointer;
+      transition:all .15s;
+    }
+    .fpanel-btn-clear:hover{background:rgba(255,255,255,.1);color:#e8e6e1;}
+    .fpanel-btn-apply{
+      flex:2; height:42px; border-radius:10px;
+      background:rgba(201,168,76,.2);
+      border:1px solid rgba(201,168,76,.4);
+      color:#c9a84c; font-size:13px; font-weight:700;
+      font-family:'Poppins',sans-serif; cursor:pointer;
+      transition:all .15s;
+    }
+    .fpanel-btn-apply:hover{background:rgba(201,168,76,.3);}
+    /* Overflow prevention body */
+    body.filters-open{overflow:hidden;}
   </style>
 </head>
 <body>
@@ -224,53 +361,110 @@
   </div>
 </section>
 
-<div class="filters">
-  <div class="filters-inner">
-    <div class="filters-row1">
-      <div>
-        <div class="filter-label"><i class="bi bi-search"></i> Buscar decant</div>
-        <div class="sinput-wrap">
-          <i class="bi bi-search"></i>
-          <input class="finput" id="q" placeholder="Nombre, marca..." oninput="renderGrid()" autocomplete="off">
-        </div>
+<!-- ════════════════════════════════
+     BARRA DE FILTROS (nueva)
+════════════════════════════════ -->
+<div class="filter-bar">
+  <div class="filter-bar-inner">
+    <!-- Búsqueda -->
+    <div class="fbar-search">
+      <i class="bi bi-search"></i>
+      <input id="q" placeholder="Buscar perfume o marca..." oninput="renderGrid()" autocomplete="off">
+      <!-- input oculto por compatibilidad con código legacy -->
+      <input id="q-mobile" style="display:none" oninput="syncMobileSearch()">
+    </div>
+    <!-- Sort rápido (solo desktop) -->
+    <select class="fbar-sort" id="sort" onchange="renderGrid()">
+      <option value="relevancia">⭐ Populares</option>
+      <option value="az">A → Z</option>
+      <option value="za">Z → A</option>
+      <option value="marca">Marca</option>
+      <option value="precio_asc">$ Menor</option>
+      <option value="precio_desc">$ Mayor</option>
+    </select>
+    <!-- Botón filtros avanzados -->
+    <button class="fbar-btn" onclick="toggleFilterPanel()" aria-label="Filtros">
+      <i class="bi bi-sliders"></i>
+      <span>Filtros</span>
+      <span class="filter-badge" id="filter-btn-badge">0</span>
+    </button>
+    <!-- Tabs género -->
+    <div class="fbar-tabs">
+      <button class="fbar-tab ftab active" data-g="" onclick="setG(this)">Todos</button>
+      <button class="fbar-tab ftab" data-g="Caballero" onclick="setG(this)">👔 Caballero</button>
+      <button class="fbar-tab ftab" data-g="Dama" onclick="setG(this)">🌸 Dama</button>
+      <button class="fbar-tab ftab" data-g="Unisex" onclick="setG(this)">✨ Unisex</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── OVERLAY + PANEL LATERAL ── -->
+<div id="filter-overlay" onclick="closeFilterPanel()"></div>
+<div id="filter-panel" role="dialog" aria-label="Filtros avanzados">
+  <div class="fpanel-header">
+    <div class="fpanel-title"><i class="bi bi-sliders"></i> Filtros</div>
+    <button class="fpanel-close" onclick="closeFilterPanel()" aria-label="Cerrar filtros">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+  <div class="fpanel-body">
+
+    <!-- Ordenar -->
+    <div>
+      <div class="fpanel-section-title"><i class="bi bi-sort-down"></i> Ordenar por</div>
+      <div class="fsort-list">
+        <label class="fsort-label"><input type="radio" name="fsort" value="relevancia" checked onchange="onPanelSort(this)"><span class="fsort-dot"></span>⭐ Más populares</label>
+        <label class="fsort-label"><input type="radio" name="fsort" value="az" onchange="onPanelSort(this)"><span class="fsort-dot"></span>Nombre A → Z</label>
+        <label class="fsort-label"><input type="radio" name="fsort" value="za" onchange="onPanelSort(this)"><span class="fsort-dot"></span>Nombre Z → A</label>
+        <label class="fsort-label"><input type="radio" name="fsort" value="precio_asc" onchange="onPanelSort(this)"><span class="fsort-dot"></span>Precio: menor a mayor</label>
+        <label class="fsort-label"><input type="radio" name="fsort" value="precio_desc" onchange="onPanelSort(this)"><span class="fsort-dot"></span>Precio: mayor a menor</label>
+        <label class="fsort-label"><input type="radio" name="fsort" value="marca" onchange="onPanelSort(this)"><span class="fsort-dot"></span>Por marca</label>
       </div>
-      <div>
-        <div class="filter-label"><i class="bi bi-sort-down"></i> Ordenar por</div>
-        <select class="fselect" id="sort" onchange="renderGrid()">
-          <option value="relevancia">⭐ Más populares</option>
-          <option value="az">Nombre A-Z</option>
-          <option value="za">Nombre Z-A</option>
-          <option value="marca">Marca</option>
-          <option value="precio_asc">Precio: menor a mayor</option>
-          <option value="precio_desc">Precio: mayor a menor</option>
-        </select>
-      </div>
-      <button class="btn-clear" onclick="clearFilters()"><i class="bi bi-x-circle"></i> Limpiar</button>
     </div>
-    <div class="filters-row-mobile">
-      <div class="sinput-wrap">
-        <i class="bi bi-search"></i>
-        <input class="finput" id="q-mobile" placeholder="Buscar perfume..." oninput="syncMobileSearch()" autocomplete="off">
+
+    <!-- Tipo de perfume -->
+    <div>
+      <div class="fpanel-section-title"><i class="bi bi-tag"></i> Tipo de perfume</div>
+      <div class="fcheck-list">
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="tipos" value="Diseñador" onchange="onFilterChange()"><span>🏷️ Diseñador</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="tipos" value="Nicho" onchange="onFilterChange()"><span>💎 Nicho</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="tipos" value="Árabe" onchange="onFilterChange()"><span>🌙 Árabe</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="tipos" value="Oriental" onchange="onFilterChange()"><span>🕌 Oriental</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="tipos" value="Indie" onchange="onFilterChange()"><span>🎨 Indie</span></label>
       </div>
     </div>
-    <div class="filters-row-sort-mobile">
-      <span class="fsort-label"><i class="bi bi-sort-down-alt"></i></span>
-      <select class="fselect fsort-select" id="sort-mobile" onchange="onSortMobile()">
-        <option value="relevancia">⭐ Populares</option>
-        <option value="az">A-Z</option>
-        <option value="za">Z-A</option>
-        <option value="marca">Marca</option>
-        <option value="precio_asc">↓ Precio</option>
-        <option value="precio_desc">↑ Precio</option>
-      </select>
-      <button class="btn-clear btn-clear-sm" onclick="clearFilters()"><i class="bi bi-x-circle"></i></button>
+
+    <!-- Familia olfativa -->
+    <div>
+      <div class="fpanel-section-title"><i class="bi bi-flower1"></i> Familia olfativa</div>
+      <div class="fcheck-list">
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Floral" onchange="onFilterChange()"><span>🌸 Floral</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Amaderado" onchange="onFilterChange()"><span>🌲 Amaderado</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Cítrico" onchange="onFilterChange()"><span>🍋 Cítrico</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Oriental" onchange="onFilterChange()"><span>🌙 Oriental</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Fresco" onchange="onFilterChange()"><span>🌊 Fresco</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Gourmand" onchange="onFilterChange()"><span>🍬 Gourmand</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Especiado" onchange="onFilterChange()"><span>🌶️ Especiado</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Frutal" onchange="onFilterChange()"><span>🍑 Frutal</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Cuero" onchange="onFilterChange()"><span>🦎 Cuero</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Acuático" onchange="onFilterChange()"><span>💧 Acuático</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Fougère" onchange="onFilterChange()"><span>🌿 Fougère</span></label>
+        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Chipre" onchange="onFilterChange()"><span>🍂 Chipre</span></label>
+      </div>
     </div>
-    <div class="filter-tabs">
-      <button class="ftab active" data-g="" onclick="setG(this)">Todos</button>
-      <button class="ftab" data-g="Caballero" onclick="setG(this)">Caballero</button>
-      <button class="ftab" data-g="Dama" onclick="setG(this)">Dama</button>
-      <button class="ftab" data-g="Unisex" onclick="setG(this)">Unisex</button>
+
+    <!-- Marcas (pobladas dinámicamente) -->
+    <div>
+      <div class="fpanel-section-title"><i class="bi bi-building"></i> Marcas</div>
+      <div class="fcheck-list" id="filter-marcas-list">
+        <span style="font-size:12px;color:#555">Cargando marcas...</span>
+      </div>
     </div>
+
+  </div>
+  <div class="fpanel-footer">
+    <button class="fpanel-btn-clear" onclick="clearAllFilters()">Limpiar todo</button>
+    <button class="fpanel-btn-apply" onclick="closeFilterPanel()"><i class="bi bi-check2"></i> Aplicar</button>
   </div>
 </div>
 
@@ -321,18 +515,13 @@
 <!-- CART DRAWER -->
 <div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
 <div class="cart-drawer" id="cart-drawer">
-  <!-- Handle para swipe-down (mobile) -->
   <div class="cart-handle" id="cart-handle"></div>
-
   <div class="cart-header">
     <div class="cart-title"><i class="bi bi-bag"></i> Tu pedido</div>
-    <!-- X solo visible en desktop -->
     <button class="btn-close" id="btn-cart-close" onclick="closeCart()" aria-label="Cerrar pedido">
       <i class="bi bi-x-lg"></i>
     </button>
   </div>
-
-  <!-- Zona scrolleable (items + empty) -->
   <div class="cart-body">
     <div class="cart-empty" id="cart-empty" style="display:none">
       <i class="bi bi-bag-x"></i>
@@ -341,7 +530,6 @@
     </div>
     <div id="cart-list"></div>
   </div>
-
   <div class="cart-footer" id="cart-footer" style="display:none">
     <div class="cart-total-row">
       <span>Total estimado</span>
@@ -355,8 +543,6 @@
       <i class="bi bi-trash"></i> Limpiar pedido
     </button>
   </div>
-
-  <!-- Botón cerrar grande en mobile (abajo del footer) -->
   <div class="cart-close-row">
     <button class="btn-cart-close-bottom" onclick="closeCart()">
       <i class="bi bi-chevron-down"></i> Cerrar pedido
@@ -400,41 +586,28 @@
 
 <script type="module" src="./assets/js/catalog.js"></script>
 <script>
-function onSortMobile() {
-  const val  = document.getElementById('sort-mobile').value;
-  const desk = document.getElementById('sort');
-  if (desk) desk.value = val;
+// Sincronizar panel sort con select bar
+window.onPanelSort = (radio) => {
+  const sEl = document.getElementById('sort');
+  if (sEl) sEl.value = radio.value;
   if (typeof renderGrid === 'function') renderGrid();
-}
+};
 
-// ── Swipe-down para cerrar drawer en mobile ──
+// Swipe-down drawer
 (function(){
   const handle = document.getElementById('cart-handle');
   const drawer = document.getElementById('cart-drawer');
   if (!handle || !drawer) return;
   let startY = 0, dragging = false;
-  function onStart(e){
-    startY = (e.touches ? e.touches[0].clientY : e.clientY);
-    dragging = true;
-  }
-  function onMove(e){
-    if (!dragging) return;
-    const dy = (e.touches ? e.touches[0].clientY : e.clientY) - startY;
-    if (dy > 0) drawer.style.transform = `translateY(${dy}px)`;
-  }
-  function onEnd(e){
-    if (!dragging) return;
-    dragging = false;
-    const dy = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY) - startY;
-    drawer.style.transform = '';
-    if (dy > 90 && typeof closeCart === 'function') closeCart();
-  }
-  handle.addEventListener('touchstart', onStart, {passive:true});
-  handle.addEventListener('touchmove',  onMove,  {passive:true});
-  handle.addEventListener('touchend',   onEnd);
-  handle.addEventListener('mousedown',  onStart);
-  window.addEventListener('mousemove',  onMove);
-  window.addEventListener('mouseup',    onEnd);
+  function onStart(e){ startY=(e.touches?e.touches[0].clientY:e.clientY); dragging=true; }
+  function onMove(e){ if(!dragging)return; const dy=(e.touches?e.touches[0].clientY:e.clientY)-startY; if(dy>0) drawer.style.transform=`translateY(${dy}px)`; }
+  function onEnd(e){ if(!dragging)return; dragging=false; const dy=(e.changedTouches?e.changedTouches[0].clientY:e.clientY)-startY; drawer.style.transform=''; if(dy>90&&typeof closeCart==='function') closeCart(); }
+  handle.addEventListener('touchstart',onStart,{passive:true});
+  handle.addEventListener('touchmove',onMove,{passive:true});
+  handle.addEventListener('touchend',onEnd);
+  handle.addEventListener('mousedown',onStart);
+  window.addEventListener('mousemove',onMove);
+  window.addEventListener('mouseup',onEnd);
 })();
 </script>
 </body>
