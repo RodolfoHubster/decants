@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Fitoscents · Preguntas Frecuentes</title>
+  <meta name="description" content="Resuelve tus dudas sobre decants, perfumes bajo pedido, envíos y más. Contáctanos por WhatsApp.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    /* ── Reset & tokens ─────────────────────────────── */
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0d0c0a;
+      --bg2:#111009;
+      --card:#181612;
+      --card2:#1e1c18;
+      --gold:#c9a84c;
+      --gold-h:#e0b95a;
+      --gold-s:rgba(201,168,76,.12);
+      --gold-b:rgba(201,168,76,.3);
+      --text:#ede9e1;
+      --muted:#8a8880;
+      --faint:#46443f;
+      --border:rgba(255,255,255,.07);
+      --danger:#e05c5c;
+      --success:#5cb85c;
+      --r:12px;
+      --r-lg:20px;
+      --ease:cubic-bezier(.16,1,.3,1);
+    }
+    html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+    body{
+      font-family:'Poppins',sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      min-height:100dvh;
+      overflow-x:hidden;
+    }
+    a{color:inherit;text-decoration:none}
+    img{display:block;max-width:100%}
+    ::-webkit-scrollbar{width:5px}
+    ::-webkit-scrollbar-thumb{background:var(--gold-b);border-radius:99px}
+
+    /* ── Partículas de fondo ─────────────────────────── */
+    #particles-bg{
+      position:fixed;inset:0;pointer-events:none;z-index:0;
+      overflow:hidden;
+    }
+    .particle{
+      position:absolute;
+      border-radius:50%;
+      background:var(--gold);
+      opacity:0;
+      animation:float-up linear infinite;
+    }
+    @keyframes float-up{
+      0%  {transform:translateY(0) scale(1);   opacity:0}
+      10% {opacity:.18}
+      90% {opacity:.06}
+      100%{transform:translateY(-110vh) scale(.4);opacity:0}
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+    header{
+      position:sticky;top:0;z-index:200;
+      background:rgba(13,12,10,.88);
+      backdrop-filter:blur(16px);
+      -webkit-backdrop-filter:blur(16px);
+      border-bottom:1px solid var(--gold-b);
+      padding:0 24px;
+      height:62px;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .logo{
+      display:flex;align-items:center;gap:10px;
+      text-decoration:none;
+    }
+    .logo-mark{
+      width:36px;height:36px;border-radius:50%;
+      background:var(--gold);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:700;font-size:12px;color:#000;flex-shrink:0;
+      letter-spacing:.03em;
+    }
+    .logo-name{font-size:15px;font-weight:600;color:var(--text)}
+    .logo-sub{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+    .header-nav{
+      display:flex;gap:8px;align-items:center;
+    }
+    .nav-link{
+      padding:7px 14px;border-radius:8px;
+      font-size:13px;font-weight:500;color:var(--muted);
+      transition:color .18s,background .18s;
+    }
+    .nav-link:hover,.nav-link.active{color:var(--gold);background:var(--gold-s)}
+    .nav-link.active{border:1px solid var(--gold-b)}
+    .btn-wa-nav{
+      display:flex;align-items:center;gap:7px;
+      padding:8px 16px;border-radius:8px;
+      background:#1db954;color:#fff;
+      font-size:13px;font-weight:600;
+      transition:background .18s,transform .18s;
+      border:none;cursor:pointer;
+      font-family:'Poppins',sans-serif;
+    }
+    .btn-wa-nav:hover{background:#25D366;transform:scale(1.03)}
+    @media(max-width:600px){
+      .nav-link{display:none}
+      .btn-wa-nav span{display:none}
+      .btn-wa-nav{padding:8px 10px}
+    }
+
+    /* ── Hero ────────────────────────────────────────── */
+    .hero{
+      position:relative;z-index:1;
+      text-align:center;
+      padding:100px 24px 80px;
+      overflow:hidden;
+    }
+    .hero::before{
+      content:'';
+      position:absolute;inset:0;
+      background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(201,168,76,.09),transparent 70%);
+      pointer-events:none;
+    }
+    .hero-eyebrow{
+      display:inline-flex;align-items:center;gap:8px;
+      background:var(--gold-s);border:1px solid var(--gold-b);
+      border-radius:99px;padding:6px 18px;
+      font-size:12px;font-weight:600;color:var(--gold);
+      letter-spacing:.08em;text-transform:uppercase;
+      margin-bottom:28px;
+      opacity:0;transform:translateY(16px);
+      animation:fadeUp .7s var(--ease) .1s forwards;
+    }
+    .hero h1{
+      font-family:'Playfair Display',serif;
+      font-size:clamp(2rem,5vw,3.4rem);
+      font-weight:600;
+      line-height:1.2;
+      color:var(--text);
+      margin-bottom:20px;
+      opacity:0;transform:translateY(20px);
+      animation:fadeUp .7s var(--ease) .25s forwards;
+    }
+    .hero h1 em{
+      font-style:italic;color:var(--gold);
+    }
+    .hero p{
+      max-width:540px;margin:0 auto 40px;
+      font-size:16px;color:var(--muted);line-height:1.75;
+      opacity:0;transform:translateY(20px);
+      animation:fadeUp .7s var(--ease) .38s forwards;
+    }
+    .hero-cta{
+      display:inline-flex;align-items:center;gap:10px;
+      background:#25D366;color:#fff;
+      padding:14px 32px;border-radius:12px;
+      font-size:15px;font-weight:700;
+      box-shadow:0 8px 32px rgba(37,211,102,.25);
+      transition:transform .2s,box-shadow .2s;
+      opacity:0;transform:translateY(20px);
+      animation:fadeUp .7s var(--ease) .5s forwards;
+    }
+    .hero-cta:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 12px 40px rgba(37,211,102,.35)}
+    .hero-cta i{font-size:20px}
+    @keyframes fadeUp{
+      to{opacity:1;transform:translateY(0)}
+    }
+
+    /* ── Stats strip ─────────────────────────────────── */
+    .stats-strip{
+      position:relative;z-index:1;
+      display:flex;justify-content:center;gap:0;
+      border-top:1px solid var(--border);
+      border-bottom:1px solid var(--border);
+      background:rgba(24,22,18,.6);
+      overflow-x:auto;scrollbar-width:none;
+    }
+    .stats-strip::-webkit-scrollbar{display:none}
+    .stat-item{
+      flex:1;min-width:140px;
+      padding:24px 20px;
+      text-align:center;
+      border-right:1px solid var(--border);
+    }
+    .stat-item:last-child{border-right:none}
+    .stat-num{
+      font-size:26px;font-weight:700;color:var(--gold);
+      font-family:'Playfair Display',serif;
+      display:block;
+    }
+    .stat-lbl{font-size:12px;color:var(--muted);margin-top:4px;display:block}
+
+    /* ── Content wrapper ─────────────────────────────── */
+    .content{
+      position:relative;z-index:1;
+      max-width:820px;margin:0 auto;
+      padding:72px 24px 100px;
+    }
+
+    /* ── Section title ───────────────────────────────── */
+    .section-label{
+      font-size:11px;font-weight:700;
+      color:var(--gold);letter-spacing:.12em;
+      text-transform:uppercase;
+      display:flex;align-items:center;gap:8px;
+      margin-bottom:12px;
+    }
+    .section-label::after{
+      content:'';flex:1;
+      height:1px;background:var(--gold-b);
+    }
+    .section-title{
+      font-family:'Playfair Display',serif;
+      font-size:clamp(1.5rem,3vw,2rem);
+      font-weight:600;color:var(--text);
+      margin-bottom:36px;
+      line-height:1.3;
+    }
+    .section-title em{font-style:italic;color:var(--gold)}
+
+    /* ── Acordeón FAQ ────────────────────────────────── */
+    .faq-group{margin-bottom:48px}
+    .faq-group-title{
+      display:flex;align-items:center;gap:10px;
+      font-size:13px;font-weight:700;
+      color:var(--gold);letter-spacing:.08em;
+      text-transform:uppercase;
+      margin-bottom:16px;
+      padding-bottom:10px;
+      border-bottom:1px solid var(--gold-b);
+    }
+    .faq-group-title i{font-size:16px}
+
+    .faq-item{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--r);
+      margin-bottom:10px;
+      overflow:hidden;
+      transition:border-color .25s;
+      /* reveal animation */
+      opacity:0;
+      transform:translateY(18px);
+    }
+    .faq-item.visible{
+      opacity:1;transform:translateY(0);
+      transition:opacity .5s var(--ease), transform .5s var(--ease),
+                 border-color .25s;
+    }
+    .faq-item.open{
+      border-color:var(--gold-b);
+      background:linear-gradient(135deg,var(--card2) 0%,var(--card) 100%);
+    }
+
+    .faq-q{
+      width:100%;display:flex;align-items:center;justify-content:space-between;
+      gap:16px;padding:18px 20px;
+      background:transparent;border:none;
+      color:var(--text);font-family:'Poppins',sans-serif;
+      font-size:14.5px;font-weight:500;
+      text-align:left;cursor:pointer;
+      transition:color .18s;
+    }
+    .faq-item.open .faq-q{color:var(--gold)}
+    .faq-q:hover .faq-q-text{color:var(--gold)}
+    .faq-q-left{
+      display:flex;align-items:flex-start;gap:12px;
+    }
+    .faq-q-num{
+      flex-shrink:0;
+      width:24px;height:24px;border-radius:50%;
+      background:var(--gold-s);border:1px solid var(--gold-b);
+      font-size:10px;font-weight:700;color:var(--gold);
+      display:flex;align-items:center;justify-content:center;
+      margin-top:1px;
+      transition:background .2s;
+    }
+    .faq-item.open .faq-q-num{
+      background:var(--gold);color:#000;
+    }
+    .faq-chevron{
+      flex-shrink:0;
+      width:28px;height:28px;border-radius:8px;
+      background:rgba(255,255,255,.04);
+      border:1px solid var(--border);
+      display:flex;align-items:center;justify-content:center;
+      font-size:14px;color:var(--muted);
+      transition:transform .35s var(--ease),background .2s,color .2s;
+    }
+    .faq-item.open .faq-chevron{
+      transform:rotate(180deg);
+      background:var(--gold-s);border-color:var(--gold-b);color:var(--gold);
+    }
+
+    .faq-body{
+      display:grid;
+      grid-template-rows:0fr;
+      transition:grid-template-rows .4s var(--ease);
+    }
+    .faq-item.open .faq-body{
+      grid-template-rows:1fr;
+    }
+    .faq-inner{
+      overflow:hidden;
+    }
+    .faq-answer{
+      padding:0 20px 20px 56px;
+      font-size:14px;color:var(--muted);
+      line-height:1.8;
+    }
+    .faq-answer strong{color:var(--text);font-weight:600}
+    .faq-answer ul{
+      list-style:none;margin-top:12px;display:flex;flex-direction:column;gap:8px;
+    }
+    .faq-answer ul li{
+      display:flex;align-items:flex-start;gap:8px;
+    }
+    .faq-answer ul li::before{
+      content:'✦';color:var(--gold);font-size:10px;margin-top:4px;flex-shrink:0;
+    }
+    .faq-tag{
+      display:inline-flex;align-items:center;gap:6px;
+      background:var(--gold-s);border:1px solid var(--gold-b);
+      border-radius:99px;padding:3px 12px;
+      font-size:11px;font-weight:600;color:var(--gold);
+      margin-top:14px;
+    }
+    @media(max-width:600px){
+      .faq-answer{padding:0 16px 18px 16px}
+    }
+
+    /* ── Proceso visual ──────────────────────────────── */
+    .process-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+      gap:16px;
+      margin-bottom:64px;
+    }
+    .process-card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--r);
+      padding:24px 20px;
+      text-align:center;
+      transition:border-color .25s,transform .3s var(--ease);
+      opacity:0;transform:translateY(20px);
+    }
+    .process-card.visible{
+      opacity:1;transform:translateY(0);
+      transition:opacity .5s var(--ease),transform .5s var(--ease),border-color .25s;
+    }
+    .process-card:hover{border-color:var(--gold-b);transform:translateY(-4px)}
+    .process-icon{
+      width:52px;height:52px;border-radius:50%;
+      background:var(--gold-s);border:1px solid var(--gold-b);
+      display:flex;align-items:center;justify-content:center;
+      font-size:22px;color:var(--gold);
+      margin:0 auto 16px;
+    }
+    .process-step{
+      font-size:10px;font-weight:700;color:var(--gold);
+      letter-spacing:.1em;text-transform:uppercase;
+      margin-bottom:6px;
+    }
+    .process-title{
+      font-size:14px;font-weight:600;color:var(--text);
+      margin-bottom:8px;
+    }
+    .process-desc{
+      font-size:12.5px;color:var(--muted);line-height:1.7;
+    }
+
+    /* ── CTA final ───────────────────────────────────── */
+    .cta-block{
+      background:linear-gradient(135deg,var(--card2),var(--card));
+      border:1px solid var(--gold-b);
+      border-radius:var(--r-lg);
+      padding:52px 40px;
+      text-align:center;
+      position:relative;overflow:hidden;
+      opacity:0;transform:translateY(24px);
+    }
+    .cta-block.visible{opacity:1;transform:translateY(0);transition:opacity .6s var(--ease),transform .6s var(--ease)}
+    .cta-block::before{
+      content:'';
+      position:absolute;inset:0;
+      background:radial-gradient(ellipse 80% 80% at 50% -10%,rgba(201,168,76,.08),transparent);
+      pointer-events:none;
+    }
+    .cta-block h2{
+      font-family:'Playfair Display',serif;
+      font-size:clamp(1.4rem,3vw,1.9rem);
+      font-weight:600;color:var(--text);
+      margin-bottom:12px;
+    }
+    .cta-block h2 em{font-style:italic;color:var(--gold)}
+    .cta-block p{font-size:14px;color:var(--muted);max-width:440px;margin:0 auto 32px;line-height:1.75}
+    .cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .cta-btn-main{
+      display:inline-flex;align-items:center;gap:10px;
+      background:#25D366;color:#fff;
+      padding:14px 30px;border-radius:12px;
+      font-size:14px;font-weight:700;
+      font-family:'Poppins',sans-serif;
+      border:none;cursor:pointer;
+      box-shadow:0 6px 24px rgba(37,211,102,.3);
+      transition:transform .2s,box-shadow .2s;
+      text-decoration:none;
+    }
+    .cta-btn-main:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 10px 32px rgba(37,211,102,.4)}
+    .cta-btn-sec{
+      display:inline-flex;align-items:center;gap:10px;
+      background:var(--gold-s);color:var(--gold);
+      border:1px solid var(--gold-b);
+      padding:14px 30px;border-radius:12px;
+      font-size:14px;font-weight:600;
+      transition:background .18s;
+      text-decoration:none;
+    }
+    .cta-btn-sec:hover{background:rgba(201,168,76,.2)}
+    @media(max-width:500px){
+      .cta-block{padding:36px 20px}
+      .cta-btns{flex-direction:column;align-items:center}
+      .cta-btn-main,.cta-btn-sec{width:100%;justify-content:center}
+    }
+
+    /* ── Footer ──────────────────────────────────────── */
+    footer{
+      position:relative;z-index:1;
+      border-top:1px solid var(--border);
+      padding:32px 24px;
+      text-align:center;
+    }
+    .footer-logo{
+      display:flex;align-items:center;justify-content:center;gap:10px;
+      margin-bottom:16px;
+    }
+    footer p{font-size:12.5px;color:var(--faint)}
+    footer a{color:var(--muted);transition:color .18s}
+    footer a:hover{color:var(--gold)}
+
+    /* ── FAB WhatsApp ────────────────────────────────── */
+    #wa-fab{
+      position:fixed;bottom:28px;right:28px;
+      width:54px;height:54px;border-radius:50%;
+      background:#25D366;color:#fff;
+      display:flex;align-items:center;justify-content:center;
+      font-size:26px;
+      box-shadow:0 6px 24px rgba(0,0,0,.4);
+      z-index:999;
+      transition:transform .2s,box-shadow .2s;
+      text-decoration:none;
+      animation:pulse-wa 2.4s ease-in-out infinite;
+    }
+    #wa-fab:hover{transform:scale(1.1);box-shadow:0 10px 32px rgba(37,211,102,.4)}
+    @keyframes pulse-wa{
+      0%,100%{box-shadow:0 6px 24px rgba(37,211,102,.25)}
+      50%{box-shadow:0 6px 32px rgba(37,211,102,.55)}
+    }
+
+    /* ── Scroll reveal mixin ─────────────────────────── */
+    .reveal{
+      opacity:0;transform:translateY(18px);
+    }
+    .reveal.visible{
+      opacity:1;transform:translateY(0);
+      transition:opacity .55s var(--ease),transform .55s var(--ease);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Fondo partículas -->
+<div id="particles-bg" aria-hidden="true"></div>
+
+<!-- ── HEADER ── -->
+<header>
+  <a href="./index.html" class="logo" aria-label="Fitoscents inicio">
+    <div class="logo-mark">FS</div>
+    <div>
+      <div class="logo-name">Fitoscents</div>
+      <div class="logo-sub">Decants</div>
+    </div>
+  </a>
+  <nav class="header-nav" aria-label="Navegación principal">
+    <a href="./index.html" class="nav-link">Catálogo</a>
+    <a href="./faq.html" class="nav-link active">FAQ</a>
+    <a
+      href="https://wa.me/526648162623?text=Hola%20Fitoscents!%20Tengo%20una%20pregunta%20sobre%20sus%20decants%20%F0%9F%8C%B8"
+      target="_blank" rel="noopener"
+      class="btn-wa-nav"
+      aria-label="Contactar por WhatsApp">
+      <i class="bi bi-whatsapp"></i>
+      <span>WhatsApp</span>
+    </a>
+  </nav>
+</header>
+
+<!-- ── HERO ── -->
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-eyebrow">
+    <i class="bi bi-question-circle-fill"></i>
+    Preguntas Frecuentes
+  </div>
+  <h1 id="hero-title">Todo lo que necesitas<br>saber sobre nuestros <em>decants</em></h1>
+  <p>Resolvemos tus dudas sobre qué es un decant, cómo funciona el proceso,
+     envíos, tallas y pedidos personalizados.</p>
+  <a
+    href="https://wa.me/526648162623?text=Hola%20Fitoscents!%20Quiero%20hacer%20un%20pedido%20de%20decants%20%F0%9F%8C%B8"
+    target="_blank" rel="noopener"
+    class="hero-cta"
+    aria-label="Hacer pedido por WhatsApp">
+    <i class="bi bi-whatsapp"></i>
+    Hacer mi pedido ahora
+  </a>
+</section>
+
+<!-- ── STATS STRIP ── -->
+<div class="stats-strip" role="region" aria-label="Estadísticas Fitoscents">
+  <div class="stat-item">
+    <span class="stat-num" data-target="100">0</span>
+    <span class="stat-lbl">% Originales</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-num" data-target="2">0</span>
+    <span class="stat-lbl">ml mínimo</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-num" data-target="48">0</span>
+    <span class="stat-lbl">h entrega local</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-num" data-target="200">0</span>
+    <span class="stat-lbl">+ fragancias</span>
+  </div>
+</div>
+
+<!-- ── CONTENIDO PRINCIPAL ── -->
+<main class="content">
+
+  <!-- ══ ¿QUÉ ES UN DECANT? ══ -->
+  <div class="faq-group">
+    <div class="section-label reveal"><i class="bi bi-droplet-fill"></i> Lo básico</div>
+    <h2 class="section-title reveal">¿Qué es un <em>decant</em>?</h2>
+
+    <div class="faq-group-title reveal">
+      <i class="bi bi-droplet-half"></i> Sobre los decants
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" aria-expanded="false">
+        <span class="faq-q-left">
+          <span class="faq-q-num">1</span>
+          <span class="faq-q-text">¿Qué es exactamente un decant de perfume?</span>
+        </span>
+        <span class="faq-chevron" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-body"><div class="faq-inner">
+        <div class="faq-answer">
+          Un <strong>decant</strong> es una porción fraccionada de un perfume <strong>100% original</strong>,
+          transferida desde el frasco grande a un atomizador pequeño (generalmente de 2 a 10 ml).
+          <ul>
+            <li>El perfume es exactamente el mismo que el de la botella original de diseñador o nicho.</li>
+            <li>El proceso no altera la fórmula si se realiza en condiciones de higiene adecuadas.</li>
+            <li>Es ideal para <strong>probar</strong> una fragancia antes de invertir en el frasco completo.</li>
+          </ul>
+          <span class="faq-tag"><i class="bi bi-patch-check-fill"></i> 100% fragancia original</span>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" aria-expanded="false">
+        <span class="faq-q-left">
+          <span class="faq-q-num">2</span>
+          <span class="faq-q-text">¿Cuáles son los beneficios de comprar un decant?</span>
+        </span>
+        <span class="faq-chevron" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-body"><div class="faq-inner">
+        <div class="faq-answer">
+          Los decants te permiten disfrutar perfumes de lujo sin el precio de la botella completa:
+          <ul>
+            <li><strong>Económicos:</strong> prueba un perfume de $3,000 MXN por una fracción del costo.</li>
+            <li><strong>Portátiles:</strong> perfectos para viajes, no pasan los límites de seguridad aérea.</li>
+            <li><strong>Sin compromiso:</strong> verifica si una fragancia te gusta antes de comprometerte.</li>
+            <li><strong>Variedad:</strong> arma tu colección rotativa sin gastar una fortuna.</li>
+            <li><strong>Regalo inteligente:</strong> regala experiencias olfativas únicas en presentaciones pequeñas.</li>
+          </ul>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" aria-expanded="false">
+        <span class="faq-q-left">
+          <span class="faq-q-num">3</span>
+          <span class="faq-q-text">¿El decant huele diferente al perfume original?</span>
+        </span>
+        <span class="faq-chevron" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-body"><div class="faq-inner">
+        <div class="faq-answer">
+          <strong>No, es exactamente el mismo perfume.</strong> Siempre y cuando el proceso de fraccionamiento
+          se realice correctamente, la fragancia es idéntica. En Fitoscents usamos:
+          <ul>
+            <li>Jeringas graduadas de precisión (1 ml a 10 ml).</li>
+            <li>Pipetas dosificadoras y embudos pequeños de acero inoxidable.</li>
+            <li>Atomizadores de vidrio y aluminio limpios, nunca de plástico de baja calidad.</li>
+            <li>Guantes y superficies desinfectadas durante todo el proceso.</li>
+          </ul>
+          <span class="faq-tag"><i class="bi bi-shield-check"></i> Proceso higiénico certificado</span>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" aria-expanded="false">
+        <span class="faq-q-left">
+          <span class="faq-q-num">4</span>
+          <span class="faq-q-text">¿Qué recibiré cuando compre un decant?</span>
+        </span>
+        <span class="faq-chevron" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-body"><div class="faq-inner">
+        <div class="faq-answer">
+          Recibirás un kit completo y listo para usar:
+          <ul>
+            <li>Un frasco de <strong>vidrio con atomizador de aluminio</strong> (o tapa de rosca según la talla).</li>
+            <li>Una <strong>etiqueta personalizada</strong> que identifica la marca, nombre y ml del perfume.</li>
+            <li>La talla que elegiste: disponibles en <strong>2 ml, 3 ml, 5 ml y 10 ml</strong>.</li>
+            <li>Empaque seguro para evitar derrames durante el envío.</li>
+          </ul>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ══ PROCESO ══ -->
+  <div class="section-label reveal"><i class="bi bi-clipboard2-check"></i> El proceso</div>
+  <h2 class="section-title reveal">¿Cómo preparamos<br>tu <em>decant</em>?</h2>
+
+  <div class="process-grid">
+    <div class="process-card">
+      <div class="process-icon"><i class="bi bi-droplet"></i></div>
+      <div class="process-step">Paso 01</div>
+      <div class="process-title">Verificación del original</div>
+      <div class="process-desc">Confirmamos la autenticidad y el lote del perfume original antes de cualquier proceso.</div>
+    </div>
+    <div class="process-card">
+      <div class="process-icon"><i class="bi bi-eyedropper"></i></div>
+      <div class="process-step">Paso 02</div>
+      <div class="process-title">Medición precisa</div>
+      <div class="process-desc">Usamos jeringas graduadas de 1-10 ml para transferir exactamente los mililitros que pediste.</div>
+    </div>
+    <div class="process-card">
+      <div class="process-icon"><i class="bi bi-shield-check"></i></div>
+      <div class="process-step">Paso 03</div>
+      <div class="process-title">Higiene total</div>
+      <div class="process-desc">Guantes, superficies desinfectadas y atomizadores limpios. Sin contaminación cruzada.</div>
+    </div>
+    <div class="process-card">
+      <div class="process-icon"><i class="bi bi-tag"></i></div>
+      <div class="process-step">Paso 04</div>
+      <div class="process-title">Etiquetado</div>
+      <div class="process-desc">Cada frasco recibe su etiqueta con nombre del perfume, marca y volumen en ml.</div>
+    </div>
+  </div>
+
+  <!-- ══ PEDIDOS Y ENTREGAS ══ -->
+  <div class="faq-group">
+    <div class="faq-group-title reveal">
+      <i class="bi bi-bag-check"></i> Pedidos y entregas
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" aria-expanded="false">
+        <span class="faq-q-left">
+          <span class="faq-q-num">5</span>
+          <span class="faq-q-text">¿Cómo hago un pedido?</span>
+        </span>
+        <span class="faq-chevron" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-body"><div class="faq-inner">
+        <div class="faq-answer">
+          El proceso es muy sencillo:
+          <ul>
+            <li>Elige tu perfume y talla desde nuestro <strong>catálogo en línea</strong>.</li>
+            <li>Agrega al carrito y envía tu pedido directo a nuestro <strong>WhatsApp</strong>.</li>
+            <li>Confirmamos disponibilidad y te damos precio final con envío.</li>
+            <li>Realizas el pago y preparamos tu decant.</li>
+          </ul>
+          <span class="faq-tag"><i class="bi bi-whatsapp"></i> Atención personalizada por WhatsApp</span>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" aria-expanded="false">
+        <span class="faq-q-left">
+          <span class="faq-q-num">6</span>
+          <span class="faq-q-text">¿Puedo pedir un perfume que no está en el catálogo?</span>
+        </span>
+        <span class="faq-chevron" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-body"><div class="faq-inner">
+        <div class="faq-answer">
+          <strong>¡Sí!</strong> Manejamos pedidos especiales. Si tienes en mente un perfume específico,
+          escríbenos directamente por WhatsApp y lo buscamos para ti.
+          <ul>
+            <li>Fragancias de diseñador, nicho, árabe u oriental.</li>
+            <li>Perfumes exclusivos o de edición limitada.</li>
+            <li>Pedidos grandes o corporativos.</li>
+          </ul>
+          <span class="faq-tag"><i class="bi bi-stars"></i> Pedidos personalizados disponibles</span>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" aria-expanded="false">
+        <span class="faq-q-left">
+          <span class="faq-q-num">7</span>
+          <span class="faq-q-text">¿Hacen entregas a domicilio o envíos?</span>
+        </span>
+        <span class="faq-chevron" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-body"><div class="faq-inner">
+        <div class="faq-answer">
+          Ofrecemos varias opciones de entrega:
+          <ul>
+            <li><strong>Entrega local en Tijuana, B.C.</strong> — en 24 a 48 horas hábiles.</li>
+            <li><strong>Sobre ruedas</strong> — los domingos en la plaza, disponibilidad según fecha.</li>
+            <li><strong>Envío a toda la República Mexicana</strong> — por paquetería (costo adicional).</li>
+          </ul>
+          Escríbenos para cotizar tu envío según tu ubicación.
+        </div>
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" aria-expanded="false">
+        <span class="faq-q-left">
+          <span class="faq-q-num">8</span>
+          <span class="faq-q-text">¿Cuáles son las tallas disponibles y sus precios?</span>
+        </span>
+        <span class="faq-chevron" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-body"><div class="faq-inner">
+        <div class="faq-answer">
+          Manejamos presentaciones para todos los bolsillos:
+          <ul>
+            <li><strong>2 ml</strong> — ideal para probar (el más económico).</li>
+            <li><strong>3 ml</strong> — para uso de una semana aprox.</li>
+            <li><strong>5 ml</strong> — el favorito para viajes y uso diario.</li>
+            <li><strong>10 ml</strong> — para tu fragancia consentida del mes.</li>
+          </ul>
+          Los precios varían según el perfume. Consulta nuestro catálogo en línea o pregúntanos por WhatsApp.
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ══ GARANTÍAS ══ -->
+  <div class="faq-group">
+    <div class="faq-group-title reveal">
+      <i class="bi bi-shield-fill-check"></i> Garantías y confianza
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" aria-expanded="false">
+        <span class="faq-q-left">
+          <span class="faq-q-num">9</span>
+          <span class="faq-q-text">¿Cómo sé que el perfume es original?</span>
+        </span>
+        <span class="faq-chevron" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-body"><div class="faq-inner">
+        <div class="faq-answer">
+          La autenticidad es nuestra prioridad número uno:
+          <ul>
+            <li>Trabajamos directamente con <strong>distribuidores oficiales</strong> en México y EE.UU.</li>
+            <li>Podemos mostrarte el frasco original al momento de la entrega local.</li>
+            <li>No vendemos réplicas ni imitaciones bajo ningún concepto.</li>
+          </ul>
+          <span class="faq-tag"><i class="bi bi-patch-check-fill"></i> Garantía de autenticidad</span>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" aria-expanded="false">
+        <span class="faq-q-left">
+          <span class="faq-q-num">10</span>
+          <span class="faq-q-text">¿Qué hago si mi decant llega dañado o derramado?</span>
+        </span>
+        <span class="faq-chevron" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-body"><div class="faq-inner">
+        <div class="faq-answer">
+          Te respaldamos en caso de cualquier problema con tu pedido:
+          <ul>
+            <li>Contáctanos de inmediato por WhatsApp con foto o video del daño.</li>
+            <li>Reponemos el producto <strong>sin costo adicional</strong> si el daño ocurrió durante el envío.</li>
+            <li>Tu satisfacción es nuestra prioridad.</li>
+          </ul>
+          <span class="faq-tag"><i class="bi bi-arrow-repeat"></i> Reposición garantizada</span>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" aria-expanded="false">
+        <span class="faq-q-left">
+          <span class="faq-q-num">11</span>
+          <span class="faq-q-text">¿Cómo conservo mi decant para que dure más?</span>
+        </span>
+        <span class="faq-chevron" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+      </button>
+      <div class="faq-body"><div class="faq-inner">
+        <div class="faq-answer">
+          Los perfumes son sensibles a ciertos factores. Para conservarlos mejor:
+          <ul>
+            <li>Guárdalos <strong>alejados de la luz directa</strong> del sol.</li>
+            <li>Evita cambios bruscos de temperatura (no en el auto bajo el sol).</li>
+            <li>Mantenlos <strong>tapados</strong> cuando no los uses.</li>
+            <li>Lo ideal es guardarlos en un lugar fresco y oscuro, como un cajón.</li>
+            <li>Con buen cuidado, un decant puede durar <strong>2-3 años</strong> sin perder calidad.</li>
+          </ul>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ══ CTA FINAL ══ -->
+  <div class="cta-block" role="region" aria-label="Contacto">
+    <h2>¿No encontraste<br>tu <em>respuesta</em>?</h2>
+    <p>Escríbenos directamente. Respondemos en minutos y con gusto te ayudamos
+       a encontrar la fragancia perfecta para ti.</p>
+    <div class="cta-btns">
+      <a
+        href="https://wa.me/526648162623?text=Hola%20Fitoscents!%20Tengo%20una%20pregunta%20sobre%20sus%20decants%20%F0%9F%8C%B8"
+        target="_blank" rel="noopener"
+        class="cta-btn-main"
+        aria-label="Enviar mensaje por WhatsApp">
+        <i class="bi bi-whatsapp"></i> Escribir al WhatsApp
+      </a>
+      <a href="./index.html" class="cta-btn-sec">
+        <i class="bi bi-grid-3x3-gap"></i> Ver catálogo
+      </a>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-logo">
+    <div class="logo-mark">FS</div>
+    <div>
+      <div class="logo-name">Fitoscents</div>
+    </div>
+  </div>
+  <p>© 2026 <a href="https://wa.me/526648162623" target="_blank" rel="noopener">Fitoscents</a> · Tijuana, B.C. ·
+     <a href="./index.html">Catálogo</a> ·
+     <a href="https://www.instagram.com/fitoscents/" target="_blank" rel="noopener">@fitoscents</a>
+  </p>
+</footer>
+
+<!-- FAB WhatsApp -->
+<a
+  id="wa-fab"
+  href="https://wa.me/526648162623?text=Hola%20Fitoscents!%20Quiero%20hacer%20un%20pedido%20%F0%9F%8C%B8"
+  target="_blank" rel="noopener"
+  aria-label="Contactar por WhatsApp">
+  <i class="bi bi-whatsapp"></i>
+</a>
+
+<script>
+// ── Partículas flotantes ──────────────────────────────────────────────────
+(function(){
+  const bg = document.getElementById('particles-bg');
+  const N = 18;
+  for(let i=0;i<N;i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random()*3+2;
+    p.style.cssText = [
+      `width:${size}px`,`height:${size}px`,
+      `left:${Math.random()*100}%`,
+      `bottom:${Math.random()*20-10}%`,
+      `animation-duration:${Math.random()*12+10}s`,
+      `animation-delay:${Math.random()*10}s`
+    ].join(';');
+    bg.appendChild(p);
+  }
+})();
+
+// ── Acordeón FAQ ─────────────────────────────────────────────────────────
+document.querySelectorAll('.faq-q').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.closest('.faq-item');
+    const isOpen = item.classList.contains('open');
+    // Cerrar todos
+    document.querySelectorAll('.faq-item.open').forEach(el => {
+      el.classList.remove('open');
+      el.querySelector('.faq-q').setAttribute('aria-expanded','false');
+    });
+    // Abrir si estaba cerrado
+    if(!isOpen){
+      item.classList.add('open');
+      btn.setAttribute('aria-expanded','true');
+    }
+  });
+});
+
+// ── Scroll reveal ─────────────────────────────────────────────────────────
+const revealEls = document.querySelectorAll(
+  '.reveal,.faq-item,.process-card,.cta-block'
+);
+const io = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if(e.isIntersecting){
+      // pequeño stagger por índice
+      const delay = (Array.from(revealEls).indexOf(e.target) % 4) * 80;
+      setTimeout(() => e.target.classList.add('visible'), delay);
+      io.unobserve(e.target);
+    }
+  });
+},{ threshold: 0.1, rootMargin:'0px 0px -40px 0px'});
+revealEls.forEach(el => io.observe(el));
+
+// ── Counter animado (stats) ───────────────────────────────────────────────
+function animateCounter(el, target, suffix='') {
+  const duration = 1400;
+  const start = performance.now();
+  (function tick(now){
+    const progress = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(eased * target) + suffix;
+    if(progress < 1) requestAnimationFrame(tick);
+  })(start);
+}
+const statsIo = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if(e.isIntersecting){
+      const targets = document.querySelectorAll('[data-target]');
+      targets.forEach(el => {
+        const t = +el.dataset.target;
+        const suffix = el.parentElement.querySelector('.stat-lbl')?.textContent.includes('%') ? '%' : (t===2?'ml':(t===48?'h':'+'));
+        animateCounter(el, t, t===100?'%':(t===2?'ml+':(t===48?'h':'+')));
+      });
+      statsIo.disconnect();
+    }
+  });
+},{ threshold:0.3 });
+const strip = document.querySelector('.stats-strip');
+if(strip) statsIo.observe(strip);
+</script>
+</body>
+</html>

@@ -1,32 +1,43 @@
-import { auth, signInWithEmailAndPassword, onAuthStateChanged } from './firebase-config.js';
+import { auth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from './firebase-config.js';
 
-onAuthStateChanged(auth, u => {
-  if (u) window.location.href = './admin/dashboard.html';
+// Si ya está logueado, redirigir al dashboard
+onAuthStateChanged(auth, user => {
+  if (user) window.location.replace('./admin/dashboard.html');
 });
 
-document.getElementById('btn-login').onclick = async () => {
-  const e = document.getElementById('email').value.trim();
-  const p = document.getElementById('password').value;
-  const err = document.getElementById('err-msg');
-  const btn = document.getElementById('btn-login');
-  err.style.display = 'none';
-  if (!e || !p) { err.textContent = 'Completa todos los campos.'; err.style.display = 'block'; return; }
-  btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Verificando...';
+const btnLogin = document.getElementById('btn-login');
+const errMsg   = document.getElementById('err-msg');
+
+btnLogin.addEventListener('click', async () => {
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  errMsg.textContent = '';
+  if (!email || !password) { errMsg.textContent = 'Completa todos los campos.'; return; }
+  btnLogin.disabled = true;
+  btnLogin.innerHTML = '<i class="bi bi-hourglass-split"></i> Ingresando...';
   try {
-    await signInWithEmailAndPassword(auth, e, p);
-  } catch (ex) {
-    err.textContent = 'Correo o contraseña incorrectos.';
-    err.style.display = 'block';
-    btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Ingresar';
+    await signInWithEmailAndPassword(auth, email, password);
+    window.location.replace('./admin/dashboard.html');
+  } catch (e) {
+    errMsg.textContent = 'Correo o contraseña incorrectos.';
+    btnLogin.disabled = false;
+    btnLogin.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Ingresar';
   }
-};
+});
+
+document.getElementById('password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') btnLogin.click();
+});
 
 window.togglePass = () => {
-  const i = document.getElementById('password');
-  const ic = document.getElementById('eye-icon');
-  i.type = i.type === 'password' ? 'text' : 'password';
-  ic.className = i.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+  const inp  = document.getElementById('password');
+  const icon = document.getElementById('eye-icon');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.className = 'bi bi-eye-slash';
+  } else {
+    inp.type = 'password';
+    icon.className = 'bi bi-eye';
+  }
 };
-
-document.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btn-login').click(); });
