@@ -3,6 +3,7 @@ import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc }
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
 import '../../admin/auth-guard.js';
+import { FAMILIAS, TIPOS, buildSelectOptions } from './filtros-config.js';
 
 const CLOUDINARY_CLOUD  = 'dxo761td7';
 const CLOUDINARY_PRESET = 'FITOSCENTS-DECANTS';
@@ -25,6 +26,25 @@ renderSidebar('perfumes');
 if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display = 'flex';
 
 let perfumes = [], cats = [], marcas = [], imgMode = 'url';
+
+// ── Poblar selects de Familia y Tipo (modal + filtros de tabla) ──────────────
+function initFiltrosConfig() {
+  // Modal: sin especificar como placeholder
+  document.getElementById('p-familia').innerHTML =
+    buildSelectOptions(FAMILIAS, '', 'Sin especificar');
+  document.getElementById('p-tipo').innerHTML =
+    buildSelectOptions(TIPOS, '', 'Sin especificar');
+
+  // Filtros de tabla
+  const fFamOpts = `<option value="">Todas las familias</option>` +
+    FAMILIAS.map(f => `<option value="${f.valor}">${f.label}</option>`).join('');
+  document.getElementById('f-familia').innerHTML = fFamOpts;
+
+  const fTipoOpts = `<option value="">Todos los tipos</option>` +
+    TIPOS.map(t => `<option value="${t.valor}">${t.label}</option>`).join('');
+  document.getElementById('f-tipo').innerHTML = fTipoOpts;
+}
+initFiltrosConfig();
 
 async function loadAll() {
   const [ps, cs, ms] = await Promise.all([
@@ -145,8 +165,11 @@ window.openModal = () => {
   document.getElementById('p-img-file').value    = '';
   document.getElementById('p-genero').value       = '';
   document.getElementById('p-cat').value          = '';
-  document.getElementById('p-familia').value      = '';
-  document.getElementById('p-tipo').value         = '';
+  // Re-poblar con valor vacío (sin especificar)
+  document.getElementById('p-familia').innerHTML =
+    buildSelectOptions(FAMILIAS, '', 'Sin especificar');
+  document.getElementById('p-tipo').innerHTML =
+    buildSelectOptions(TIPOS, '', 'Sin especificar');
   document.getElementById('p-marca').innerHTML    = '<option>Selecciona</option>';
   document.getElementById('p-activo').checked     = true;
   document.getElementById('preview-wrap').style.display = 'none';
@@ -185,12 +208,15 @@ window.previewFile = () => {
 window.edit = (id) => {
   const p = perfumes.find(x => x.id === id);
   if (!p) return;
-  document.getElementById('p-id').value      = p.id;
-  document.getElementById('p-nombre').value  = p.nombre;
-  document.getElementById('p-genero').value  = p.genero || '';
-  document.getElementById('p-cat').value     = p.categoria || '';
-  document.getElementById('p-familia').value = p.familia || '';
-  document.getElementById('p-tipo').value    = p.tipo || '';
+  document.getElementById('p-id').value     = p.id;
+  document.getElementById('p-nombre').value = p.nombre;
+  document.getElementById('p-genero').value = p.genero || '';
+  document.getElementById('p-cat').value    = p.categoria || '';
+  // Poblar selects con el valor actual del perfume pre-seleccionado
+  document.getElementById('p-familia').innerHTML =
+    buildSelectOptions(FAMILIAS, p.familia || '', 'Sin especificar');
+  document.getElementById('p-tipo').innerHTML =
+    buildSelectOptions(TIPOS, p.tipo || '', 'Sin especificar');
   loadMarcas();
   setTimeout(() => { document.getElementById('p-marca').value = p.marca || ''; }, 80);
   document.getElementById('p-desc').value    = p.descripcion || '';
