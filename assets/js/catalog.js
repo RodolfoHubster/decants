@@ -310,6 +310,8 @@ window.renderGrid = () => {
   const q     = qEl ? qEl.value.toLowerCase().trim() : '';
   const sort  = sEl ? sEl.value : 'relevancia';
   const sm = document.getElementById('sort-mobile');
+  const normalize = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
   if (sm && sm.value !== sort) sm.value = sort;
 
   filtered = all.filter(p => {
@@ -318,7 +320,7 @@ window.renderGrid = () => {
     if (activeFilters.familias.length && !activeFilters.familias.includes(p.familia)) return false;
     // ← CLAVE: los chips Diseñador/Árabe/Nicho filtran por p.categoria (no p.tipo)
     if (activeFilters.tipos.length && !activeFilters.tipos.some(
-      t => t.toLowerCase() === (p.categoria || '').trim().toLowerCase()
+      t => normalize(t) === normalize(p.categoria || '')
     )) return false;
     if (activeFilters.marcas.length && !activeFilters.marcas.includes(p.marca)) return false;
     return true;
