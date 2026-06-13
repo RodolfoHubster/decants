@@ -26,12 +26,15 @@
         <select class="form-control" style="max-width:160px" id="f-genero" onchange="renderTable()"><option value="">Todos</option><option>Caballero</option><option>Dama</option><option>Unisex</option></select>
         <select class="form-control" style="max-width:180px" id="f-cat" onchange="renderTable()"><option value="">Todas las categorias</option></select>
         <select class="form-control" style="max-width:180px" id="f-marca" onchange="renderTable()"><option value="">Todas las marcas</option></select>
-        <!-- Familia y Tipo: se pueblan dinámicamente desde filtros-config.js -->
         <select class="form-control" style="max-width:160px" id="f-familia" onchange="renderTable()">
           <option value="">Todas las familias</option>
         </select>
         <select class="form-control" style="max-width:160px" id="f-tipo" onchange="renderTable()">
           <option value="">Todos los tipos</option>
+        </select>
+        <select class="form-control" style="max-width:160px" id="f-novedad" onchange="renderTable()">
+          <option value="">Todas</option>
+          <option value="1">✨ Solo Novedades</option>
         </select>
         <select class="form-control" style="max-width:180px" id="f-orden" onchange="renderTable()">
           <option value="clicks">🔥 Más populares</option>
@@ -69,12 +72,10 @@
       <div class="form-row">
         <div class="form-group">
           <label>Familia Olfativa</label>
-          <!-- Poblado dinámicamente por perfumes.js → filtros-config.js -->
           <select class="form-control" id="p-familia"><option value="">Sin especificar</option></select>
         </div>
         <div class="form-group">
           <label>Tipo</label>
-          <!-- Poblado dinámicamente por perfumes.js → filtros-config.js -->
           <select class="form-control" id="p-tipo"><option value="">Sin especificar</option></select>
         </div>
       </div>
@@ -101,10 +102,16 @@
           <div class="precio-item"><label>10 ml</label><input class="form-control" type="number" id="px10" min="0" placeholder="0"></div>
         </div>
       </div>
-      <div class="form-group">
+      <!-- ── Toggles: Activo + Novedad ── -->
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="p-activo" checked style="width:16px;height:16px;accent-color:var(--accent)">
           Visible en la tienda publica
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer"
+               title="Aparece en el tab ✨ Novedades del catálogo">
+          <input type="checkbox" id="p-novedad" style="width:16px;height:16px;accent-color:#e0b95a">
+          <span>✨ Marcar como <strong>Novedad</strong></span>
         </label>
       </div>
     </div>

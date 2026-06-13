@@ -26,18 +26,15 @@ renderSidebar('perfumes');
 if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display = 'flex';
 
 let perfumes = [], cats = [], marcas = [], imgMode = 'url';
-let familiasData = [];   // {id, nombre, emoji} desde Firestore
-let tiposData    = [];   // {id, nombre, emoji} desde Firestore
+let familiasData = [];
+let tiposData    = [];
 
-// ── Poblar selects de Familia y Tipo desde Firestore ─────────────────────────
 function initFiltrosSelects() {
-  // Modal
   document.getElementById('p-familia').innerHTML =
     buildSelectOptions(familiasData, '', 'Sin especificar');
   document.getElementById('p-tipo').innerHTML =
     buildSelectOptions(tiposData, '', 'Sin especificar');
 
-  // Filtros de tabla
   document.getElementById('f-familia').innerHTML =
     `<option value="">Todas las familias</option>` +
     familiasData.map(f => `<option value="${f.nombre}">${f.emoji ? f.emoji + ' ' : ''}${f.nombre}</option>`).join('');
@@ -89,21 +86,23 @@ window.loadMarcas = () => {
 };
 
 window.renderTable = () => {
-  const q     = document.getElementById('search').value.toLowerCase();
-  const fg    = document.getElementById('f-genero').value;
-  const fc    = document.getElementById('f-cat').value;
-  const fm    = document.getElementById('f-marca').value;
-  const ffa   = document.getElementById('f-familia').value;
-  const fti   = document.getElementById('f-tipo').value;
-  const orden = document.getElementById('f-orden').value;
+  const q      = document.getElementById('search').value.toLowerCase();
+  const fg     = document.getElementById('f-genero').value;
+  const fc     = document.getElementById('f-cat').value;
+  const fm     = document.getElementById('f-marca').value;
+  const ffa    = document.getElementById('f-familia').value;
+  const fti    = document.getElementById('f-tipo').value;
+  const fnov   = document.getElementById('f-novedad').value;
+  const orden  = document.getElementById('f-orden').value;
 
   let fil = perfumes.filter(p =>
-    (!q   || p.nombre.toLowerCase().includes(q) || (p.marca || '').toLowerCase().includes(q)) &&
-    (!fg  || p.genero    === fg)  &&
-    (!fc  || p.categoria === fc)  &&
-    (!fm  || p.marca     === fm)  &&
-    (!ffa || p.familia   === ffa) &&
-    (!fti || p.tipo      === fti)
+    (!q    || p.nombre.toLowerCase().includes(q) || (p.marca || '').toLowerCase().includes(q)) &&
+    (!fg   || p.genero    === fg)  &&
+    (!fc   || p.categoria === fc)  &&
+    (!fm   || p.marca     === fm)  &&
+    (!ffa  || p.familia   === ffa) &&
+    (!fti  || p.tipo      === fti) &&
+    (!fnov || p.novedad   === true)
   );
 
   fil.sort((a, b) => {
@@ -231,7 +230,8 @@ window.edit = (id) => {
   document.getElementById('p-tipo').innerHTML    = buildSelectOptions(tiposData,    p.tipo    || '', 'Sin especificar');
   loadMarcas();
   setTimeout(() => { document.getElementById('p-marca').value = p.marca || ''; }, 80);
-  document.getElementById('p-desc').value = p.descripcion || '';
+  document.getElementById('p-desc').value    = p.descripcion || '';
+  document.getElementById('p-novedad').checked = !!p.novedad;  // ← nuevo
   const pr = p.precios || {};
   ['2','3','5','10'].forEach(k => { document.getElementById('px' + k).value = pr[k] || ''; });
   document.getElementById('p-activo').checked  = p.activo !== false;
