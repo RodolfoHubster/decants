@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Fitoscents · Notas Olfativas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <style>
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      padding: 8px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .18s;
+    }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .tab-btn:hover:not(.active) {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+    .emoji-preview {
+      font-size: 28px;
+      line-height: 1;
+      min-width: 36px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-wrap"></div>
+  <div class="main-content">
+
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none">
+          <i class="bi bi-list" style="font-size:20px"></i>
+        </button>
+        <span class="topbar-title">Notas Olfativas</span>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()">
+        <i class="bi bi-plus-lg"></i> Nueva entrada
+      </button>
+    </div>
+
+    <div class="page-body">
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="familias" onclick="setTab('familias')">
+          <i class="bi bi-flower1"></i> Familias Olfativas
+        </button>
+        <button class="tab-btn" data-tab="tipos" onclick="setTab('tipos')">
+          <i class="bi bi-droplet-half"></i> Tipos de Perfume
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h5 id="tab-title">Familias Olfativas</h5>
+          <span class="badge badge-muted" id="count-label">0</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:48px">Emoji</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-header">
+      <h4 id="modal-title">Nueva familia olfativa</h4>
+      <button class="btn-icon" onclick="closeModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="n-id">
+
+      <div class="form-row" style="align-items:flex-end;gap:12px">
+        <div class="form-group" style="flex:0 0 72px">
+          <label>Emoji</label>
+          <input class="form-control" id="n-emoji" placeholder="🌸" maxlength="4"
+            style="font-size:22px;text-align:center;padding:6px 4px"
+            oninput="document.getElementById('emoji-live').textContent=this.value||'?'">
+        </div>
+        <div style="font-size:36px;padding-bottom:6px" id="emoji-live">?</div>
+        <div class="form-group" style="flex:1">
+          <label>Nombre *</label>
+          <input class="form-control" id="n-nombre" placeholder="Floral, Oriental, Amaderado...">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Descripción <span style="color:var(--text-muted);font-size:12px">(opcional)</span></label>
+        <textarea class="form-control" id="n-descripcion" rows="2"
+          placeholder="Breve descripción para el equipo..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save" onclick="save()">
+        <i class="bi bi-check2"></i> Guardar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="../assets/js/notas.js"></script>
+</body>
+</html>

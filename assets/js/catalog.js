@@ -6,6 +6,13 @@ import { addItem, decrementItem, removeItem, clearCart as pureCleart,
   from './cart.js';
 import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug } from './slug.js';
 
+// ── Tipos fijos (chips del panel — mapean al campo `categoria` del perfume) ─
+const TIPOS_PERMITIDOS = [
+  { nombre: 'Diseñador', emoji: '👔' },
+  { nombre: 'Árabe',     emoji: '🕌' },
+  { nombre: 'Nicho',     emoji: '💎' },
+];
+
 // ── Auth ──────────────────────────────────────────
 const adminBtn = document.getElementById('btn-admin');
 onAuthStateChanged(auth, user => {
@@ -23,7 +30,7 @@ let cart = loadCart();
 // Filtros avanzados
 let activeFilters = {
   familias: [],
-  tipos: [],
+  tipos: [],   // filtra por p.categoria
   marcas: []
 };
 
@@ -68,11 +75,6 @@ window.undoDelete = () => {
 function minPrecio(p) {
   const vals = Object.values(p.precios || {}).map(Number).filter(v => v > 0);
   return vals.length ? Math.min(...vals) : 9999;
-}
-
-function getVal(id) {
-  const el = document.getElementById(id);
-  return el ? el.value : '';
 }
 
 window.syncMobileSearch = () => {
@@ -122,11 +124,26 @@ function showSkeletons() {
 // ── Load data ─────────────────────────────────────
 async function load() {
   showSkeletons();
-  const snap = await getDocs(query(collection(db, 'perfumes'), where('activo', '==', true)));
-  all = [];
-  snap.forEach(d => all.push({ id: d.id, ...d.data() }));
 
-  buildFilterPanelDynamic();
+  const [perfSnap, famSnap] = await Promise.all([
+    getDocs(query(collection(db, 'perfumes'), where('activo', '==', true))),
+    getDocs(collection(db, 'familias_olfativas'))
+  ]);
+
+  all = [];
+  perfSnap.forEach(d => all.push({ id: d.id, ...d.data() }));
+
+  // Tipos: los 3 fijos — se usan para filtrar por p.categoria
+  const tiposData = TIPOS_PERMITIDOS;
+
+  // Familias: solo las que tienen al menos 1 perfume activo
+  const famUsadas = new Set(all.map(p => p.familia).filter(Boolean));
+  let famData = [];
+  famSnap.forEach(d => famData.push({ id: d.id, ...d.data() }));
+  famData.sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre));
+  famData = famData.filter(f => famUsadas.has(f.nombre));
+
+  buildFilterPanelDynamic(tiposData, famData);
 
   renderGrid();
   if (cart.length) {
@@ -143,18 +160,47 @@ async function load() {
   }
 }
 
-// ── Poblar marcas dinámicas en el panel ─────────────
-function buildFilterPanelDynamic() {
+// ── Poblar los 3 paneles dinámicos ──────────────────
+function buildFilterPanelDynamic(tiposData, famData) {
+  // — Tipos de perfume (Diseñador / Árabe / Nicho → filtran por p.categoria)
+  const tiposContainer = document.getElementById('filter-tipos-list');
+  if (tiposContainer) {
+    tiposContainer.innerHTML = tiposData.map(t =>
+      `<label class="fcheck-label">
+        <input type="checkbox" class="fcheck" data-group="tipos" value="${t.nombre}" onchange="onFilterChange()">
+        <span>${t.emoji ? t.emoji + ' ' : ''}${t.nombre}</span>
+      </label>`
+    ).join('');
+  }
+
+  // — Familias olfativas (desde Firestore, solo las usadas en perfumes activos)
+  const famContainer = document.getElementById('filter-familias-list');
+  if (famContainer) {
+    if (famData.length) {
+      famContainer.innerHTML = famData.map(f =>
+        `<label class="fcheck-label">
+          <input type="checkbox" class="fcheck" data-group="familias" value="${f.nombre}" onchange="onFilterChange()">
+          <span>${f.emoji ? f.emoji + ' ' : ''}${f.nombre}</span>
+        </label>`
+      ).join('');
+    } else {
+      famContainer.innerHTML = '<span style="font-size:12px;color:#555">Sin familias registradas</span>';
+    }
+  }
+
+  // — Marcas (extraídas de los perfumes activos cargados)
   const marcasSet = new Set();
   all.forEach(p => { if (p.marca) marcasSet.add(p.marca.trim()); });
-  const sorted = [...marcasSet].sort();
-  const container = document.getElementById('filter-marcas-list');
-  if (!container) return;
-  container.innerHTML = sorted.map(m => `
-    <label class="fcheck-label">
-      <input type="checkbox" class="fcheck" data-group="marcas" value="${m}" onchange="onFilterChange()">
-      <span>${m}</span>
-    </label>`).join('');
+  const marcasContainer = document.getElementById('filter-marcas-list');
+  if (marcasContainer) {
+    const sorted = [...marcasSet].sort();
+    marcasContainer.innerHTML = sorted.map(m =>
+      `<label class="fcheck-label">
+        <input type="checkbox" class="fcheck" data-group="marcas" value="${m}" onchange="onFilterChange()">
+        <span>${m}</span>
+      </label>`
+    ).join('');
+  }
 }
 
 // ── Panel filtros hamburguesa ─────────────────────
@@ -263,16 +309,20 @@ window.renderGrid = () => {
   const sEl   = document.getElementById('sort');
   const q     = qEl ? qEl.value.toLowerCase().trim() : '';
   const sort  = sEl ? sEl.value : 'relevancia';
-  // FIX: sync sort-mobile solo si existe
   const sm = document.getElementById('sort-mobile');
+  const normalize = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
   if (sm && sm.value !== sort) sm.value = sort;
 
   filtered = all.filter(p => {
     if (q && !p.nombre.toLowerCase().includes(q) && !(p.marca || '').toLowerCase().includes(q)) return false;
     if (gF && p.genero !== gF) return false;
     if (activeFilters.familias.length && !activeFilters.familias.includes(p.familia)) return false;
-    if (activeFilters.tipos.length    && !activeFilters.tipos.includes(p.tipo))    return false;
-    if (activeFilters.marcas.length   && !activeFilters.marcas.includes(p.marca))  return false;
+    // ← CLAVE: los chips Diseñador/Árabe/Nicho filtran por p.categoria (no p.tipo)
+    if (activeFilters.tipos.length && !activeFilters.tipos.some(
+      t => normalize(t) === normalize(p.categoria || '')
+    )) return false;
+    if (activeFilters.marcas.length && !activeFilters.marcas.includes(p.marca)) return false;
     return true;
   });
 
@@ -345,9 +395,7 @@ window.setG = btn => {
   btn.classList.add('active'); gF = btn.dataset.g; renderGrid();
 };
 
-window.clearFilters = () => {
-  clearAllFilters();
-};
+window.clearFilters = () => { clearAllFilters(); };
 
 // ── Modal ─────────────────────────────────────────
 window.openModal = (id, pushHash = true) => {

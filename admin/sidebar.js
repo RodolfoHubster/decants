@@ -10,12 +10,13 @@ export function renderSidebar(active) {
       <span>Fitoscents</span>
     </div>
     <ul class="sidebar-nav">
-      <li><a href="./dashboard.html" class="${active==='dashboard'?'active':''}" ><i class="bi bi-grid"></i> Dashboard</a></li>
-      <li><a href="./perfumes.html"  class="${active==='perfumes'?'active':'' }" ><i class="bi bi-droplet"></i> Perfumes</a></li>
-      <li><a href="./marcas.html"    class="${active==='marcas'?'active':''   }" ><i class="bi bi-bookmark"></i> Marcas</a></li>
-      <li><a href="./categorias.html" class="${active==='categorias'?'active':''}"><i class="bi bi-tag"></i> Categorias</a></li>
-      <li><a href="./pedidos.html"   class="${active==='pedidos'?'active':''  }" ><i class="bi bi-bag"></i> Pedidos</a></li>
-      <li><a href="./ventas.html"    class="${active==='ventas'?'active':''   }" ><i class="bi bi-cash-stack"></i> Ventas</a></li>
+      <li><a href="./dashboard.html"  class="${active==='dashboard'  ?'active':''}" ><i class="bi bi-grid"></i> Dashboard</a></li>
+      <li><a href="./perfumes.html"   class="${active==='perfumes'   ?'active':''}" ><i class="bi bi-droplet"></i> Perfumes</a></li>
+      <li><a href="./marcas.html"     class="${active==='marcas'     ?'active':''}" ><i class="bi bi-bookmark"></i> Marcas</a></li>
+      <li><a href="./categorias.html" class="${active==='categorias' ?'active':''}" ><i class="bi bi-tag"></i> Categorias</a></li>
+      <li><a href="./notas.html"      class="${active==='notas'      ?'active':''}" ><i class="bi bi-flower1"></i> Notas Olfativas</a></li>
+      <li><a href="./pedidos.html"    class="${active==='pedidos'    ?'active':''}" ><i class="bi bi-bag"></i> Pedidos</a></li>
+      <li><a href="./ventas.html"     class="${active==='ventas'     ?'active':''}" ><i class="bi bi-cash-stack"></i> Ventas</a></li>
     </ul>
     <div class="sidebar-footer">
       <a href="../index.html" class="sidebar-link-index"><i class="bi bi-shop"></i> Ver tienda</a>
