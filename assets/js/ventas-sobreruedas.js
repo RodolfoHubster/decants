@@ -21,9 +21,9 @@
 
 import { db } from './firebase-config.js';
 import {
-  collection, addDoc, Timestamp, serverTimestamp
+collection, addDoc, Timestamp, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-
+import { db, collection, addDoc, Timestamp, serverTimestamp } from './firebase-config.js';
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
 

@@ -241,7 +241,12 @@
   </style>
 </head>
 <body>
-
+  <div class="app-shell">
+    <div id="sidebar-wrap"></div>   <!-- ← esto renderiza el sidebar -->
+    <div class="main-content">
+      <!-- tu contenido -->
+    </div>
+  </div>
 <header>
   <div class="hinner">
     <a href="./dashboard.html" class="back-btn">
@@ -541,5 +546,7 @@ window.editarNovedad = async id => {
 loadPerfumes();
 loadNovedades();
 </script>
+<script type="module" src="../assets/js/novedades-modal.js"></script>
+
 </body>
 </html>
