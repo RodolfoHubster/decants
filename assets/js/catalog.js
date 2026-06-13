@@ -6,6 +6,13 @@ import { addItem, decrementItem, removeItem, clearCart as pureCleart,
   from './cart.js';
 import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug } from './slug.js';
 
+// ── Tipos permitidos (los únicos 3 que se muestran en el filtro) ──────────
+const TIPOS_PERMITIDOS = [
+  { nombre: 'Diseñador', emoji: '👔' },
+  { nombre: 'Árabe',     emoji: '🕌' },
+  { nombre: 'Nicho',     emoji: '💎' },
+];
+
 // ── Auth ──────────────────────────────────────────
 const adminBtn = document.getElementById('btn-admin');
 onAuthStateChanged(auth, user => {
@@ -123,23 +130,18 @@ function showSkeletons() {
 async function load() {
   showSkeletons();
 
-  // Cargamos perfumes + tipos + familias en paralelo
-  const [perfSnap, tiposSnap, famSnap] = await Promise.all([
+  // Cargamos perfumes + familias en paralelo (ya no necesitamos tipos_perfume de Firestore)
+  const [perfSnap, famSnap] = await Promise.all([
     getDocs(query(collection(db, 'perfumes'), where('activo', '==', true))),
-    getDocs(collection(db, 'tipos_perfume')),
     getDocs(collection(db, 'familias_olfativas'))
   ]);
 
   all = [];
   perfSnap.forEach(d => all.push({ id: d.id, ...d.data() }));
 
-  // Tipos: solo los que tienen al menos 1 perfume activo en la BD
-  const tiposUsados = new Set(all.map(p => p.tipo).filter(Boolean));
-  let tiposData = [];
-  tiposSnap.forEach(d => tiposData.push({ id: d.id, ...d.data() }));
-  tiposData.sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre));
-  // Filtrar para mostrar solo los que realmente existen en perfumes
-  tiposData = tiposData.filter(t => tiposUsados.has(t.nombre));
+  // Tipos: solo mostrar los 3 permitidos que realmente tienen perfumes activos
+  const tiposUsados = new Set(all.map(p => (p.tipo || '').trim().toLowerCase()));
+  const tiposData = TIPOS_PERMITIDOS.filter(t => tiposUsados.has(t.nombre.toLowerCase()));
 
   // Familias: solo las que tienen al menos 1 perfume activo
   const famUsadas = new Set(all.map(p => p.familia).filter(Boolean));
@@ -168,7 +170,7 @@ async function load() {
 
 // ── Poblar los 3 paneles dinámicos ──────────────────
 function buildFilterPanelDynamic(tiposData, famData) {
-  // — Tipos (desde Firestore, solo los usados en perfumes activos)
+  // — Tipos (solo los 3 permitidos que existen en perfumes activos)
   const tiposContainer = document.getElementById('filter-tipos-list');
   if (tiposContainer) {
     if (tiposData.length) {
@@ -326,7 +328,8 @@ window.renderGrid = () => {
     if (q && !p.nombre.toLowerCase().includes(q) && !(p.marca || '').toLowerCase().includes(q)) return false;
     if (gF && p.genero !== gF) return false;
     if (activeFilters.familias.length && !activeFilters.familias.includes(p.familia)) return false;
-    if (activeFilters.tipos.length    && !activeFilters.tipos.includes(p.tipo))       return false;
+    // Comparación case-insensitive para tipos
+    if (activeFilters.tipos.length && !activeFilters.tipos.some(t => t.toLowerCase() === (p.tipo || '').trim().toLowerCase())) return false;
     if (activeFilters.marcas.length   && !activeFilters.marcas.includes(p.marca))     return false;
     return true;
   });
