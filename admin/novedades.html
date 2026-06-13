@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
   <style>
     :root {
       --bg:#0d0c0a; --bg2:#111009; --card:#181612; --card2:#1e1c18;
@@ -241,13 +243,11 @@
   </style>
 </head>
 <body>
-  <div class="app-shell">
-    <div id="sidebar-wrap"></div>   <!-- ← esto renderiza el sidebar -->
-    <div class="main-content">
-      <!-- tu contenido -->
-    </div>
-  </div>
+<div class="app-shell">
+<div id="sidebar-wrap"></div>
+<div class="main-content">
 <header>
+
   <div class="hinner">
     <a href="./dashboard.html" class="back-btn">
       <i class="bi bi-arrow-left"></i>
@@ -261,6 +261,7 @@
 </header>
 
 <main class="main">
+  
 
   <!-- ── Formulario nueva/editar novedad ── -->
   <div class="card">
@@ -330,7 +331,8 @@
 <script type="module">
 import { db, auth, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onAuthStateChanged, query, orderBy, serverTimestamp, where }
   from '../assets/js/firebase-config.js';
-
+  import { renderSidebar } from './sidebar.js';
+  renderSidebar('novedades');
 // ── Auth guard ────────────────────────────────────────────────────────────────
 onAuthStateChanged(auth, user => { if (!user) window.location.href = '../login.html'; });
 
@@ -541,12 +543,9 @@ window.editarNovedad = async id => {
   document.getElementById('btn-cancelar-edicion').style.display = 'block';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
-
 // ── Init ───────────────────────────────────────────────────────────────────────
 loadPerfumes();
 loadNovedades();
 </script>
-<script type="module" src="../assets/js/novedades-modal.js"></script>
-
 </body>
 </html>
