@@ -310,15 +310,6 @@
       border-color:var(--gold-b);
       color:var(--gold);
     }
-    /* Tab Novedades — resaltado especial */
-    .fbar-tab.tab-novedades {
-      border-color: rgba(201,168,76,.35);
-      color: var(--gold);
-    }
-    .fbar-tab.tab-novedades.active {
-      background: rgba(201,168,76,.2);
-      border-color: var(--gold);
-    }
 
     /* ══ Panel lateral filtros ════════════════════════ */
     #filter-overlay {
@@ -713,11 +704,10 @@
   </div>
   <div class="fbar-row2">
     <div class="fbar-tabs" role="tablist" aria-label="Filtrar por género">
-      <button class="fbar-tab ftab active"       data-g=""          role="tab" aria-selected="true"  onclick="setG(this)">Todos</button>
-      <button class="fbar-tab ftab"               data-g="Caballero" role="tab" aria-selected="false" onclick="setG(this)">👔 Caballero</button>
-      <button class="fbar-tab ftab"               data-g="Dama"      role="tab" aria-selected="false" onclick="setG(this)">🌸 Dama</button>
-      <button class="fbar-tab ftab"               data-g="Unisex"    role="tab" aria-selected="false" onclick="setG(this)">✨ Unisex</button>
-      <button class="fbar-tab ftab tab-novedades" data-g="novedades" role="tab" aria-selected="false" onclick="setG(this)">🆕 Novedades</button>
+      <button class="fbar-tab ftab active" data-g=""          role="tab" aria-selected="true"  onclick="setG(this)">Todos</button>
+      <button class="fbar-tab ftab"         data-g="Caballero" role="tab" aria-selected="false" onclick="setG(this)">👔 Caballero</button>
+      <button class="fbar-tab ftab"         data-g="Dama"      role="tab" aria-selected="false" onclick="setG(this)">🌸 Dama</button>
+      <button class="fbar-tab ftab"         data-g="Unisex"    role="tab" aria-selected="false" onclick="setG(this)">✨ Unisex</button>
     </div>
   </div>
 </div>
@@ -746,7 +736,7 @@
       </div>
     </div>
 
-    <!-- Tipo de perfume — dinámico desde Firestore (solo los que existen en DB) -->
+    <!-- Tipo de perfume — dinámico desde Firestore -->
     <div>
       <div class="fpanel-section-title"><i class="bi bi-tag"></i> Tipo de perfume</div>
       <div class="fcheck-list" id="filter-tipos-list">
@@ -754,7 +744,7 @@
       </div>
     </div>
 
-    <!-- Familia olfativa — dinámica desde Firestore -->
+    <!-- Familia olfativa -->
     <div>
       <div class="fpanel-section-title"><i class="bi bi-flower1"></i> Familia olfativa</div>
       <div class="fcheck-list" id="filter-familias-list">
@@ -762,7 +752,7 @@
       </div>
     </div>
 
-    <!-- Marcas — dinámicas desde los perfumes cargados -->
+    <!-- Marcas -->
     <div>
       <div class="fpanel-section-title"><i class="bi bi-building"></i> Marcas</div>
       <div class="fcheck-list" id="filter-marcas-list">
@@ -909,7 +899,12 @@
   </div>
 </footer>
 
-<script type="module" src="./assets/js/catalog.js"></script>
+<script type="module">
+import './assets/js/catalog.js';
+import { initNovedadesModal } from './assets/js/novedades-modal.js';
+initNovedadesModal();
+</script>
+
 <script>
 (function(){
   const bg = document.getElementById('particles-bg');
