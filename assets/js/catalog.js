@@ -6,7 +6,7 @@ import { addItem, decrementItem, removeItem, clearCart as pureCleart,
   from './cart.js';
 import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug } from './slug.js';
 
-// ── Tipos permitidos (los únicos 3 que se muestran en el filtro) ──────────
+// ── Tipos fijos (siempre aparecen los 3 en el filtro) ─────────────────────
 const TIPOS_PERMITIDOS = [
   { nombre: 'Diseñador', emoji: '👔' },
   { nombre: 'Árabe',     emoji: '🕌' },
@@ -130,7 +130,7 @@ function showSkeletons() {
 async function load() {
   showSkeletons();
 
-  // Cargamos perfumes + familias en paralelo (ya no necesitamos tipos_perfume de Firestore)
+  // Solo necesitamos perfumes y familias de Firestore
   const [perfSnap, famSnap] = await Promise.all([
     getDocs(query(collection(db, 'perfumes'), where('activo', '==', true))),
     getDocs(collection(db, 'familias_olfativas'))
@@ -139,9 +139,8 @@ async function load() {
   all = [];
   perfSnap.forEach(d => all.push({ id: d.id, ...d.data() }));
 
-  // Tipos: solo mostrar los 3 permitidos que realmente tienen perfumes activos
-  const tiposUsados = new Set(all.map(p => (p.tipo || '').trim().toLowerCase()));
-  const tiposData = TIPOS_PERMITIDOS.filter(t => tiposUsados.has(t.nombre.toLowerCase()));
+  // Tipos: siempre los 3 fijos, sin importar si los perfumes tienen el campo lleno
+  const tiposData = TIPOS_PERMITIDOS;
 
   // Familias: solo las que tienen al menos 1 perfume activo
   const famUsadas = new Set(all.map(p => p.familia).filter(Boolean));
@@ -150,7 +149,6 @@ async function load() {
   famData.sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre));
   famData = famData.filter(f => famUsadas.has(f.nombre));
 
-  // Poblar panel de filtros
   buildFilterPanelDynamic(tiposData, famData);
 
   renderGrid();
@@ -170,19 +168,15 @@ async function load() {
 
 // ── Poblar los 3 paneles dinámicos ──────────────────
 function buildFilterPanelDynamic(tiposData, famData) {
-  // — Tipos (solo los 3 permitidos que existen en perfumes activos)
+  // — Tipos (siempre los 3 fijos)
   const tiposContainer = document.getElementById('filter-tipos-list');
   if (tiposContainer) {
-    if (tiposData.length) {
-      tiposContainer.innerHTML = tiposData.map(t =>
-        `<label class="fcheck-label">
-          <input type="checkbox" class="fcheck" data-group="tipos" value="${t.nombre}" onchange="onFilterChange()">
-          <span>${t.emoji ? t.emoji + ' ' : ''}${t.nombre}</span>
-        </label>`
-      ).join('');
-    } else {
-      tiposContainer.innerHTML = '<span style="font-size:12px;color:#555">Sin tipos registrados</span>';
-    }
+    tiposContainer.innerHTML = tiposData.map(t =>
+      `<label class="fcheck-label">
+        <input type="checkbox" class="fcheck" data-group="tipos" value="${t.nombre}" onchange="onFilterChange()">
+        <span>${t.emoji ? t.emoji + ' ' : ''}${t.nombre}</span>
+      </label>`
+    ).join('');
   }
 
   // — Familias olfativas (desde Firestore, solo las usadas en perfumes activos)
