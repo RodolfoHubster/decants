@@ -122,11 +122,34 @@ function showSkeletons() {
 // ── Load data ─────────────────────────────────────
 async function load() {
   showSkeletons();
-  const snap = await getDocs(query(collection(db, 'perfumes'), where('activo', '==', true)));
-  all = [];
-  snap.forEach(d => all.push({ id: d.id, ...d.data() }));
 
-  buildFilterPanelDynamic();
+  // Cargamos perfumes + tipos + familias en paralelo
+  const [perfSnap, tiposSnap, famSnap] = await Promise.all([
+    getDocs(query(collection(db, 'perfumes'), where('activo', '==', true))),
+    getDocs(collection(db, 'tipos_perfume')),
+    getDocs(collection(db, 'familias_olfativas'))
+  ]);
+
+  all = [];
+  perfSnap.forEach(d => all.push({ id: d.id, ...d.data() }));
+
+  // Tipos: solo los que tienen al menos 1 perfume activo en la BD
+  const tiposUsados = new Set(all.map(p => p.tipo).filter(Boolean));
+  let tiposData = [];
+  tiposSnap.forEach(d => tiposData.push({ id: d.id, ...d.data() }));
+  tiposData.sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre));
+  // Filtrar para mostrar solo los que realmente existen en perfumes
+  tiposData = tiposData.filter(t => tiposUsados.has(t.nombre));
+
+  // Familias: solo las que tienen al menos 1 perfume activo
+  const famUsadas = new Set(all.map(p => p.familia).filter(Boolean));
+  let famData = [];
+  famSnap.forEach(d => famData.push({ id: d.id, ...d.data() }));
+  famData.sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre));
+  famData = famData.filter(f => famUsadas.has(f.nombre));
+
+  // Poblar panel de filtros
+  buildFilterPanelDynamic(tiposData, famData);
 
   renderGrid();
   if (cart.length) {
@@ -143,18 +166,51 @@ async function load() {
   }
 }
 
-// ── Poblar marcas dinámicas en el panel ─────────────
-function buildFilterPanelDynamic() {
+// ── Poblar los 3 paneles dinámicos ──────────────────
+function buildFilterPanelDynamic(tiposData, famData) {
+  // — Tipos (desde Firestore, solo los usados en perfumes activos)
+  const tiposContainer = document.getElementById('filter-tipos-list');
+  if (tiposContainer) {
+    if (tiposData.length) {
+      tiposContainer.innerHTML = tiposData.map(t =>
+        `<label class="fcheck-label">
+          <input type="checkbox" class="fcheck" data-group="tipos" value="${t.nombre}" onchange="onFilterChange()">
+          <span>${t.emoji ? t.emoji + ' ' : ''}${t.nombre}</span>
+        </label>`
+      ).join('');
+    } else {
+      tiposContainer.innerHTML = '<span style="font-size:12px;color:#555">Sin tipos registrados</span>';
+    }
+  }
+
+  // — Familias olfativas (desde Firestore, solo las usadas en perfumes activos)
+  const famContainer = document.getElementById('filter-familias-list');
+  if (famContainer) {
+    if (famData.length) {
+      famContainer.innerHTML = famData.map(f =>
+        `<label class="fcheck-label">
+          <input type="checkbox" class="fcheck" data-group="familias" value="${f.nombre}" onchange="onFilterChange()">
+          <span>${f.emoji ? f.emoji + ' ' : ''}${f.nombre}</span>
+        </label>`
+      ).join('');
+    } else {
+      famContainer.innerHTML = '<span style="font-size:12px;color:#555">Sin familias registradas</span>';
+    }
+  }
+
+  // — Marcas (extraídas de los perfumes activos cargados)
   const marcasSet = new Set();
   all.forEach(p => { if (p.marca) marcasSet.add(p.marca.trim()); });
-  const sorted = [...marcasSet].sort();
-  const container = document.getElementById('filter-marcas-list');
-  if (!container) return;
-  container.innerHTML = sorted.map(m => `
-    <label class="fcheck-label">
-      <input type="checkbox" class="fcheck" data-group="marcas" value="${m}" onchange="onFilterChange()">
-      <span>${m}</span>
-    </label>`).join('');
+  const marcasContainer = document.getElementById('filter-marcas-list');
+  if (marcasContainer) {
+    const sorted = [...marcasSet].sort();
+    marcasContainer.innerHTML = sorted.map(m =>
+      `<label class="fcheck-label">
+        <input type="checkbox" class="fcheck" data-group="marcas" value="${m}" onchange="onFilterChange()">
+        <span>${m}</span>
+      </label>`
+    ).join('');
+  }
 }
 
 // ── Panel filtros hamburguesa ─────────────────────
@@ -263,7 +319,6 @@ window.renderGrid = () => {
   const sEl   = document.getElementById('sort');
   const q     = qEl ? qEl.value.toLowerCase().trim() : '';
   const sort  = sEl ? sEl.value : 'relevancia';
-  // FIX: sync sort-mobile solo si existe
   const sm = document.getElementById('sort-mobile');
   if (sm && sm.value !== sort) sm.value = sort;
 
@@ -271,8 +326,8 @@ window.renderGrid = () => {
     if (q && !p.nombre.toLowerCase().includes(q) && !(p.marca || '').toLowerCase().includes(q)) return false;
     if (gF && p.genero !== gF) return false;
     if (activeFilters.familias.length && !activeFilters.familias.includes(p.familia)) return false;
-    if (activeFilters.tipos.length    && !activeFilters.tipos.includes(p.tipo))    return false;
-    if (activeFilters.marcas.length   && !activeFilters.marcas.includes(p.marca))  return false;
+    if (activeFilters.tipos.length    && !activeFilters.tipos.includes(p.tipo))       return false;
+    if (activeFilters.marcas.length   && !activeFilters.marcas.includes(p.marca))     return false;
     return true;
   });
 

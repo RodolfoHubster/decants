@@ -201,9 +201,6 @@
       border-bottom:1px solid var(--gold-b);
     }
 
-    /*
-      FILA 1: búsqueda + botón filtros (full-width, nunca desborda)
-    */
     .fbar-row1 {
       display:flex; align-items:center; gap:8px;
       padding:10px 16px 6px;
@@ -224,7 +221,6 @@
       width:100%; min-width:0;
     }
     .fbar-search input::placeholder { color:#555; }
-    /* Sort rápido — solo desktop */
     .fbar-sort {
       height:40px; padding:0 10px;
       background:rgba(255,255,255,.05);
@@ -236,7 +232,6 @@
       display:none;
     }
     @media(min-width:600px) { .fbar-sort { display:block; } }
-    /* Botón filtros */
     .fbar-btn {
       position:relative; height:40px; padding:0 14px;
       background:var(--gold-s);
@@ -258,9 +253,6 @@
       align-items:center; justify-content:center;
     }
 
-    /*
-      FILA 2: tabs género — scroll horizontal, sin desborde, sin scrollbar visible
-    */
     .fbar-row2 {
       padding:0 16px 10px;
       max-width:1200px; margin:0 auto;
@@ -270,7 +262,6 @@
       overflow-x:auto;
       scrollbar-width:none;
       -webkit-overflow-scrolling:touch;
-      /* clip para que no se vea el scroll en el viewport */
       padding-bottom:2px;
     }
     .fbar-tabs::-webkit-scrollbar { display:none; }
@@ -575,7 +566,6 @@
     .footer-copy a { color:var(--muted); transition:color .18s; }
     .footer-copy a:hover { color:var(--gold); }
 
-    /* ══ FAQ link footer ════════════════════════════ */
     .footer-faq-link {
       display:inline-flex; align-items:center; gap:7px;
       margin-bottom:20px;
@@ -585,7 +575,6 @@
     .footer-faq-link:hover { color:var(--gold); }
     .footer-faq-link i { color:var(--gold); }
 
-    /* ══ Load more ══════════════════════════════════ */
     .load-more-wrap { text-align:center; padding-top:24px; }
     .btn-load-more {
       padding:12px 28px; border-radius:12px;
@@ -658,11 +647,9 @@
 </section>
 
 <!-- ══════════════════════════════════════
-     BARRA DE FILTROS  (2 filas, sin desborde)
+     BARRA DE FILTROS
 ══════════════════════════════════════ -->
 <div class="filter-bar" role="search">
-
-  <!-- Fila 1: búsqueda + sort (desktop) + botón filtros -->
   <div class="fbar-row1">
     <div class="fbar-search">
       <i class="bi bi-search" aria-hidden="true"></i>
@@ -683,8 +670,6 @@
       <span class="filter-badge" id="filter-btn-badge">0</span>
     </button>
   </div>
-
-  <!-- Fila 2: tabs género con scroll horizontal → NO desborda -->
   <div class="fbar-row2">
     <div class="fbar-tabs" role="tablist" aria-label="Filtrar por género">
       <button class="fbar-tab ftab active" data-g=""           role="tab" aria-selected="true"  onclick="setG(this)">Todos</button>
@@ -719,38 +704,23 @@
       </div>
     </div>
 
-    <!-- Tipo de perfume -->
+    <!-- Tipo de perfume — dinámico desde Firestore (solo los que existen en DB) -->
     <div>
       <div class="fpanel-section-title"><i class="bi bi-tag"></i> Tipo de perfume</div>
-      <div class="fcheck-list">
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="tipos" value="Diseñador" onchange="onFilterChange()"><span>🏷️ Diseñador</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="tipos" value="Nicho"     onchange="onFilterChange()"><span>💎 Nicho</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="tipos" value="Árabe"    onchange="onFilterChange()"><span>🌙 Árabe</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="tipos" value="Oriental" onchange="onFilterChange()"><span>🕌 Oriental</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="tipos" value="Indie"    onchange="onFilterChange()"><span>🎨 Indie</span></label>
+      <div class="fcheck-list" id="filter-tipos-list">
+        <span style="font-size:12px;color:#555">Cargando...</span>
       </div>
     </div>
 
-    <!-- Familia olfativa -->
+    <!-- Familia olfativa — dinámica desde Firestore -->
     <div>
       <div class="fpanel-section-title"><i class="bi bi-flower1"></i> Familia olfativa</div>
-      <div class="fcheck-list">
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Floral"    onchange="onFilterChange()"><span>🌸 Floral</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Amaderado" onchange="onFilterChange()"><span>🌲 Amaderado</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Cítrico"  onchange="onFilterChange()"><span>🍋 Cítrico</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Oriental"  onchange="onFilterChange()"><span>🌙 Oriental</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Fresco"    onchange="onFilterChange()"><span>🌊 Fresco</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Gourmand"  onchange="onFilterChange()"><span>🍬 Gourmand</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Especiado" onchange="onFilterChange()"><span>🌶️ Especiado</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Frutal"    onchange="onFilterChange()"><span>🍑 Frutal</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Cuero"     onchange="onFilterChange()"><span>🦎 Cuero</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Acuático"  onchange="onFilterChange()"><span>💧 Acuático</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Fougère"   onchange="onFilterChange()"><span>🌿 Fougère</span></label>
-        <label class="fcheck-label"><input type="checkbox" class="fcheck" data-group="familias" value="Chipre"    onchange="onFilterChange()"><span>🍂 Chipre</span></label>
+      <div class="fcheck-list" id="filter-familias-list">
+        <span style="font-size:12px;color:#555">Cargando...</span>
       </div>
     </div>
 
-    <!-- Marcas -->
+    <!-- Marcas — dinámicas desde los perfumes cargados -->
     <div>
       <div class="fpanel-section-title"><i class="bi bi-building"></i> Marcas</div>
       <div class="fcheck-list" id="filter-marcas-list">
@@ -864,7 +834,6 @@
   <i class="bi bi-whatsapp"></i>
 </a>
 
-<!-- Toasts -->
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="undo-toast" role="status" aria-live="polite">
   <span id="undo-msg"></span>
@@ -900,7 +869,6 @@
 
 <script type="module" src="./assets/js/catalog.js"></script>
 <script>
-// Partículas flotantes
 (function(){
   const bg = document.getElementById('particles-bg');
   for(let i = 0; i < 14; i++){
@@ -918,14 +886,12 @@
   }
 })();
 
-// Sincronizar panel sort con select bar
 window.onPanelSort = (radio) => {
   const sEl = document.getElementById('sort');
   if (sEl) sEl.value = radio.value;
   if (typeof renderGrid === 'function') renderGrid();
 };
 
-// Swipe-down cart drawer
 (function(){
   const handle = document.getElementById('cart-handle');
   const drawer = document.getElementById('cart-drawer');
