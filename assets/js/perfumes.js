@@ -129,6 +129,8 @@ window.renderTable = () => {
       .map(([k, v]) => `<span class="badge badge-gold">${k}ml $${v}</span>`).join(' ');
     const oculto = p.activo === false
       ? '<span class="badge badge-danger" style="margin-left:6px">Oculto</span>' : '';
+    const novedadBadge = p.novedad
+      ? '<span class="badge badge-info" style="margin-left:6px">✨ Novedad</span>' : '';
     const clicks = p.clicks > 0
       ? `<span class="clicks-badge"><i class="bi bi-eye"></i> ${p.clicks}</span>`
       : `<span class="clicks-zero">&#8212;</span>`;
@@ -140,7 +142,7 @@ window.renderTable = () => {
     const actv = p.activo !== false;
     return `<tr>
       <td>${p.imagen ? `<img class="td-img" src="${p.imagen}" alt="" loading="lazy">` : '<div class="td-img-placeholder"><i class="bi bi-droplet"></i></div>'}</td>
-      <td><strong>${p.nombre}</strong>${oculto}</td>
+      <td><strong>${p.nombre}</strong>${oculto}${novedadBadge}</td>
       <td><span class="badge badge-gold">${p.marca || '&#8212;'}</span></td>
       <td><span class="badge badge-info">${p.categoria || '&#8212;'}</span></td>
       <td><span class="badge badge-muted">${p.genero || '&#8212;'}</span></td>
@@ -184,6 +186,7 @@ window.openModal = () => {
   document.getElementById('p-tipo').innerHTML    = buildSelectOptions(tiposData,    '', 'Sin especificar');
   document.getElementById('p-marca').innerHTML   = '<option>Selecciona</option>';
   document.getElementById('p-activo').checked    = true;
+  document.getElementById('p-novedad').checked   = false;
   document.getElementById('preview-wrap').style.display = 'none';
   document.getElementById('modal-title').textContent    = 'Nuevo Perfume';
   setMode('url');
@@ -231,7 +234,8 @@ window.edit = (id) => {
   document.getElementById('p-desc').value = p.descripcion || '';
   const pr = p.precios || {};
   ['2','3','5','10'].forEach(k => { document.getElementById('px' + k).value = pr[k] || ''; });
-  document.getElementById('p-activo').checked = p.activo !== false;
+  document.getElementById('p-activo').checked  = p.activo !== false;
+  document.getElementById('p-novedad').checked = p.novedad === true;
   if (p.imagen) {
     setMode('url');
     document.getElementById('p-img-url').value = p.imagen;
@@ -283,7 +287,8 @@ window.save = async () => {
       tipo:        document.getElementById('p-tipo').value    || '',
       descripcion: document.getElementById('p-desc').value.trim(),
       imagen, precios, tamanos,
-      activo: document.getElementById('p-activo').checked
+      activo:  document.getElementById('p-activo').checked,
+      novedad: document.getElementById('p-novedad').checked
     };
     if (id) {
       await updateDoc(doc(db, 'perfumes', id), data);
