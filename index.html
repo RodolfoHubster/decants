@@ -46,6 +46,35 @@
     ::-webkit-scrollbar { width:4px; height:4px; }
     ::-webkit-scrollbar-thumb { background:var(--gold-b); border-radius:99px; }
 
+    /* ══ Banner de Anuncios ════════════════════════════ */
+    #anuncio-banner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: linear-gradient(90deg, rgba(201,168,76,.22) 0%, rgba(201,168,76,.14) 100%);
+      border-bottom: 1px solid var(--gold-b);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 16px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 250;
+      font-family: 'Poppins', sans-serif;
+    }
+    #anuncio-banner a { color: var(--gold); text-decoration: underline; }
+    #anuncio-banner .banner-icon { font-size: 16px; color: var(--gold); flex-shrink: 0; }
+    #anuncio-banner .banner-close {
+      background: none; border: none;
+      color: var(--muted); font-size: 16px;
+      cursor: pointer; padding: 0 4px;
+      margin-left: auto; line-height: 1;
+      transition: color .15s; flex-shrink: 0;
+    }
+    #anuncio-banner .banner-close:hover { color: var(--text); }
+
     /* ══ Partículas fondo ══════════════════════════ */
     #particles-bg {
       position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;
@@ -280,6 +309,15 @@
       background:var(--gold-s);
       border-color:var(--gold-b);
       color:var(--gold);
+    }
+    /* Tab Novedades — resaltado especial */
+    .fbar-tab.tab-novedades {
+      border-color: rgba(201,168,76,.35);
+      color: var(--gold);
+    }
+    .fbar-tab.tab-novedades.active {
+      background: rgba(201,168,76,.2);
+      border-color: var(--gold);
     }
 
     /* ══ Panel lateral filtros ════════════════════════ */
@@ -590,6 +628,9 @@
 </head>
 <body>
 
+<!-- Banner de Anuncios (se inyecta desde catalog.js si hay uno activo) -->
+<div id="anuncio-banner" style="display:none" role="alert" aria-live="polite"></div>
+
 <!-- Partículas fondo -->
 <div id="particles-bg" aria-hidden="true"></div>
 
@@ -672,10 +713,11 @@
   </div>
   <div class="fbar-row2">
     <div class="fbar-tabs" role="tablist" aria-label="Filtrar por género">
-      <button class="fbar-tab ftab active" data-g=""           role="tab" aria-selected="true"  onclick="setG(this)">Todos</button>
-      <button class="fbar-tab ftab"        data-g="Caballero"  role="tab" aria-selected="false" onclick="setG(this)">👔 Caballero</button>
-      <button class="fbar-tab ftab"        data-g="Dama"       role="tab" aria-selected="false" onclick="setG(this)">🌸 Dama</button>
-      <button class="fbar-tab ftab"        data-g="Unisex"     role="tab" aria-selected="false" onclick="setG(this)">✨ Unisex</button>
+      <button class="fbar-tab ftab active"       data-g=""          role="tab" aria-selected="true"  onclick="setG(this)">Todos</button>
+      <button class="fbar-tab ftab"               data-g="Caballero" role="tab" aria-selected="false" onclick="setG(this)">👔 Caballero</button>
+      <button class="fbar-tab ftab"               data-g="Dama"      role="tab" aria-selected="false" onclick="setG(this)">🌸 Dama</button>
+      <button class="fbar-tab ftab"               data-g="Unisex"    role="tab" aria-selected="false" onclick="setG(this)">✨ Unisex</button>
+      <button class="fbar-tab ftab tab-novedades" data-g="novedades" role="tab" aria-selected="false" onclick="setG(this)">🆕 Novedades</button>
     </div>
   </div>
 </div>
