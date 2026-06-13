@@ -6,7 +6,7 @@ import { addItem, decrementItem, removeItem, clearCart as pureCleart,
   from './cart.js';
 import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug } from './slug.js';
 
-// ── Tipos fijos (siempre aparecen los 3 en el filtro) ─────────────────────
+// ── Tipos fijos (chips del panel — mapean al campo `categoria` del perfume) ─
 const TIPOS_PERMITIDOS = [
   { nombre: 'Diseñador', emoji: '👔' },
   { nombre: 'Árabe',     emoji: '🕌' },
@@ -30,7 +30,7 @@ let cart = loadCart();
 // Filtros avanzados
 let activeFilters = {
   familias: [],
-  tipos: [],
+  tipos: [],   // filtra por p.categoria
   marcas: []
 };
 
@@ -75,11 +75,6 @@ window.undoDelete = () => {
 function minPrecio(p) {
   const vals = Object.values(p.precios || {}).map(Number).filter(v => v > 0);
   return vals.length ? Math.min(...vals) : 9999;
-}
-
-function getVal(id) {
-  const el = document.getElementById(id);
-  return el ? el.value : '';
 }
 
 window.syncMobileSearch = () => {
@@ -130,7 +125,6 @@ function showSkeletons() {
 async function load() {
   showSkeletons();
 
-  // Solo necesitamos perfumes y familias de Firestore
   const [perfSnap, famSnap] = await Promise.all([
     getDocs(query(collection(db, 'perfumes'), where('activo', '==', true))),
     getDocs(collection(db, 'familias_olfativas'))
@@ -139,7 +133,7 @@ async function load() {
   all = [];
   perfSnap.forEach(d => all.push({ id: d.id, ...d.data() }));
 
-  // Tipos: siempre los 3 fijos, sin importar si los perfumes tienen el campo lleno
+  // Tipos: los 3 fijos — se usan para filtrar por p.categoria
   const tiposData = TIPOS_PERMITIDOS;
 
   // Familias: solo las que tienen al menos 1 perfume activo
@@ -168,7 +162,7 @@ async function load() {
 
 // ── Poblar los 3 paneles dinámicos ──────────────────
 function buildFilterPanelDynamic(tiposData, famData) {
-  // — Tipos (siempre los 3 fijos)
+  // — Tipos de perfume (Diseñador / Árabe / Nicho → filtran por p.categoria)
   const tiposContainer = document.getElementById('filter-tipos-list');
   if (tiposContainer) {
     tiposContainer.innerHTML = tiposData.map(t =>
@@ -322,9 +316,11 @@ window.renderGrid = () => {
     if (q && !p.nombre.toLowerCase().includes(q) && !(p.marca || '').toLowerCase().includes(q)) return false;
     if (gF && p.genero !== gF) return false;
     if (activeFilters.familias.length && !activeFilters.familias.includes(p.familia)) return false;
-    // Comparación case-insensitive para tipos
-    if (activeFilters.tipos.length && !activeFilters.tipos.some(t => t.toLowerCase() === (p.tipo || '').trim().toLowerCase())) return false;
-    if (activeFilters.marcas.length   && !activeFilters.marcas.includes(p.marca))     return false;
+    // ← CLAVE: los chips Diseñador/Árabe/Nicho filtran por p.categoria (no p.tipo)
+    if (activeFilters.tipos.length && !activeFilters.tipos.some(
+      t => t.toLowerCase() === (p.categoria || '').trim().toLowerCase()
+    )) return false;
+    if (activeFilters.marcas.length && !activeFilters.marcas.includes(p.marca)) return false;
     return true;
   });
 
@@ -397,9 +393,7 @@ window.setG = btn => {
   btn.classList.add('active'); gF = btn.dataset.g; renderGrid();
 };
 
-window.clearFilters = () => {
-  clearAllFilters();
-};
+window.clearFilters = () => { clearAllFilters(); };
 
 // ── Modal ─────────────────────────────────────────
 window.openModal = (id, pushHash = true) => {
