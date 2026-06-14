@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Fitoscents · Anuncios</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <style>
+    .anuncio-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 720px;
+    }
+    .anuncio-card h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin: 0;
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .toggle-label input[type=checkbox] {
+      width: 18px; height: 18px;
+      accent-color: var(--accent);
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 99px;
+      border: 1px solid transparent;
+    }
+    .status-on  { background: rgba(201,168,76,.15); border-color: rgba(201,168,76,.4); color: #e0b95a; }
+    .status-off { background: rgba(255,255,255,.05); border-color: var(--border); color: var(--text-muted); }
+    .preview-banner {
+      margin-top: 4px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(201,168,76,.12);
+      border: 1px solid rgba(201,168,76,.35);
+      color: #e8c96a;
+    }
+    .preview-banner.off {
+      background: rgba(255,255,255,.04);
+      border-color: var(--border);
+      color: var(--text-muted);
+    }
+    .hint { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+    .btn-guardar {
+      width: fit-content;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-wrap"></div>
+  <div class="main-content">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
+        <span class="topbar-title">Anuncios del catálogo</span>
+      </div>
+    </div>
+    <div class="page-body">
+
+      <div class="anuncio-card">
+        <h3><i class="bi bi-megaphone" style="color:var(--accent)"></i> Banner de Novedad</h3>
+        <p class="hint">Se muestra como barra fija debajo del header en la tienda pública. Úsalo para anunciar llegadas nuevas, promociones o eventos.</p>
+
+        <div>
+          <label class="form-label" style="font-size:13px;font-weight:600;margin-bottom:6px;display:block">Texto del anuncio</label>
+          <input class="form-control" id="an-texto"
+            placeholder="Ej: ✨ ¡Nuevo! Baccarat Rouge 540 ya disponible — consúltanos"
+            style="max-width:600px">
+          <p class="hint" style="margin-top:5px">Máx. 120 caracteres. Usa emojis para darle vida.</p>
+        </div>
+
+        <div class="toggle-row">
+          <label class="toggle-label">
+            <input type="checkbox" id="an-activo">
+            Mostrar en la tienda
+          </label>
+          <span class="status-badge status-off" id="an-status">⬤ Inactivo</span>
+        </div>
+
+        <div>
+          <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px">Vista previa:</p>
+          <div class="preview-banner off" id="an-preview">
+            <i class="bi bi-megaphone-fill"></i>
+            <span id="an-preview-text">Sin texto — escribe arriba para ver la vista previa</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-guardar" id="btn-guardar" onclick="guardar()">
+          <i class="bi bi-check2"></i> Guardar cambios
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { db, doc, getDoc, setDoc } from '../assets/js/firebase-config.js';
+import { renderSidebar } from './sidebar.js';
+import { toast } from '../assets/js/toast.js';
+import './auth-guard.js';
+
+renderSidebar('anuncios');
+if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display = 'flex';
+
+const REF = doc(db, 'anuncios', 'banner_principal');
+
+// ── Cargar estado actual ───────────────────────────
+async function load() {
+  try {
+    const snap = await getDoc(REF);
+    if (snap.exists()) {
+      const d = snap.data();
+      document.getElementById('an-texto').value = d.texto || '';
+      document.getElementById('an-activo').checked = !!d.activo;
+    }
+  } catch(e) {
+    console.error(e);
+  }
+  syncUI();
+}
+
+// ── Sync vista previa + badge ─────────────────────
+function syncUI() {
+  const texto  = document.getElementById('an-texto').value.trim();
+  const activo = document.getElementById('an-activo').checked;
+  const prev   = document.getElementById('an-preview');
+  const prevTx = document.getElementById('an-preview-text');
+  const badge  = document.getElementById('an-status');
+
+  prevTx.textContent = texto || 'Sin texto — escribe arriba para ver la vista previa';
+  if (activo && texto) {
+    prev.classList.remove('off');
+    badge.className   = 'status-badge status-on';
+    badge.textContent = '⬤ Activo';
+  } else {
+    prev.classList.add('off');
+    badge.className   = 'status-badge status-off';
+    badge.textContent = '⬤ Inactivo';
+  }
+}
+
+document.getElementById('an-texto').addEventListener('input', syncUI);
+document.getElementById('an-activo').addEventListener('change', syncUI);
+
+// ── Guardar ──────────────────────────────────────
+window.guardar = async () => {
+  const texto  = document.getElementById('an-texto').value.trim().slice(0, 120);
+  const activo = document.getElementById('an-activo').checked;
+  const btn    = document.getElementById('btn-guardar');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
+  try {
+    await setDoc(REF, { texto, activo, updatedAt: Date.now() });
+    toast('Anuncio guardado ✅', 'success');
+    syncUI();
+  } catch(e) {
+    console.error(e);
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = '<i class="bi bi-check2"></i> Guardar cambios';
+  }
+};
+
+load();
+</script>
+</body>
+</html>

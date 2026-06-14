@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Novedades · Admin Fitoscents</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <style>
+    :root {
+      --bg:#0d0c0a; --bg2:#111009; --card:#181612; --card2:#1e1c18;
+      --gold:#c9a84c; --gold-h:#e0b95a;
+      --gold-s:rgba(201,168,76,.12); --gold-b:rgba(201,168,76,.30);
+      --text:#ede9e1; --muted:#8a8880; --faint:#46443f;
+      --border:rgba(255,255,255,.07);
+      --ease:cubic-bezier(.16,1,.3,1);
+      --r:12px; --r-lg:20px;
+      --success:rgba(74,222,128,.15); --success-b:rgba(74,222,128,.35);
+      --error:rgba(248,113,113,.15);  --error-b:rgba(248,113,113,.35);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{-webkit-font-smoothing:antialiased;}
+    body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;}
+    a{color:inherit;text-decoration:none;}
+    ::-webkit-scrollbar{width:4px;height:4px;}
+    ::-webkit-scrollbar-thumb{background:var(--gold-b);border-radius:99px;}
+
+    /* Header */
+    header{
+      position:sticky;top:0;z-index:200;
+      background:rgba(13,12,10,.92);backdrop-filter:blur(18px);
+      border-bottom:1px solid var(--gold-b);
+      height:58px;display:flex;align-items:center;
+    }
+    .hinner{
+      width:100%;max-width:900px;margin:0 auto;
+      padding:0 16px;display:flex;align-items:center;gap:12px;
+    }
+    .back-btn{
+      display:flex;align-items:center;gap:7px;
+      padding:7px 12px;border-radius:9px;
+      background:var(--gold-s);border:1px solid var(--gold-b);
+      color:var(--gold);font-size:13px;font-weight:600;
+      transition:background .15s;
+    }
+    .back-btn:hover{background:rgba(201,168,76,.22);}
+    .page-title{font-size:16px;font-weight:700;color:var(--text);}
+    .page-sub{font-size:12px;color:var(--muted);margin-top:1px;}
+
+    /* Layout */
+    .main{max-width:900px;margin:0 auto;padding:28px 16px 80px;display:flex;flex-direction:column;gap:24px;}
+
+    /* Card */
+    .card{
+      background:var(--card);border:1px solid var(--border);
+      border-radius:var(--r-lg);padding:22px;
+    }
+    .card-title{
+      font-size:14px;font-weight:700;color:var(--gold);
+      letter-spacing:.05em;text-transform:uppercase;
+      display:flex;align-items:center;gap:8px;
+      margin-bottom:18px;
+    }
+
+    /* Form */
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    @media(max-width:560px){.form-grid{grid-template-columns:1fr;}}
+    .form-group{display:flex;flex-direction:column;gap:6px;}
+    .form-group.full{grid-column:1/-1;}
+    label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;}
+    input[type=text],input[type=number],textarea,select{
+      background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+      border-radius:10px;padding:10px 14px;
+      color:var(--text);font-size:14px;font-family:'Poppins',sans-serif;
+      transition:border-color .15s;outline:none;
+      width:100%;
+    }
+    input:focus,textarea:focus,select:focus{border-color:rgba(201,168,76,.5);}
+    textarea{resize:vertical;min-height:90px;}
+    input[type=number]{-moz-appearance:textfield;}
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;}
+
+    /* Toggle activo */
+    .toggle-row{display:flex;align-items:center;gap:10px;}
+    .toggle-label{font-size:13px;font-weight:500;color:var(--muted);}
+    .toggle-switch{position:relative;width:44px;height:24px;flex-shrink:0;}
+    .toggle-switch input{opacity:0;width:0;height:0;position:absolute;}
+    .toggle-track{
+      position:absolute;inset:0;background:#2a2824;
+      border-radius:99px;border:1px solid var(--border);
+      transition:background .2s;
+    }
+    .toggle-switch input:checked ~ .toggle-track{background:rgba(201,168,76,.35);border-color:var(--gold-b);}
+    .toggle-thumb{
+      position:absolute;top:3px;left:3px;
+      width:16px;height:16px;border-radius:50%;
+      background:#555;transition:transform .2s,background .2s;
+    }
+    .toggle-switch input:checked ~ .toggle-thumb{transform:translateX(20px);background:var(--gold);}
+
+    /* Duración hint */
+    .hint{font-size:11px;color:var(--muted);margin-top:3px;}
+
+    /* Selector de perfumes */
+    .perf-search-wrap{
+      position:relative;
+      margin-bottom:10px;
+    }
+    .perf-search-wrap i{
+      position:absolute;left:12px;top:50%;transform:translateY(-50%);
+      color:var(--muted);font-size:14px;pointer-events:none;
+    }
+    #perf-search{
+      padding-left:36px;
+    }
+    #perf-list-wrap{
+      max-height:200px;overflow-y:auto;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:10px;
+      background:rgba(255,255,255,.03);
+    }
+    .perf-item{
+      display:flex;align-items:center;gap:10px;
+      padding:9px 12px;
+      border-bottom:1px solid rgba(255,255,255,.05);
+      cursor:pointer;transition:background .12s;
+      font-size:13px;
+    }
+    .perf-item:last-child{border-bottom:none;}
+    .perf-item:hover{background:rgba(201,168,76,.07);}
+    .perf-item.selected{background:rgba(201,168,76,.12);}
+    .perf-item img{width:36px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0;}
+    .perf-item .no-img{
+      width:36px;height:36px;border-radius:8px;
+      background:rgba(255,255,255,.06);
+      display:flex;align-items:center;justify-content:center;
+      font-size:16px;color:rgba(201,168,76,.4);flex-shrink:0;
+    }
+    .perf-item-info{display:flex;flex-direction:column;flex:1;min-width:0;}
+    .perf-item-marca{font-size:10px;color:var(--muted);text-transform:uppercase;}
+    .perf-item-nombre{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .check-icon{color:var(--gold);font-size:16px;flex-shrink:0;}
+
+    /* Chips seleccionados */
+    .selected-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;min-height:28px;}
+    .chip{
+      display:inline-flex;align-items:center;gap:5px;
+      background:var(--gold-s);border:1px solid var(--gold-b);
+      border-radius:99px;padding:4px 10px;
+      font-size:12px;color:var(--gold);
+    }
+    .chip-rm{
+      background:none;border:none;cursor:pointer;
+      color:rgba(201,168,76,.6);font-size:14px;line-height:1;
+      padding:0 2px;transition:color .12s;
+    }
+    .chip-rm:hover{color:var(--gold);}
+
+    /* Botón guardar */
+    .btn-save{
+      width:100%;padding:14px;
+      background:rgba(201,168,76,.2);
+      border:1px solid var(--gold-b);
+      border-radius:12px;
+      color:var(--gold);font-size:15px;font-weight:700;
+      font-family:'Poppins',sans-serif;cursor:pointer;
+      transition:background .15s;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+    }
+    .btn-save:hover{background:rgba(201,168,76,.32);}
+    .btn-save:disabled{opacity:.5;cursor:not-allowed;}
+
+    /* Lista novedades */
+    .nov-list{display:flex;flex-direction:column;gap:12px;}
+    .nov-item{
+      background:var(--card2);border:1px solid var(--border);
+      border-radius:var(--r);padding:16px;
+      display:flex;flex-direction:column;gap:10px;
+    }
+    .nov-item-header{
+      display:flex;align-items:flex-start;gap:10px;
+    }
+    .nov-item-info{flex:1;min-width:0;}
+    .nov-item-titulo{
+      font-size:14px;font-weight:700;color:var(--text);
+      margin-bottom:4px;
+    }
+    .nov-item-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+    .tag{
+      font-size:11px;font-weight:600;padding:3px 9px;
+      border-radius:99px;letter-spacing:.04em;
+    }
+    .tag-activa{background:var(--success);color:#4ade80;border:1px solid var(--success-b);}
+    .tag-inactiva{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border);}
+    .tag-expirada{background:var(--error);color:#f87171;border:1px solid var(--error-b);}
+    .nov-item-msg{
+      font-size:12px;color:var(--muted);line-height:1.5;
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    }
+    .nov-item-actions{display:flex;gap:8px;flex-wrap:wrap;}
+    .btn-sm{
+      padding:7px 14px;border-radius:9px;
+      font-size:12px;font-weight:600;
+      font-family:'Poppins',sans-serif;cursor:pointer;
+      display:flex;align-items:center;gap:5px;
+      border:1px solid;transition:all .15s;
+    }
+    .btn-activar{background:var(--success);color:#4ade80;border-color:var(--success-b);}
+    .btn-activar:hover{background:rgba(74,222,128,.25);}
+    .btn-desactivar{background:rgba(255,255,255,.05);color:var(--muted);border-color:var(--border);}
+    .btn-desactivar:hover{background:rgba(255,255,255,.1);color:var(--text);}
+    .btn-editar{background:var(--gold-s);color:var(--gold);border-color:var(--gold-b);}
+    .btn-editar:hover{background:rgba(201,168,76,.22);}
+    .btn-eliminar{background:var(--error);color:#f87171;border-color:var(--error-b);}
+    .btn-eliminar:hover{background:rgba(248,113,113,.28);}
+
+    /* Toast */
+    #toast{
+      position:fixed;bottom:24px;left:50%;
+      transform:translateX(-50%) translateY(10px);
+      background:var(--card);color:var(--text);
+      border:1px solid rgba(201,168,76,.3);
+      border-radius:10px;padding:10px 20px;
+      font-size:13px;font-weight:500;
+      opacity:0;pointer-events:none;
+      transition:opacity .2s,transform .2s;
+      z-index:9999;white-space:nowrap;
+    }
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    /* Empty */
+    .empty-state{
+      text-align:center;padding:40px 20px;
+      color:var(--muted);
+    }
+    .empty-state i{font-size:36px;margin-bottom:12px;display:block;color:var(--faint);}
+    .empty-state p{font-size:13px;}
+  </style>
+</head>
+<body>
+<div class="app-shell">
+<div id="sidebar-wrap"></div>
+<div class="main-content">
+<header>
+
+  <div class="hinner">
+    <a href="./dashboard.html" class="back-btn">
+      <i class="bi bi-arrow-left"></i>
+      <span>Dashboard</span>
+    </a>
+    <div>
+      <div class="page-title">🆕 Novedades</div>
+      <div class="page-sub">Gestiona el modal de novedades del catálogo</div>
+    </div>
+  </div>
+</header>
+
+<main class="main">
+  
+
+  <!-- ── Formulario nueva/editar novedad ── -->
+  <div class="card">
+    <div class="card-title"><i class="bi bi-plus-circle"></i> <span id="form-title">Nueva Novedad</span></div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Título *</label>
+        <input type="text" id="n-titulo" placeholder="ej. ¡Llegaron nuevos perfumes!" maxlength="80">
+      </div>
+      <div class="form-group full">
+        <label>Mensaje</label>
+        <textarea id="n-mensaje" placeholder="Describe qué hay de nuevo, promociones, disponibilidad..." rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Duración (días)</label>
+        <input type="number" id="n-duracion" placeholder="0 = sin límite" min="0" max="365" value="0">
+        <span class="hint">0 = se muestra indefinidamente hasta que lo desactives</span>
+      </div>
+      <div class="form-group" style="justify-content:flex-end">
+        <label>Estado</label>
+        <div class="toggle-row">
+          <label class="toggle-switch">
+            <input type="checkbox" id="n-activo" checked>
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+          <span class="toggle-label" id="n-activo-label">Activa</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selector de perfumes -->
+    <div style="margin-top:18px">
+      <label style="font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;display:block;margin-bottom:10px;">
+        <i class="bi bi-droplet" style="color:var(--gold)"></i> Perfumes destacados (opcional)
+      </label>
+      <div class="perf-search-wrap">
+        <i class="bi bi-search"></i>
+        <input type="text" id="perf-search" placeholder="Buscar perfume para agregar..." autocomplete="off">
+      </div>
+      <div id="perf-list-wrap"><div class="perf-item" style="color:var(--muted);font-size:13px;justify-content:center">Cargando perfumes...</div></div>
+      <div class="selected-chips" id="selected-chips"></div>
+    </div>
+
+    <div style="margin-top:20px;display:flex;gap:10px;">
+      <button class="btn-save" id="btn-guardar" onclick="guardarNovedad()">
+        <i class="bi bi-check-lg"></i> Guardar novedad
+      </button>
+      <button class="btn-save" id="btn-cancelar-edicion" style="display:none;background:rgba(255,255,255,.05);border-color:var(--border);color:var(--muted);max-width:160px" onclick="cancelarEdicion()">
+        Cancelar
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Lista novedades existentes ── -->
+  <div class="card">
+    <div class="card-title"><i class="bi bi-list-ul"></i> Novedades registradas</div>
+    <div class="nov-list" id="nov-list">
+      <div class="empty-state"><i class="bi bi-megaphone"></i><p>Cargando...</p></div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script type="module">
+import { db, auth, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onAuthStateChanged, query, orderBy, serverTimestamp, where }
+  from '../assets/js/firebase-config.js';
+  import { renderSidebar } from './sidebar.js';
+  renderSidebar('novedades');
+// ── Auth guard ────────────────────────────────────────────────────────────────
+onAuthStateChanged(auth, user => { if (!user) window.location.href = '../login.html'; });
+
+// ── Estado ────────────────────────────────────────────────────────────────────
+let allPerfumes = [];
+let selectedIds = [];
+let editingId   = null;
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── Toggle label ──────────────────────────────────────────────────────────────
+document.getElementById('n-activo').addEventListener('change', function() {
+  document.getElementById('n-activo-label').textContent = this.checked ? 'Activa' : 'Inactiva';
+});
+
+// ── Cargar perfumes ───────────────────────────────────────────────────────────
+async function loadPerfumes() {
+  const snap = await getDocs(query(collection(db, 'perfumes'), where('activo','==',true)));
+  allPerfumes = [];
+  snap.forEach(d => allPerfumes.push({ id: d.id, ...d.data() }));
+  allPerfumes.sort((a, b) => (a.marca||'').localeCompare(b.marca||'') || a.nombre.localeCompare(b.nombre));
+  renderPerfList('');
+}
+
+function renderPerfList(q) {
+  const wrap = document.getElementById('perf-list-wrap');
+  const q2 = q.toLowerCase().trim();
+  const filtered = q2
+    ? allPerfumes.filter(p => p.nombre.toLowerCase().includes(q2) || (p.marca||'').toLowerCase().includes(q2))
+    : allPerfumes;
+
+  if (!filtered.length) {
+    wrap.innerHTML = '<div class="perf-item" style="color:var(--muted);justify-content:center;font-size:13px">Sin resultados</div>';
+    return;
+  }
+  wrap.innerHTML = filtered.map(p => {
+    const sel = selectedIds.includes(p.id);
+    return `
+      <div class="perf-item ${sel ? 'selected' : ''}" data-id="${p.id}" onclick="togglePerf('${p.id}')">
+        ${p.imagen ? `<img src="${p.imagen}" alt="${p.nombre}">` : '<div class="no-img"><i class="bi bi-droplet"></i></div>'}
+        <div class="perf-item-info">
+          <div class="perf-item-marca">${p.marca||''}</div>
+          <div class="perf-item-nombre">${p.nombre}</div>
+        </div>
+        ${sel ? '<i class="bi bi-check-circle-fill check-icon"></i>' : ''}
+      </div>`;
+  }).join('');
+}
+
+document.getElementById('perf-search').addEventListener('input', function() {
+  renderPerfList(this.value);
+});
+
+window.togglePerf = id => {
+  if (selectedIds.includes(id)) {
+    selectedIds = selectedIds.filter(x => x !== id);
+  } else {
+    selectedIds.push(id);
+  }
+  renderPerfList(document.getElementById('perf-search').value);
+  renderChips();
+};
+
+function renderChips() {
+  const wrap = document.getElementById('selected-chips');
+  wrap.innerHTML = selectedIds.map(id => {
+    const p = allPerfumes.find(x => x.id === id);
+    if (!p) return '';
+    return `<span class="chip">${p.nombre} <button class="chip-rm" onclick="togglePerf('${id}')" aria-label="Quitar">×</button></span>`;
+  }).join('');
+}
+
+// ── Guardar novedad ────────────────────────────────────────────────────────────
+window.guardarNovedad = async () => {
+  const titulo   = document.getElementById('n-titulo').value.trim();
+  const mensaje  = document.getElementById('n-mensaje').value.trim();
+  const duracion = parseInt(document.getElementById('n-duracion').value) || 0;
+  const activo   = document.getElementById('n-activo').checked;
+
+  if (!titulo) { toast('⚠️ El título es requerido'); return; }
+
+  const btn = document.getElementById('btn-guardar');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
+
+  try {
+    const data = {
+      titulo, mensaje, duracionDias: duracion,
+      activo, perfumeIds: selectedIds,
+    };
+
+    if (editingId) {
+      await updateDoc(doc(db, 'novedades', editingId), data);
+      toast('✅ Novedad actualizada');
+    } else {
+      data.creadoEn = serverTimestamp();
+      await addDoc(collection(db, 'novedades'), data);
+      toast('✅ Novedad creada');
+    }
+    resetForm();
+    await loadNovedades();
+  } catch (e) {
+    toast('❌ Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-lg"></i> Guardar novedad';
+  }
+};
+
+function resetForm() {
+  document.getElementById('n-titulo').value   = '';
+  document.getElementById('n-mensaje').value  = '';
+  document.getElementById('n-duracion').value = '0';
+  document.getElementById('n-activo').checked = true;
+  document.getElementById('n-activo-label').textContent = 'Activa';
+  selectedIds = []; renderChips(); renderPerfList('');
+  document.getElementById('perf-search').value = '';
+  document.getElementById('form-title').textContent = 'Nueva Novedad';
+  document.getElementById('btn-cancelar-edicion').style.display = 'none';
+  editingId = null;
+}
+
+window.cancelarEdicion = resetForm;
+
+// ── Cargar y renderizar novedades existentes ───────────────────────────────────
+async function loadNovedades() {
+  const list = document.getElementById('nov-list');
+  list.innerHTML = '<div class="empty-state"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>';
+
+  const snap = await getDocs(query(collection(db, 'novedades'), orderBy('creadoEn', 'desc')));
+  const items = [];
+  snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+
+  items.sort((a, b) => {
+  const fa = a.creadoEn?.toDate?.() ?? new Date(0);
+  const fb = b.creadoEn?.toDate?.() ?? new Date(0);
+  return fb - fa;
+});
+
+  if (!items.length) {
+    list.innerHTML = '<div class="empty-state"><i class="bi bi-megaphone"></i><p>Sin novedades todavía. Crea la primera 👆</p></div>';
+    return;
+  }
+
+  list.innerHTML = items.map(n => {
+    const creado = n.creadoEn?.toDate ? n.creadoEn.toDate() : null;
+    const fechaStr = creado ? creado.toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric' }) : '';
+    const expirada = n.duracionDias > 0 && creado && new Date() > new Date(creado.getTime() + n.duracionDias * 86400000);
+    const tagHtml = expirada
+      ? '<span class="tag tag-expirada">Expirada</span>'
+      : n.activo
+        ? '<span class="tag tag-activa">Activa</span>'
+        : '<span class="tag tag-inactiva">Inactiva</span>';
+    return `
+      <div class="nov-item">
+        <div class="nov-item-header">
+          <div class="nov-item-info">
+            <div class="nov-item-titulo">${n.titulo}</div>
+            <div class="nov-item-meta">
+              ${tagHtml}
+              ${fechaStr ? `<span style="font-size:11px;color:var(--muted)">📅 ${fechaStr}</span>` : ''}
+              ${n.duracionDias > 0 ? `<span style="font-size:11px;color:var(--muted)">⏱ ${n.duracionDias} día${n.duracionDias!==1?'s':''}</span>` : '<span style="font-size:11px;color:var(--muted)">Sin límite</span>'}
+              ${n.perfumeIds?.length ? `<span style="font-size:11px;color:var(--muted)">💧 ${n.perfumeIds.length} perfume${n.perfumeIds.length!==1?'s':''}</span>` : ''}
+            </div>
+          </div>
+        </div>
+        ${n.mensaje ? `<div class="nov-item-msg">${n.mensaje}</div>` : ''}
+        <div class="nov-item-actions">
+          ${!n.activo || expirada
+            ? `<button class="btn-sm btn-activar" onclick="toggleActivo('${n.id}', true)"><i class="bi bi-eye"></i> Activar</button>`
+            : `<button class="btn-sm btn-desactivar" onclick="toggleActivo('${n.id}', false)"><i class="bi bi-eye-slash"></i> Desactivar</button>`
+          }
+          <button class="btn-sm btn-editar" onclick="editarNovedad('${n.id}')"><i class="bi bi-pencil"></i> Editar</button>
+          <button class="btn-sm btn-eliminar" onclick="eliminarNovedad('${n.id}')"><i class="bi bi-trash"></i> Eliminar</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+window.toggleActivo = async (id, activo) => {
+  await updateDoc(doc(db, 'novedades', id), { activo });
+  toast(activo ? '✅ Novedad activada' : '⭕ Novedad desactivada');
+  loadNovedades();
+};
+
+window.eliminarNovedad = async id => {
+  if (!confirm('¿Eliminar esta novedad?')) return;
+  await deleteDoc(doc(db, 'novedades', id));
+  toast('🗑️ Novedad eliminada');
+  loadNovedades();
+};
+
+window.editarNovedad = async id => {
+  const snap = await getDocs(collection(db, 'novedades'));
+  let data = null;
+  snap.forEach(d => { if (d.id === id) data = { id: d.id, ...d.data() }; });
+  if (!data) return;
+
+  editingId = id;
+  document.getElementById('n-titulo').value   = data.titulo || '';
+  document.getElementById('n-mensaje').value  = data.mensaje || '';
+  document.getElementById('n-duracion').value = data.duracionDias || 0;
+  document.getElementById('n-activo').checked = !!data.activo;
+  document.getElementById('n-activo-label').textContent = data.activo ? 'Activa' : 'Inactiva';
+  selectedIds = [...(data.perfumeIds || [])]; renderChips(); renderPerfList('');
+  document.getElementById('form-title').textContent = 'Editar Novedad';
+  document.getElementById('btn-cancelar-edicion').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+// ── Init ───────────────────────────────────────────────────────────────────────
+loadPerfumes();
+loadNovedades();
+</script>
+</body>
+</html>

@@ -46,6 +46,35 @@
     ::-webkit-scrollbar { width:4px; height:4px; }
     ::-webkit-scrollbar-thumb { background:var(--gold-b); border-radius:99px; }
 
+    /* ══ Banner de Anuncios ════════════════════════════ */
+    #anuncio-banner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: linear-gradient(90deg, rgba(201,168,76,.22) 0%, rgba(201,168,76,.14) 100%);
+      border-bottom: 1px solid var(--gold-b);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 16px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 250;
+      font-family: 'Poppins', sans-serif;
+    }
+    #anuncio-banner a { color: var(--gold); text-decoration: underline; }
+    #anuncio-banner .banner-icon { font-size: 16px; color: var(--gold); flex-shrink: 0; }
+    #anuncio-banner .banner-close {
+      background: none; border: none;
+      color: var(--muted); font-size: 16px;
+      cursor: pointer; padding: 0 4px;
+      margin-left: auto; line-height: 1;
+      transition: color .15s; flex-shrink: 0;
+    }
+    #anuncio-banner .banner-close:hover { color: var(--text); }
+
     /* ══ Partículas fondo ══════════════════════════ */
     #particles-bg {
       position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;
@@ -590,6 +619,9 @@
 </head>
 <body>
 
+<!-- Banner de Anuncios (se inyecta desde catalog.js si hay uno activo) -->
+<div id="anuncio-banner" style="display:none" role="alert" aria-live="polite"></div>
+
 <!-- Partículas fondo -->
 <div id="particles-bg" aria-hidden="true"></div>
 
@@ -672,10 +704,10 @@
   </div>
   <div class="fbar-row2">
     <div class="fbar-tabs" role="tablist" aria-label="Filtrar por género">
-      <button class="fbar-tab ftab active" data-g=""           role="tab" aria-selected="true"  onclick="setG(this)">Todos</button>
-      <button class="fbar-tab ftab"        data-g="Caballero"  role="tab" aria-selected="false" onclick="setG(this)">👔 Caballero</button>
-      <button class="fbar-tab ftab"        data-g="Dama"       role="tab" aria-selected="false" onclick="setG(this)">🌸 Dama</button>
-      <button class="fbar-tab ftab"        data-g="Unisex"     role="tab" aria-selected="false" onclick="setG(this)">✨ Unisex</button>
+      <button class="fbar-tab ftab active" data-g=""          role="tab" aria-selected="true"  onclick="setG(this)">Todos</button>
+      <button class="fbar-tab ftab"         data-g="Caballero" role="tab" aria-selected="false" onclick="setG(this)">👔 Caballero</button>
+      <button class="fbar-tab ftab"         data-g="Dama"      role="tab" aria-selected="false" onclick="setG(this)">🌸 Dama</button>
+      <button class="fbar-tab ftab"         data-g="Unisex"    role="tab" aria-selected="false" onclick="setG(this)">✨ Unisex</button>
     </div>
   </div>
 </div>
@@ -704,7 +736,7 @@
       </div>
     </div>
 
-    <!-- Tipo de perfume — dinámico desde Firestore (solo los que existen en DB) -->
+    <!-- Tipo de perfume — dinámico desde Firestore -->
     <div>
       <div class="fpanel-section-title"><i class="bi bi-tag"></i> Tipo de perfume</div>
       <div class="fcheck-list" id="filter-tipos-list">
@@ -712,7 +744,7 @@
       </div>
     </div>
 
-    <!-- Familia olfativa — dinámica desde Firestore -->
+    <!-- Familia olfativa -->
     <div>
       <div class="fpanel-section-title"><i class="bi bi-flower1"></i> Familia olfativa</div>
       <div class="fcheck-list" id="filter-familias-list">
@@ -720,7 +752,7 @@
       </div>
     </div>
 
-    <!-- Marcas — dinámicas desde los perfumes cargados -->
+    <!-- Marcas -->
     <div>
       <div class="fpanel-section-title"><i class="bi bi-building"></i> Marcas</div>
       <div class="fcheck-list" id="filter-marcas-list">
@@ -867,7 +899,12 @@
   </div>
 </footer>
 
-<script type="module" src="./assets/js/catalog.js"></script>
+<script type="module">
+import './assets/js/catalog.js';
+import { initNovedadesModal } from './assets/js/novedades-modal.js';
+initNovedadesModal();
+</script>
+
 <script>
 (function(){
   const bg = document.getElementById('particles-bg');
