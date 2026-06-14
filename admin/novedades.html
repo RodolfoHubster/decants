@@ -473,6 +473,12 @@ async function loadNovedades() {
   const items = [];
   snap.forEach(d => items.push({ id: d.id, ...d.data() }));
 
+  items.sort((a, b) => {
+  const fa = a.creadoEn?.toDate?.() ?? new Date(0);
+  const fb = b.creadoEn?.toDate?.() ?? new Date(0);
+  return fb - fa;
+});
+
   if (!items.length) {
     list.innerHTML = '<div class="empty-state"><i class="bi bi-megaphone"></i><p>Sin novedades todavía. Crea la primera 👆</p></div>';
     return;

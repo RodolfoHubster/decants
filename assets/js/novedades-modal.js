@@ -198,7 +198,6 @@ function buildDOM() {
     <div id="nov-box">
       <div class="nov-header">
         <div class="nov-header-left">
-          <span class="nov-badge">🆕 Novedades</span>
           <div class="nov-titulo" id="nov-titulo"></div>
         </div>
         <button class="nov-close" id="nov-close-btn" aria-label="Cerrar">
