@@ -6,7 +6,6 @@
 html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
 body {
   font-family: 'Poppins', sans-serif;
-  background: #0f1117;
   color: #e8e6e1;
   min-height: 100dvh;
   overflow-x: hidden;
@@ -25,7 +24,7 @@ button { cursor: pointer; font-family: inherit; }
    HEADER
    ============================================ */
 header {
-  background: rgba(15,17,23,.95);
+  background: var(--bg2);
   border-bottom: 1px solid rgba(255,255,255,.07);
   backdrop-filter: blur(12px);
   position: sticky;
@@ -475,7 +474,7 @@ header {
    PRODUCT CARD
    ============================================ */
 .pcard {
-  background: #181b23;
+  background: var(--bg2);
   border: 1px solid rgba(255,255,255,.07);
   border-radius: 16px;
   overflow: hidden;
@@ -561,7 +560,7 @@ header {
 .modal-overlay.open { opacity: 1; pointer-events: all; }
 
 .modal-box {
-  background: #181b23;
+  background: var(--bg);
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 20px;
   width: 100%;
