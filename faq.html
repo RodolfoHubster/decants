@@ -82,7 +82,7 @@
     }
     .logo{
       display:flex;align-items:center;gap:10px;
-      text-decoration:none;
+      text-decoration:none;flex-shrink:0;
     }
     .logo-mark{
       width:36px;height:36px;border-radius:50%;
@@ -91,7 +91,7 @@
       font-weight:700;font-size:12px;color:#000;flex-shrink:0;
       letter-spacing:.03em;
     }
-    .logo-name{font-size:15px;font-weight:600;color:var(--text)}
+    .logo-name{font-size:15px;font-weight:600;color:var(--text);line-height:1.1}
     .logo-sub{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
     .header-nav{
       display:flex;gap:8px;align-items:center;
@@ -905,7 +905,6 @@
 </a>
 
 <script>
-// ── Partículas flotantes ──────────────────────────────────────────────────
 (function(){
   const bg = document.getElementById('particles-bg');
   const N = 18;
@@ -924,7 +923,6 @@
   }
 })();
 
-// ── Acordeón FAQ ─────────────────────────────────────────────────────────
 document.querySelectorAll('.faq-q').forEach(btn => {
   btn.addEventListener('click', () => {
     const item = btn.closest('.faq-item');
@@ -940,10 +938,7 @@ document.querySelectorAll('.faq-q').forEach(btn => {
   });
 });
 
-// ── Scroll reveal ─────────────────────────────────────────────────────────
-const revealEls = document.querySelectorAll(
-  '.reveal,.faq-item,.process-card,.cta-block'
-);
+const revealEls = document.querySelectorAll('.reveal,.faq-item,.process-card,.cta-block');
 const io = new IntersectionObserver((entries) => {
   entries.forEach((e) => {
     if(e.isIntersecting){
@@ -955,10 +950,10 @@ const io = new IntersectionObserver((entries) => {
 },{ threshold: 0.1, rootMargin:'0px 0px -40px 0px'});
 revealEls.forEach(el => io.observe(el));
 
-// ── Counter animado (stats) ───────────────────────────────────────────────
-function animateCounter(el, target, suffix='') {
+function animateCounter(el, target) {
   const duration = 1400;
   const start = performance.now();
+  const suffix = target===100?'%':(target===2?'ml+':(target===48?'h':'+'));
   (function tick(now){
     const progress = Math.min((now - start) / duration, 1);
     const eased = 1 - Math.pow(1 - progress, 3);

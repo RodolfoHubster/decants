@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Fitoscents · Perfumes Completos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    :root {
+      --bg:     #0d0c0a;
+      --bg2:    #111009;
+      --card:   #181612;
+      --card2:  #1e1c18;
+      --gold:   #c9a84c;
+      --gold-h: #e0b95a;
+      --gold-s: rgba(201,168,76,.12);
+      --gold-b: rgba(201,168,76,.30);
+      --text:   #ede9e1;
+      --muted:  #8a8880;
+      --faint:  #46443f;
+      --border: rgba(255,255,255,.07);
+      --ease:   cubic-bezier(.16,1,.3,1);
+      --r:      12px;
+    }
+    *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; -webkit-font-smoothing:antialiased; }
+    body {
+      font-family:'Poppins',sans-serif;
+      background:var(--bg); color:var(--text);
+      min-height:100dvh; overflow-x:hidden;
+    }
+    a { color:inherit; text-decoration:none; }
+    img { display:block; max-width:100%; }
+    ::-webkit-scrollbar { width:4px; }
+    ::-webkit-scrollbar-thumb { background:var(--gold-b); border-radius:99px; }
+
+    /* ── HEADER ─────────────────────────────────────── */
+    header {
+      position:sticky; top:0; z-index:200;
+      background:rgba(13,12,10,.92);
+      backdrop-filter:blur(18px);
+      border-bottom:1px solid var(--gold-b);
+      height:62px; display:flex; align-items:center;
+    }
+    .header-inner {
+      width:100%; max-width:1200px; margin:0 auto;
+      padding:0 16px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+    }
+    .logo { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+    .logo-mark {
+      width:36px; height:36px; border-radius:50%;
+      background:var(--gold);
+      display:flex; align-items:center; justify-content:center;
+      font-weight:700; font-size:12px; color:#000; letter-spacing:.03em;
+    }
+    .logo-text .name { font-size:15px; font-weight:600; line-height:1.1; }
+    .logo-text .sub  { font-size:10px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; }
+    .header-right { display:flex; align-items:center; gap:8px; }
+    .btn-back {
+      display:flex; align-items:center; gap:6px;
+      padding:7px 13px; border-radius:9px;
+      background:rgba(255,255,255,.05); border:1px solid var(--border);
+      color:var(--muted); font-size:13px; font-weight:600;
+      transition:all .18s;
+    }
+    .btn-back:hover { background:rgba(255,255,255,.1); color:var(--text); }
+    .btn-wa-header {
+      display:flex; align-items:center; gap:6px;
+      padding:8px 14px; border-radius:10px;
+      background:#25D366; color:#fff;
+      font-size:13px; font-weight:600; border:none; cursor:pointer;
+      transition:background .18s;
+    }
+    .btn-wa-header:hover { background:#1db954; }
+    .btn-wa-header span { display:none; }
+    @media(min-width:480px) { .btn-wa-header span { display:inline; } }
+
+    /* ── HERO ────────────────────────────────────────── */
+    .hero {
+      position:relative; z-index:1;
+      padding:52px 20px 44px;
+      text-align:center; overflow:hidden;
+    }
+    .hero-bg {
+      position:absolute; inset:0; pointer-events:none;
+      background:radial-gradient(ellipse 80% 60% at 50% -10%, rgba(201,168,76,.1), transparent 65%);
+    }
+    .hero-badge {
+      display:inline-flex; align-items:center; gap:8px;
+      background:var(--gold-s); border:1px solid var(--gold-b);
+      border-radius:99px; padding:6px 18px;
+      font-size:12px; font-weight:600; color:var(--gold);
+      letter-spacing:.08em; text-transform:uppercase; margin-bottom:20px;
+    }
+    .hero h1 {
+      font-family:'Playfair Display',serif;
+      font-size:clamp(1.6rem,4vw,2.6rem);
+      font-weight:600; line-height:1.2;
+      color:var(--text); margin-bottom:12px;
+    }
+    .hero h1 span { font-style:italic; color:var(--gold); }
+    .hero p { font-size:14px; color:var(--muted); max-width:460px; margin:0 auto; line-height:1.75; }
+
+    /* ── BARRA FILTROS ───────────────────────────────── */
+    .filter-bar {
+      position:sticky; top:62px; z-index:100;
+      background:rgba(13,12,10,.94);
+      backdrop-filter:blur(16px);
+      border-bottom:1px solid var(--gold-b);
+      padding:10px 16px;
+    }
+    .fbar-inner {
+      max-width:1200px; margin:0 auto;
+      display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    }
+    .fbar-search {
+      flex:1; min-width:180px;
+      display:flex; align-items:center;
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(201,168,76,.18);
+      border-radius:10px; padding:0 12px; gap:8px; height:40px;
+    }
+    .fbar-search i { color:var(--muted); font-size:14px; flex-shrink:0; }
+    .fbar-search input {
+      background:transparent; border:none; outline:none;
+      color:var(--text); font-size:14px;
+      font-family:'Poppins',sans-serif; width:100%;
+    }
+    .fbar-search input::placeholder { color:#555; }
+    .fbar-select {
+      height:40px; padding:0 10px;
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(201,168,76,.18);
+      border-radius:10px;
+      color:var(--text); font-size:13px;
+      font-family:'Poppins',sans-serif;
+      cursor:pointer; outline:none; flex-shrink:0;
+    }
+    .fbar-select option { background:#1a1814; }
+
+    /* ── CATÁLOGO GRID ───────────────────────────────── */
+    .catalog {
+      max-width:1200px; margin:0 auto;
+      padding:24px 16px 60px;
+    }
+    .cat-header {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:20px;
+    }
+    .cat-header h2 {
+      font-family:'Playfair Display',serif;
+      font-size:clamp(1.1rem,2.5vw,1.5rem);
+      font-weight:600;
+    }
+    .count-badge {
+      background:var(--gold-s); border:1px solid var(--gold-b);
+      border-radius:99px; padding:4px 14px;
+      font-size:12px; font-weight:600; color:var(--gold);
+    }
+    .grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(min(240px,100%), 1fr));
+      gap:16px;
+    }
+
+    /* ── CARD ────────────────────────────────────────── */
+    .card {
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:16px; overflow:hidden;
+      display:flex; flex-direction:column;
+      transition:border-color .2s, transform .2s;
+      cursor:pointer;
+    }
+    .card:hover { border-color:var(--gold-b); transform:translateY(-3px); }
+    .card-img {
+      aspect-ratio:1/1; overflow:hidden;
+      background:var(--card2);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .card-img img {
+      width:100%; height:100%; object-fit:cover;
+      transition:transform .35s var(--ease);
+    }
+    .card:hover .card-img img { transform:scale(1.05); }
+    .card-img-placeholder {
+      font-size:40px; color:var(--faint);
+    }
+    .card-body { padding:14px 16px; flex:1; display:flex; flex-direction:column; gap:6px; }
+    .card-marca { font-size:11px; font-weight:600; color:var(--gold); letter-spacing:.06em; text-transform:uppercase; }
+    .card-nombre { font-size:15px; font-weight:600; color:var(--text); line-height:1.3; }
+    .card-conc {
+      display:inline-flex; align-items:center;
+      background:rgba(255,255,255,.06); border:1px solid var(--border);
+      border-radius:6px; padding:2px 8px;
+      font-size:11px; color:var(--muted); width:fit-content;
+    }
+    .card-stock { margin-top:auto; padding-top:8px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .badge-stock {
+      font-size:11px; font-weight:600; border-radius:99px; padding:3px 10px;
+    }
+    .badge-stock.en-stock   { background:rgba(34,197,94,.12); color:#4ade80; border:1px solid rgba(34,197,94,.3); }
+    .badge-stock.bajo-pedido{ background:rgba(251,191,36,.12); color:#fbbf24; border:1px solid rgba(251,191,36,.3); }
+    .badge-stock.agotado    { background:rgba(239,68,68,.1);   color:#f87171; border:1px solid rgba(239,68,68,.25); }
+    .card-precios { font-size:12px; color:var(--muted); }
+    .card-btn-wa {
+      width:100%; margin-top:10px; padding:9px;
+      border-radius:10px; border:none; cursor:pointer;
+      background:#25D366; color:#fff;
+      font-size:13px; font-weight:600;
+      font-family:'Poppins',sans-serif;
+      display:flex; align-items:center; justify-content:center; gap:7px;
+      transition:background .18s;
+    }
+    .card-btn-wa:hover { background:#1db954; }
+    .card-btn-wa.bajo-pedido {
+      background:var(--gold-s); border:1px solid var(--gold-b);
+      color:var(--gold);
+    }
+    .card-btn-wa.bajo-pedido:hover { background:rgba(201,168,76,.22); }
+    .card-btn-wa.agotado {
+      background:rgba(255,255,255,.05); border:1px solid var(--border);
+      color:var(--muted); cursor:not-allowed;
+    }
+
+    /* ── SKELETON ────────────────────────────────────── */
+    @keyframes shimmer {
+      0%   { background-position:-200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .skeleton {
+      background:linear-gradient(90deg,var(--card) 25%,var(--card2) 50%,var(--card) 75%);
+      background-size:200% 100%;
+      animation:shimmer 1.4s ease-in-out infinite;
+      border-radius:8px;
+    }
+    .skeleton-card {
+      background:var(--card); border:1px solid var(--border);
+      border-radius:16px; overflow:hidden;
+    }
+    .skel-img  { aspect-ratio:1/1; }
+    .skel-body { padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+    .skel-line { height:12px; }
+    .skel-line.w60 { width:60%; }
+    .skel-line.w80 { width:80%; }
+    .skel-line.w40 { width:40%; }
+
+    /* ── EMPTY STATE ─────────────────────────────────── */
+    .empty-state {
+      text-align:center; padding:60px 20px;
+      display:flex; flex-direction:column; align-items:center; gap:16px;
+    }
+    .empty-state i { font-size:48px; color:var(--faint); }
+    .empty-state h3 { font-size:18px; font-weight:600; color:var(--text); }
+    .empty-state p  { font-size:14px; color:var(--muted); max-width:340px; line-height:1.7; }
+
+    /* ── SECCIÓN COTIZACIÓN ──────────────────────────── */
+    .cotiza-section {
+      max-width:1200px; margin:0 auto;
+      padding:0 16px 80px;
+    }
+    .cotiza-card {
+      background:var(--card);
+      border:1px solid var(--gold-b);
+      border-radius:20px;
+      padding:36px 32px;
+      display:flex; flex-direction:column; align-items:center;
+      text-align:center; gap:16px;
+      position:relative; overflow:hidden;
+    }
+    .cotiza-card::before {
+      content:''; position:absolute; inset:0; pointer-events:none;
+      background:radial-gradient(ellipse 70% 50% at 50% 0%, rgba(201,168,76,.08), transparent 70%);
+    }
+    .cotiza-icon {
+      width:60px; height:60px; border-radius:50%;
+      background:var(--gold-s); border:1px solid var(--gold-b);
+      display:flex; align-items:center; justify-content:center;
+      font-size:26px; color:var(--gold);
+    }
+    .cotiza-card h2 {
+      font-family:'Playfair Display',serif;
+      font-size:clamp(1.2rem,3vw,1.8rem);
+      font-weight:600; color:var(--text);
+    }
+    .cotiza-card p {
+      font-size:14px; color:var(--muted);
+      max-width:440px; line-height:1.75;
+    }
+    .cotiza-form {
+      width:100%; max-width:480px;
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .cotiza-input {
+      width:100%; padding:12px 16px; border-radius:10px;
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(201,168,76,.2);
+      color:var(--text); font-size:14px;
+      font-family:'Poppins',sans-serif; outline:none;
+      transition:border-color .18s;
+    }
+    .cotiza-input:focus { border-color:var(--gold-b); }
+    .cotiza-input::placeholder { color:#555; }
+    .btn-cotiza {
+      width:100%; padding:13px;
+      border-radius:12px; border:none; cursor:pointer;
+      background:#25D366; color:#fff;
+      font-size:14px; font-weight:700;
+      font-family:'Poppins',sans-serif;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      transition:background .18s, transform .18s;
+    }
+    .btn-cotiza:hover { background:#1db954; transform:scale(1.02); }
+    .cotiza-chips {
+      display:flex; flex-wrap:wrap; justify-content:center; gap:8px;
+      font-size:12px; color:var(--muted);
+    }
+    .cotiza-chip {
+      display:flex; align-items:center; gap:5px;
+      background:rgba(255,255,255,.04); border:1px solid var(--border);
+      border-radius:99px; padding:4px 12px;
+    }
+    .cotiza-chip i { color:var(--gold); }
+
+    /* ── MODAL DETALLE ───────────────────────────────── */
+    .modal-overlay {
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.75);
+      z-index:800; opacity:0; pointer-events:none;
+      transition:opacity .25s;
+      display:flex; align-items:flex-end; justify-content:center;
+      padding:0;
+    }
+    @media(min-width:600px) { .modal-overlay { align-items:center; padding:20px; } }
+    .modal-overlay.open { opacity:1; pointer-events:auto; }
+    .modal-box {
+      background:var(--card);
+      border:1px solid var(--gold-b);
+      border-radius:20px 20px 0 0;
+      width:100%; max-width:520px;
+      max-height:90dvh; overflow-y:auto;
+      transform:translateY(40px);
+      transition:transform .3s var(--ease);
+      display:flex; flex-direction:column;
+    }
+    @media(min-width:600px) { .modal-box { border-radius:20px; transform:scale(.96); } }
+    .modal-overlay.open .modal-box { transform:translateY(0); }
+    @media(min-width:600px) { .modal-overlay.open .modal-box { transform:scale(1); } }
+    .modal-handle {
+      width:40px; height:4px;
+      background:rgba(255,255,255,.15); border-radius:2px;
+      margin:14px auto 0; flex-shrink:0;
+    }
+    @media(min-width:600px) { .modal-handle { display:none; } }
+    .modal-header {
+      display:flex; align-items:flex-start; justify-content:space-between;
+      padding:16px 20px 0; gap:12px; flex-shrink:0;
+    }
+    .modal-img-wrap {
+      width:72px; height:72px; border-radius:12px;
+      background:var(--card2); overflow:hidden; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .modal-img-wrap img { width:100%; height:100%; object-fit:cover; }
+    .modal-img-placeholder { font-size:28px; color:var(--faint); }
+    .modal-close {
+      width:34px; height:34px; border-radius:9px; flex-shrink:0;
+      background:rgba(255,255,255,.06); border:1px solid var(--border);
+      color:var(--muted); font-size:18px;
+      display:flex; align-items:center; justify-content:center; cursor:pointer;
+      transition:all .15s;
+    }
+    .modal-close:hover { background:rgba(255,255,255,.12); color:var(--text); }
+    .modal-body { padding:16px 20px 24px; display:flex; flex-direction:column; gap:14px; }
+    .modal-marca-tag { font-size:11px; font-weight:700; color:var(--gold); letter-spacing:.08em; text-transform:uppercase; }
+    .modal-nombre  { font-size:20px; font-weight:700; color:var(--text); line-height:1.25; }
+    .modal-badges  { display:flex; gap:7px; flex-wrap:wrap; }
+    .modal-badge {
+      font-size:11px; font-weight:600; border-radius:99px; padding:3px 11px;
+      background:rgba(255,255,255,.06); border:1px solid var(--border); color:var(--muted);
+    }
+    .modal-desc    { font-size:13px; color:var(--muted); line-height:1.7; }
+    .modal-precios-title { font-size:12px; font-weight:700; color:var(--gold); letter-spacing:.06em; text-transform:uppercase; }
+    .modal-precios-grid {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:8px;
+    }
+    .precio-pill {
+      background:var(--card2); border:1px solid var(--border);
+      border-radius:10px; padding:10px 8px;
+      text-align:center;
+    }
+    .precio-pill .size { font-size:12px; font-weight:600; color:var(--muted); }
+    .precio-pill .amt  { font-size:15px; font-weight:700; color:var(--text); }
+    .modal-tiempo {
+      display:flex; align-items:center; gap:8px;
+      background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.25);
+      border-radius:10px; padding:10px 14px;
+      font-size:13px; color:#fbbf24;
+    }
+    .modal-wa-btn {
+      width:100%; padding:13px; border-radius:12px; border:none; cursor:pointer;
+      background:#25D366; color:#fff;
+      font-size:14px; font-weight:700;
+      font-family:'Poppins',sans-serif;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      transition:background .18s;
+    }
+    .modal-wa-btn:hover { background:#1db954; }
+    .modal-wa-btn.pedido {
+      background:var(--gold-s); border:1px solid var(--gold-b); color:var(--gold);
+    }
+    .modal-wa-btn.pedido:hover { background:rgba(201,168,76,.22); }
+
+    /* ── FAB WhatsApp ────────────────────────────────── */
+    #wa-fab {
+      position:fixed; bottom:24px; left:24px;
+      width:52px; height:52px; border-radius:50%;
+      background:#25D366; color:#fff; font-size:24px;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 6px 20px rgba(0,0,0,.45);
+      z-index:300; text-decoration:none;
+      animation:pulse-wa 2.6s ease-in-out infinite;
+    }
+    @keyframes pulse-wa {
+      0%,100% { box-shadow:0 6px 20px rgba(37,211,102,.2); }
+      50%      { box-shadow:0 6px 32px rgba(37,211,102,.5); }
+    }
+    #wa-fab:hover { background:#1db954; transform:scale(1.1); }
+    @media(max-width:480px) { #wa-fab { width:46px; height:46px; font-size:21px; bottom:20px; left:16px; } }
+
+    /* ── FOOTER ──────────────────────────────────────── */
+    footer {
+      border-top:1px solid var(--border);
+      padding:28px 20px; text-align:center;
+    }
+    footer p { font-size:12px; color:var(--faint); }
+    footer a { color:var(--muted); transition:color .18s; }
+    footer a:hover { color:var(--gold); }
+  </style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="header-inner">
+    <a href="./index.html" class="logo" aria-label="Ir al catálogo de decants">
+      <div class="logo-mark">FS</div>
+      <div class="logo-text">
+        <div class="name">Fitoscents</div>
+        <div class="sub">Decants</div>
+      </div>
+    </a>
+    <div class="header-right">
+      <a href="./index.html" class="btn-back">
+        <i class="bi bi-arrow-left"></i>
+        <span>Decants</span>
+      </a>
+      <a href="https://wa.me/526648162623" target="_blank" rel="noopener" class="btn-wa-header" aria-label="WhatsApp">
+        <i class="bi bi-whatsapp"></i>
+        <span>WhatsApp</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-badge"><i class="bi bi-bag-heart-fill"></i> Frascos Completos</div>
+  <h1>Perfumes <span>completos</span><br>al mejor precio</h1>
+  <p>Llévate el frasco completo de tu fragancia favorita.<br>Stock disponible y pedidos bajo encargo.</p>
+</section>
+
+<!-- ══ FILTROS ══ -->
+<div class="filter-bar">
+  <div class="fbar-inner">
+    <div class="fbar-search">
+      <i class="bi bi-search"></i>
+      <input id="q" placeholder="Buscar perfume o marca..." oninput="renderGrid()" autocomplete="off" aria-label="Buscar">
+    </div>
+    <select class="fbar-select" id="f-genero" onchange="renderGrid()" aria-label="Género">
+      <option value="">Todos los géneros</option>
+      <option value="Caballero">👔 Caballero</option>
+      <option value="Dama">🌸 Dama</option>
+      <option value="Unisex">✨ Unisex</option>
+    </select>
+    <select class="fbar-select" id="f-disp" onchange="renderGrid()" aria-label="Disponibilidad">
+      <option value="">Disponibilidad</option>
+      <option value="en-stock">✅ En stock</option>
+      <option value="bajo-pedido">🕐 Bajo pedido</option>
+    </select>
+  </div>
+</div>
+
+<!-- ══ CATÁLOGO ══ -->
+<main class="catalog" id="catalog">
+  <div class="cat-header">
+    <h2>Catálogo</h2>
+    <span class="count-badge" id="count-badge">Cargando...</span>
+  </div>
+  <div class="grid" id="grid">
+    <!-- skeletons iniciales -->
+    ${Array.from({length:8}).map(()=>`
+    <div class="skeleton-card">
+      <div class="skeleton skel-img"></div>
+      <div class="skel-body">
+        <div class="skeleton skel-line w40"></div>
+        <div class="skeleton skel-line w80"></div>
+        <div class="skeleton skel-line w60"></div>
+      </div>
+    </div>`).join('')}
+  </div>
+</main>
+
+<!-- ══ SECCIÓN COTIZACIÓN ══ -->
+<section class="cotiza-section" id="cotiza">
+  <div class="cotiza-card">
+    <div class="cotiza-icon"><i class="bi bi-chat-heart-fill"></i></div>
+    <h2>¿No encontraste el tuyo?</h2>
+    <p>Si buscas un perfume que no está en el catálogo, escríbenos y lo cotizamos para ti. Trabajamos con pedidos especiales y encargos personalizados.</p>
+
+    <div class="cotiza-form">
+      <input
+        id="cotiza-nombre"
+        class="cotiza-input"
+        type="text"
+        placeholder="Nombre del perfume que buscas..."
+        autocomplete="off"
+      >
+      <input
+        id="cotiza-marca"
+        class="cotiza-input"
+        type="text"
+        placeholder="Marca (ej. Dior, Chanel, Creed...)"
+        autocomplete="off"
+      >
+      <button class="btn-cotiza" onclick="enviarCotizacion()">
+        <i class="bi bi-whatsapp"></i> Cotizar por WhatsApp
+      </button>
+    </div>
+
+    <div class="cotiza-chips">
+      <div class="cotiza-chip"><i class="bi bi-lightning-fill"></i> Respuesta rápida</div>
+      <div class="cotiza-chip"><i class="bi bi-patch-check-fill"></i> 100% originales</div>
+      <div class="cotiza-chip"><i class="bi bi-shield-check"></i> Sin compromiso</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ MODAL DETALLE ══ -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-img-wrap" id="m-img-wrap">
+        <div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>
+      </div>
+      <div style="flex:1;min-width:0"></div>
+      <button class="modal-close" onclick="closeModal()" aria-label="Cerrar">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-marca-tag" id="m-marca"></div>
+      <div class="modal-nombre"    id="m-nombre"></div>
+      <div class="modal-badges"    id="m-badges"></div>
+      <div class="modal-desc"      id="m-desc"  style="display:none"></div>
+      <div id="m-precios-wrap" style="display:none">
+        <div class="modal-precios-title">Precios disponibles</div>
+        <div class="modal-precios-grid" id="m-precios"></div>
+      </div>
+      <div class="modal-tiempo" id="m-tiempo" style="display:none">
+        <i class="bi bi-clock"></i>
+        <span id="m-tiempo-txt"></span>
+      </div>
+      <button class="modal-wa-btn" id="m-btn-wa" onclick="abrirWAModal()">
+        <i class="bi bi-whatsapp"></i> <span id="m-btn-txt">Consultar por WhatsApp</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- FAB WhatsApp -->
+<a id="wa-fab"
+   href="https://wa.me/526648162623?text=Hola!%20Me%20interesa%20saber%20m%C3%A1s%20sobre%20los%20perfumes%20%F0%9F%8C%B8"
+   target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">
+  <i class="bi bi-whatsapp"></i>
+</a>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <p>© 2026 <a href="https://wa.me/526648162623" target="_blank" rel="noopener">Fitoscents</a> · Tijuana, B.C. ·
+    <a href="./index.html">Ver Decants</a> ·
+    <a href="./faq.html">FAQ</a>
+  </p>
+</footer>
+
+<script type="module">
+import { db } from './assets/js/firebase-config.js';
+import {
+  collection, getDocs, query, orderBy, where
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const WA = '526648162623';
+const TALLAS = { px30:'30ml', px50:'50ml', px75:'75ml', px100:'100ml', px150:'150ml', px200:'200ml' };
+
+let allItems = [];
+let current  = null;
+
+// ── Cargar ────────────────────────────────────────────────
+async function load() {
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'perfumes_completos'), orderBy('nombre'))
+    );
+    allItems = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(p => p.activo !== false && p.disponibilidad !== 'agotado');
+    renderGrid();
+  } catch(e) {
+    console.error(e);
+    document.getElementById('grid').innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1">
+        <i class="bi bi-exclamation-circle"></i>
+        <h3>Error al cargar</h3>
+        <p>No se pudo conectar con el catálogo. Intenta de nuevo más tarde.</p>
+      </div>`;
+    document.getElementById('count-badge').textContent = 'Error';
+  }
+}
+
+// ── Render grid ───────────────────────────────────────────
+window.renderGrid = function() {
+  const q    = document.getElementById('q').value.toLowerCase().trim();
+  const gen  = document.getElementById('f-genero').value;
+  const disp = document.getElementById('f-disp').value;
+
+  const filtered = allItems.filter(p => {
+    const txt = `${p.nombre} ${p.marca}`.toLowerCase();
+    return (!q    || txt.includes(q))
+        && (!gen  || p.genero === gen)
+        && (!disp || p.disponibilidad === disp);
+  });
+
+  document.getElementById('count-badge').textContent =
+    `${filtered.length} perfume${filtered.length !== 1 ? 's' : ''}`;
+
+  const grid = document.getElementById('grid');
+
+  if (!filtered.length) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1">
+        <i class="bi bi-search"></i>
+        <h3>Sin resultados</h3>
+        <p>No encontramos "${q || 'ese perfume'}" en el catálogo. ¿Y si lo cotizamos para ti?</p>
+        <button onclick="scrollToCotiza('${escHTML(q)}')" style="
+          margin-top:4px; padding:10px 22px; border-radius:10px; border:none; cursor:pointer;
+          background:var(--gold-s); border:1px solid var(--gold-b);
+          color:var(--gold); font-size:13px; font-weight:600; font-family:'Poppins',sans-serif;
+          display:inline-flex; align-items:center; gap:7px;">
+          <i class='bi bi-chat-heart'></i> Cotizar este perfume
+        </button>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(p => cardHTML(p)).join('');
+};
+
+function escHTML(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function cardHTML(p) {
+  const dispClass = p.disponibilidad === 'en-stock' ? 'en-stock' : 'bajo-pedido';
+  const dispLabel = p.disponibilidad === 'en-stock' ? '✅ En Stock' : '🕐 Bajo Pedido';
+
+  const precios = Object.entries(TALLAS)
+    .filter(([k]) => p.precios?.[k] > 0)
+    .map(([k,lbl]) => `${lbl}: <strong>$${Number(p.precios[k]).toLocaleString()}</strong>`)
+    .join(' · ');
+
+  const imgContent = p.imagen
+    ? `<img src="${escHTML(p.imagen)}" alt="${escHTML(p.nombre)}" loading="lazy" width="240" height="240">`
+    : `<div class="card-img-placeholder"><i class="bi bi-droplet"></i></div>`;
+
+  const btnClass = p.disponibilidad === 'en-stock' ? '' : 'bajo-pedido';
+  const btnLabel = p.disponibilidad === 'en-stock' ? 'Comprar por WhatsApp' : 'Solicitar bajo pedido';
+  const btnIcon  = p.disponibilidad === 'en-stock' ? 'bi-whatsapp' : 'bi-clock';
+
+  return `
+  <div class="card" onclick='openModal(${JSON.stringify(p.id)})'>
+    <div class="card-img">${imgContent}</div>
+    <div class="card-body">
+      <div class="card-marca">${escHTML(p.marca || '')}</div>
+      <div class="card-nombre">${escHTML(p.nombre || '')}</div>
+      ${p.concentracion ? `<div class="card-conc">${escHTML(p.concentracion)}</div>` : ''}
+      <div class="card-stock">
+        <span class="badge-stock ${dispClass}">${dispLabel}</span>
+      </div>
+      ${precios ? `<div class="card-precios">${precios}</div>` : ''}
+      <button class="card-btn-wa ${btnClass}" onclick="event.stopPropagation();abrirWA(${JSON.stringify(p.id)})">
+        <i class="bi ${btnIcon}"></i> ${btnLabel}
+      </button>
+    </div>
+  </div>`;
+}
+
+// ── Modal ─────────────────────────────────────────────────
+window.openModal = function(id) {
+  current = allItems.find(p => p.id === id);
+  if (!current) return;
+  const p = current;
+
+  // imagen
+  const wrap = document.getElementById('m-img-wrap');
+  wrap.innerHTML = p.imagen
+    ? `<img src="${escHTML(p.imagen)}" alt="${escHTML(p.nombre)}" width="72" height="72">`
+    : `<div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>`;
+
+  document.getElementById('m-marca').textContent  = p.marca || '';
+  document.getElementById('m-nombre').textContent = p.nombre || '';
+
+  // badges
+  const badges = [];
+  if (p.concentracion) badges.push(p.concentracion);
+  if (p.genero)        badges.push(p.genero);
+  document.getElementById('m-badges').innerHTML =
+    badges.map(b => `<span class="modal-badge">${escHTML(b)}</span>`).join('');
+
+  // descripción
+  const descEl = document.getElementById('m-desc');
+  if (p.descripcion) {
+    descEl.textContent  = p.descripcion;
+    descEl.style.display = '';
+  } else { descEl.style.display = 'none'; }
+
+  // precios
+  const preciosWrap = document.getElementById('m-precios-wrap');
+  const preciosList = Object.entries(TALLAS)
+    .filter(([k]) => p.precios?.[k] > 0);
+  if (preciosList.length) {
+    document.getElementById('m-precios').innerHTML = preciosList.map(([k,lbl]) =>
+      `<div class="precio-pill">
+        <div class="size">${lbl}</div>
+        <div class="amt">$${Number(p.precios[k]).toLocaleString()}</div>
+      </div>`
+    ).join('');
+    preciosWrap.style.display = '';
+  } else { preciosWrap.style.display = 'none'; }
+
+  // tiempo bajo pedido
+  const tiempoEl = document.getElementById('m-tiempo');
+  if (p.disponibilidad === 'bajo-pedido' && p.tiempoEstimado) {
+    document.getElementById('m-tiempo-txt').textContent = `Tiempo estimado: ${p.tiempoEstimado}`;
+    tiempoEl.style.display = '';
+  } else { tiempoEl.style.display = 'none'; }
+
+  // botón WA
+  const btn = document.getElementById('m-btn-wa');
+  const txt = document.getElementById('m-btn-txt');
+  if (p.disponibilidad === 'bajo-pedido') {
+    btn.className = 'modal-wa-btn pedido';
+    txt.textContent = 'Solicitar bajo pedido';
+  } else {
+    btn.className = 'modal-wa-btn';
+    txt.textContent = 'Comprar por WhatsApp';
+  }
+
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+};
+
+window.closeModal = function(e) {
+  if (e && e.target !== document.getElementById('modal')) return;
+  document.getElementById('modal').classList.remove('open');
+  document.body.style.overflow = '';
+  current = null;
+};
+
+window.abrirWAModal = function() {
+  if (!current) return;
+  abrirWA(current.id);
+};
+
+window.abrirWA = function(id) {
+  const p = allItems.find(x => x.id === id);
+  if (!p) return;
+  const precios = Object.entries(TALLAS)
+    .filter(([k]) => p.precios?.[k] > 0)
+    .map(([k,lbl]) => `${lbl}: $${Number(p.precios[k]).toLocaleString()}`)
+    .join(', ');
+  const accion = p.disponibilidad === 'bajo-pedido' ? 'hacer un pedido de' : 'comprar';
+  const msg = `Hola! Me interesa ${accion} *${p.nombre}* de ${p.marca}${precios ? ` (${precios})` : ''}. ¿Está disponible? 🌸`;
+  window.open(`https://wa.me/${WA}?text=${encodeURIComponent(msg)}`, '_blank');
+};
+
+// ── Cotización ────────────────────────────────────────────
+window.scrollToCotiza = function(nombre = '') {
+  if (nombre) document.getElementById('cotiza-nombre').value = nombre;
+  document.getElementById('cotiza').scrollIntoView({ behavior:'smooth', block:'center' });
+  setTimeout(() => document.getElementById('cotiza-nombre').focus(), 600);
+};
+
+window.enviarCotizacion = function() {
+  const nombre = document.getElementById('cotiza-nombre').value.trim();
+  const marca  = document.getElementById('cotiza-marca').value.trim();
+  if (!nombre) {
+    document.getElementById('cotiza-nombre').focus();
+    return;
+  }
+  const msg = `Hola! Quiero cotizar el siguiente perfume completo:\n\n🌸 *Perfume:* ${nombre}${marca ? `\n🏷️ *Marca:* ${marca}` : ''}\n\n¿Lo tienen disponible o pueden conseguirlo?`;
+  window.open(`https://wa.me/${WA}?text=${encodeURIComponent(msg)}`, '_blank');
+};
+
+// Escape tecla
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('modal').classList.remove('open');
+    document.body.style.overflow = '';
+    current = null;
+  }
+});
+
+load();
+</script>
+</body>
+</html>

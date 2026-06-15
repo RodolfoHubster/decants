@@ -119,16 +119,42 @@
     }
     .logo-text .name  { font-size:15px; font-weight:600; color:var(--text); line-height:1.1; }
     .logo-text .sub   { font-size:10px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; }
+
     /* Right buttons */
     .header-right { display:flex; align-items:center; gap:8px; }
-    .btn-admin {
-      display:flex; align-items:center; gap:7px;
+
+    /* Botón FAQ */
+    .btn-faq {
+      display:flex; align-items:center; gap:6px;
+      padding:7px 13px; border-radius:9px;
+      background:rgba(255,255,255,.05); border:1px solid var(--border);
+      color:var(--muted); font-size:13px; font-weight:600;
+      transition:all .18s; white-space:nowrap;
+    }
+    .btn-faq:hover { background:rgba(255,255,255,.1); color:var(--text); border-color:rgba(255,255,255,.15); }
+    .btn-faq-text { display:none; }
+    @media(min-width:600px) { .btn-faq-text { display:inline; } }
+
+    /* Botón Perfumes Completos */
+    .btn-completos {
+      display:flex; align-items:center; gap:6px;
       padding:7px 13px; border-radius:9px;
       background:var(--gold-s); border:1px solid var(--gold-b);
       color:var(--gold); font-size:13px; font-weight:600;
+      transition:background .18s; white-space:nowrap;
+    }
+    .btn-completos:hover { background:rgba(201,168,76,.22); }
+    .btn-completos-text { display:none; }
+    @media(min-width:480px) { .btn-completos-text { display:inline; } }
+
+    .btn-admin {
+      display:flex; align-items:center; gap:7px;
+      padding:7px 13px; border-radius:9px;
+      background:rgba(255,255,255,.05); border:1px solid var(--border);
+      color:var(--muted); font-size:13px; font-weight:600;
       transition:background .18s;
     }
-    .btn-admin:hover { background:rgba(201,168,76,.22); }
+    .btn-admin:hover { background:rgba(255,255,255,.1); color:var(--text); }
     .btn-cart-header {
       position:relative; width:40px; height:40px;
       border-radius:10px;
@@ -156,9 +182,13 @@
     .btn-wa:hover { background:#1db954; transform:scale(1.03); }
     .btn-wa-text { display:none; }
     @media(min-width:480px) { .btn-wa-text { display:inline; } }
+
+    /* Ocultar labels en pantallas muy pequeñas */
     @media(max-width:360px) {
-      .btn-admin span { display:none; }
+      .btn-admin span, .btn-faq-text, .btn-completos-text { display:none; }
       .btn-admin { padding:8px 10px; }
+      .btn-faq   { padding:8px 10px; }
+      .btn-completos { padding:8px 10px; }
     }
 
     /* ══════════════════════════════════════════════════
@@ -636,14 +666,27 @@
       </div>
     </div>
     <div class="header-right">
+      <!-- FAQ -->
+      <a href="./faq.html" class="btn-faq" aria-label="Preguntas frecuentes">
+        <i class="bi bi-question-circle"></i>
+        <span class="btn-faq-text">FAQ</span>
+      </a>
+      <!-- Perfumes Completos -->
+      <a href="./perfumes-completos.html" class="btn-completos" aria-label="Ver perfumes completos">
+        <i class="bi bi-collection-fill"></i>
+        <span class="btn-completos-text">Perfumes</span>
+      </a>
+      <!-- Admin -->
       <a href="./login.html" id="btn-admin" class="btn-admin">
         <i class="bi bi-shield-lock"></i>
         <span id="btn-admin-label">Admin</span>
       </a>
+      <!-- Carrito -->
       <button class="btn-cart-header" onclick="toggleCart()" aria-label="Ver pedido">
         <i class="bi bi-bag"></i>
         <span id="cart-badge" class="cart-badge" style="display:none">0</span>
       </button>
+      <!-- WhatsApp -->
       <a href="https://wa.me/526648162623" target="_blank" rel="noopener" class="btn-wa" aria-label="WhatsApp">
         <i class="bi bi-whatsapp"></i>
         <span class="btn-wa-text">WhatsApp</span>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Fitoscents · Encargos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <link rel="stylesheet" href="../assets/css/perfumes.css">
+  <style>
+    .estado-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+    .estado-pendiente   {background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.3)}
+    .estado-buscando    {background:rgba(99,102,241,.12);color:#818cf8;border:1px solid rgba(99,102,241,.3)}
+    .estado-conseguido  {background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
+    .estado-avisado     {background:rgba(14,165,233,.12);color:#38bdf8;border:1px solid rgba(14,165,233,.3)}
+    .estado-entregado   {background:rgba(148,163,184,.12);color:#94a3b8;border:1px solid rgba(148,163,184,.3)}
+    .estado-cancelado   {background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+    .estado-select{background:transparent;border:none;color:inherit;font-size:11px;font-weight:600;cursor:pointer;padding:0}
+    .whatsapp-btn{background:rgba(37,211,102,.15);color:#25d366;border:1px solid rgba(37,211,102,.3);padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:background .2s}
+    .whatsapp-btn:hover{background:rgba(37,211,102,.28)}
+    .resumen-encargo{font-size:12px;color:var(--text-muted,#888)}
+    .sidebar-divider{height:1px;background:var(--border,rgba(255,255,255,.08));margin:8px 16px;list-style:none}
+    .sidebar-section-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted,#888);padding:4px 20px 2px;list-style:none}
+    .stats-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+    .stat-mini{background:var(--card-bg,rgba(255,255,255,.04));border:1px solid var(--border,rgba(255,255,255,.08));border-radius:10px;padding:12px 18px;display:flex;flex-direction:column;gap:2px;min-width:120px}
+    .stat-mini .val{font-size:22px;font-weight:700;color:var(--accent,#d4af37)}
+    .stat-mini .lbl{font-size:11px;color:var(--text-muted,#888)}
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-wrap"></div>
+  <div class="main-content">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
+        <span class="topbar-title">Encargos — Botellas Completas</span>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> Nuevo Encargo</button>
+    </div>
+    <div class="page-body">
+      <!-- Stats mini -->
+      <div class="stats-row">
+        <div class="stat-mini"><span class="val" id="s-pendientes">0</span><span class="lbl">Pendientes</span></div>
+        <div class="stat-mini"><span class="val" id="s-buscando">0</span><span class="lbl">Buscando</span></div>
+        <div class="stat-mini"><span class="val" id="s-conseguido">0</span><span class="lbl">Conseguidos</span></div>
+        <div class="stat-mini"><span class="val" id="s-avisado">0</span><span class="lbl">Avisados</span></div>
+        <div class="stat-mini"><span class="val" id="s-entregado">0</span><span class="lbl">Entregados</span></div>
+      </div>
+      <div class="filter-bar">
+        <div class="search-input-wrap"><i class="bi bi-search"></i><input class="form-control" id="search" placeholder="Buscar perfume o cliente..." oninput="renderTable()"></div>
+        <select class="form-control" style="max-width:170px" id="f-estado" onchange="renderTable()">
+          <option value="">Todos los estados</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="buscando">Buscando proveedor</option>
+          <option value="conseguido">Conseguido</option>
+          <option value="avisado">Avisado al cliente</option>
+          <option value="entregado">Entregado</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
+      </div>
+      <div class="card">
+        <div class="card-header"><h5>Lista de Encargos</h5><span class="badge badge-muted" id="count-label">0 encargos</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Perfume</th>
+                <th>Marca</th>
+                <th>Tamaño</th>
+                <th>Cliente</th>
+                <th>Contacto</th>
+                <th>Precio</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVO ENCARGO -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box" style="max-width:600px">
+    <div class="modal-header">
+      <h4 id="modal-title">Nuevo Encargo</h4>
+      <button class="btn-icon" onclick="closeModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="e-id">
+      <div class="form-row">
+        <div class="form-group"><label>Perfume *</label><input class="form-control" id="e-perfume" placeholder="Nombre del perfume..."></div>
+        <div class="form-group"><label>Marca *</label><input class="form-control" id="e-marca" placeholder="Dior, Chanel..."></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tamaño *</label>
+          <select class="form-control" id="e-tamano">
+            <option value="">Selecciona</option>
+            <option>30 ml</option><option>50 ml</option><option>75 ml</option>
+            <option>100 ml</option><option>150 ml</option><option>200 ml</option>
+            <option>Otro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Concentración</label>
+          <select class="form-control" id="e-concentracion">
+            <option value="">—</option>
+            <option>EDP</option><option>EDT</option><option>EDC</option><option>Parfum</option><option>Oil</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Nombre del cliente *</label><input class="form-control" id="e-cliente" placeholder="Nombre completo..."></div>
+        <div class="form-group"><label>Contacto (WhatsApp)</label><input class="form-control" id="e-contacto" placeholder="+52 999 000 0000"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Precio acordado (MXN)</label>
+          <input class="form-control" type="number" id="e-precio" min="0" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>Estado</label>
+          <select class="form-control" id="e-estado">
+            <option value="pendiente">⏳ Pendiente</option>
+            <option value="buscando">🔍 Buscando proveedor</option>
+            <option value="conseguido">✅ Conseguido</option>
+            <option value="avisado">📱 Avisado al cliente</option>
+            <option value="entregado">📦 Entregado</option>
+            <option value="cancelado">❌ Cancelado</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Notas internas</label><textarea class="form-control" id="e-notas" rows="2" placeholder="Proveedor, link, detalles del encargo..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save" onclick="save()"><i class="bi bi-check2"></i> Guardar Encargo</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="../assets/js/encargos.js"></script>
+</body>
+</html>

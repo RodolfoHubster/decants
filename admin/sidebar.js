@@ -17,9 +17,12 @@ export function renderSidebar(active) {
       <li><a href="./notas.html"      class="${active==='notas'      ?'active':''}" ><i class="bi bi-flower1"></i> Notas Olfativas</a></li>
       <li><a href="./pedidos.html"    class="${active==='pedidos'    ?'active':''}" ><i class="bi bi-bag"></i> Pedidos</a></li>
       <li><a href="./ventas.html"     class="${active==='ventas'     ?'active':''}" ><i class="bi bi-cash-stack"></i> Ventas</a></li>
-      <li><a href="./novedades.html" class="${active==='novedades' ?'active':''}"   ><i class="bi bi-stars"></i> Novedades
-</a></li>
-      </ul>
+      <li><a href="./novedades.html"  class="${active==='novedades'  ?'active':''}" ><i class="bi bi-stars"></i> Novedades</a></li>
+      <li class="sidebar-divider"></li>
+      <li class="sidebar-section-label">Botellas Completas</li>
+      <li><a href="./perfumes-completos.html" class="${active==='perfumes-completos' ?'active':''}" ><i class="bi bi-bag-heart"></i> Catálogo Completos</a></li>
+      <li><a href="./encargos.html"           class="${active==='encargos'           ?'active':''}" ><i class="bi bi-clock-history"></i> Encargos</a></li>
+    </ul>
     <div class="sidebar-footer">
       <a href="../index.html" class="sidebar-link-index"><i class="bi bi-shop"></i> Ver tienda</a>
       <button class="btn-logout" id="btn-logout"><i class="bi bi-box-arrow-right"></i> Cerrar sesion</button>

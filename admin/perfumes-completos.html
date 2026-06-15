@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Fitoscents · Botellas Completas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <link rel="stylesheet" href="../assets/css/perfumes.css">
+  <style>
+    .concentracion-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:var(--accent-subtle,rgba(212,175,55,.15));color:var(--accent,#d4af37);border:1px solid var(--accent-border,rgba(212,175,55,.3))}
+    .stock-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+    .stock-badge.en-stock{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
+    .stock-badge.bajo-pedido{background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.3)}
+    .stock-badge.agotado{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+    .precios-completos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:4px}
+    .precio-completo-item{display:flex;flex-direction:column;gap:4px}
+    .precio-completo-item label{font-size:11px;color:var(--text-muted,#888);font-weight:500}
+    .sidebar-divider{height:1px;background:var(--border,rgba(255,255,255,.08));margin:8px 16px;list-style:none}
+    .sidebar-section-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted,#888);padding:4px 20px 2px;list-style:none}
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-wrap"></div>
+  <div class="main-content">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
+        <span class="topbar-title">Botellas Completas</span>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> Nuevo Perfume</button>
+    </div>
+    <div class="page-body">
+      <div class="filter-bar">
+        <div class="search-input-wrap"><i class="bi bi-search"></i><input class="form-control" id="search" placeholder="Buscar perfume o marca..." oninput="renderTable()"></div>
+        <select class="form-control" style="max-width:160px" id="f-genero" onchange="renderTable()"><option value="">Todos</option><option>Caballero</option><option>Dama</option><option>Unisex</option></select>
+        <select class="form-control" style="max-width:180px" id="f-concentracion" onchange="renderTable()">
+          <option value="">Todas las concentraciones</option>
+          <option>EDP</option><option>EDT</option><option>EDC</option><option>Parfum</option><option>Oil</option>
+        </select>
+        <select class="form-control" style="max-width:160px" id="f-disponibilidad" onchange="renderTable()">
+          <option value="">Toda disponibilidad</option>
+          <option value="en-stock">En Stock</option>
+          <option value="bajo-pedido">Bajo Pedido</option>
+          <option value="agotado">Agotado</option>
+        </select>
+      </div>
+      <div class="card">
+        <div class="card-header"><h5>Catálogo de Botellas Completas</h5><span class="badge badge-muted" id="count-label">0 perfumes</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Imagen</th>
+                <th>Nombre</th>
+                <th>Marca</th>
+                <th>Concentración</th>
+                <th>Género</th>
+                <th>Disponibilidad</th>
+                <th>Precios</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box" style="max-width:680px">
+    <div class="modal-header">
+      <h4 id="modal-title">Nuevo Perfume Completo</h4>
+      <button class="btn-icon" onclick="closeModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="p-id">
+      <div class="form-row">
+        <div class="form-group"><label>Nombre *</label><input class="form-control" id="p-nombre" placeholder="Sauvage, Bleu de Chanel..."></div>
+        <div class="form-group"><label>Marca *</label><input class="form-control" id="p-marca" placeholder="Dior, Chanel, YSL..."></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Concentración *</label>
+          <select class="form-control" id="p-concentracion">
+            <option value="">Selecciona</option>
+            <option>EDP</option><option>EDT</option><option>EDC</option><option>Parfum</option><option>Oil</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Género *</label>
+          <select class="form-control" id="p-genero">
+            <option value="">Selecciona</option>
+            <option>Caballero</option><option>Dama</option><option>Unisex</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Disponibilidad *</label>
+          <select class="form-control" id="p-disponibilidad" onchange="toggleTiempo()">
+            <option value="en-stock">✅ En Stock</option>
+            <option value="bajo-pedido">🕐 Bajo Pedido</option>
+            <option value="agotado">❌ Agotado</option>
+          </select>
+        </div>
+        <div class="form-group" id="wrap-tiempo">
+          <label>Tiempo estimado</label>
+          <input class="form-control" id="p-tiempo" placeholder="ej. 7-10 días hábiles">
+        </div>
+      </div>
+      <div class="form-group"><label>Descripción / Notas olfativas</label><textarea class="form-control" id="p-desc" rows="2" placeholder="Notas de vainilla, madera, ámbar..."></textarea></div>
+      <div class="form-group">
+        <label>Imagen</label>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button type="button" class="btn btn-outline btn-sm" id="btn-url" onclick="setMode('url')"><i class="bi bi-link-45deg"></i> URL</button>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-file" onclick="setMode('file')"><i class="bi bi-upload"></i> Subir</button>
+        </div>
+        <div id="sec-url"><input class="form-control" id="p-img-url" placeholder="https://..." oninput="previewUrl()"></div>
+        <div id="sec-file" style="display:none">
+          <input type="file" class="form-control" id="p-img-file" accept="image/*" onchange="previewFile()">
+          <p style="font-size:11px;color:#666;margin-top:4px"><i class="bi bi-cloud-upload"></i> La imagen se subirá a Cloudinary al guardar.</p>
+        </div>
+        <div id="preview-wrap" class="img-preview-wrap" style="display:none;margin-top:10px"><img id="preview-img" src="" alt=""></div>
+      </div>
+      <div class="form-group">
+        <label>Precios por presentación (MXN) — deja en 0 si no aplica</label>
+        <div class="precios-completos-grid">
+          <div class="precio-completo-item"><label>30 ml</label><input class="form-control" type="number" id="px30" min="0" placeholder="0"></div>
+          <div class="precio-completo-item"><label>50 ml</label><input class="form-control" type="number" id="px50" min="0" placeholder="0"></div>
+          <div class="precio-completo-item"><label>75 ml</label><input class="form-control" type="number" id="px75" min="0" placeholder="0"></div>
+          <div class="precio-completo-item"><label>100 ml</label><input class="form-control" type="number" id="px100" min="0" placeholder="0"></div>
+          <div class="precio-completo-item"><label>150 ml</label><input class="form-control" type="number" id="px150" min="0" placeholder="0"></div>
+          <div class="precio-completo-item"><label>200 ml</label><input class="form-control" type="number" id="px200" min="0" placeholder="0"></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="p-activo" checked style="width:16px;height:16px;accent-color:var(--accent)">
+          Visible en la tienda pública
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save" onclick="save()"><i class="bi bi-check2"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="../assets/js/perfumes-completos.js"></script>
+</body>
+</html>
