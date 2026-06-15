@@ -5,6 +5,7 @@ import { addItem, decrementItem, removeItem, clearCart as pureCleart,
          saveCart, loadCart, clearSavedCart, cartExpiresInMinutes }
   from './cart.js';
 import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug } from './slug.js';
+import { imgCard, imgModal, imgCart, imgOg } from './cloudinary.js';
 
 // ── Tipos fijos (chips del panel — mapean al campo `categoria` del perfume) ─
 const TIPOS_PERMITIDOS = [
@@ -13,7 +14,7 @@ const TIPOS_PERMITIDOS = [
   { nombre: 'Nicho',     emoji: '💎' },
 ];
 
-// ── Auth ──────────────────────────────────────────
+// ── Auth ───────────────────────────────────────────────
 const adminBtn = document.getElementById('btn-admin');
 onAuthStateChanged(auth, user => {
   if (adminBtn) adminBtn.href = user ? './admin/dashboard.html' : './login.html';
@@ -21,7 +22,7 @@ onAuthStateChanged(auth, user => {
   if (lbl) lbl.textContent = user ? 'Dashboard' : 'Admin';
 });
 
-// ── Estado global ─────────────────────────────────
+// ── Estado global ────────────────────────────────────────────
 const PAGE_SIZE = 10;
 let all = [], gF = '', modalData = null;
 let currentPage = 1, filtered = [];
@@ -34,7 +35,7 @@ let activeFilters = {
   marcas: []
 };
 
-// ── Undo stack ────────────────────────────────────
+// ── Undo stack ────────────────────────────────────────────
 let undoStack = [];
 let undoTimer = null;
 const UNDO_TIMEOUT = 5000;
@@ -71,7 +72,7 @@ window.undoDelete = () => {
   showToast('↩ Acción deshecha');
 };
 
-// ── Helpers ───────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────
 function minPrecio(p) {
   const vals = Object.values(p.precios || {}).map(Number).filter(v => v > 0);
   return vals.length ? Math.min(...vals) : 9999;
@@ -84,7 +85,7 @@ window.syncMobileSearch = () => {
   renderGrid();
 };
 
-// ── Meta tags OG dinámicos ────────────────────────
+// ── Meta tags OG dinámicos ──────────────────────────────────
 function setMetaTags({ title, description, image, url }) {
   document.title = title;
   const og = (prop, val) => { let el = document.querySelector(`meta[property="${prop}"]`); if (!el) { el = document.createElement('meta'); el.setAttribute('property', prop); document.head.appendChild(el); } el.setAttribute('content', val); };
@@ -107,7 +108,7 @@ function resetMetaTags() {
   });
 }
 
-// ── Skeletons ─────────────────────────────────────
+// ── Skeletons ───────────────────────────────────────────────
 function showSkeletons() {
   const g = document.getElementById('grid');
   if (g) g.innerHTML = Array(8).fill(`
@@ -121,7 +122,7 @@ function showSkeletons() {
     </div>`).join('');
 }
 
-// ── Load data ─────────────────────────────────────
+// ── Load data ───────────────────────────────────────────────
 async function load() {
   showSkeletons();
 
@@ -160,7 +161,7 @@ async function load() {
   }
 }
 
-// ── Poblar los 3 paneles dinámicos ──────────────────
+// ── Poblar los 3 paneles dinámicos ────────────────────────────────
 function buildFilterPanelDynamic(tiposData, famData) {
   // — Tipos de perfume (Diseñador / Árabe / Nicho → filtran por p.categoria)
   const tiposContainer = document.getElementById('filter-tipos-list');
@@ -203,7 +204,7 @@ function buildFilterPanelDynamic(tiposData, famData) {
   }
 }
 
-// ── Panel filtros hamburguesa ─────────────────────
+// ── Panel filtros hamburguesa ─────────────────────────────────
 window.toggleFilterPanel = () => {
   const panel   = document.getElementById('filter-panel');
   const overlay = document.getElementById('filter-overlay');
@@ -281,16 +282,18 @@ window.addEventListener('hashchange', () => {
   }
 });
 
-// ── Card HTML ─────────────────────────────────────
+// ── Card HTML ───────────────────────────────────────────────
 function cardHTML(p) {
   const pr    = p.precios || {};
   const sizes = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
   const pills = sizes.map(([k, v]) => `<div class="cpill">${k}ml — $${v}</div>`).join('');
   const units = cart.filter(i => i.id === p.id).reduce((s, i) => s + i.qty, 0);
+  // ─ imgCard: 400x400, WebP automático, q_auto:good ─
+  const src = imgCard(p.imagen);
   return `<div class="pcard" onclick="openModal('${p.id}')" data-id="${p.id}">
     <div class="card-img">
-      ${p.imagen
-        ? `<img src="${p.imagen}" alt="${p.nombre}" loading="lazy" width="400" height="300">`
+      ${src
+        ? `<img src="${src}" alt="${p.nombre}" loading="lazy" width="400" height="400" decoding="async">`
         : '<div class="card-no-img"><i class="bi bi-droplet"></i></div>'}
       ${units > 0 ? `<div class="card-in-cart"><i class="bi bi-bag-check-fill"></i>${units > 1 ? ` <span>${units}</span>` : ''}</div>` : ''}
     </div>
@@ -302,7 +305,7 @@ function cardHTML(p) {
   </div>`;
 }
 
-// ── Render grid ───────────────────────────────────
+// ── Render grid ───────────────────────────────────────────────
 window.renderGrid = () => {
   currentPage = 1;
   const qEl   = document.getElementById('q');
@@ -318,7 +321,6 @@ window.renderGrid = () => {
     if (q && !p.nombre.toLowerCase().includes(q) && !(p.marca || '').toLowerCase().includes(q)) return false;
     if (gF && p.genero !== gF) return false;
     if (activeFilters.familias.length && !activeFilters.familias.includes(p.familia)) return false;
-    // ← CLAVE: los chips Diseñador/Árabe/Nicho filtran por p.categoria (no p.tipo)
     if (activeFilters.tipos.length && !activeFilters.tipos.some(
       t => normalize(t) === normalize(p.categoria || '')
     )) return false;
@@ -397,7 +399,7 @@ window.setG = btn => {
 
 window.clearFilters = () => { clearAllFilters(); };
 
-// ── Modal ─────────────────────────────────────────
+// ── Modal ───────────────────────────────────────────────
 window.openModal = (id, pushHash = true) => {
   const p = all.find(x => x.id === id);
   if (!p) return;
@@ -406,15 +408,19 @@ window.openModal = (id, pushHash = true) => {
 
   if (pushHash) window.location.hash = '/perfumes/' + perfumeURL(p).replace('#/perfumes/', '');
   const precio = minPrecio(p);
+
+  // ─ imgOg: 1200x630 para Open Graph / compartir en redes ─
   setMetaTags({
     title:       `${p.nombre}${p.marca ? ' · ' + p.marca : ''} — Fitoscents`,
     description: `Decant original de ${p.nombre}${p.marca ? ' de ' + p.marca : ''} desde $${precio} MXN. ${p.descripcion || ''}`.trim(),
-    image:       p.imagen || '',
+    image:       imgOg(p.imagen) || '',
     url:         perfumeFullURL(p)
   });
 
-  document.getElementById('modal-img').innerHTML = p.imagen
-    ? `<img src="${p.imagen}" alt="${p.nombre}">`
+  // ─ imgModal: 800x800, q_auto:best para el detalle ─
+  const modalSrc = imgModal(p.imagen);
+  document.getElementById('modal-img').innerHTML = modalSrc
+    ? `<img src="${modalSrc}" alt="${p.nombre}" width="800" height="800" decoding="async">`
     : '<div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>';
   document.getElementById('modal-nombre').textContent = p.nombre;
   document.getElementById('modal-marca').textContent  = p.marca || '';
@@ -509,7 +515,7 @@ window.pedirModal = () => {
   window.open(`https://wa.me/526648162623?text=${encodeURIComponent(msg)}`, '_blank');
 };
 
-// ── CARRITO ───────────────────────────────────────
+// ── CARRITO ───────────────────────────────────────────────
 window.addToCart = () => {
   if (!modalData) return;
   const sel = document.querySelector('.mpill.sel');
@@ -519,7 +525,8 @@ window.addToCart = () => {
     id:     modalData.id,
     nombre: modalData.nombre,
     marca:  modalData.marca  || '',
-    imagen: modalData.imagen || '',
+    // ─ imgCart: 80x80 para el drawer, mínimo peso ─
+    imagen: imgCart(modalData.imagen) || '',
     size:   sel.dataset.size,
     price:  +sel.dataset.price,
     qty:    1,
@@ -642,10 +649,11 @@ function renderCartDrawer() {
     list.innerHTML = ''; if (empty) empty.style.display = 'flex'; if (foot) foot.style.display = 'none'; return;
   }
   if (empty) empty.style.display = 'none'; if (foot) foot.style.display = 'flex';
+  // Nota: item.imagen ya guarda la URL con transformación imgCart (80x80) aplicada al agregar
   list.innerHTML = cart.map(item => `
     <div class="cart-item" data-key="${item.key}">
       <div class="cart-item-img">
-        ${item.imagen ? `<img src="${item.imagen}" alt="${item.nombre}" loading="lazy">` : '<div class="cart-item-no-img"><i class="bi bi-droplet"></i></div>'}
+        ${item.imagen ? `<img src="${item.imagen}" alt="${item.nombre}" loading="lazy" width="80" height="80" decoding="async">` : '<div class="cart-item-no-img"><i class="bi bi-droplet"></i></div>'}
       </div>
       <div class="cart-item-info">
         <div class="cart-item-marca">${item.marca}</div>
