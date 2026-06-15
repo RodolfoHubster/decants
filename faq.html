@@ -30,6 +30,7 @@
       --r:12px;
       --r-lg:20px;
       --ease:cubic-bezier(.16,1,.3,1);
+      --max-w:1200px;
     }
     html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
     body{
@@ -70,8 +71,13 @@
       backdrop-filter:blur(16px);
       -webkit-backdrop-filter:blur(16px);
       border-bottom:1px solid var(--gold-b);
-      padding:0 24px;
       height:62px;
+    }
+    .header-inner{
+      max-width:var(--max-w);
+      margin:0 auto;
+      padding:0 24px;
+      height:100%;
       display:flex;align-items:center;justify-content:space-between;
     }
     .logo{
@@ -146,9 +152,7 @@
       opacity:0;transform:translateY(20px);
       animation:fadeUp .7s var(--ease) .25s forwards;
     }
-    .hero h1 em{
-      font-style:italic;color:var(--gold);
-    }
+    .hero h1 em{font-style:italic;color:var(--gold);}
     .hero p{
       max-width:540px;margin:0 auto 40px;
       font-size:16px;color:var(--muted);line-height:1.75;
@@ -167,33 +171,47 @@
     }
     .hero-cta:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 12px 40px rgba(37,211,102,.35)}
     .hero-cta i{font-size:20px}
-    @keyframes fadeUp{
-      to{opacity:1;transform:translateY(0)}
-    }
+    @keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
 
     /* ── Stats strip ─────────────────────────────────── */
     .stats-strip{
       position:relative;z-index:1;
-      display:flex;justify-content:center;gap:0;
       border-top:1px solid var(--border);
       border-bottom:1px solid var(--border);
       background:rgba(24,22,18,.6);
-      overflow-x:auto;scrollbar-width:none;
     }
-    .stats-strip::-webkit-scrollbar{display:none}
+    .stats-inner{
+      max-width:var(--max-w);
+      margin:0 auto;
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+    }
     .stat-item{
-      flex:1;min-width:140px;
-      padding:24px 20px;
+      padding:28px 20px;
       text-align:center;
       border-right:1px solid var(--border);
     }
     .stat-item:last-child{border-right:none}
     .stat-num{
-      font-size:26px;font-weight:700;color:var(--gold);
+      font-size:clamp(22px,3vw,32px);
+      font-weight:700;color:var(--gold);
       font-family:'Playfair Display',serif;
       display:block;
+      line-height:1.1;
     }
-    .stat-lbl{font-size:12px;color:var(--muted);margin-top:4px;display:block}
+    .stat-lbl{
+      font-size:12px;color:var(--muted);
+      margin-top:6px;display:block;
+    }
+    /* Responsive: 2 columnas en móvil */
+    @media(max-width:560px){
+      .stats-inner{
+        grid-template-columns:repeat(2,1fr);
+      }
+      .stat-item:nth-child(2){border-right:none}
+      .stat-item:nth-child(1),
+      .stat-item:nth-child(2){border-bottom:1px solid var(--border)}
+    }
 
     /* ── Content wrapper ─────────────────────────────── */
     .content{
@@ -243,7 +261,6 @@
       margin-bottom:10px;
       overflow:hidden;
       transition:border-color .25s;
-      /* reveal animation */
       opacity:0;
       transform:translateY(18px);
     }
@@ -280,9 +297,7 @@
       margin-top:1px;
       transition:background .2s;
     }
-    .faq-item.open .faq-q-num{
-      background:var(--gold);color:#000;
-    }
+    .faq-item.open .faq-q-num{background:var(--gold);color:#000;}
     .faq-chevron{
       flex-shrink:0;
       width:28px;height:28px;border-radius:8px;
@@ -302,12 +317,8 @@
       grid-template-rows:0fr;
       transition:grid-template-rows .4s var(--ease);
     }
-    .faq-item.open .faq-body{
-      grid-template-rows:1fr;
-    }
-    .faq-inner{
-      overflow:hidden;
-    }
+    .faq-item.open .faq-body{grid-template-rows:1fr;}
+    .faq-inner{overflow:hidden;}
     .faq-answer{
       padding:0 20px 20px 56px;
       font-size:14px;color:var(--muted);
@@ -317,9 +328,7 @@
     .faq-answer ul{
       list-style:none;margin-top:12px;display:flex;flex-direction:column;gap:8px;
     }
-    .faq-answer ul li{
-      display:flex;align-items:flex-start;gap:8px;
-    }
+    .faq-answer ul li{display:flex;align-items:flex-start;gap:8px;}
     .faq-answer ul li::before{
       content:'✦';color:var(--gold);font-size:10px;margin-top:4px;flex-shrink:0;
     }
@@ -367,13 +376,8 @@
       letter-spacing:.1em;text-transform:uppercase;
       margin-bottom:6px;
     }
-    .process-title{
-      font-size:14px;font-weight:600;color:var(--text);
-      margin-bottom:8px;
-    }
-    .process-desc{
-      font-size:12.5px;color:var(--muted);line-height:1.7;
-    }
+    .process-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;}
+    .process-desc{font-size:12.5px;color:var(--muted);line-height:1.7;}
 
     /* ── CTA final ───────────────────────────────────── */
     .cta-block{
@@ -463,10 +467,8 @@
       50%{box-shadow:0 6px 32px rgba(37,211,102,.55)}
     }
 
-    /* ── Scroll reveal mixin ─────────────────────────── */
-    .reveal{
-      opacity:0;transform:translateY(18px);
-    }
+    /* ── Scroll reveal ─────────────────────────────── */
+    .reveal{opacity:0;transform:translateY(18px);}
     .reveal.visible{
       opacity:1;transform:translateY(0);
       transition:opacity .55s var(--ease),transform .55s var(--ease);
@@ -480,25 +482,27 @@
 
 <!-- ── HEADER ── -->
 <header>
-  <a href="./index.html" class="logo" aria-label="Fitoscents inicio">
-    <div class="logo-mark">FS</div>
-    <div>
-      <div class="logo-name">Fitoscents</div>
-      <div class="logo-sub">Decants</div>
-    </div>
-  </a>
-  <nav class="header-nav" aria-label="Navegación principal">
-    <a href="./index.html" class="nav-link">Catálogo</a>
-    <a href="./faq.html" class="nav-link active">FAQ</a>
-    <a
-      href="https://wa.me/526648162623?text=Hola%20Fitoscents!%20Tengo%20una%20pregunta%20sobre%20sus%20decants%20%F0%9F%8C%B8"
-      target="_blank" rel="noopener"
-      class="btn-wa-nav"
-      aria-label="Contactar por WhatsApp">
-      <i class="bi bi-whatsapp"></i>
-      <span>WhatsApp</span>
+  <div class="header-inner">
+    <a href="./index.html" class="logo" aria-label="Fitoscents inicio">
+      <div class="logo-mark">FS</div>
+      <div>
+        <div class="logo-name">Fitoscents</div>
+        <div class="logo-sub">Decants</div>
+      </div>
     </a>
-  </nav>
+    <nav class="header-nav" aria-label="Navegación principal">
+      <a href="./index.html" class="nav-link">Catálogo</a>
+      <a href="./faq.html" class="nav-link active">FAQ</a>
+      <a
+        href="https://wa.me/526648162623?text=Hola%20Fitoscents!%20Tengo%20una%20pregunta%20sobre%20sus%20decants%20%F0%9F%8C%B8"
+        target="_blank" rel="noopener"
+        class="btn-wa-nav"
+        aria-label="Contactar por WhatsApp">
+        <i class="bi bi-whatsapp"></i>
+        <span>WhatsApp</span>
+      </a>
+    </nav>
+  </div>
 </header>
 
 <!-- ── HERO ── -->
@@ -522,21 +526,23 @@
 
 <!-- ── STATS STRIP ── -->
 <div class="stats-strip" role="region" aria-label="Estadísticas Fitoscents">
-  <div class="stat-item">
-    <span class="stat-num" data-target="100">0</span>
-    <span class="stat-lbl">Originales</span>
-  </div>
-  <div class="stat-item">
-    <span class="stat-num" data-target="2">0</span>
-    <span class="stat-lbl">mínimo</span>
-  </div>
-  <div class="stat-item">
-    <span class="stat-num" data-target="48">0</span>
-    <span class="stat-lbl">entrega local</span>
-  </div>
-  <div class="stat-item">
-    <span class="stat-num" data-target="200">0</span>
-    <span class="stat-lbl">fragancias</span>
+  <div class="stats-inner">
+    <div class="stat-item">
+      <span class="stat-num" data-target="100">0</span>
+      <span class="stat-lbl">% Originales</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num" data-target="2">0</span>
+      <span class="stat-lbl">ml mínimo</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num" data-target="48">0</span>
+      <span class="stat-lbl">h entrega local</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num" data-target="200">0</span>
+      <span class="stat-lbl">+ fragancias</span>
+    </div>
   </div>
 </div>
 
@@ -906,12 +912,10 @@ document.querySelectorAll('.faq-q').forEach(btn => {
   btn.addEventListener('click', () => {
     const item = btn.closest('.faq-item');
     const isOpen = item.classList.contains('open');
-    // Cerrar todos
     document.querySelectorAll('.faq-item.open').forEach(el => {
       el.classList.remove('open');
       el.querySelector('.faq-q').setAttribute('aria-expanded','false');
     });
-    // Abrir si estaba cerrado
     if(!isOpen){
       item.classList.add('open');
       btn.setAttribute('aria-expanded','true');
@@ -924,9 +928,8 @@ const revealEls = document.querySelectorAll(
   '.reveal,.faq-item,.process-card,.cta-block'
 );
 const io = new IntersectionObserver((entries) => {
-  entries.forEach((e, i) => {
+  entries.forEach((e) => {
     if(e.isIntersecting){
-      // pequeño stagger por índice
       const delay = (Array.from(revealEls).indexOf(e.target) % 4) * 80;
       setTimeout(() => e.target.classList.add('visible'), delay);
       io.unobserve(e.target);
@@ -952,7 +955,6 @@ const statsIo = new IntersectionObserver((entries) => {
       const targets = document.querySelectorAll('[data-target]');
       targets.forEach(el => {
         const t = +el.dataset.target;
-        const suffix = el.parentElement.querySelector('.stat-lbl')?.textContent.includes('%') ? '%' : (t===2?'ml':(t===48?'h':'+'));
         animateCounter(el, t, t===100?'%':(t===2?'ml+':(t===48?'h':'+')));
       });
       statsIo.disconnect();
