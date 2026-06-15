@@ -70,13 +70,18 @@
       backdrop-filter:blur(16px);
       -webkit-backdrop-filter:blur(16px);
       border-bottom:1px solid var(--gold-b);
-      padding:0 24px;
       height:62px;
-      display:flex;align-items:center;justify-content:space-between;
+      display:flex;align-items:center;
+    }
+    .header-inner{
+      width:100%;max-width:1200px;
+      margin:0 auto;
+      padding:0 16px;
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
     }
     .logo{
       display:flex;align-items:center;gap:10px;
-      text-decoration:none;
+      text-decoration:none;flex-shrink:0;
     }
     .logo-mark{
       width:36px;height:36px;border-radius:50%;
@@ -85,7 +90,7 @@
       font-weight:700;font-size:12px;color:#000;flex-shrink:0;
       letter-spacing:.03em;
     }
-    .logo-name{font-size:15px;font-weight:600;color:var(--text)}
+    .logo-name{font-size:15px;font-weight:600;color:var(--text);line-height:1.1}
     .logo-sub{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
     .header-nav{
       display:flex;gap:8px;align-items:center;
@@ -243,7 +248,6 @@
       margin-bottom:10px;
       overflow:hidden;
       transition:border-color .25s;
-      /* reveal animation */
       opacity:0;
       transform:translateY(18px);
     }
@@ -463,10 +467,8 @@
       50%{box-shadow:0 6px 32px rgba(37,211,102,.55)}
     }
 
-    /* ── Scroll reveal mixin ─────────────────────────── */
-    .reveal{
-      opacity:0;transform:translateY(18px);
-    }
+    /* ── Scroll reveal ─────────────────────────────── */
+    .reveal{opacity:0;transform:translateY(18px)}
     .reveal.visible{
       opacity:1;transform:translateY(0);
       transition:opacity .55s var(--ease),transform .55s var(--ease);
@@ -480,25 +482,27 @@
 
 <!-- ── HEADER ── -->
 <header>
-  <a href="./index.html" class="logo" aria-label="Fitoscents inicio">
-    <div class="logo-mark">FS</div>
-    <div>
-      <div class="logo-name">Fitoscents</div>
-      <div class="logo-sub">Decants</div>
-    </div>
-  </a>
-  <nav class="header-nav" aria-label="Navegación principal">
-    <a href="./index.html" class="nav-link">Catálogo</a>
-    <a href="./faq.html" class="nav-link active">FAQ</a>
-    <a
-      href="https://wa.me/526648162623?text=Hola%20Fitoscents!%20Tengo%20una%20pregunta%20sobre%20sus%20decants%20%F0%9F%8C%B8"
-      target="_blank" rel="noopener"
-      class="btn-wa-nav"
-      aria-label="Contactar por WhatsApp">
-      <i class="bi bi-whatsapp"></i>
-      <span>WhatsApp</span>
+  <div class="header-inner">
+    <a href="./index.html" class="logo" aria-label="Fitoscents inicio">
+      <div class="logo-mark">FS</div>
+      <div>
+        <div class="logo-name">Fitoscents</div>
+        <div class="logo-sub">Decants</div>
+      </div>
     </a>
-  </nav>
+    <nav class="header-nav" aria-label="Navegación principal">
+      <a href="./index.html" class="nav-link">Catálogo</a>
+      <a href="./faq.html" class="nav-link active">FAQ</a>
+      <a
+        href="https://wa.me/526648162623?text=Hola%20Fitoscents!%20Tengo%20una%20pregunta%20sobre%20sus%20decants%20%F0%9F%8C%B8"
+        target="_blank" rel="noopener"
+        class="btn-wa-nav"
+        aria-label="Contactar por WhatsApp">
+        <i class="bi bi-whatsapp"></i>
+        <span>WhatsApp</span>
+      </a>
+    </nav>
+  </div>
 </header>
 
 <!-- ── HERO ── -->
@@ -882,7 +886,6 @@
 </a>
 
 <script>
-// ── Partículas flotantes ──────────────────────────────────────────────────
 (function(){
   const bg = document.getElementById('particles-bg');
   const N = 18;
@@ -901,17 +904,14 @@
   }
 })();
 
-// ── Acordeón FAQ ─────────────────────────────────────────────────────────
 document.querySelectorAll('.faq-q').forEach(btn => {
   btn.addEventListener('click', () => {
     const item = btn.closest('.faq-item');
     const isOpen = item.classList.contains('open');
-    // Cerrar todos
     document.querySelectorAll('.faq-item.open').forEach(el => {
       el.classList.remove('open');
       el.querySelector('.faq-q').setAttribute('aria-expanded','false');
     });
-    // Abrir si estaba cerrado
     if(!isOpen){
       item.classList.add('open');
       btn.setAttribute('aria-expanded','true');
@@ -919,14 +919,10 @@ document.querySelectorAll('.faq-q').forEach(btn => {
   });
 });
 
-// ── Scroll reveal ─────────────────────────────────────────────────────────
-const revealEls = document.querySelectorAll(
-  '.reveal,.faq-item,.process-card,.cta-block'
-);
+const revealEls = document.querySelectorAll('.reveal,.faq-item,.process-card,.cta-block');
 const io = new IntersectionObserver((entries) => {
-  entries.forEach((e, i) => {
+  entries.forEach((e) => {
     if(e.isIntersecting){
-      // pequeño stagger por índice
       const delay = (Array.from(revealEls).indexOf(e.target) % 4) * 80;
       setTimeout(() => e.target.classList.add('visible'), delay);
       io.unobserve(e.target);
@@ -935,10 +931,10 @@ const io = new IntersectionObserver((entries) => {
 },{ threshold: 0.1, rootMargin:'0px 0px -40px 0px'});
 revealEls.forEach(el => io.observe(el));
 
-// ── Counter animado (stats) ───────────────────────────────────────────────
-function animateCounter(el, target, suffix='') {
+function animateCounter(el, target) {
   const duration = 1400;
   const start = performance.now();
+  const suffix = target===100?'%':(target===2?'ml+':(target===48?'h':'+'));
   (function tick(now){
     const progress = Math.min((now - start) / duration, 1);
     const eased = 1 - Math.pow(1 - progress, 3);
@@ -949,11 +945,8 @@ function animateCounter(el, target, suffix='') {
 const statsIo = new IntersectionObserver((entries) => {
   entries.forEach(e => {
     if(e.isIntersecting){
-      const targets = document.querySelectorAll('[data-target]');
-      targets.forEach(el => {
-        const t = +el.dataset.target;
-        const suffix = el.parentElement.querySelector('.stat-lbl')?.textContent.includes('%') ? '%' : (t===2?'ml':(t===48?'h':'+'));
-        animateCounter(el, t, t===100?'%':(t===2?'ml+':(t===48?'h':'+')));
+      document.querySelectorAll('[data-target]').forEach(el => {
+        animateCounter(el, +el.dataset.target);
       });
       statsIo.disconnect();
     }
