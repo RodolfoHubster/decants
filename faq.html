@@ -323,15 +323,32 @@
       padding:0 20px 20px 56px;
       font-size:14px;color:var(--muted);
       line-height:1.8;
+      text-align: left; 
     }
     .faq-answer strong{color:var(--text);font-weight:600}
     .faq-answer ul{
       list-style:none;margin-top:12px;display:flex;flex-direction:column;gap:8px;
     }
-    .faq-answer ul li{display:flex;align-items:flex-start;gap:8px;}
-    .faq-answer ul li::before{
-      content:'✦';color:var(--gold);font-size:10px;margin-top:4px;flex-shrink:0;
+    .faq-answer ul li {
+  text-align: left;
+  padding-left: 18px;
+  position: relative;
+}
+
+.faq-answer ul li::before {
+  content: '✦';
+  color: var(--gold);
+  font-size: 10px;
+  position: absolute;
+  left: 0;
+  top: 5px;
+}
+
+    .faq-answer ul li > * {   /* ← agrega este bloque nuevo */
+      min-width: 0;
+      flex: 1;
     }
+
     .faq-tag{
       display:inline-flex;align-items:center;gap:6px;
       background:var(--gold-s);border:1px solid var(--gold-b);
@@ -529,19 +546,19 @@
   <div class="stats-inner">
     <div class="stat-item">
       <span class="stat-num" data-target="100">0</span>
-      <span class="stat-lbl">% Originales</span>
+      <span class="stat-lbl">Originales</span>
     </div>
     <div class="stat-item">
       <span class="stat-num" data-target="2">0</span>
-      <span class="stat-lbl">ml mínimo</span>
+      <span class="stat-lbl">mínimo</span>
     </div>
     <div class="stat-item">
       <span class="stat-num" data-target="48">0</span>
-      <span class="stat-lbl">h entrega local</span>
+      <span class="stat-lbl">entrega local</span>
     </div>
     <div class="stat-item">
-      <span class="stat-num" data-target="200">0</span>
-      <span class="stat-lbl">+ fragancias</span>
+      <span class="stat-num" data-target="50">0</span>
+      <span class="stat-lbl">fragancias</span>
     </div>
   </div>
 </div>
@@ -741,8 +758,8 @@
           Ofrecemos varias opciones de entrega:
           <ul>
             <li><strong>Entrega local en Tijuana, B.C.</strong> — en 24 a 48 horas hábiles.</li>
-            <li><strong>Sobre ruedas</strong> — los domingos en la plaza, disponibilidad según fecha.</li>
-            <li><strong>Envío a toda la República Mexicana</strong> — por paquetería (costo adicional).</li>
+            <li><strong>Sobre ruedas</strong> — Diferentes lugares, publico en donde estoy en mis redes sociales como IG y en whatsapp</li>
+            <li><strong>Envío a la republica</strong> — Sigue en proceso, pero pronto habra envios fuera de tijuana!</li>
           </ul>
           Escríbenos para cotizar tu envío según tu ubicación.
         </div>
