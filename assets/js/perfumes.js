@@ -150,6 +150,7 @@ window.renderTable = () => {
       <td class="col-clicks">${clicks}</td>
       <td>${tags || '<span style="color:var(--text-faint)">Sin precios</span>'}${alertaPrecio}</td>
       <td><div style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="promptAddPos('${pid}')" title="Añadir a Canasta"><i class="bi bi-cart-plus" style="color:var(--accent)"></i></button>
         <button class="btn btn-outline btn-sm" onclick="copiarLista('${pid}')" title="Copiar lista de precios"><i class="bi bi-clipboard"></i></button>
         <button class="btn-icon" onclick="edit('${pid}')" title="Editar"><i class="bi bi-pencil"></i></button>
         <button class="btn-icon" onclick="toggleV('${pid}',${actv})" title="${actv ? 'Ocultar' : 'Mostrar'}"><i class="bi bi-eye${actv ? '' : '-slash'}"></i></button>
@@ -157,6 +158,142 @@ window.renderTable = () => {
       </div></td>
     </tr>`;
   }).join('');
+
+  // ── Renderizar Grid POS ──
+  const posGrid = document.getElementById('pos-grid');
+  if (posGrid) {
+    posGrid.innerHTML = fil.map(p => {
+      const imgHTML = p.imagen ? `<img class="pcard-img" src="${p.imagen}" loading="lazy">` : `<div class="pcard-img" style="display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--text-faint)"><i class="bi bi-droplet"></i></div>`;
+      return `<div class="pcard" onclick="openPosItemModal('${p.id}')">
+        ${imgHTML}
+        <div class="pcard-body">
+          <div class="pcard-title">${p.nombre}</div>
+          <div class="pcard-sub">${p.marca || '—'}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+};
+
+window.toggleAdminView = () => {
+  const tableWrap = document.querySelector('.table-wrap');
+  const posGrid = document.getElementById('pos-grid');
+  const btn = document.getElementById('btn-toggle-view');
+  if(!tableWrap || !posGrid) return;
+  
+  if(tableWrap.style.display !== 'none') {
+    tableWrap.style.display = 'none';
+    posGrid.style.display = 'grid';
+    if(btn) btn.innerHTML = '<i class="bi bi-list-ul"></i>';
+    localStorage.setItem('adminPerfumeView', 'grid');
+  } else {
+    tableWrap.style.display = '';
+    posGrid.style.display = 'none';
+    if(btn) btn.innerHTML = '<i class="bi bi-grid-fill"></i>';
+    localStorage.setItem('adminPerfumeView', 'table');
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const v = localStorage.getItem('adminPerfumeView');
+  if(v === 'grid' || (window.innerWidth <= 480 && v !== 'table')) {
+    const tableWrap = document.querySelector('.table-wrap');
+    const posGrid = document.getElementById('pos-grid');
+    const btn = document.getElementById('btn-toggle-view');
+    if(tableWrap && posGrid) {
+      tableWrap.style.display = 'none';
+      posGrid.style.display = 'grid';
+      if(btn) btn.innerHTML = '<i class="bi bi-list-ul"></i>';
+    }
+  }
+});
+
+// ── Modal Rápido POS ──
+window.openPosItemModal = (id) => {
+  const p = perfumes.find(x => x.id === id);
+  if(!p) return;
+  const imgEl = document.getElementById('pos-m-img');
+  if(p.imagen) {
+    imgEl.src = p.imagen;
+    imgEl.style.display = 'block';
+  } else {
+    imgEl.style.display = 'none';
+  }
+  document.getElementById('pos-m-nombre').textContent = p.nombre;
+  document.getElementById('pos-m-marca').textContent = p.marca || 'Sin marca';
+  document.getElementById('pos-m-familia').textContent = p.familia || 'Sin familia';
+  
+  const btnContainer = document.getElementById('pos-m-precios');
+  btnContainer.innerHTML = '';
+  const pr = p.precios || {};
+  const available = Object.entries(pr).filter(([,v])=>+v>0);
+  
+  if(available.length === 0) {
+    btnContainer.innerHTML = '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:10px">No hay precios configurados</div>';
+  } else {
+    available.forEach(([ml, precio]) => {
+      btnContainer.innerHTML += `<button class="btn btn-outline" style="width:100%;justify-content:space-between;padding:14px 20px;font-size:16px;border-radius:12px;border-color:var(--border);" onclick="fastAddToCart('${p.id}', '${ml}', ${precio})">
+        <span style="font-weight:600">${ml}ml</span>
+        <span style="color:var(--accent);font-weight:700">$${precio}</span>
+      </button>`;
+    });
+  }
+  document.getElementById('modal-pos').classList.add('open');
+};
+
+window.closePosModal = () => {
+  document.getElementById('modal-pos').classList.remove('open');
+};
+
+window.fastAddToCart = (id, ml, precio) => {
+  const p = perfumes.find(x => x.id === id);
+  if(!p) return;
+  if(window.addToPosCart) {
+    window.addToPosCart({
+      id: p.id,
+      nombre: p.nombre,
+      marca: p.marca || '',
+      imagen: p.imagen || '',
+      ml: ml,
+      precio: precio,
+      cant: 1
+    });
+  }
+  closePosModal();
+};
+
+window.promptAddPos = (id) => {
+  const p = perfumes.find(x => x.id === id);
+  if(!p) return;
+  const pr = p.precios || {};
+  const available = Object.entries(pr).filter(([,v])=>+v>0);
+  if(available.length === 0) {
+    if(window.showToast) window.showToast('No tiene precios configurados', 'error');
+    return;
+  }
+  let ml = available[0][0];
+  let precio = available[0][1];
+  
+  if(available.length > 1) {
+    const opts = available.map(x => `${x[0]}ml ($${x[1]})`).join(' | ');
+    const res = prompt(`Selecciona ML para ${p.nombre}:\nOpciones: ${opts}\nEscribe solo el número (ej: ${ml})`, ml);
+    if(!res) return;
+    ml = res;
+    precio = pr[ml] || 0;
+  }
+  if(precio == 0) return;
+
+  if(window.addToPosCart) {
+    window.addToPosCart({
+      id: p.id,
+      nombre: p.nombre,
+      marca: p.marca || '',
+      imagen: p.imagen || '',
+      ml: ml,
+      precio: precio,
+      cant: 1
+    });
+  }
 };
 
 window.copiarLista = (id) => {
