@@ -194,47 +194,71 @@ let batchRowCounter = 0;
   const s = document.createElement('style');
   s.id = 'batch-dd-styles';
   s.textContent = `
-    /* ── Dropdown custom genérico para batch ── */
     .bdd-wrap { position: relative; width: 100%; }
     .bdd-trigger {
-      width: 100%; padding: 5px 28px 5px 10px;
-      border: 1px solid var(--border); border-radius: 6px;
-      font-size: 13px; background: var(--surface); color: var(--text);
-      cursor: pointer; text-align: left; white-space: nowrap;
-      overflow: hidden; text-overflow: ellipsis;
-      display: flex; align-items: center; gap: 6px;
+      width: 100%;
+      padding: 5px 28px 5px 10px;
+      border: 1px solid var(--border, rgba(255,255,255,.15));
+      border-radius: 6px;
+      font-size: 13px;
+      background: var(--surface, #1c1b19);
+      color: var(--text, #cdccca);
+      cursor: pointer;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: border-color .15s;
     }
-    .bdd-trigger:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+    .bdd-trigger:hover { border-color: var(--primary, #4f98a3); }
+    .bdd-trigger:focus { outline: 2px solid var(--primary, #4f98a3); outline-offset: 1px; }
     .bdd-arrow {
-      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-      pointer-events: none; font-size: 11px; color: var(--text-muted);
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      font-size: 11px;
+      color: var(--text-muted, #797876);
       transition: transform .15s;
     }
     .bdd-wrap.open .bdd-arrow { transform: translateY(-50%) rotate(180deg); }
     .bdd-menu {
-      position: fixed; z-index: 9999;
+      position: fixed;
+      z-index: 99999;
       background: var(--card-bg, #1c1b19);
-      border: 1px solid var(--border, rgba(255,255,255,.12));
+      border: 1px solid var(--border, rgba(255,255,255,.15));
       border-radius: 8px;
-      box-shadow: 0 8px 32px rgba(0,0,0,.55);
-      overflow-y: auto; max-height: 240px;
-      padding: 4px 0; display: none; min-width: 140px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.7);
+      overflow-y: auto;
+      max-height: 240px;
+      padding: 4px 0;
+      display: none;
+      min-width: 140px;
     }
     .bdd-wrap.open .bdd-menu { display: block; }
     .bdd-item {
-      padding: 8px 14px; font-size: 13px; cursor: pointer;
-      display: flex; align-items: center; gap: 8px;
-      color: var(--text); transition: background .1s;
+      padding: 8px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text, #cdccca);
+      transition: background .1s, color .1s;
     }
     .bdd-item:hover, .bdd-item.active {
-      background: var(--primary-bg, rgba(20,184,166,.15));
-      color: var(--primary);
+      background: rgba(79,152,163,.18);
+      color: var(--primary, #4f98a3);
     }
     .bdd-item.selected {
-      background: var(--primary-bg, rgba(20,184,166,.12));
-      color: var(--primary); font-weight: 600;
+      background: rgba(79,152,163,.12);
+      color: var(--primary, #4f98a3);
+      font-weight: 600;
     }
-    /* estado colores */
     .bdd-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .bdd-dot.pagada    { background: #22c55e; }
     .bdd-dot.pendiente { background: #f59e0b; }
@@ -243,9 +267,7 @@ let batchRowCounter = 0;
   document.head.appendChild(s);
 })();
 
-// ── buildCustomDropdown: dropdown custom genérico con portal ─────────────────
-// items: [{ value, label, icon? }]
-// onChange(value)
+// ── buildCustomDropdown ───────────────────────────────────────────────────────
 function buildCustomDropdown(container, items, defaultValue, onChange) {
   container.innerHTML = '';
   container.className = 'bdd-wrap';
@@ -260,7 +282,6 @@ function buildCustomDropdown(container, items, defaultValue, onChange) {
   container.appendChild(trigger);
   container.appendChild(arrow);
 
-  // Menú portal en body
   const menu = document.createElement('div');
   menu.className = 'bdd-menu';
   document.body.appendChild(menu);
@@ -318,7 +339,6 @@ function buildCustomDropdown(container, items, defaultValue, onChange) {
 
   renderTrigger(currentValue);
 
-  // API pública
   container._ddGetValue  = () => currentValue;
   container._ddSetValue  = (v) => { currentValue = v; renderTrigger(v); };
   container._ddDestroy   = () => menu.remove();
@@ -333,24 +353,18 @@ const ESTADO_ITEMS = [
   { value: 'cancelada', label: 'Cancelada', icon: '<span class="bdd-dot cancelada"></span>' },
 ];
 
-// ── Tallas genéricas (fallback si el perfume no tiene precios) ────────────────
 const TALLAS_DEFAULT = ['2','3','5','10','30','50','100'];
 
 function getTallaItems(perfumeId) {
   const p = perfumeId ? perfumes.find(x => x.id === perfumeId) : null;
   const entries = p ? Object.entries(p.precios||{}).filter(([,v])=>+v>0) : [];
   if (entries.length) {
-    return entries.map(([k,v]) => ({
-      value: k,
-      label: `${k}ml  $${v}`,
-      precio: v
-    }));
+    return entries.map(([k,v]) => ({ value: k, label: `${k}ml  $${v}`, precio: v }));
   }
   return TALLAS_DEFAULT.map(k => ({ value: k, label: `${k}ml`, precio: null }));
 }
 
-// ── Combobox con portal: el dropdown se monta en document.body
-//    para que nunca quede atrapado dentro del modal ─────────────────────────────
+// ── Combobox con portal ───────────────────────────────────────────────────────
 function buildCombobox(container, onSelect) {
   container.style.cssText = 'position:relative;width:100%;';
 
@@ -407,10 +421,7 @@ function buildCombobox(container, onSelect) {
       li.style.cssText = 'padding:8px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);';
       li.innerHTML = `<span style="color:var(--text,#e0e0e0);font-size:14px;font-weight:500;">${p.nombre}</span><br>
         <span style="color:var(--text-muted,#888);font-size:12px;">${p.marca||''}</span>`;
-      li.addEventListener('mousedown', e => {
-        e.preventDefault();
-        choose(p);
-      });
+      li.addEventListener('mousedown', e => { e.preventDefault(); choose(p); });
       li.addEventListener('mouseover', () => { setActive(i, list); });
       dd.appendChild(li);
     });
@@ -437,48 +448,22 @@ function buildCombobox(container, onSelect) {
     onSelect(p);
   }
 
-  function openDD() {
-    reposition();
-    dd.style.display = 'block';
-    renderItems(inp.value);
-  }
-
-  function closeDD() {
-    dd.style.display = 'none';
-  }
+  function openDD() { reposition(); dd.style.display = 'block'; renderItems(inp.value); }
+  function closeDD() { dd.style.display = 'none'; }
 
   inp.addEventListener('focus', openDD);
-  inp.addEventListener('input', () => {
-    selectedPerfume = null;
-    openDD();
-    renderItems(inp.value);
-  });
-  inp.addEventListener('blur', () => {
-    setTimeout(closeDD, 150);
-  });
-
+  inp.addEventListener('input', () => { selectedPerfume = null; openDD(); renderItems(inp.value); });
+  inp.addEventListener('blur', () => { setTimeout(closeDD, 150); });
   inp.addEventListener('keydown', e => {
     const items = dd.querySelectorAll('li');
     const q = inp.value;
     const list = q
       ? perfumes.filter(p => (p.nombre + ' ' + (p.marca||'')).toLowerCase().includes(q.toLowerCase()))
       : perfumes;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      const next = Math.min(activeIdx + 1, items.length - 1);
-      setActive(next, list);
-      items[next]?.scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      const prev = Math.max(activeIdx - 1, 0);
-      setActive(prev, list);
-      items[prev]?.scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (activeIdx >= 0 && list[activeIdx]) choose(list[activeIdx]);
-    } else if (e.key === 'Escape') {
-      closeDD();
-    }
+    if (e.key === 'ArrowDown') { e.preventDefault(); const next = Math.min(activeIdx+1, items.length-1); setActive(next, list); items[next]?.scrollIntoView({block:'nearest'}); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); const prev = Math.max(activeIdx-1, 0); setActive(prev, list); items[prev]?.scrollIntoView({block:'nearest'}); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (activeIdx >= 0 && list[activeIdx]) choose(list[activeIdx]); }
+    else if (e.key === 'Escape') closeDD();
   });
 
   document.getElementById('modal-dia')?.addEventListener('scroll', () => {
@@ -486,7 +471,6 @@ function buildCombobox(container, onSelect) {
   }, { passive: true });
 
   container._destroyCombobox = () => dd.remove();
-
   return { inp, clear: () => { inp.value = ''; selectedPerfume = null; } };
 }
 
@@ -496,14 +480,12 @@ function buildBatchRowEl(row) {
   const tr = document.createElement('tr');
   tr.dataset.rid = rid;
 
-  // ── Celda perfume: combobox con portal ────────────────────────────────────
   const tdPerf = document.createElement('td');
   tdPerf.style.minWidth = '180px';
   const perfWrap = document.createElement('div');
   tdPerf.appendChild(perfWrap);
   tr.appendChild(tdPerf);
 
-  // ── Celda talla: dropdown custom ─────────────────────────────────────────
   const tdTalla = document.createElement('td');
   tdTalla.style.minWidth = '110px';
   const tallaWrap = document.createElement('div');
@@ -512,7 +494,6 @@ function buildBatchRowEl(row) {
     const r = batchRows.find(x => x.rid === rid);
     if (!r) return;
     r.talla = val;
-    // si el item tiene precio, auto-fill
     const item = tallaItems.find(i => i.value === val);
     if (item?.precio) {
       r.precio = item.precio;
@@ -524,7 +505,6 @@ function buildBatchRowEl(row) {
   tdTalla.appendChild(tallaWrap);
   tr.appendChild(tdTalla);
 
-  // ── Celda cantidad
   const tdCant = document.createElement('td');
   tdCant.className = 'td-cant';
   const inCant = document.createElement('input');
@@ -533,7 +513,6 @@ function buildBatchRowEl(row) {
   tdCant.appendChild(inCant);
   tr.appendChild(tdCant);
 
-  // ── Celda precio
   const tdPrecio = document.createElement('td');
   tdPrecio.className = 'td-precio';
   const inPrecio = document.createElement('input');
@@ -543,13 +522,11 @@ function buildBatchRowEl(row) {
   tdPrecio.appendChild(inPrecio);
   tr.appendChild(tdPrecio);
 
-  // ── Celda total
   const tdTotal = document.createElement('td');
   tdTotal.className = 'td-total'; tdTotal.id = `brow-total-${rid}`;
   tdTotal.textContent = '—';
   tr.appendChild(tdTotal);
 
-  // ── Celda cliente
   const tdCliente = document.createElement('td');
   tdCliente.className = 'td-cliente';
   const inCliente = document.createElement('input');
@@ -558,7 +535,6 @@ function buildBatchRowEl(row) {
   tdCliente.appendChild(inCliente);
   tr.appendChild(tdCliente);
 
-  // ── Celda estado: dropdown custom ────────────────────────────────────────
   const tdEstado = document.createElement('td');
   tdEstado.className = 'td-estado';
   tdEstado.style.minWidth = '120px';
@@ -569,7 +545,6 @@ function buildBatchRowEl(row) {
   tdEstado.appendChild(estadoWrap);
   tr.appendChild(tdEstado);
 
-  // ── Celda nota
   const tdNota = document.createElement('td');
   tdNota.className = 'td-notas';
   const inNota = document.createElement('input');
@@ -578,7 +553,6 @@ function buildBatchRowEl(row) {
   tdNota.appendChild(inNota);
   tr.appendChild(tdNota);
 
-  // ── Celda borrar
   const tdRm = document.createElement('td');
   tdRm.className = 'td-rm';
   const btnRm = document.createElement('button');
@@ -588,13 +562,11 @@ function buildBatchRowEl(row) {
   tdRm.appendChild(btnRm);
   tr.appendChild(tdRm);
 
-  // ── Montar combobox portal (perfume) y actualizar talla al seleccionar ───
   buildCombobox(perfWrap, (p) => {
     const r = batchRows.find(x => x.rid === rid);
     if (!r) return;
     r.perfumeId = p ? p.id : '';
     r.talla = ''; r.precio = '';
-    // Actualizar items del dropdown de talla
     const newItems = getTallaItems(p ? p.id : '');
     tallaWrap._ddDestroy?.();
     tallaWrap.innerHTML = '';
@@ -614,13 +586,6 @@ function buildBatchRowEl(row) {
   });
 
   return tr;
-}
-
-function refreshBatchTable() {
-  const tbody = document.getElementById('batch-tbody');
-  tbody.innerHTML = '';
-  batchRows.forEach(row => tbody.appendChild(buildBatchRowEl(row)));
-  updateBatchResumen();
 }
 
 function updateBatchResumen() {
