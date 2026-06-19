@@ -92,7 +92,7 @@ window.renderTable = () => {
       <td><span class="badge-canal ${canalClass[canal]}">${canalLabel[canal]||canal}</span></td>
       <td><span class="badge-estado ${v.estado||'pendiente'}">${v.estado||'pendiente'}</span></td>
       <td><div style="display:flex;gap:6px">
-        <button class="btn-icon" onclick="editEstado('${v.id}','${v.estado||'pendiente'}')" title="Cambiar estado"><i class="bi bi-pencil-square"></i></button>
+        <button class="btn-icon" onclick="editEstado('${v.id}','${v.estado||'pendiente}')" title="Cambiar estado"><i class="bi bi-pencil-square"></i></button>
         <button class="btn-icon" onclick="del('${v.id}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
       </div></td>
     </tr>`;
@@ -184,17 +184,142 @@ window.del = async (id) => {
   loadAll();
 };
 
-// ── REGISTRO DEL DÍA (batch) ──────────────────────────────────────────────────
-let batchRows = [];
-let batchRowCounter = 0;
-
-// ── Combobox con portal: el dropdown se monta en document.body
-//    para que nunca quede atrapado dentro del modal ─────────────────────────────
-function buildCombobox(container, onSelect) {
-  // Wrapper
+// ─────────────────────────────────────────────────────────────────────────────
+// CUSTOM DROPDOWN (sin <select> nativo) — reutilizable para Talla y Estado
+// buildCustomDropdown(container, items, defaultLabel, onChange)
+// items: [{ value, label, dot }]  dot: color CSS (opcional)
+// ─────────────────────────────────────────────────────────────────────────────
+function buildCustomDropdown(container, items, defaultLabel, onChange) {
   container.style.cssText = 'position:relative;width:100%;';
 
-  // Input visible
+  // Botón visible
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.style.cssText = [
+    'width:100%', 'padding:5px 28px 5px 8px', 'border:1px solid var(--border)',
+    'border-radius:6px', 'font-size:13px', 'background:var(--surface)', 'color:var(--text-muted)',
+    'text-align:left', 'cursor:pointer', 'position:relative', 'white-space:nowrap',
+    'overflow:hidden', 'text-overflow:ellipsis', 'display:flex', 'align-items:center', 'gap:6px'
+  ].join(';');
+  btn.innerHTML = `<span class="cdd-label" style="flex:1;overflow:hidden;text-overflow:ellipsis">${defaultLabel}</span><i class="bi bi-chevron-down" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text-muted)"></i>`;
+  container.appendChild(btn);
+
+  // Dropdown portal montado en body
+  const dd = document.createElement('div');
+  dd.style.cssText = [
+    'position:fixed', 'z-index:99999',
+    'background:var(--card-bg,#1c1b19)',
+    'border:1px solid var(--border,rgba(255,255,255,.15))',
+    'border-radius:8px',
+    'box-shadow:0 8px 32px rgba(0,0,0,.6)',
+    'padding:4px 0',
+    'display:none',
+    'min-width:130px',
+  ].join(';');
+  document.body.appendChild(dd);
+
+  let selectedValue = null;
+  let isOpen = false;
+
+  function reposition() {
+    const r = btn.getBoundingClientRect();
+    dd.style.top   = (r.bottom + 3) + 'px';
+    dd.style.left  = r.left + 'px';
+    dd.style.width = Math.max(r.width, 130) + 'px';
+  }
+
+  function renderItems() {
+    dd.innerHTML = '';
+    items.forEach(item => {
+      const opt = document.createElement('div');
+      opt.style.cssText = [
+        'padding:8px 12px', 'cursor:pointer', 'font-size:13px',
+        'color:var(--text)', 'display:flex', 'align-items:center', 'gap:8px',
+        'transition:background .1s'
+      ].join(';');
+      if (item.dot) {
+        const dot = document.createElement('span');
+        dot.style.cssText = `width:8px;height:8px;border-radius:50%;background:${item.dot};flex-shrink:0;`;
+        opt.appendChild(dot);
+      }
+      const lbl = document.createElement('span');
+      lbl.textContent = item.label;
+      opt.appendChild(lbl);
+      if (item.value === selectedValue) {
+        opt.style.background = 'var(--primary-bg,rgba(79,152,163,.15))';
+        opt.style.color = 'var(--primary)';
+      }
+      opt.addEventListener('mouseover', () => { opt.style.background = 'var(--primary-bg,rgba(79,152,163,.15))'; opt.style.color = 'var(--primary)'; });
+      opt.addEventListener('mouseout',  () => { opt.style.background = item.value === selectedValue ? 'var(--primary-bg,rgba(79,152,163,.15))' : ''; opt.style.color = item.value === selectedValue ? 'var(--primary)' : 'var(--text)'; });
+      opt.addEventListener('mousedown', e => {
+        e.preventDefault();
+        choose(item);
+      });
+      dd.appendChild(opt);
+    });
+  }
+
+  function choose(item) {
+    selectedValue = item.value;
+    const labelEl = btn.querySelector('.cdd-label');
+    if (item.dot) {
+      labelEl.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${item.dot};margin-right:6px;"></span>${item.label}`;
+    } else {
+      labelEl.textContent = item.label;
+    }
+    btn.style.color = 'var(--text)';
+    closeDD();
+    onChange(item.value);
+  }
+
+  function openDD() {
+    reposition();
+    renderItems();
+    dd.style.display = 'block';
+    isOpen = true;
+    btn.querySelector('i').className = 'bi bi-chevron-up';
+    btn.querySelector('i').style.cssText = 'position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text-muted)';
+  }
+
+  function closeDD() {
+    dd.style.display = 'none';
+    isOpen = false;
+    const ico = btn.querySelector('i');
+    if (ico) { ico.className = 'bi bi-chevron-down'; }
+  }
+
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    isOpen ? closeDD() : openDD();
+  });
+
+  document.addEventListener('mousedown', e => {
+    if (!container.contains(e.target) && !dd.contains(e.target)) closeDD();
+  });
+
+  // API pública
+  container._getValue  = () => selectedValue;
+  container._setValue  = (v) => {
+    const item = items.find(i => i.value === v);
+    if (item) choose(item);
+  };
+  container._setItems  = (newItems) => {
+    items.length = 0;
+    newItems.forEach(i => items.push(i));
+    selectedValue = null;
+    const labelEl = btn.querySelector('.cdd-label');
+    labelEl.textContent = defaultLabel;
+    btn.style.color = 'var(--text-muted)';
+  };
+  container._destroy = () => dd.remove();
+
+  return container;
+}
+
+// ── Combobox perfume con portal ───────────────────────────────────────────────
+function buildCombobox(container, onSelect) {
+  container.style.cssText = 'position:relative;width:100%;';
+
   const inp = document.createElement('input');
   inp.type = 'text';
   inp.placeholder = '— Perfume —';
@@ -202,26 +327,19 @@ function buildCombobox(container, onSelect) {
   inp.style.cssText = 'width:100%;min-width:160px;';
   container.appendChild(inp);
 
-  // Dropdown montado en body (portal)
   const dd = document.createElement('ul');
   dd.style.cssText = [
-    'position:fixed',
-    'z-index:9999',
+    'position:fixed', 'z-index:9999',
     'background:var(--card-bg,#1c1b19)',
     'border:1px solid var(--border,rgba(255,255,255,.12))',
     'border-radius:8px',
     'box-shadow:0 8px 32px rgba(0,0,0,.55)',
-    'max-height:260px',
-    'overflow-y:auto',
-    'padding:4px 0',
-    'margin:0',
-    'list-style:none',
-    'display:none',
-    'min-width:220px',
+    'max-height:260px', 'overflow-y:auto',
+    'padding:4px 0', 'margin:0', 'list-style:none',
+    'display:none', 'min-width:220px',
   ].join(';');
   document.body.appendChild(dd);
 
-  let selectedPerfume = null;
   let activeIdx = -1;
 
   function reposition() {
@@ -249,13 +367,8 @@ function buildCombobox(container, onSelect) {
       li.style.cssText = 'padding:8px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);';
       li.innerHTML = `<span style="color:var(--text,#e0e0e0);font-size:14px;font-weight:500;">${p.nombre}</span><br>
         <span style="color:var(--text-muted,#888);font-size:12px;">${p.marca||''}</span>`;
-      li.addEventListener('mousedown', e => {
-        e.preventDefault();
-        choose(p);
-      });
-      li.addEventListener('mouseover', () => {
-        setActive(i, list);
-      });
+      li.addEventListener('mousedown', e => { e.preventDefault(); choose(p); });
+      li.addEventListener('mouseover', () => setActive(i, list));
       dd.appendChild(li);
     });
   }
@@ -264,7 +377,6 @@ function buildCombobox(container, onSelect) {
     const items = dd.querySelectorAll('li');
     items.forEach((el, idx) => {
       el.style.background = idx === i ? 'var(--primary,#4f98a3)' : '';
-      el.style.color = idx === i ? '#fff' : '';
       const spans = el.querySelectorAll('span');
       if (spans.length) {
         spans[0].style.color = idx === i ? '#fff' : 'var(--text,#e0e0e0)';
@@ -275,99 +387,82 @@ function buildCombobox(container, onSelect) {
   }
 
   function choose(p) {
-    selectedPerfume = p;
     inp.value = p ? `${p.nombre} · ${p.marca||''}` : '';
     closeDD();
     onSelect(p);
   }
 
-  function openDD() {
-    reposition();
-    dd.style.display = 'block';
-    renderItems(inp.value);
-  }
-
-  function closeDD() {
-    dd.style.display = 'none';
-  }
+  function openDD() { reposition(); dd.style.display = 'block'; renderItems(inp.value); }
+  function closeDD() { dd.style.display = 'none'; }
 
   inp.addEventListener('focus', openDD);
-  inp.addEventListener('input', () => {
-    selectedPerfume = null;
-    openDD();
-    renderItems(inp.value);
-  });
-  inp.addEventListener('blur', () => {
-    // pequeño delay para que mousedown en item se procese primero
-    setTimeout(closeDD, 150);
-  });
-
+  inp.addEventListener('input', () => { openDD(); renderItems(inp.value); });
+  inp.addEventListener('blur', () => setTimeout(closeDD, 150));
   inp.addEventListener('keydown', e => {
     const items = dd.querySelectorAll('li');
     const q = inp.value;
-    const list = q
-      ? perfumes.filter(p => (p.nombre + ' ' + (p.marca||'')).toLowerCase().includes(q.toLowerCase()))
-      : perfumes;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      const next = Math.min(activeIdx + 1, items.length - 1);
-      setActive(next, list);
-      items[next]?.scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      const prev = Math.max(activeIdx - 1, 0);
-      setActive(prev, list);
-      items[prev]?.scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (activeIdx >= 0 && list[activeIdx]) choose(list[activeIdx]);
-    } else if (e.key === 'Escape') {
-      closeDD();
-    }
+    const list = q ? perfumes.filter(p => (p.nombre+' '+(p.marca||'')).toLowerCase().includes(q.toLowerCase())) : perfumes;
+    if (e.key === 'ArrowDown') { e.preventDefault(); const n=Math.min(activeIdx+1,items.length-1); setActive(n,list); items[n]?.scrollIntoView({block:'nearest'}); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); const n=Math.max(activeIdx-1,0); setActive(n,list); items[n]?.scrollIntoView({block:'nearest'}); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (activeIdx>=0&&list[activeIdx]) choose(list[activeIdx]); }
+    else if (e.key === 'Escape') closeDD();
   });
 
-  // reposicionar si el modal hace scroll
-  document.getElementById('modal-dia')?.addEventListener('scroll', () => {
-    if (dd.style.display !== 'none') reposition();
-  }, { passive: true });
-
-  // limpiar el nodo del body cuando la fila se elimine
+  document.getElementById('modal-dia')?.addEventListener('scroll', () => { if (dd.style.display!=='none') reposition(); }, { passive:true });
   container._destroyCombobox = () => dd.remove();
-
-  return { inp, clear: () => { inp.value = ''; selectedPerfume = null; } };
+  return { inp };
 }
 
-function tallaOptsHtml(perfumeId) {
-  if (!perfumeId) return '<option value="">— Talla —</option>';
+// ── Opciones de estado ────────────────────────────────────────────────────────
+const ESTADO_ITEMS = [
+  { value: 'pagada',    label: 'Pagada',    dot: '#22c55e' },
+  { value: 'pendiente', label: 'Pendiente', dot: '#f59e0b' },
+  { value: 'cancelada', label: 'Cancelada', dot: '#ef4444' },
+];
+
+function tallaItems(perfumeId) {
+  if (!perfumeId) return [];
   const p = perfumes.find(x => x.id === perfumeId);
-  if (!p) return '<option value="">— Talla —</option>';
-  const opts = Object.entries(p.precios||{}).filter(([,v])=>+v>0)
-    .map(([k,v]) => `<option value="${k}" data-precio="${v}">${k}ml $${v}</option>`).join('');
-  return '<option value="">— Talla —</option>' + opts;
+  if (!p) return [];
+  return Object.entries(p.precios||{}).filter(([,v])=>+v>0)
+    .map(([k,v]) => ({ value: k, label: `${k}ml — $${v}`, precio: +v }));
 }
 
 function buildBatchRowEl(row) {
-  const { rid, talla, cantidad, precio, cliente, estado, notas } = row;
+  const { rid, cantidad, precio, cliente, estado, notas } = row;
 
   const tr = document.createElement('tr');
   tr.dataset.rid = rid;
 
-  // ── Celda perfume: combobox con portal ────────────────────────────────────
+  // ── Celda Perfume: combobox portal ────────────────────────────────────────
   const tdPerf = document.createElement('td');
   tdPerf.style.minWidth = '180px';
   const perfWrap = document.createElement('div');
   tdPerf.appendChild(perfWrap);
   tr.appendChild(tdPerf);
 
-  // ── Celda talla
+  // ── Celda Talla: custom dropdown portal ───────────────────────────────────
   const tdTalla = document.createElement('td');
-  const selTalla = document.createElement('select');
-  selTalla.id = `brow-talla-${rid}`;
-  selTalla.innerHTML = tallaOptsHtml('');
-  tdTalla.appendChild(selTalla);
+  tdTalla.style.minWidth = '120px';
+  const tallaWrap = document.createElement('div');
+  tdTalla.appendChild(tallaWrap);
   tr.appendChild(tdTalla);
+  buildCustomDropdown(tallaWrap, [], '— Talla —', (val) => {
+    const r = batchRows.find(x => x.rid === rid);
+    if (!r) return;
+    r.talla = val;
+    // auto-fill precio
+    const items = tallaItems(r.perfumeId);
+    const found = items.find(i => i.value === val);
+    if (found?.precio) {
+      r.precio = found.precio;
+      inPrecio.value = found.precio;
+    }
+    batchRefreshTotal(rid);
+    updateBatchResumen();
+  });
 
-  // ── Celda cantidad
+  // ── Celda Cantidad ────────────────────────────────────────────────────────
   const tdCant = document.createElement('td');
   tdCant.className = 'td-cant';
   const inCant = document.createElement('input');
@@ -376,7 +471,7 @@ function buildBatchRowEl(row) {
   tdCant.appendChild(inCant);
   tr.appendChild(tdCant);
 
-  // ── Celda precio
+  // ── Celda Precio ──────────────────────────────────────────────────────────
   const tdPrecio = document.createElement('td');
   tdPrecio.className = 'td-precio';
   const inPrecio = document.createElement('input');
@@ -386,13 +481,13 @@ function buildBatchRowEl(row) {
   tdPrecio.appendChild(inPrecio);
   tr.appendChild(tdPrecio);
 
-  // ── Celda total
+  // ── Celda Total ───────────────────────────────────────────────────────────
   const tdTotal = document.createElement('td');
   tdTotal.className = 'td-total'; tdTotal.id = `brow-total-${rid}`;
   tdTotal.textContent = '—';
   tr.appendChild(tdTotal);
 
-  // ── Celda cliente
+  // ── Celda Cliente ─────────────────────────────────────────────────────────
   const tdCliente = document.createElement('td');
   tdCliente.className = 'td-cliente';
   const inCliente = document.createElement('input');
@@ -401,19 +496,19 @@ function buildBatchRowEl(row) {
   tdCliente.appendChild(inCliente);
   tr.appendChild(tdCliente);
 
-  // ── Celda estado
+  // ── Celda Estado: custom dropdown portal ──────────────────────────────────
   const tdEstado = document.createElement('td');
   tdEstado.className = 'td-estado';
-  const selEstado = document.createElement('select');
-  selEstado.innerHTML = `
-    <option value="pagada"    ${estado==='pagada'    ?'selected':''}>Pagada ✅</option>
-    <option value="pendiente" ${estado==='pendiente' ?'selected':''}>Pendiente ⏳</option>
-    <option value="cancelada" ${estado==='cancelada' ?'selected':''}>Cancelada ❌</option>`;
-  selEstado.onchange = () => batchSet(rid,'estado',selEstado.value);
-  tdEstado.appendChild(selEstado);
+  const estadoWrap = document.createElement('div');
+  tdEstado.appendChild(estadoWrap);
   tr.appendChild(tdEstado);
+  buildCustomDropdown(estadoWrap, [...ESTADO_ITEMS], 'Estado', (val) => {
+    batchSet(rid,'estado',val);
+  });
+  // Valor por defecto: pagada
+  estadoWrap._setValue('pagada');
 
-  // ── Celda nota
+  // ── Celda Nota ────────────────────────────────────────────────────────────
   const tdNota = document.createElement('td');
   tdNota.className = 'td-notas';
   const inNota = document.createElement('input');
@@ -422,7 +517,7 @@ function buildBatchRowEl(row) {
   tdNota.appendChild(inNota);
   tr.appendChild(tdNota);
 
-  // ── Celda borrar
+  // ── Celda Borrar ─────────────────────────────────────────────────────────
   const tdRm = document.createElement('td');
   tdRm.className = 'td-rm';
   const btnRm = document.createElement('button');
@@ -432,36 +527,25 @@ function buildBatchRowEl(row) {
   tdRm.appendChild(btnRm);
   tr.appendChild(tdRm);
 
-  // ── Montar combobox portal ────────────────────────────────────────────────
+  // ── Montar combobox de Perfume ────────────────────────────────────────────
   buildCombobox(perfWrap, (p) => {
     const r = batchRows.find(x => x.rid === rid);
     if (!r) return;
     r.perfumeId = p ? p.id : '';
     r.talla = ''; r.precio = '';
-    selTalla.innerHTML = tallaOptsHtml(p ? p.id : '');
     inPrecio.value = '';
     tdTotal.textContent = '—';
-    selTalla.onchange = () => {
-      const opt = selTalla.selectedOptions[0];
-      r.talla = selTalla.value;
-      if (opt?.dataset.precio) {
-        r.precio = opt.dataset.precio;
-        inPrecio.value = opt.dataset.precio;
-      }
-      batchRefreshTotal(rid);
-    };
+    // Actualizar opciones de talla
+    const items = tallaItems(p ? p.id : '');
+    tallaWrap._setItems(items);
     updateBatchResumen();
   });
 
   return tr;
 }
 
-function refreshBatchTable() {
-  const tbody = document.getElementById('batch-tbody');
-  tbody.innerHTML = '';
-  batchRows.forEach(row => tbody.appendChild(buildBatchRowEl(row)));
-  updateBatchResumen();
-}
+let batchRows = [];
+let batchRowCounter = 0;
 
 function updateBatchResumen() {
   const count = batchRows.length;
@@ -483,8 +567,11 @@ window.addBatchRow = () => {
 window.removeBatchRow = (rid) => {
   batchRows = batchRows.filter(r => r.rid !== rid);
   const row = document.querySelector(`#batch-tbody tr[data-rid="${rid}"]`);
-  // destruir el dropdown portal antes de quitar la fila
-  row?.querySelector('div[style]')?._destroyCombobox?.();
+  // destruir portales
+  row?.querySelectorAll('div').forEach(d => {
+    d._destroyCombobox?.();
+    d._destroy?.();
+  });
   row?.remove();
   updateBatchResumen();
 };
@@ -505,9 +592,9 @@ window.batchRefreshTotal = (rid) => {
 };
 
 window.openDia = () => {
-  // limpiar dropdowns portal previos
+  // limpiar portales previos
   document.querySelectorAll('#batch-tbody tr').forEach(tr => {
-    tr.querySelector('div[style]')?._destroyCombobox?.();
+    tr.querySelectorAll('div').forEach(d => { d._destroyCombobox?.(); d._destroy?.(); });
   });
   const hoy = new Date().toISOString().slice(0,10);
   document.getElementById('dia-fecha').value = hoy;
@@ -521,9 +608,8 @@ window.openDia = () => {
 
 window.closeDia = () => {
   if (batchRows.some(r => r.perfumeId) && !confirm('¿Cerrar sin guardar?')) return;
-  // limpiar portales
   document.querySelectorAll('#batch-tbody tr').forEach(tr => {
-    tr.querySelector('div[style]')?._destroyCombobox?.();
+    tr.querySelectorAll('div').forEach(d => { d._destroyCombobox?.(); d._destroy?.(); });
   });
   document.getElementById('modal-dia').classList.remove('open');
 };
@@ -531,39 +617,29 @@ window.closeDia = () => {
 window.saveDia = async () => {
   const fechaStr   = document.getElementById('dia-fecha').value;
   const notaGlobal = document.getElementById('dia-nota-global').value.trim();
-
   if (!fechaStr) { toast('Pon la fecha del evento', 'error'); return; }
-
   const validas = batchRows.filter(r => r.perfumeId && r.talla && +r.precio > 0);
   if (!validas.length) { toast('Agrega al menos una venta con perfume, talla y precio', 'error'); return; }
-
   const [y,m,d] = fechaStr.split('-').map(Number);
   const fechaTs = new Date(y, m-1, d, 12, 0, 0).getTime();
-
   const btn = document.getElementById('btn-dia-save');
   btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando…';
-
   try {
     const batch = writeBatch(db);
     validas.forEach(r => {
       const p = perfumes.find(x => x.id === r.perfumeId);
       const ref = doc(collection(db, 'ventas'));
       batch.set(ref, {
-        perfumeId:     r.perfumeId,
-        perfumeNombre: p?.nombre || '',
-        perfumeMarca:  p?.marca  || '',
-        talla:    r.talla,
-        precio:   +r.precio,
-        cantidad: +r.cantidad || 1,
-        estado:   r.estado,
-        canal:    'mercado',
-        cliente:  (r.cliente||'').trim(),
-        notas:    [r.notas?.trim(), notaGlobal].filter(Boolean).join(' | '),
+        perfumeId: r.perfumeId, perfumeNombre: p?.nombre||'', perfumeMarca: p?.marca||'',
+        talla: r.talla, precio: +r.precio, cantidad: +r.cantidad||1,
+        estado: r.estado, canal: 'mercado',
+        cliente: (r.cliente||'').trim(),
+        notas: [r.notas?.trim(), notaGlobal].filter(Boolean).join(' | '),
         creadoEn: fechaTs
       });
     });
     await batch.commit();
-    toast(`✅ ${validas.length} venta${validas.length>1?'s':''} guardada${validas.length>1?'s':''} en Firestore`, 'success');
+    toast(`✅ ${validas.length} venta${validas.length>1?'s':''} guardada${validas.length>1?'s':''}`, 'success');
     document.getElementById('modal-dia').classList.remove('open');
     loadAll();
   } catch(e) {
