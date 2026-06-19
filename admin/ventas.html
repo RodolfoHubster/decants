@@ -8,130 +8,7 @@
   <link rel="stylesheet" href="../assets/css/variables.css">
   <link rel="stylesheet" href="../assets/css/global.css">
   <link rel="stylesheet" href="../assets/css/ventas.css">
-  <style>
-    /* ── Registro del Día ─────────────────────────────────── */
-    .modal-box.modal-xl { max-width: 860px; width: 97vw; }
-    .dia-header { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
-    .dia-header label { font-size:13px; font-weight:600; color:var(--text-muted); white-space:nowrap; }
-    .dia-header input[type="date"] { padding:6px 10px; border:1px solid var(--border); border-radius:8px;
-      font-size:14px; background:var(--surface); color:var(--text); }
-    .dia-header .dia-notas-wrap { flex:1; min-width:160px; }
-    .dia-header .dia-notas-wrap input { width:100%; padding:6px 10px; border:1px solid var(--border);
-      border-radius:8px; font-size:14px; background:var(--surface); color:var(--text); }
 
-    .batch-table-wrap { overflow-x:auto; margin-bottom:12px; }
-    .batch-table { width:100%; border-collapse:collapse; font-size:13px; }
-    .batch-table th { text-align:left; padding:8px 6px; border-bottom:2px solid var(--border);
-      font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--text-muted); white-space:nowrap; }
-    .batch-table td { padding:5px 4px; vertical-align:middle; }
-    .batch-table tr:not(:last-child) td { border-bottom:1px solid var(--border-light,rgba(255,255,255,.06)); }
-    .batch-table select, .batch-table input[type="number"], .batch-table input[type="text"] {
-      width:100%; padding:5px 8px; border:1px solid var(--border);
-      border-radius:6px; font-size:13px; background:var(--surface); color:var(--text); }
-    .batch-table select:focus, .batch-table input:focus { outline:2px solid var(--primary); outline-offset:1px; }
-    .batch-table .td-rm { width:36px; text-align:center; }
-    .batch-table .td-rm button { background:none; border:none; cursor:pointer; color:var(--danger);
-      padding:4px; border-radius:6px; transition:background .15s; }
-    .batch-table .td-rm button:hover { background:rgba(239,68,68,.15); }
-    .batch-table .td-estado { width:130px; }
-    .batch-table .td-cliente { min-width:110px; }
-    .batch-table .td-precio { width:90px; }
-    .batch-table .td-cant { width:60px; }
-    .batch-table .td-notas { min-width:100px; }
-    .batch-table .td-total { width:80px; text-align:right; font-weight:600; color:var(--primary); white-space:nowrap; }
-
-    .batch-footer { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
-      padding:10px 0 0; border-top:1px solid var(--border); margin-top:4px; }
-    .batch-resumen { font-size:14px; color:var(--text-muted); }
-    .batch-resumen strong { color:var(--text); font-size:16px; }
-    .btn-add-row { display:inline-flex; align-items:center; gap:6px; padding:6px 14px;
-      background:none; border:1.5px dashed var(--border); border-radius:8px; font-size:13px;
-      color:var(--text-muted); cursor:pointer; transition:all .15s; }
-    .btn-add-row:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-bg,rgba(20,184,166,.08)); }
-    .batch-saving { opacity:.6; pointer-events:none; }
-    .row-invalid select, .row-invalid input { border-color: var(--danger) !important; }
-
-    /* badge canal */
-    .badge-canal { display:inline-block; font-size:11px; padding:2px 8px; border-radius:20px;
-      font-weight:600; letter-spacing:.02em; }
-    .badge-canal.mercado { background:#fef3c7; color:#92400e; }
-    .badge-canal.online  { background:#dbeafe; color:#1e40af; }
-    .badge-canal.otro    { background:#f3f4f6; color:#374151; }
-
-    /* ── Searchable Perfume Dropdown ─────────────────────── */
-    .perf-wrap { position:relative; }
-    .perf-input {
-      width:100%; padding:5px 28px 5px 8px;
-      border:1px solid var(--border); border-radius:6px;
-      font-size:13px; background:var(--surface); color:var(--text);
-      cursor:pointer;
-    }
-    .perf-input::placeholder { color:var(--text-muted); }
-    .perf-input:focus { outline:2px solid var(--primary); outline-offset:1px; }
-    .perf-arrow {
-      position:absolute; right:7px; top:50%; transform:translateY(-50%);
-      pointer-events:none; color:var(--text-muted); font-size:12px;
-    }
-    .perf-dropdown {
-      display:none;
-      position:absolute; left:0; top:calc(100% + 3px); z-index:9999;
-      width:260px; max-height:240px;
-      background:var(--surface-raised, var(--card-bg, #1e1e2e));
-      border:1px solid var(--border);
-      border-radius:8px;
-      box-shadow:0 8px 24px rgba(0,0,0,.45);
-      overflow:hidden;
-      flex-direction:column;
-    }
-    .perf-dropdown.open { display:flex; }
-    .perf-search-box {
-      padding:8px 10px;
-      border-bottom:1px solid var(--border);
-      flex-shrink:0;
-    }
-    .perf-search-box input {
-      width:100%; padding:5px 10px;
-      border:1px solid var(--border); border-radius:6px;
-      font-size:13px;
-      background:var(--bg, #131320);
-      color:var(--text);
-    }
-    .perf-search-box input::placeholder { color:var(--text-muted); }
-    .perf-search-box input:focus { outline:2px solid var(--primary); }
-    .perf-list {
-      overflow-y:auto;
-      flex:1;
-    }
-    .perf-option {
-      padding:8px 12px;
-      font-size:13px;
-      color:var(--text);
-      cursor:pointer;
-      transition:background .1s;
-      line-height:1.3;
-    }
-    .perf-option:hover, .perf-option.focused {
-      background:var(--primary-bg, rgba(20,184,166,.15));
-      color:var(--primary);
-    }
-    .perf-option .perf-brand {
-      font-size:11px;
-      color:var(--text-muted);
-      display:block;
-    }
-    .perf-empty {
-      padding:12px;
-      font-size:13px;
-      color:var(--text-muted);
-      text-align:center;
-    }
-    /* highlight búsqueda */
-    .perf-option mark {
-      background:transparent;
-      color:var(--primary);
-      font-weight:600;
-    }
-  </style>
 </head>
 <body>
 <div class="app-shell">
@@ -201,6 +78,15 @@
           <div class="pagination-controls" id="pagination-controls"></div>
         </div>
       </div>
+
+      <div id="jornadas-sr" style="margin-top:32px; display:none;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <i class="bi bi-truck" style="font-size:20px;color:var(--warning,#d97706)"></i>
+          <h4 style="font-size:16px;font-weight:600">Historial de Sobre Ruedas</h4>
+        </div>
+        <div id="jornadas-list" style="display:flex;flex-direction:column;gap:16px;"></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -301,10 +187,13 @@
     </div>
     <div class="modal-body">
       <div class="dia-header">
-        <label>Fecha del evento</label>
+        <label>Fecha</label>
         <input type="date" id="dia-fecha">
+        <div class="dia-lugar-wrap" style="flex:0.5;min-width:140px;">
+          <input type="text" id="dia-lugar" placeholder="Lugar (ej. Mercado Centro)">
+        </div>
         <div class="dia-notas-wrap">
-          <input type="text" id="dia-nota-global" placeholder="Nota del día (ej. Mercado Centro, lluvia…) — opcional">
+          <input type="text" id="dia-nota-global" placeholder="Nota del día (ej. Lluvia…) — opcional">
         </div>
       </div>
 

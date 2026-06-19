@@ -95,6 +95,7 @@ window.renderTable = () => {
   if (!fil.length) {
     tb.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="bi bi-receipt"></i><h3>Sin ventas</h3><p>Registra tu primera venta.</p></div></td></tr>';
     renderPagination(0, 0, 0, 1);
+    if(window.renderJornadas) window.renderJornadas(fil);
     return;
   }
   const canalLabel = { mercado: 'Sobre ruedas', online: 'Online/WA', otro: 'Otro' };
@@ -119,6 +120,88 @@ window.renderTable = () => {
   }).join('');
 
   renderPagination(fil.length, start + 1, end, totalPages);
+  if(window.renderJornadas) window.renderJornadas(fil);
+};
+
+// ── Jornadas Sobre Ruedas rendering ──────────────────────────────────────────
+window.renderJornadas = (fil) => {
+  const container = document.getElementById('jornadas-sr');
+  const list = document.getElementById('jornadas-list');
+  if (!container || !list) return;
+
+  const mercadoVentas = fil.filter(v => v.canal === 'mercado');
+  if (!mercadoVentas.length) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'block';
+
+  // Agrupar por día (usando inicio del día local del creadoEn)
+  const grupos = {};
+  mercadoVentas.forEach(v => {
+    const d = new Date(v.creadoEn || 0);
+    const dateKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (!grupos[dateKey]) grupos[dateKey] = { ventas: [], lugar: '', nota: '', ts: v.creadoEn };
+    grupos[dateKey].ventas.push(v);
+    if (v.lugar) grupos[dateKey].lugar = v.lugar;
+    if (v.notas) {
+      const parts = v.notas.split(' | ');
+      if (parts.length > 1) grupos[dateKey].nota = parts[parts.length - 1];
+      else if (!grupos[dateKey].nota) grupos[dateKey].nota = v.notas;
+    }
+  });
+
+  list.innerHTML = Object.entries(grupos)
+    .sort((a, b) => b[1].ts - a[1].ts) // descending
+    .map(([dateKey, grp], idx) => {
+      const dateObj = new Date(dateKey + 'T12:00:00');
+      const dateStr = dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+      const totalVendido = grp.ventas.reduce((s,v) => s + (+v.precio||0)*(+v.cantidad||1), 0);
+      
+      const tbodyHtml = grp.ventas.map(v => {
+        const total = ((+v.precio||0)*(+v.cantidad||1)).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
+        return `<tr>
+          <td><strong>${v.perfumeNombre||'—'}</strong></td>
+          <td><span class="badge-ml">${v.talla||'—'} ml × ${v.cantidad||1}</span></td>
+          <td><strong>${total}</strong></td>
+          <td>${v.cliente||'<span style="color:var(--text-faint)">—</span>'}</td>
+          <td><span class="badge-estado ${v.estado||'pendiente'}">${v.estado||'pendiente'}</span></td>
+          <td><div style="display:flex;gap:6px">
+            <button class="btn-icon" onclick="editVenta('${v.id}')" title="Editar venta"><i class="bi bi-pencil-square"></i></button>
+            <button class="btn-icon" onclick="del('${v.id}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
+          </div></td>
+        </tr>`;
+      }).join('');
+
+      return `
+        <div class="jornada-card">
+          <div class="jornada-header" onclick="this.parentElement.classList.toggle('open')">
+            <div class="jornada-header-left">
+              <div class="jornada-date">${dateStr}</div>
+              ${grp.lugar ? `<div class="jornada-lugar"><i class="bi bi-geo-alt-fill"></i> ${grp.lugar}</div>` : ''}
+            </div>
+            <div class="jornada-header-right">
+              <div class="jornada-stats">
+                <span>${grp.ventas.length} ventas</span>
+                <strong>$${totalVendido.toLocaleString('es-MX', {minimumFractionDigits:0})}</strong>
+              </div>
+              <i class="bi bi-chevron-down jornada-toggle"></i>
+            </div>
+          </div>
+          <div class="jornada-body">
+            <div class="jornada-body-inner">
+              ${grp.nota ? `<div class="jornada-notas"><i class="bi bi-info-circle"></i> <span>${grp.nota}</span></div>` : ''}
+              <div class="jornada-table-wrap">
+                <table>
+                  <thead><tr><th>Perfume</th><th>Talla</th><th>Precio</th><th>Cliente</th><th>Estado</th><th>Acciones</th></tr></thead>
+                  <tbody>${tbodyHtml}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
 };
 
 // ── Pagination rendering ─────────────────────────────────────────────────────
@@ -730,6 +813,7 @@ window.closeDia = () => {
 
 window.saveDia = async () => {
   const fechaStr   = document.getElementById('dia-fecha').value;
+  const lugarStr   = document.getElementById('dia-lugar').value.trim();
   const notaGlobal = document.getElementById('dia-nota-global').value.trim();
   if (!fechaStr) { toast('Pon la fecha del evento', 'error'); return; }
   const validas = batchRows.filter(r => r.perfumeId && r.talla && +r.precio > 0);
@@ -746,7 +830,7 @@ window.saveDia = async () => {
       batch.set(ref, {
         perfumeId: r.perfumeId, perfumeNombre: p?.nombre||'', perfumeMarca: p?.marca||'',
         talla: r.talla, precio: +r.precio, cantidad: +r.cantidad||1,
-        estado: r.estado, canal: 'mercado',
+        estado: r.estado, canal: 'mercado', lugar: lugarStr,
         cliente: (r.cliente||'').trim(),
         notas: [r.notas?.trim(), notaGlobal].filter(Boolean).join(' | '),
         creadoEn: fechaTs
