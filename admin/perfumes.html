@@ -41,6 +41,7 @@
           <option value="az">Nombre A-Z</option>
           <option value="za">Nombre Z-A</option>
         </select>
+        <button class="btn btn-outline" id="btn-toggle-view" onclick="toggleAdminView()" title="Cambiar Vista" style="padding:0 12px;display:flex;align-items:center;justify-content:center"><i class="bi bi-grid-fill"></i></button>
       </div>
       <div class="card">
         <div class="card-header"><h5>Catalogo de Perfumes</h5><span class="badge badge-muted" id="count-label">0 perfumes</span></div>
@@ -50,6 +51,7 @@
             <tbody id="tbody"></tbody>
           </table>
         </div>
+        <div id="pos-grid" class="pos-grid" style="display:none"></div>
       </div>
     </div>
   </div>
@@ -121,6 +123,25 @@
     </div>
   </div>
 </div>
+
+<!-- MODAL POS RÁPIDO -->
+<div class="modal-overlay" id="modal-pos" style="z-index:9020">
+  <div class="modal-box" style="max-width:400px;background:var(--bg-card);border:1px solid var(--border);border-radius:16px;overflow:hidden">
+    <div style="position:relative">
+      <img id="pos-m-img" src="" style="width:100%;height:220px;object-fit:cover;background:var(--bg-card2)">
+      <button class="btn-icon" onclick="closePosModal()" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.5);color:#fff;border-radius:50%"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div style="padding:20px;">
+      <h3 id="pos-m-nombre" style="font-size:18px;font-weight:700;margin-bottom:4px;line-height:1.2">Nombre Perfume</h3>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px"><span id="pos-m-marca">Marca</span> • <span id="pos-m-familia">Familia</span></div>
+      
+      <div id="pos-m-precios" style="display:grid;grid-template-columns:1fr;gap:10px;">
+        <!-- Botones inyectados dinamicamente -->
+      </div>
+    </div>
+  </div>
+</div>
+
 <script type="module" src="../assets/js/perfumes.js"></script>
 </body>
 </html>

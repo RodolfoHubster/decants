@@ -831,6 +831,7 @@ window.saveDia = async () => {
         perfumeId: r.perfumeId, perfumeNombre: p?.nombre||'', perfumeMarca: p?.marca||'',
         talla: r.talla, precio: +r.precio, cantidad: +r.cantidad||1,
         estado: r.estado, canal: 'mercado', lugar: lugarStr,
+
         cliente: (r.cliente||'').trim(),
         notas: [r.notas?.trim(), notaGlobal].filter(Boolean).join(' | '),
         creadoEn: fechaTs
@@ -839,6 +840,8 @@ window.saveDia = async () => {
     await batch.commit();
     toast(`✅ ${validas.length} venta${validas.length>1?'s':''} guardada${validas.length>1?'s':''}`, 'success');
     document.getElementById('modal-dia').classList.remove('open');
+    localStorage.removeItem('posCart');
+    if(window.renderPosCart) window.renderPosCart();
     loadAll();
   } catch(e) {
     toast('Error al guardar: ' + e.message, 'error');
@@ -849,3 +852,48 @@ window.saveDia = async () => {
 };
 
 loadAll();
+
+// ── Interceptar Creación de Sobre Ruedas desde Canasta ──────────────────────
+setTimeout(() => {
+  if (window.location.search.includes('openS=1')) {
+    if(window.openDia) window.openDia();
+    const cart = JSON.parse(localStorage.getItem('posCart')||'[]');
+    if(cart.length > 0) {
+      document.getElementById('batch-tbody').innerHTML = '';
+      batchRows = [];
+      cart.forEach((item) => {
+        const rid = ++batchRowCounter;
+        const row = { 
+          rid, perfumeId: item.id, talla: String(item.ml), 
+          cantidad: item.cant || 1, precio: item.precio, 
+          cliente: '', estado: 'entregado', notas: 'De Canasta' 
+        };
+        batchRows.push(row);
+        const tr = buildBatchRowEl(row);
+        document.getElementById('batch-tbody').appendChild(tr);
+
+        // Forzar UI para que coincida con el row precargado
+        setTimeout(() => {
+          const inpPerf = tr.querySelector('td:nth-child(1) input');
+          if(inpPerf) inpPerf.value = `${item.nombre} · ${item.marca||''}`;
+          
+          const tallaWrap = tr.querySelector('td:nth-child(2) div');
+          if(tallaWrap && tallaWrap._setItems) {
+            tallaWrap._setItems(tallaItems(item.id));
+            tallaWrap._setValue(String(item.ml));
+          }
+          
+          const estadoWrap = tr.querySelector('td:nth-child(7) div');
+          if(estadoWrap && estadoWrap._setValue) {
+            estadoWrap._setValue('entregado');
+            row.estado = 'entregado';
+          }
+          
+          batchRefreshTotal(rid);
+        }, 50);
+      });
+      updateBatchResumen();
+    }
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+}, 800);

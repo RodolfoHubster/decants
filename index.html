@@ -739,6 +739,9 @@
       <option value="precio_asc">$ Menor</option>
       <option value="precio_desc">$ Mayor</option>
     </select>
+    <button class="fbar-btn" onclick="toggleViewMode()" aria-label="Cambiar vista" title="Cambiar Vista">
+      <i class="bi bi-grid-fill" id="view-icon" aria-hidden="true"></i>
+    </button>
     <button class="fbar-btn" onclick="toggleFilterPanel()" aria-label="Abrir filtros avanzados">
       <i class="bi bi-sliders" aria-hidden="true"></i>
       <span>Filtros</span>
@@ -835,7 +838,7 @@
       <div class="modal-top">
         <div class="modal-nombre" id="modal-nombre"></div>
         <button class="btn-close"
-          onclick="document.getElementById('modal').classList.remove('open');document.body.style.overflow=''"
+          onclick="closeModal()"
           aria-label="Cerrar">
           <i class="bi bi-x-lg"></i>
         </button>
@@ -912,7 +915,7 @@
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="undo-toast" role="status" aria-live="polite">
   <span id="undo-msg"></span>
-  <button id="undo-btn">Deshacer</button>
+  <button id="undo-btn" onclick="undoDelete()">Deshacer</button>
 </div>
 
 <!-- ══ FOOTER ══ -->
@@ -987,6 +990,34 @@ window.onPanelSort = (radio) => {
   window.addEventListener('mousemove',  onMove);
   window.addEventListener('mouseup',    onEnd);
 })();
+
+// Toggle Vista (Cuadrícula / Lista)
+window.toggleViewMode = function() {
+  const grid = document.getElementById('grid');
+  const icon = document.getElementById('view-icon');
+  
+  if (grid.classList.contains('list-view')) {
+    grid.classList.remove('list-view');
+    icon.className = 'bi bi-grid-fill';
+    localStorage.setItem('viewMode', 'grid');
+  } else {
+    grid.classList.add('list-view');
+    icon.className = 'bi bi-list-ul';
+    localStorage.setItem('viewMode', 'list');
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const savedView = localStorage.getItem('viewMode');
+  if (savedView === 'list') {
+    const grid = document.getElementById('grid');
+    const icon = document.getElementById('view-icon');
+    if (grid && icon) {
+      grid.classList.add('list-view');
+      icon.className = 'bi bi-list-ul';
+    }
+  }
+});
 </script>
 </body>
 </html>
