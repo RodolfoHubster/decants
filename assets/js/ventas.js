@@ -111,7 +111,7 @@ window.exportCSV = () => {
       fecha, v.perfumeNombre||'', v.perfumeMarca||'', v.talla||'',
       v.cantidad||1, v.precio||0, total,
       v.cliente||'', v.canal||'', v.estado||'', v.notas||''
-    ].map(c => `"${String(c).replace(/"/g,'""')}"` ).join(',');
+    ].map(c => `"${String(c).replace(/"/g,'""')}"`).join(',');
   });
   const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -178,7 +178,7 @@ window.guardarEstado = async () => {
 };
 
 window.del = async (id) => {
-  if (!confirm('¿Eliminar esta venta?')) return;
+  if (!confirm('¿Eliminar esta venta?')) return;\
   await deleteDoc(doc(db,'ventas',id));
   toast('Venta eliminada', 'info');
   loadAll();
@@ -194,7 +194,14 @@ let batchRowCounter = 0;
   const s = document.createElement('style');
   s.id = 'batch-dd-styles';
   s.textContent = `
-    .bdd-wrap { position: relative; width: 100%; }
+    /* El td necesita overflow visible para que el menú salga */
+    .batch-table td { overflow: visible !important; }
+    .batch-table-wrap { overflow-x: auto; overflow-y: visible !important; }
+
+    .bdd-wrap {
+      position: relative;
+      width: 100%;
+    }
     .bdd-trigger {
       width: 100%;
       padding: 5px 28px 5px 10px;
@@ -226,20 +233,27 @@ let batchRowCounter = 0;
       transition: transform .15s;
     }
     .bdd-wrap.open .bdd-arrow { transform: translateY(-50%) rotate(180deg); }
+
+    /* ── Menú: position:absolute dentro de bdd-wrap ── */
     .bdd-menu {
-      position: fixed;
+      position: absolute;
+      top: calc(100% + 3px);
+      left: 0;
       z-index: 99999;
-      background: var(--card-bg, #1c1b19);
-      border: 1px solid var(--border, rgba(255,255,255,.15));
+      background: #1c1b19;
+      background: var(--card-bg, var(--surface, #1c1b19));
+      border: 1px solid var(--border, rgba(255,255,255,.18));
       border-radius: 8px;
-      box-shadow: 0 8px 32px rgba(0,0,0,.7);
+      box-shadow: 0 8px 32px rgba(0,0,0,.75);
       overflow-y: auto;
-      max-height: 240px;
+      max-height: 220px;
       padding: 4px 0;
       display: none;
       min-width: 140px;
+      width: max-content;
     }
     .bdd-wrap.open .bdd-menu { display: block; }
+
     .bdd-item {
       padding: 8px 14px;
       font-size: 13px;
@@ -248,7 +262,9 @@ let batchRowCounter = 0;
       align-items: center;
       gap: 8px;
       color: var(--text, #cdccca);
+      background: transparent;
       transition: background .1s, color .1s;
+      white-space: nowrap;
     }
     .bdd-item:hover, .bdd-item.active {
       background: rgba(79,152,163,.18);
@@ -259,7 +275,7 @@ let batchRowCounter = 0;
       color: var(--primary, #4f98a3);
       font-weight: 600;
     }
-    .bdd-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .bdd-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display:inline-block; }
     .bdd-dot.pagada    { background: #22c55e; }
     .bdd-dot.pendiente { background: #f59e0b; }
     .bdd-dot.cancelada { background: #ef4444; }
@@ -279,31 +295,32 @@ function buildCustomDropdown(container, items, defaultValue, onChange) {
   const arrow = document.createElement('span');
   arrow.className = 'bdd-arrow';
   arrow.innerHTML = '<i class="bi bi-chevron-down"></i>';
-  container.appendChild(trigger);
-  container.appendChild(arrow);
 
+  // Menú va DENTRO del wrap (position:absolute)
   const menu = document.createElement('div');
   menu.className = 'bdd-menu';
-  document.body.appendChild(menu);
 
-  let currentValue = defaultValue || items[0]?.value;
+  container.appendChild(trigger);
+  container.appendChild(arrow);
+  container.appendChild(menu);   // <-- dentro, no en body
+
+  let currentValue = defaultValue != null ? defaultValue : items[0]?.value;
 
   function getItem(v) { return items.find(i => i.value === v) || items[0]; }
 
   function renderTrigger(v) {
     const item = getItem(v);
-    trigger.innerHTML = (item.icon ? item.icon + ' ' : '') + item.label;
-  }
-
-  function reposition() {
-    const r = trigger.getBoundingClientRect();
-    menu.style.top   = (r.bottom + 4) + 'px';
-    menu.style.left  = r.left + 'px';
-    menu.style.width = Math.max(r.width, 140) + 'px';
+    if (!item) return;
+    trigger.innerHTML = '';
+    if (item.icon) {
+      const tmp = document.createElement('span');
+      tmp.innerHTML = item.icon;
+      trigger.appendChild(tmp.firstChild);
+    }
+    trigger.appendChild(document.createTextNode(' ' + item.label));
   }
 
   function openMenu() {
-    reposition();
     container.classList.add('open');
     renderMenuItems();
   }
@@ -317,7 +334,12 @@ function buildCustomDropdown(container, items, defaultValue, onChange) {
     items.forEach(item => {
       const el = document.createElement('div');
       el.className = 'bdd-item' + (item.value === currentValue ? ' selected' : '');
-      el.innerHTML = (item.icon ? item.icon + ' ' : '') + item.label;
+      if (item.icon) {
+        const tmp = document.createElement('span');
+        tmp.innerHTML = item.icon;
+        el.appendChild(tmp.firstChild);
+      }
+      el.appendChild(document.createTextNode(item.label));
       el.addEventListener('mousedown', e => {
         e.preventDefault();
         currentValue = item.value;
@@ -334,14 +356,14 @@ function buildCustomDropdown(container, items, defaultValue, onChange) {
   });
 
   document.addEventListener('mousedown', e => {
-    if (!container.contains(e.target) && !menu.contains(e.target)) closeMenu();
+    if (!container.contains(e.target)) closeMenu();
   });
 
   renderTrigger(currentValue);
 
   container._ddGetValue  = () => currentValue;
   container._ddSetValue  = (v) => { currentValue = v; renderTrigger(v); };
-  container._ddDestroy   = () => menu.remove();
+  container._ddDestroy   = () => {};   // nada que limpiar (menu está dentro)
 
   return container;
 }
@@ -364,7 +386,7 @@ function getTallaItems(perfumeId) {
   return TALLAS_DEFAULT.map(k => ({ value: k, label: `${k}ml`, precio: null }));
 }
 
-// ── Combobox con portal ───────────────────────────────────────────────────────
+// ── Combobox perfume ───────────────────────────────────────────────────────────
 function buildCombobox(container, onSelect) {
   container.style.cssText = 'position:relative;width:100%;';
 
@@ -377,31 +399,27 @@ function buildCombobox(container, onSelect) {
 
   const dd = document.createElement('ul');
   dd.style.cssText = [
-    'position:fixed',
+    'position:absolute',
+    'top:calc(100% + 3px)',
+    'left:0',
     'z-index:9999',
     'background:var(--card-bg,#1c1b19)',
     'border:1px solid var(--border,rgba(255,255,255,.12))',
     'border-radius:8px',
     'box-shadow:0 8px 32px rgba(0,0,0,.55)',
-    'max-height:260px',
+    'max-height:240px',
     'overflow-y:auto',
     'padding:4px 0',
     'margin:0',
     'list-style:none',
     'display:none',
     'min-width:220px',
+    'width:max-content',
   ].join(';');
-  document.body.appendChild(dd);
+  container.appendChild(dd);   // <-- dentro del container, no en body
 
   let selectedPerfume = null;
   let activeIdx = -1;
-
-  function reposition() {
-    const r = inp.getBoundingClientRect();
-    dd.style.top  = (r.bottom + 4) + 'px';
-    dd.style.left = r.left + 'px';
-    dd.style.width = Math.max(r.width, 220) + 'px';
-  }
 
   function renderItems(q) {
     const list = q
@@ -448,11 +466,11 @@ function buildCombobox(container, onSelect) {
     onSelect(p);
   }
 
-  function openDD() { reposition(); dd.style.display = 'block'; renderItems(inp.value); }
+  function openDD() { dd.style.display = 'block'; renderItems(inp.value); }
   function closeDD() { dd.style.display = 'none'; }
 
   inp.addEventListener('focus', openDD);
-  inp.addEventListener('input', () => { selectedPerfume = null; openDD(); renderItems(inp.value); });
+  inp.addEventListener('input', () => { selectedPerfume = null; renderItems(inp.value); openDD(); });
   inp.addEventListener('blur', () => { setTimeout(closeDD, 150); });
   inp.addEventListener('keydown', e => {
     const items = dd.querySelectorAll('li');
@@ -466,11 +484,7 @@ function buildCombobox(container, onSelect) {
     else if (e.key === 'Escape') closeDD();
   });
 
-  document.getElementById('modal-dia')?.addEventListener('scroll', () => {
-    if (dd.style.display !== 'none') reposition();
-  }, { passive: true });
-
-  container._destroyCombobox = () => dd.remove();
+  container._destroyCombobox = () => {};
   return { inp, clear: () => { inp.value = ''; selectedPerfume = null; } };
 }
 
@@ -483,6 +497,7 @@ function buildBatchRowEl(row) {
   const tdPerf = document.createElement('td');
   tdPerf.style.minWidth = '180px';
   const perfWrap = document.createElement('div');
+  perfWrap.style.cssText = 'position:relative;width:100%;overflow:visible;';
   tdPerf.appendChild(perfWrap);
   tr.appendChild(tdPerf);
 
@@ -608,7 +623,6 @@ window.addBatchRow = () => {
 window.removeBatchRow = (rid) => {
   batchRows = batchRows.filter(r => r.rid !== rid);
   const row = document.querySelector(`#batch-tbody tr[data-rid="${rid}"]`);
-  row?.querySelector('div[style]')?._destroyCombobox?.();
   row?.remove();
   updateBatchResumen();
 };
@@ -629,9 +643,6 @@ window.batchRefreshTotal = (rid) => {
 };
 
 window.openDia = () => {
-  document.querySelectorAll('#batch-tbody tr').forEach(tr => {
-    tr.querySelector('div[style]')?._destroyCombobox?.();
-  });
   const hoy = new Date().toISOString().slice(0,10);
   document.getElementById('dia-fecha').value = hoy;
   document.getElementById('dia-nota-global').value = '';
@@ -644,9 +655,6 @@ window.openDia = () => {
 
 window.closeDia = () => {
   if (batchRows.some(r => r.perfumeId) && !confirm('¿Cerrar sin guardar?')) return;
-  document.querySelectorAll('#batch-tbody tr').forEach(tr => {
-    tr.querySelector('div[style]')?._destroyCombobox?.();
-  });
   document.getElementById('modal-dia').classList.remove('open');
 };
 
