@@ -8,6 +8,7 @@ renderSidebar('ventas');
 if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display = 'flex';
 
 let ventas = [], perfumes = [];
+let currentPage = 1, pageSize = 10;
 
 // ── Cargar datos ──────────────────────────────────────────────────────────────
 async function loadAll() {
@@ -45,6 +46,16 @@ function getFiltered() {
   });
 }
 
+// Reset page when filters change
+(function patchFilters() {
+  const searchEl = document.getElementById('search');
+  const estadoEl = document.getElementById('f-estado');
+  const canalEl  = document.getElementById('f-canal');
+  if (searchEl) searchEl.addEventListener('input', () => { currentPage = 1; });
+  if (estadoEl) estadoEl.addEventListener('change', () => { currentPage = 1; });
+  if (canalEl)  canalEl.addEventListener('change', () => { currentPage = 1; });
+})();
+
 function updateKPIs(fil) {
   const activas = fil.filter(v => v.estado !== 'cancelada');
   document.getElementById('k-total').textContent = '$' + activas.reduce((s,v)=>s+(+v.precio||0)*(+v.cantidad||1),0).toLocaleString('es-MX',{minimumFractionDigits:0});
@@ -73,13 +84,22 @@ window.renderTable = () => {
   updateKPIs(fil);
   document.getElementById('count-label').textContent = fil.length + ' ventas';
   const tb = document.getElementById('tbody');
+
+  // Pagination calc
+  const totalPages = Math.max(1, Math.ceil(fil.length / pageSize));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * pageSize;
+  const end = Math.min(start + pageSize, fil.length);
+  const pageItems = fil.slice(start, end);
+
   if (!fil.length) {
     tb.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="bi bi-receipt"></i><h3>Sin ventas</h3><p>Registra tu primera venta.</p></div></td></tr>';
+    renderPagination(0, 0, 0, 1);
     return;
   }
   const canalLabel = { mercado: 'Sobre ruedas', online: 'Online/WA', otro: 'Otro' };
   const canalClass = { mercado: 'mercado', online: 'online', otro: 'otro' };
-  tb.innerHTML = fil.map(v => {
+  tb.innerHTML = pageItems.map(v => {
     const fecha = v.creadoEn ? new Date(v.creadoEn).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—';
     const total = ((+v.precio||0)*(+v.cantidad||1)).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
     const canal = v.canal || 'online';
@@ -92,11 +112,59 @@ window.renderTable = () => {
       <td><span class="badge-canal ${canalClass[canal]}">${canalLabel[canal]||canal}</span></td>
       <td><span class="badge-estado ${v.estado||'pendiente'}">${v.estado||'pendiente'}</span></td>
       <td><div style="display:flex;gap:6px">
-        <button class="btn-icon" onclick="editEstado('${v.id}','${v.estado||'pendiente}')" title="Cambiar estado"><i class="bi bi-pencil-square"></i></button>
+        <button class="btn-icon" onclick="editVenta('${v.id}')" title="Editar venta"><i class="bi bi-pencil-square"></i></button>
         <button class="btn-icon" onclick="del('${v.id}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
       </div></td>
     </tr>`;
   }).join('');
+
+  renderPagination(fil.length, start + 1, end, totalPages);
+};
+
+// ── Pagination rendering ─────────────────────────────────────────────────────
+function renderPagination(total, from, to, totalPages) {
+  const infoEl = document.getElementById('pagination-info');
+  if (total === 0) {
+    infoEl.textContent = '0 ventas';
+  } else {
+    infoEl.textContent = `${from}–${to} de ${total}`;
+  }
+  const wrap = document.getElementById('pagination-controls');
+  if (totalPages <= 1) { wrap.innerHTML = ''; return; }
+  let html = '';
+  html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} title="Anterior"><i class="bi bi-chevron-left"></i></button>`;
+  const pages = buildPageNumbers(currentPage, totalPages);
+  pages.forEach(p => {
+    if (p === '...') {
+      html += `<button class="page-btn page-ellipsis" disabled>…</button>`;
+    } else {
+      html += `<button class="page-btn${p === currentPage ? ' active' : ''}" onclick="goToPage(${p})">${p}</button>`;
+    }
+  });
+  html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} title="Siguiente"><i class="bi bi-chevron-right"></i></button>`;
+  wrap.innerHTML = html;
+}
+
+function buildPageNumbers(current, total) {
+  if (total <= 7) return Array.from({length: total}, (_, i) => i + 1);
+  const pages = [1];
+  if (current > 3) pages.push('...');
+  for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) pages.push(i);
+  if (current < total - 2) pages.push('...');
+  pages.push(total);
+  return pages;
+}
+
+window.goToPage = (page) => {
+  currentPage = page;
+  renderTable();
+  document.querySelector('.card .table-wrap')?.scrollIntoView({behavior:'smooth', block:'nearest'});
+};
+
+window.onPageSizeChange = () => {
+  pageSize = +document.getElementById('page-size').value || 10;
+  currentPage = 1;
+  renderTable();
 };
 
 // ── Export CSV ────────────────────────────────────────────────────────────────
@@ -132,11 +200,46 @@ window.openModal = () => {
   document.getElementById('v-perfume').value = '';
   document.getElementById('v-talla').innerHTML = '<option value="">Selecciona talla</option>';
   document.getElementById('modal-title').textContent = 'Nueva Venta';
+  document.getElementById('btn-save').innerHTML = '<i class="bi bi-check2"></i> Guardar Venta';
   document.getElementById('modal').classList.add('open');
 };
 window.closeModal = () => document.getElementById('modal').classList.remove('open');
 
+// ── Editar venta existente (CRUD) ─────────────────────────────────────────────
+window.editVenta = (id) => {
+  const v = ventas.find(x => x.id === id);
+  if (!v) { toast('Venta no encontrada', 'error'); return; }
+  document.getElementById('v-id').value = v.id;
+  document.getElementById('v-cliente').value = v.cliente || '';
+  document.getElementById('v-notas').value = v.notas || '';
+  document.getElementById('v-precio').value = v.precio || '';
+  document.getElementById('v-cantidad').value = v.cantidad || 1;
+  document.getElementById('v-estado').value = v.estado || 'pagada';
+  document.getElementById('v-canal').value = v.canal || 'online';
+  const perfSel = document.getElementById('v-perfume');
+  perfSel.value = v.perfumeId || '';
+  const p = perfumes.find(x => x.id === v.perfumeId);
+  const tallaSel = document.getElementById('v-talla');
+  const precioEl = document.getElementById('v-precio');
+  if (p) {
+    const opts = Object.entries(p.precios||{}).filter(([,val])=>+val>0)
+      .map(([k,val]) => `<option value="${k}" data-precio="${val}">${k} ml — $${val}</option>`).join('');
+    tallaSel.innerHTML = '<option value="">Selecciona talla</option>' + opts;
+    tallaSel.onchange = () => {
+      const opt = tallaSel.selectedOptions[0];
+      if (opt?.dataset.precio) precioEl.value = opt.dataset.precio;
+    };
+  } else {
+    tallaSel.innerHTML = '<option value="">Selecciona talla</option>';
+  }
+  tallaSel.value = v.talla || '';
+  document.getElementById('modal-title').textContent = 'Editar Venta';
+  document.getElementById('btn-save').innerHTML = '<i class="bi bi-check2"></i> Actualizar Venta';
+  document.getElementById('modal').classList.add('open');
+};
+
 window.save = async () => {
+  const editId    = document.getElementById('v-id').value;
   const perfumeId = document.getElementById('v-perfume').value;
   const talla     = document.getElementById('v-talla').value;
   const precio    = +document.getElementById('v-precio').value;
@@ -147,19 +250,30 @@ window.save = async () => {
   const p = perfumes.find(x => x.id === perfumeId);
   const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
+  const data = {
+    perfumeId, perfumeNombre: p?.nombre||'', perfumeMarca: p?.marca||'',
+    talla, precio, cantidad, estado, canal,
+    cliente: document.getElementById('v-cliente').value.trim(),
+    notas:   document.getElementById('v-notas').value.trim(),
+  };
   try {
-    await addDoc(collection(db, 'ventas'), {
-      perfumeId, perfumeNombre: p?.nombre||'', perfumeMarca: p?.marca||'',
-      talla, precio, cantidad, estado, canal,
-      cliente: document.getElementById('v-cliente').value.trim(),
-      notas:   document.getElementById('v-notas').value.trim(),
-      creadoEn: Date.now()
-    });
-    toast('Venta registrada ✅', 'success');
+    if (editId) {
+      await updateDoc(doc(db, 'ventas', editId), data);
+      toast('Venta actualizada ✅', 'success');
+    } else {
+      data.creadoEn = Date.now();
+      await addDoc(collection(db, 'ventas'), data);
+      toast('Venta registrada ✅', 'success');
+    }
     closeModal();
     loadAll();
   } catch(e) { toast('Error: ' + e.message, 'error'); }
-  finally { btn.disabled=false; btn.innerHTML='<i class="bi bi-check2"></i> Guardar Venta'; }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = editId
+      ? '<i class="bi bi-check2"></i> Actualizar Venta'
+      : '<i class="bi bi-check2"></i> Guardar Venta';
+  }
 };
 
 window.editEstado = (id, estado) => {

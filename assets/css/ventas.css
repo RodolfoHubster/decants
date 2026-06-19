@@ -53,3 +53,64 @@
 .badge-canal.mercado{ background:rgba(201,168,76,.14); color:var(--accent);  border:1px solid var(--accent-border); }
 .badge-canal.online { background:rgba(91,192,222,.12); color:var(--info);   border:1px solid rgba(91,192,222,.3);  }
 .badge-canal.otro   { background:rgba(255,255,255,.06);color:var(--text-muted);border:1px solid var(--border);      }
+
+/* ── Pagination bar ──────────────────────────────────────────────────────────── */
+.pagination-bar{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+  padding:14px 20px;border-top:1px solid var(--border);
+}
+.pagination-left{
+  display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-muted);
+}
+.pagination-left label{font-size:12.5px;font-weight:500;white-space:nowrap}
+.page-size-select{
+  background:var(--bg-card2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:5px 10px;color:var(--text-primary);font-size:13px;font-family:inherit;
+  cursor:pointer;transition:border-color var(--transition);outline:none;
+}
+.page-size-select:focus{border-color:var(--accent)}
+.page-size-select option{background:var(--bg-card2)}
+
+.pagination-info{
+  font-size:12.5px;color:var(--text-muted);white-space:nowrap;
+}
+
+.pagination-controls{
+  display:flex;align-items:center;gap:4px;
+}
+.page-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:34px;height:34px;padding:0 8px;
+  border-radius:var(--radius-sm);font-size:13px;font-weight:500;
+  background:transparent;border:1px solid var(--border);
+  color:var(--text-muted);cursor:pointer;
+  transition:all var(--transition);white-space:nowrap;
+  font-family:inherit;
+}
+.page-btn:hover:not(:disabled):not(.active){
+  border-color:var(--accent);color:var(--accent);
+  background:var(--accent-soft);
+}
+.page-btn.active{
+  background:var(--accent);color:#000;
+  border-color:var(--accent);font-weight:600;
+}
+.page-btn:disabled{
+  opacity:.35;cursor:not-allowed;
+}
+.page-btn.page-ellipsis{
+  border:none;background:none;cursor:default;
+  color:var(--text-faint);font-size:14px;min-width:28px;
+}
+.page-btn i{font-size:14px}
+
+/* ── Responsive pagination ───────────────────────────────────────────────────── */
+@media(max-width:768px){
+  .pagination-bar{
+    flex-direction:column;align-items:stretch;gap:10px;padding:12px 14px;
+  }
+  .pagination-left{justify-content:space-between}
+  .pagination-controls{justify-content:center;flex-wrap:wrap}
+  .page-btn{min-width:30px;height:30px;font-size:12px;padding:0 6px}
+  .pagination-info{text-align:center}
+}

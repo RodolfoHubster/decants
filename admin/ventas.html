@@ -187,6 +187,19 @@
             <tbody id="tbody"></tbody>
           </table>
         </div>
+        <div class="pagination-bar" id="pagination-bar">
+          <div class="pagination-left">
+            <label for="page-size">Mostrar</label>
+            <select class="page-size-select" id="page-size" onchange="onPageSizeChange()">
+              <option value="10" selected>10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+            <span class="pagination-info" id="pagination-info"></span>
+          </div>
+          <div class="pagination-controls" id="pagination-controls"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -335,6 +348,7 @@ window.onPeriodoChange = () => {
   const val = document.getElementById('f-periodo').value;
   const labels = { '': 'todas las ventas', 'hoy': 'hoy', '7': 'últimos 7 días', '30': 'últimos 30 días' };
   document.getElementById('kpi-periodo-label').textContent = labels[val] || 'período seleccionado';
+  if (window.currentPage !== undefined) window.currentPage = 1;
   window.renderTable && window.renderTable();
 };
 
