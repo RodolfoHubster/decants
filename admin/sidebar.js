@@ -92,8 +92,8 @@ function injectCanastaUI() {
       topbar.appendChild(actions);
     }
     const btn = document.createElement('button');
-    btn.className = 'btn btn-outline btn-sm';
-    btn.innerHTML = `<i class="bi bi-cart3"></i> Canasta <span id="pos-badge" class="badge badge-gold" style="margin-left:6px;border-radius:99px;padding:2px 8px;">0</span>`;
+    btn.className = 'btn btn-outline btn-sm icon-btn-mobile';
+    btn.innerHTML = `<i class="bi bi-cart3"></i> <span>Canasta</span> <span id="pos-badge" class="badge badge-gold" style="margin-left:6px;border-radius:99px;padding:2px 8px;">0</span>`;
     btn.onclick = window.togglePosCart;
     actions.prepend(btn);
   }

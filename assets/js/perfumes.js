@@ -107,6 +107,8 @@ window.renderTable = () => {
 
   fil.sort((a, b) => {
     if (orden === 'clicks') return (b.clicks || 0) - (a.clicks || 0);
+    if (orden === 'recientes') return (b.creadoEn || 0) - (a.creadoEn || 0);
+    if (orden === 'antiguos') return (a.creadoEn || 0) - (b.creadoEn || 0);
     if (orden === 'az')     return a.nombre.localeCompare(b.nombre);
     if (orden === 'za')     return b.nombre.localeCompare(a.nombre);
     return 0;

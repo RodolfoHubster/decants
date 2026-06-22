@@ -17,12 +17,12 @@
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:12px">
         <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
-        <span class="topbar-title">Ventas de Decants</span>
+        <span class="topbar-title">Ventas</span>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-outline btn-sm" onclick="exportCSV()"><i class="bi bi-download"></i> Exportar CSV</button>
-        <button class="btn btn-outline btn-sm" style="border-color:var(--warning,#d97706);color:var(--warning,#d97706)" onclick="openDia()"><i class="bi bi-truck"></i> Registro del Día</button>
-        <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> Nueva Venta</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-outline btn-sm icon-btn-mobile" onclick="exportCSV()" title="Exportar CSV"><i class="bi bi-download"></i> <span>Exportar</span></button>
+        <button class="btn btn-outline btn-sm icon-btn-mobile" style="border-color:var(--warning,#d97706);color:var(--warning,#d97706)" onclick="openDia()" title="Registro del Día"><i class="bi bi-truck"></i> <span>Registro del Día</span></button>
+        <button class="btn btn-primary icon-btn-mobile" onclick="openModal()" title="Nueva Venta"><i class="bi bi-plus-lg"></i> <span>Nueva Venta</span></button>
       </div>
     </div>
     <div class="page-body">

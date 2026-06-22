@@ -737,6 +737,8 @@
     </div>
     <select class="fbar-sort" id="sort" onchange="renderGrid()" aria-label="Ordenar">
       <option value="relevancia">⭐ Populares</option>
+      <option value="recientes">Nuevos</option>
+      <option value="antiguos">Antiguos</option>
       <option value="az">A → Z</option>
       <option value="za">Z → A</option>
       <option value="marca">Marca</option>
@@ -778,6 +780,8 @@
       <div class="fpanel-section-title"><i class="bi bi-sort-down"></i> Ordenar por</div>
       <div class="fsort-list">
         <label class="fsort-label"><input type="radio" name="fsort" value="relevancia" checked onchange="onPanelSort(this)"><span class="fsort-dot"></span>⭐ Más populares</label>
+        <label class="fsort-label"><input type="radio" name="fsort" value="recientes"   onchange="onPanelSort(this)"><span class="fsort-dot"></span>Agregados recientemente</label>
+        <label class="fsort-label"><input type="radio" name="fsort" value="antiguos"    onchange="onPanelSort(this)"><span class="fsort-dot"></span>De antiguo a reciente</label>
         <label class="fsort-label"><input type="radio" name="fsort" value="az"          onchange="onPanelSort(this)"><span class="fsort-dot"></span>Nombre A → Z</label>
         <label class="fsort-label"><input type="radio" name="fsort" value="za"          onchange="onPanelSort(this)"><span class="fsort-dot"></span>Nombre Z → A</label>
         <label class="fsort-label"><input type="radio" name="fsort" value="precio_asc" onchange="onPanelSort(this)"><span class="fsort-dot"></span>Precio: menor a mayor</label>

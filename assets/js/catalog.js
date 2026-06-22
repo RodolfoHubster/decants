@@ -330,6 +330,8 @@ window.renderGrid = () => {
 
   filtered.sort((a, b) => {
     if (sort === 'relevancia')  return (b.clicks || 0) - (a.clicks || 0);
+    if (sort === 'recientes')   return (b.creadoEn || 0) - (a.creadoEn || 0);
+    if (sort === 'antiguos')    return (a.creadoEn || 0) - (b.creadoEn || 0);
     if (sort === 'az')          return a.nombre.localeCompare(b.nombre);
     if (sort === 'za')          return b.nombre.localeCompare(a.nombre);
     if (sort === 'marca')       return (a.marca || '').localeCompare(b.marca || '');
