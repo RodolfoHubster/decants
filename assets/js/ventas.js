@@ -405,10 +405,10 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
   const dd = document.createElement('div');
   dd.style.cssText = [
     'position:fixed', 'z-index:99999',
-    'background:var(--card-bg,#1c1b19)',
+    'background:var(--bg-card,#1c1b19)',
     'border:1px solid var(--border,rgba(255,255,255,.15))',
     'border-radius:8px',
-    'box-shadow:0 8px 32px rgba(0,0,0,.6)',
+    'box-shadow:0 8px 32px rgba(0,0,0,.8)',
     'padding:4px 0',
     'display:none',
     'min-width:130px',
@@ -431,7 +431,7 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
       const opt = document.createElement('div');
       opt.style.cssText = [
         'padding:8px 12px', 'cursor:pointer', 'font-size:13px',
-        'color:var(--text)', 'display:flex', 'align-items:center', 'gap:8px',
+        'color:var(--text-primary)', 'display:flex', 'align-items:center', 'gap:8px',
         'transition:background .1s'
       ].join(';');
       if (item.dot) {
@@ -443,11 +443,11 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
       lbl.textContent = item.label;
       opt.appendChild(lbl);
       if (item.value === selectedValue) {
-        opt.style.background = 'var(--primary-bg,rgba(79,152,163,.15))';
-        opt.style.color = 'var(--primary)';
+        opt.style.background = 'var(--bg-card2,rgba(201,168,76,.15))';
+        opt.style.color = 'var(--accent)';
       }
-      opt.addEventListener('mouseover', () => { opt.style.background = 'var(--primary-bg,rgba(79,152,163,.15))'; opt.style.color = 'var(--primary)'; });
-      opt.addEventListener('mouseout',  () => { opt.style.background = item.value === selectedValue ? 'var(--primary-bg,rgba(79,152,163,.15))' : ''; opt.style.color = item.value === selectedValue ? 'var(--primary)' : 'var(--text)'; });
+      opt.addEventListener('mouseover', () => { opt.style.background = 'var(--bg-card2,rgba(201,168,76,.15))'; opt.style.color = 'var(--accent)'; });
+      opt.addEventListener('mouseout',  () => { opt.style.background = item.value === selectedValue ? 'var(--bg-card2,rgba(201,168,76,.15))' : ''; opt.style.color = item.value === selectedValue ? 'var(--accent)' : 'var(--text-primary)'; });
       opt.addEventListener('mousedown', e => {
         e.preventDefault();
         choose(item);
@@ -464,7 +464,7 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
     } else {
       labelEl.textContent = item.label;
     }
-    btn.style.color = 'var(--text)';
+    btn.style.color = 'var(--text-primary)';
     closeDD();
     onChange(item.value);
   }
