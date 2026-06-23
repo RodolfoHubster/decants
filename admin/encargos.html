@@ -17,9 +17,15 @@
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:12px">
         <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
-        <span class="topbar-title">Encargos — Botellas Completas</span>
+        <span class="topbar-title">Encargos</span>
       </div>
-      <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> Nuevo Encargo</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;gap:4px;background:var(--bg-card2);padding:4px;border-radius:6px;border:1px solid var(--border)">
+          <button class="btn btn-sm btn-outline" id="btn-view-table" style="padding:4px 8px;font-size:12px;background:var(--accent);color:#000" onclick="setView('table')"><i class="bi bi-table"></i> Tabla</button>
+          <button class="btn btn-sm btn-outline" id="btn-view-kanban" style="padding:4px 8px;font-size:12px;opacity:0.7" onclick="setView('kanban')"><i class="bi bi-kanban"></i> Kanban</button>
+        </div>
+        <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> Nuevo Encargo</button>
+      </div>
     </div>
     <div class="page-body">
       <!-- Stats mini -->
@@ -42,12 +48,35 @@
           <option value="cancelado">Cancelado</option>
         </select>
       </div>
-      <div class="card">
+      <!-- Toolbar with bulk actions and pagination -->
+      <div class="toolbar" style="display:flex;gap:12px;align-items:center;margin:12px 0;flex-wrap:wrap">
+        <select class="form-control" id="bulk-action" style="max-width:180px">
+          <option value="">Acciones en lote</option>
+          <option value="pendiente">Marcar como Pendiente</option>
+          <option value="buscando">Marcar como Buscando</option>
+          <option value="conseguido">Marcar como Conseguido</option>
+          <option value="avisado">Marcar como Avisado</option>
+          <option value="entregado">Marcar como Entregado</option>
+          <option value="cancelado">Eliminar</option>
+          <option value="export">Exportar CSV</option>
+        </select>
+        <button class="btn btn-outline btn-sm icon-btn-mobile" onclick="applyBulkAction()" title="Aplicar">
+          <i class="bi bi-check2"></i> <span>Aplicar</span>
+        </button>
+        <select class="form-control" id="page-size" style="max-width:100px" onchange="changePageSize(this.value)">
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+      <!-- Table View Container -->
+      <div id="table-container" class="card">
         <div class="card-header"><h5>Lista de Encargos</h5><span class="badge badge-muted" id="count-label">0 encargos</span></div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
+                <th><input type="checkbox" id="select-all"/></th>
                 <th>Perfume</th>
                 <th>Marca</th>
                 <th>Tamaño</th>
@@ -61,6 +90,54 @@
             </thead>
             <tbody id="tbody"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Kanban View Container -->
+      <div id="kanban-container" style="display:none;margin-top:16px">
+        <div class="kanban-board">
+          <div class="kanban-col">
+            <div class="kanban-col-header" style="border-left: 3px solid #fbbf24">
+              <span>⏳ Pendiente</span>
+              <span class="count" id="k-count-pendiente">0</span>
+            </div>
+            <div class="kanban-cards" id="k-cards-pendiente" data-status="pendiente" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-header" style="border-left: 3px solid #818cf8">
+              <span>🔍 Buscando</span>
+              <span class="count" id="k-count-buscando">0</span>
+            </div>
+            <div class="kanban-cards" id="k-cards-buscando" data-status="buscando" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-header" style="border-left: 3px solid #22c55e">
+              <span>✅ Conseguido</span>
+              <span class="count" id="k-count-conseguido">0</span>
+            </div>
+            <div class="kanban-cards" id="k-cards-conseguido" data-status="conseguido" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-header" style="border-left: 3px solid #38bdf8">
+              <span>📱 Avisado</span>
+              <span class="count" id="k-count-avisado">0</span>
+            </div>
+            <div class="kanban-cards" id="k-cards-avisado" data-status="avisado" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-header" style="border-left: 3px solid #94a3b8">
+              <span>📦 Entregado</span>
+              <span class="count" id="k-count-entregado">0</span>
+            </div>
+            <div class="kanban-cards" id="k-cards-entregado" data-status="entregado" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-header" style="border-left: 3px solid #ef4444">
+              <span>❌ Cancelado</span>
+              <span class="count" id="k-count-cancelado">0</span>
+            </div>
+            <div class="kanban-cards" id="k-cards-cancelado" data-status="cancelado" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -100,11 +177,30 @@
       </div>
       <div class="form-row">
         <div class="form-group"><label>Nombre del cliente *</label><input class="form-control" id="e-cliente" placeholder="Nombre completo..."></div>
-        <div class="form-group"><label>Contacto (WhatsApp)</label><input class="form-control" id="e-contacto" placeholder="+52 999 000 0000"></div>
+        <div class="form-group">
+          <label>Medio de contacto</label>
+          <select class="form-control" id="e-medio" onchange="actualizarContactoPlaceholder()">
+            <option value="whatsapp">WhatsApp</option>
+            <option value="instagram">Instagram</option>
+            <option value="messenger">Facebook (Messenger)</option>
+            <option value="tiktok">TikTok</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Precio acordado (MXN)</label>
+          <label id="lbl-contacto">Teléfono (WhatsApp) *</label>
+          <input class="form-control" id="e-contacto" placeholder="+52 999 000 0000">
+        </div>
+        <div class="form-group">
+          <label>Adelanto (MXN)</label>
+          <input class="form-control" type="number" id="e-adelanto" min="0" placeholder="0">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Precio acordado (MXN) *</label>
           <input class="form-control" type="number" id="e-precio" min="0" placeholder="0">
         </div>
         <div class="form-group">

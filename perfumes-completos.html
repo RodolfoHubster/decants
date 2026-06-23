@@ -348,6 +348,11 @@
       display:flex; flex-direction:column;
     }
     @media(min-width:600px) { .modal-box { border-radius:20px; transform:scale(.96); } }
+    @media(min-width:768px) {
+      .modal-box {
+        max-width: 820px;
+      }
+    }
     .modal-overlay.open .modal-box { transform:translateY(0); }
     @media(min-width:600px) { .modal-overlay.open .modal-box { transform:scale(1); } }
     .modal-handle {
@@ -361,11 +366,20 @@
       padding:16px 20px 0; gap:12px; flex-shrink:0;
     }
     .modal-img-wrap {
-      width:72px; height:72px; border-radius:12px;
-      background:var(--card2); overflow:hidden; flex-shrink:0;
-      display:flex; align-items:center; justify-content:center;
+      width: 100%; height: 320px; border-radius: 12px;
+      background: var(--card2); overflow: hidden; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border);
+      transition: height 0.3s;
     }
-    .modal-img-wrap img { width:100%; height:100%; object-fit:cover; }
+    .modal-img-wrap img {
+      width: 100%; height: 100%; object-fit: contain;
+      cursor: zoom-in;
+      transition: transform .2s var(--ease);
+    }
+    .modal-img-wrap img:hover {
+      transform: scale(1.03);
+    }
     .modal-img-placeholder { font-size:28px; color:var(--faint); }
     .modal-close {
       width:34px; height:34px; border-radius:9px; flex-shrink:0;
@@ -376,6 +390,57 @@
     }
     .modal-close:hover { background:rgba(255,255,255,.12); color:var(--text); }
     .modal-body { padding:16px 20px 24px; display:flex; flex-direction:column; gap:14px; }
+    .modal-info-col { display:flex; flex-direction:column; gap:14px; }
+
+    @media(min-width:768px) {
+      .modal-body {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 24px;
+        align-items: start;
+      }
+      .modal-img-wrap {
+        height: 380px;
+      }
+    }
+
+    /* Lightbox Styles */
+    .lightbox-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.9);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      cursor: zoom-out;
+    }
+    .lightbox-overlay.open {
+      display: flex;
+    }
+    .lightbox-overlay img {
+      max-width: 95%;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.8);
+      animation: zoomIn .2s var(--ease);
+    }
+    .lightbox-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 36px;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 300;
+      line-height: 1;
+    }
+    @keyframes zoomIn {
+      from { transform: scale(.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
     .modal-marca-tag { font-size:11px; font-weight:700; color:var(--gold); letter-spacing:.08em; text-transform:uppercase; }
     .modal-nombre  { font-size:20px; font-weight:700; color:var(--text); line-height:1.25; }
     .modal-badges  { display:flex; gap:7px; flex-wrap:wrap; }
@@ -440,6 +505,72 @@
     footer p { font-size:12px; color:var(--faint); }
     footer a { color:var(--muted); transition:color .18s; }
     footer a:hover { color:var(--gold); }
+
+    /* ── DETAIL ACCORDION ────────────────────────────── */
+    .detail-acc {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .acc-item {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+      transition: border-color .25s;
+    }
+    .acc-item.open {
+      border-color: var(--gold-b);
+      background: linear-gradient(135deg, var(--card2) 0%, var(--card) 100%);
+    }
+    .acc-header {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; padding: 14px 18px;
+      background: transparent; border: none;
+      color: var(--text); font-family: 'Poppins', sans-serif;
+      font-size: 13.5px; font-weight: 600;
+      text-align: left; cursor: pointer;
+      outline: none;
+    }
+    .acc-header span {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .acc-header span i {
+      color: var(--gold); font-size: 15px;
+    }
+    .acc-item.open .acc-header { color: var(--gold); }
+    .acc-chevron {
+      flex-shrink: 0;
+      width: 24px; height: 24px; border-radius: 6px;
+      background: rgba(255, 255, 255, .04);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: var(--muted);
+      transition: transform .35s var(--ease), background .2s, color .2s;
+    }
+    .acc-item.open .acc-chevron {
+      transform: rotate(180deg);
+      background: var(--gold-s); border-color: var(--gold-b); color: var(--gold);
+    }
+    .acc-body {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows .4s var(--ease);
+    }
+    .acc-item.open .acc-body { grid-template-rows: 1fr; }
+    .acc-inner { overflow: hidden; }
+    .acc-content {
+      padding: 0 18px 16px 18px;
+      font-size: 13px; color: var(--muted);
+      line-height: 1.7;
+    }
+    .acc-content p {
+      margin-bottom: 8px;
+    }
+    .acc-content p:last-child {
+      margin-bottom: 0;
+    }
   </style>
 </head>
 <body>
@@ -555,33 +686,87 @@
 <div class="modal-overlay" id="modal" onclick="closeModal(event)">
   <div class="modal-box">
     <div class="modal-handle"></div>
-    <div class="modal-header">
-      <div class="modal-img-wrap" id="m-img-wrap">
-        <div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>
+    <div class="modal-header" style="align-items:center;padding:20px 20px 0">
+      <div style="flex:1;min-width:0;padding-right:12px">
+        <div class="modal-marca-tag" id="m-marca"></div>
+        <div class="modal-nombre"    id="m-nombre" style="font-size:18px;font-weight:700"></div>
       </div>
-      <div style="flex:1;min-width:0"></div>
       <button class="modal-close" onclick="closeModal()" aria-label="Cerrar">
         <i class="bi bi-x-lg"></i>
       </button>
     </div>
     <div class="modal-body">
-      <div class="modal-marca-tag" id="m-marca"></div>
-      <div class="modal-nombre"    id="m-nombre"></div>
-      <div class="modal-badges"    id="m-badges"></div>
-      <div class="modal-desc"      id="m-desc"  style="display:none"></div>
-      <div id="m-precios-wrap" style="display:none">
-        <div class="modal-precios-title">Precios disponibles</div>
-        <div class="modal-precios-grid" id="m-precios"></div>
+      <div class="modal-img-wrap" id="m-img-wrap">
+        <div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>
       </div>
-      <div class="modal-tiempo" id="m-tiempo" style="display:none">
-        <i class="bi bi-clock"></i>
-        <span id="m-tiempo-txt"></span>
+      <div class="modal-info-col">
+        <div class="modal-badges"    id="m-badges"></div>
+        <div class="modal-desc"      id="m-desc"  style="display:none;margin-top:8px"></div>
+        
+        <!-- Acordeón de detalles del perfume -->
+        <div class="detail-acc">
+          
+          <!-- Acordeón 1: Perfil Olfativo y Rendimiento -->
+          <div class="acc-item" id="acc-perfil-item" style="display:none">
+            <button class="acc-header" onclick="toggleAcc('acc-perfil-item')">
+              <span><i class="bi bi-compass"></i> Perfil Olfativo y Rendimiento</span>
+              <div class="acc-chevron"><i class="bi bi-chevron-down"></i></div>
+            </button>
+            <div class="acc-body">
+              <div class="acc-inner">
+                <div class="acc-content" id="m-perfil-content"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Acordeón 2: Autenticidad Garantizada -->
+          <div class="acc-item" id="acc-autenticidad-item" style="display:none">
+            <button class="acc-header" onclick="toggleAcc('acc-autenticidad-item')">
+              <span><i class="bi bi-patch-check"></i> Garantía de Autenticidad</span>
+              <div class="acc-chevron"><i class="bi bi-chevron-down"></i></div>
+            </button>
+            <div class="acc-body">
+              <div class="acc-inner">
+                <div class="acc-content" id="m-autenticidad-content"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Acordeón 3: Logística y Pago -->
+          <div class="acc-item" id="acc-logistica-item" style="display:none">
+            <button class="acc-header" onclick="toggleAcc('acc-logistica-item')">
+              <span><i class="bi bi-truck"></i> Logística y Métodos de Pago</span>
+              <div class="acc-chevron"><i class="bi bi-chevron-down"></i></div>
+            </button>
+            <div class="acc-body">
+              <div class="acc-inner">
+                <div class="acc-content" id="m-logistica-content"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div id="m-precios-wrap" style="display:none;margin-top:14px">
+          <div class="modal-precios-title">Precios disponibles</div>
+          <div class="modal-precios-grid" id="m-precios"></div>
+        </div>
+        <div class="modal-tiempo" id="m-tiempo" style="display:none;margin-top:10px">
+          <i class="bi bi-clock"></i>
+          <span id="m-tiempo-txt"></span>
+        </div>
+        <button class="modal-wa-btn" id="m-btn-wa" onclick="abrirWAModal()">
+          <i class="bi bi-whatsapp"></i> <span id="m-btn-txt">Consultar por WhatsApp</span>
+        </button>
       </div>
-      <button class="modal-wa-btn" id="m-btn-wa" onclick="abrirWAModal()">
-        <i class="bi bi-whatsapp"></i> <span id="m-btn-txt">Consultar por WhatsApp</span>
-      </button>
     </div>
   </div>
+</div>
+
+<!-- Lightbox para ver la imagen ampliada -->
+<div id="lightbox" class="lightbox-overlay" onclick="closeLightbox()">
+  <span class="lightbox-close">&times;</span>
+  <img id="lightbox-img" src="" alt="Imagen ampliada">
 </div>
 
 <!-- FAB WhatsApp -->
@@ -710,6 +895,18 @@ function cardHTML(p) {
   </div>`;
 }
 
+// ── Lightbox ──────────────────────────────────────────────
+window.openLightbox = function() {
+  if (!current || !current.imagen) return;
+  const lb = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lightbox-img');
+  lbImg.src = current.imagen;
+  lb.classList.add('open');
+};
+window.closeLightbox = function() {
+  document.getElementById('lightbox').classList.remove('open');
+};
+
 // ── Modal ─────────────────────────────────────────────────
 window.openModal = function(id) {
   current = allItems.find(p => p.id === id);
@@ -719,7 +916,7 @@ window.openModal = function(id) {
   // imagen
   const wrap = document.getElementById('m-img-wrap');
   wrap.innerHTML = p.imagen
-    ? `<img src="${escHTML(p.imagen)}" alt="${escHTML(p.nombre)}" width="72" height="72">`
+    ? `<img src="${escHTML(p.imagen)}" alt="${escHTML(p.nombre)}" onclick="openLightbox()" style="width:100%;height:100%;object-fit:contain;cursor:zoom-in">`
     : `<div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>`;
 
   document.getElementById('m-marca').textContent  = p.marca || '';
@@ -738,6 +935,83 @@ window.openModal = function(id) {
     descEl.textContent  = p.descripcion;
     descEl.style.display = '';
   } else { descEl.style.display = 'none'; }
+
+  // Collapsible 1: Perfil Olfativo y Rendimiento
+  const perfilItem = document.getElementById('acc-perfil-item');
+  const perfilContent = document.getElementById('m-perfil-content');
+  let perfilHTML = '';
+  
+  if (p.notasSalida)    perfilHTML += `<p><strong>🍃 Notas de Salida:</strong> ${escHTML(p.notasSalida)}</p>`;
+  if (p.notasCorazon)   perfilHTML += `<p><strong>🌸 Notas de Corazón:</strong> ${escHTML(p.notasCorazon)}</p>`;
+  if (p.notasFondo)     perfilHTML += `<p><strong>🪵 Notas de Fondo:</strong> ${escHTML(p.notasFondo)}</p>`;
+  if (p.ocasion)        perfilHTML += `<p><strong>🎯 Ocasión ideal:</strong> ${escHTML(p.ocasion)}</p>`;
+  
+  if (p.longevidad || p.proyeccion) {
+    const longevidades = { baja: 'Baja (2-4 hrs)', moderada: 'Moderada (4-6 hrs)', duradera: 'Duradera (6-8 hrs)', 'muy-duradera': 'Muy Duradera (8-12 hrs)', eterna: 'Eterna (+12 hrs)' };
+    const proyecciones = { intima: 'Íntima (A ras de piel)', moderada: 'Moderada (Un brazo de distancia)', pesada: 'Pesada (Llena una habitación)', enorme: 'Enorme (Se percibe a distancia)' };
+    
+    let perfDetails = [];
+    if (p.longevidad) perfDetails.push(`<strong>Duración:</strong> ${longevidades[p.longevidad] || p.longevidad}`);
+    if (p.proyeccion) perfDetails.push(`<strong>Estela:</strong> ${proyecciones[p.proyeccion] || p.proyeccion}`);
+    perfilHTML += `<p>${perfDetails.join(' | ')}</p>`;
+  }
+  
+  if (perfilHTML) {
+    perfilContent.innerHTML = perfilHTML;
+    perfilItem.style.display = '';
+  } else {
+    perfilItem.style.display = 'none';
+  }
+
+  // Collapsible 2: Garantía de Autenticidad
+  const autItem = document.getElementById('acc-autenticidad-item');
+  const autContent = document.getElementById('m-autenticidad-content');
+  let autHTML = '';
+  
+  if (p.original !== false) {
+    autHTML += `<p><strong>🛡️ 100% Original:</strong> Adquirido a través de distribuidores autorizados. Garantía total de autenticidad.</p>`;
+  }
+  if (p.sellada !== false) {
+    autHTML += `<p><strong>📦 Caja Sellada:</strong> Se entrega en su empaque original de fábrica con celofán intacto.</p>`;
+  }
+  if (p.batch) {
+    autHTML += `<p><strong>🔍 Batch Code:</strong> <code>${escHTML(p.batch)}</code>. Puedes validar este código al momento de la entrega o a través de checkfresh/checkcosmetic.</p>`;
+  } else {
+    autHTML += `<p><strong>🔍 Verificación de Lote:</strong> Ofrecemos la revisión del Batch Code al momento de la entrega para tu total tranquilidad.</p>`;
+  }
+  
+  if (autHTML) {
+    autContent.innerHTML = autHTML;
+    autItem.style.display = '';
+  } else {
+    autItem.style.display = 'none';
+  }
+
+  // Collapsible 3: Logística y Pago
+  const logItem = document.getElementById('acc-logistica-item');
+  const logContent = document.getElementById('m-logistica-content');
+  let logHTML = '';
+  
+  if (p.logistica) {
+    logHTML += `<p><strong>📍 Entregas / Envíos:</strong> ${escHTML(p.logistica)}</p>`;
+  } else {
+    logHTML += `<p><strong>📍 Entregas:</strong> Puntos céntricos de Tijuana o envío nacional a convenir.</p>`;
+  }
+  if (p.pago) {
+    logHTML += `<p><strong>💳 Métodos de Pago:</strong> ${escHTML(p.pago)}</p>`;
+  } else {
+    logHTML += `<p><strong>💳 Métodos de Pago:</strong> Efectivo y transferencias electrónicas.</p>`;
+  }
+  
+  if (logHTML) {
+    logContent.innerHTML = logHTML;
+    logItem.style.display = '';
+  } else {
+    logItem.style.display = 'none';
+  }
+
+  // Reset accordion active classes
+  document.querySelectorAll('.detail-acc .acc-item').forEach(el => el.classList.remove('open'));
 
   // precios
   const preciosWrap = document.getElementById('m-precios-wrap');
@@ -773,6 +1047,16 @@ window.openModal = function(id) {
 
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow = 'hidden';
+};
+
+window.toggleAcc = function(id) {
+  const item = document.getElementById(id);
+  if (!item) return;
+  const wasOpen = item.classList.contains('open');
+  document.querySelectorAll('.detail-acc .acc-item').forEach(el => el.classList.remove('open'));
+  if (!wasOpen) {
+    item.classList.add('open');
+  }
 };
 
 window.closeModal = function(e) {
@@ -821,6 +1105,7 @@ window.enviarCotizacion = function() {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     document.getElementById('modal').classList.remove('open');
+    document.getElementById('lightbox').classList.remove('open');
     document.body.style.overflow = '';
     current = null;
   }

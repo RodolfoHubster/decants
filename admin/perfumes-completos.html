@@ -24,10 +24,14 @@
     <div class="page-body">
       <div class="filter-bar">
         <div class="search-input-wrap"><i class="bi bi-search"></i><input class="form-control" id="search" placeholder="Buscar perfume o marca..." oninput="renderTable()"></div>
+        <div style="display:flex;gap:4px;background:var(--bg-card2);padding:4px;border-radius:6px;border:1px solid var(--border)">
+          <button class="btn btn-sm btn-outline" id="btn-tab-activos" style="padding:4px 8px;font-size:12px;background:var(--accent);color:#000" onclick="setCatalogTab('activos')">Activos</button>
+          <button class="btn btn-sm btn-outline" id="btn-tab-archivados" style="padding:4px 8px;font-size:12px;opacity:0.7" onclick="setCatalogTab('archivados')">Archivados / Agotados</button>
+        </div>
         <select class="form-control" style="max-width:160px" id="f-genero" onchange="renderTable()"><option value="">Todos</option><option>Caballero</option><option>Dama</option><option>Unisex</option></select>
         <select class="form-control" style="max-width:180px" id="f-concentracion" onchange="renderTable()">
           <option value="">Todas las concentraciones</option>
-          <option>EDP</option><option>EDT</option><option>EDC</option><option>Parfum</option><option>Oil</option>
+          <option>EDP</option><option>EDT</option><option>EDC</option><option>Parfum</option><option>Elixir</option><option>Oil</option>
         </select>
         <select class="form-control" style="max-width:160px" id="f-disponibilidad" onchange="renderTable()">
           <option value="">Toda disponibilidad</option>
@@ -67,8 +71,11 @@
       <h4 id="modal-title">Nuevo Perfume Completo</h4>
       <button class="btn-icon" onclick="closeModal()"><i class="bi bi-x-lg"></i></button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" style="max-height:75vh;overflow-y:auto">
       <input type="hidden" id="p-id">
+      
+      <h6 style="color:var(--accent);margin:0 0 12px 0;border-bottom:1px solid var(--border);padding-bottom:6px;font-weight:600;font-size:12px;letter-spacing:1px">I. DATOS TÉCNICOS Y DE IDENTIDAD</h6>
+      
       <div class="form-row">
         <div class="form-group"><label>Nombre *</label><input class="form-control" id="p-nombre" placeholder="Sauvage, Bleu de Chanel..."></div>
         <div class="form-group"><label>Marca *</label><input class="form-control" id="p-marca" placeholder="Dior, Chanel, YSL..."></div>
@@ -78,7 +85,7 @@
           <label>Concentración *</label>
           <select class="form-control" id="p-concentracion">
             <option value="">Selecciona</option>
-            <option>EDP</option><option>EDT</option><option>EDC</option><option>Parfum</option><option>Oil</option>
+            <option>EDP</option><option>EDT</option><option>EDC</option><option>Parfum</option><option>Elixir</option><option>Oil</option>
           </select>
         </div>
         <div class="form-group">
@@ -89,6 +96,63 @@
           </select>
         </div>
       </div>
+
+      <h6 style="color:var(--accent);margin:20px 0 12px 0;border-bottom:1px solid var(--border);padding-bottom:6px;font-weight:600;font-size:12px;letter-spacing:1px">II. GARANTÍA DE AUTENTICIDAD</h6>
+      
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="form-group" style="display:flex;flex-direction:column;gap:8px;justify-content:center">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0">
+            <input type="checkbox" id="p-original" checked style="width:16px;height:16px;accent-color:var(--accent)">
+            Garantía 100% Original
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0">
+            <input type="checkbox" id="p-sellada" checked style="width:16px;height:16px;accent-color:var(--accent)">
+            Caja Sellada
+          </label>
+        </div>
+        <div class="form-group">
+          <label>Batch Code (Revisión disponible)</label>
+          <input class="form-control" id="p-batch" placeholder="ej. 38U202, 1A02...">
+        </div>
+      </div>
+
+      <h6 style="color:var(--accent);margin:20px 0 12px 0;border-bottom:1px solid var(--border);padding-bottom:6px;font-weight:600;font-size:12px;letter-spacing:1px">III. PERFIL OLFATIVO Y RENDIMIENTO</h6>
+
+      <div class="form-row">
+        <div class="form-group"><label>Notas de Salida</label><input class="form-control" id="p-salida" placeholder="ej. Limón, Bergamota, Manzana..."></div>
+        <div class="form-group"><label>Notas de Corazón</label><input class="form-control" id="p-corazon" placeholder="ej. Pimienta, Lavanda, Geranio..."></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Notas de Fondo</label><input class="form-control" id="p-fondo" placeholder="ej. Ambroxan, Cedro, Vainilla..."></div>
+        <div class="form-group"><label>Ocasión de uso recomendada</label><input class="form-control" id="p-ocasion" placeholder="ej. Diario, Oficina, Noche, Invierno..."></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Longevidad (Duración)</label>
+          <select class="form-control" id="p-longevidad">
+            <option value="">Selecciona</option>
+            <option value="baja">Baja (2-4 hrs)</option>
+            <option value="moderada">Moderada (4-6 hrs)</option>
+            <option value="duradera">Duradera (6-8 hrs)</option>
+            <option value="muy-duradera">Muy Duradera (8-12 hrs)</option>
+            <option value="eterna">Eterna (+12 hrs)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Proyección (Estela)</label>
+          <select class="form-control" id="p-proyeccion">
+            <option value="">Selecciona</option>
+            <option value="intima">Íntima (A ras de piel)</option>
+            <option value="moderada">Moderada (Un brazo de distancia)</option>
+            <option value="pesada">Pesada (Llena una habitación)</option>
+            <option value="enorme">Enorme (Se percibe a distancia)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Descripción General / Resumen</label><textarea class="form-control" id="p-desc" rows="2" placeholder="Información adicional, detalles olfativos generales..."></textarea></div>
+
+      <h6 style="color:var(--accent);margin:20px 0 12px 0;border-bottom:1px solid var(--border);padding-bottom:6px;font-weight:600;font-size:12px;letter-spacing:1px">IV. LOGÍSTICA Y COMERCIAL</h6>
+
       <div class="form-row">
         <div class="form-group">
           <label>Disponibilidad *</label>
@@ -103,7 +167,12 @@
           <input class="form-control" id="p-tiempo" placeholder="ej. 7-10 días hábiles">
         </div>
       </div>
-      <div class="form-group"><label>Descripción / Notas olfativas</label><textarea class="form-control" id="p-desc" rows="2" placeholder="Notas de vainilla, madera, ámbar..."></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>Zonas de Entrega / Envío</label><input class="form-control" id="p-logistica" placeholder="ej. Entrega en Tijuana / Envío gratis a todo México"></div>
+        <div class="form-group"><label>Métodos de Pago Aceptados</label><input class="form-control" id="p-pago" placeholder="ej. Transferencia, Efectivo, OXXO"></div>
+      </div>
+      
+      <h6 style="color:var(--accent);margin:20px 0 12px 0;border-bottom:1px solid var(--border);padding-bottom:6px;font-weight:600;font-size:12px;letter-spacing:1px">V. IMAGEN Y PRECIOS</h6>
       <div class="form-group">
         <label>Imagen</label>
         <div style="display:flex;gap:8px;margin-bottom:8px">

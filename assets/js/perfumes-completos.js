@@ -12,6 +12,7 @@ const COL = 'perfumes_completos';
 
 let items = [];
 let imgMode = 'url';
+let currentTab = 'activos';
 
 // ── Cargar datos ──────────────────────────────────────────
 async function load() {
@@ -29,6 +30,15 @@ window.renderTable = function () {
 
   const filtered = items.filter(p => {
     const txt = `${p.nombre} ${p.marca}`.toLowerCase();
+    const isAgotado = p.disponibilidad === 'agotado';
+    const isActivo = p.activo !== false;
+
+    if (currentTab === 'activos') {
+      if (!isActivo || isAgotado) return false;
+    } else {
+      if (isActivo && !isAgotado) return false;
+    }
+
     return (!q || txt.includes(q))
         && (!gen || p.genero === gen)
         && (!con || p.concentracion === con)
@@ -47,6 +57,10 @@ window.renderTable = function () {
     const precios = buildPreciosHTML(p.precios || {});
     const dispClass = p.disponibilidad === 'en-stock' ? 'en-stock' : p.disponibilidad === 'bajo-pedido' ? 'bajo-pedido' : 'agotado';
     const dispLabel = p.disponibilidad === 'en-stock' ? '✅ En Stock' : p.disponibilidad === 'bajo-pedido' ? '🕐 Bajo Pedido' : '❌ Agotado';
+    const archiveBtn = p.activo !== false
+      ? `<button class="btn btn-sm btn-outline" onclick="toggleActivo('${p.id}', false)" title="Archivar (Ocultar)"><i class="bi bi-eye-slash"></i></button>`
+      : `<button class="btn btn-sm btn-outline" style="color:var(--accent)" onclick="toggleActivo('${p.id}', true)" title="Desarchivar (Mostrar)"><i class="bi bi-eye"></i></button>`;
+
     return `<tr>
       <td><img src="${p.imagen || ''}" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;background:#222" onerror="this.src=''"></td>
       <td style="font-weight:500">${p.nombre || '—'}</td>
@@ -56,8 +70,11 @@ window.renderTable = function () {
       <td><span class="stock-badge ${dispClass}">${dispLabel}</span></td>
       <td style="font-size:12px">${precios}</td>
       <td>
-        <button class="btn btn-sm btn-outline" onclick='edit(${JSON.stringify(p.id)})'><i class="bi bi-pencil"></i></button>
-        <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick='remove(${JSON.stringify(p.id)})'><i class="bi bi-trash"></i></button>
+        <div style="display:flex;gap:4px">
+          ${archiveBtn}
+          <button class="btn btn-sm btn-outline" onclick='edit(${JSON.stringify(p.id)})'><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick='remove(${JSON.stringify(p.id)})'><i class="bi bi-trash"></i></button>
+        </div>
       </td>
     </tr>`;
   }).join('');
@@ -80,9 +97,20 @@ window.openModal = function (id = null) {
   document.getElementById('p-marca').value        = p?.marca || '';
   document.getElementById('p-concentracion').value = p?.concentracion || '';
   document.getElementById('p-genero').value       = p?.genero || '';
+  document.getElementById('p-original').checked   = p?.original !== false;
+  document.getElementById('p-sellada').checked    = p?.sellada !== false;
+  document.getElementById('p-batch').value        = p?.batch || '';
+  document.getElementById('p-salida').value       = p?.notasSalida || '';
+  document.getElementById('p-corazon').value      = p?.notasCorazon || '';
+  document.getElementById('p-fondo').value        = p?.notasFondo || '';
+  document.getElementById('p-ocasion').value      = p?.ocasion || '';
+  document.getElementById('p-longevidad').value   = p?.longevidad || '';
+  document.getElementById('p-proyeccion').value   = p?.proyeccion || '';
   document.getElementById('p-disponibilidad').value = p?.disponibilidad || 'en-stock';
   document.getElementById('p-tiempo').value       = p?.tiempoEstimado || '';
   document.getElementById('p-desc').value         = p?.descripcion || '';
+  document.getElementById('p-logistica').value    = p?.logistica || '';
+  document.getElementById('p-pago').value         = p?.pago || '';
   document.getElementById('p-img-url').value      = p?.imagen || '';
   document.getElementById('p-activo').checked     = p?.activo !== false;
 
@@ -183,7 +211,18 @@ window.save = async function () {
       genero,
       disponibilidad: disp,
       tiempoEstimado: disp === 'bajo-pedido' ? document.getElementById('p-tiempo').value.trim() : '',
+      original: document.getElementById('p-original').checked,
+      sellada: document.getElementById('p-sellada').checked,
+      batch: document.getElementById('p-batch').value.trim(),
+      notasSalida: document.getElementById('p-salida').value.trim(),
+      notasCorazon: document.getElementById('p-corazon').value.trim(),
+      notasFondo: document.getElementById('p-fondo').value.trim(),
+      ocasion: document.getElementById('p-ocasion').value.trim(),
+      longevidad: document.getElementById('p-longevidad').value,
+      proyeccion: document.getElementById('p-proyeccion').value,
       descripcion: document.getElementById('p-desc').value.trim(),
+      logistica: document.getElementById('p-logistica').value.trim(),
+      pago: document.getElementById('p-pago').value.trim(),
       imagen,
       precios,
       activo: document.getElementById('p-activo').checked,
@@ -214,6 +253,36 @@ window.remove = async function (id) {
   if (!confirm('¿Eliminar este perfume del catálogo?')) return;
   await deleteDoc(doc(db, COL, id));
   await load();
+};
+
+// ── Tab view Switcher & Archive helpers ──────────────────────────────────────
+window.setCatalogTab = function (tab) {
+  currentTab = tab;
+  
+  const btnActivos = document.getElementById('btn-tab-activos');
+  const btnArchivados = document.getElementById('btn-tab-archivados');
+  
+  if (tab === 'activos') {
+    if (btnActivos) { btnActivos.style.background = 'var(--accent)'; btnActivos.style.color = '#000'; btnActivos.style.opacity = '1'; }
+    if (btnArchivados) { btnArchivados.style.background = 'transparent'; btnArchivados.style.color = 'var(--text-muted)'; btnArchivados.style.opacity = '0.7'; }
+  } else {
+    if (btnActivos) { btnActivos.style.background = 'transparent'; btnActivos.style.color = 'var(--text-muted)'; btnActivos.style.opacity = '0.7'; }
+    if (btnArchivados) { btnArchivados.style.background = 'var(--accent)'; btnArchivados.style.color = '#000'; btnArchivados.style.opacity = '1'; }
+  }
+  
+  renderTable();
+};
+
+window.toggleActivo = async function (id, activo) {
+  try {
+    await updateDoc(doc(db, COL, id), { activo, actualizadoEn: serverTimestamp() });
+    const p = items.find(x => x.id === id);
+    if (p) p.activo = activo;
+    renderTable();
+  } catch (err) {
+    console.error(err);
+    alert('Error: ' + err.message);
+  }
 };
 
 load();
