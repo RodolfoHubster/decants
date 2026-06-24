@@ -346,6 +346,7 @@
       transform:translateY(40px);
       transition:transform .3s var(--ease);
       display:flex; flex-direction:column;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 20px 50px rgba(0,0,0,.6);
     }
     @media(min-width:600px) { .modal-box { border-radius:20px; transform:scale(.96); } }
     @media(min-width:768px) {
@@ -366,7 +367,7 @@
       padding:16px 20px 0; gap:12px; flex-shrink:0;
     }
     .modal-img-wrap {
-      width: 100%; height: 320px; border-radius: 12px;
+      width: 100%; height: 280px; border-radius: 12px;
       background: var(--card2); overflow: hidden; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
       border: 1px solid var(--border);
@@ -382,25 +383,25 @@
     }
     .modal-img-placeholder { font-size:28px; color:var(--faint); }
     .modal-close {
-      width:34px; height:34px; border-radius:9px; flex-shrink:0;
+      width:38px; height:38px; border-radius:10px; flex-shrink:0;
       background:rgba(255,255,255,.06); border:1px solid var(--border);
       color:var(--muted); font-size:18px;
       display:flex; align-items:center; justify-content:center; cursor:pointer;
-      transition:all .15s;
+      transition:all .18s;
     }
-    .modal-close:hover { background:rgba(255,255,255,.12); color:var(--text); }
+    .modal-close:hover { background:rgba(255,255,255,.15); color:var(--text); border-color:rgba(255,255,255,.15); }
     .modal-body { padding:16px 20px 24px; display:flex; flex-direction:column; gap:14px; }
     .modal-info-col { display:flex; flex-direction:column; gap:14px; }
 
     @media(min-width:768px) {
       .modal-body {
         display: grid;
-        grid-template-columns: 320px 1fr;
+        grid-template-columns: 340px 1fr;
         gap: 24px;
         align-items: start;
       }
       .modal-img-wrap {
-        height: 380px;
+        height: 420px;
       }
     }
 
@@ -441,42 +442,70 @@
       from { transform: scale(.9); opacity: 0; }
       to { transform: scale(1); opacity: 1; }
     }
-    .modal-marca-tag { font-size:11px; font-weight:700; color:var(--gold); letter-spacing:.08em; text-transform:uppercase; }
-    .modal-nombre  { font-size:20px; font-weight:700; color:var(--text); line-height:1.25; }
+    .modal-marca-tag { font-size:11px; font-weight:700; color:var(--gold); letter-spacing:.14em; text-transform:uppercase; opacity:.85; }
+    .modal-nombre  { font-family:'Playfair Display',serif; font-size:26px; font-weight:600; color:var(--text); line-height:1.2; }
+    @media(max-width:600px) { .modal-nombre { font-size:22px; } }
     .modal-badges  { display:flex; gap:7px; flex-wrap:wrap; }
     .modal-badge {
-      font-size:11px; font-weight:600; border-radius:99px; padding:3px 11px;
-      background:rgba(255,255,255,.06); border:1px solid var(--border); color:var(--muted);
+      font-size:11px; font-weight:600; border-radius:8px; padding:5px 12px;
+      background:rgba(255,255,255,.04); border:1px solid var(--border);
+      border-left:3px solid var(--gold-b); color:var(--muted);
     }
-    .modal-desc    { font-size:13px; color:var(--muted); line-height:1.7; }
-    .modal-precios-title { font-size:12px; font-weight:700; color:var(--gold); letter-spacing:.06em; text-transform:uppercase; }
+    .modal-desc {
+      font-size:13.5px; color:var(--muted); line-height:1.8;
+      max-height:4.8em; overflow:hidden;
+      transition:max-height .4s var(--ease);
+      position:relative;
+    }
+    .modal-desc.expanded { max-height:600px; }
+    .btn-read-more {
+      background:none; border:none; cursor:pointer;
+      color:var(--gold); font-size:12px; font-weight:600;
+      font-family:'Poppins',sans-serif;
+      padding:4px 0; margin-top:4px;
+      transition:opacity .18s;
+    }
+    .btn-read-more:hover { opacity:.75; }
+    .modal-precios-title {
+      font-size:12px; font-weight:700; color:var(--gold); letter-spacing:.06em; text-transform:uppercase;
+      display:flex; align-items:center; gap:12px;
+    }
+    .modal-precios-title::after {
+      content:''; flex:1; height:1px;
+      background:linear-gradient(90deg, var(--gold-b), transparent);
+    }
     .modal-precios-grid {
       display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:8px;
+      margin-top:10px;
     }
     .precio-pill {
       background:var(--card2); border:1px solid var(--border);
-      border-radius:10px; padding:10px 8px;
-      text-align:center;
+      border-radius:10px; padding:12px 8px;
+      text-align:center; transition:all .2s;
     }
-    .precio-pill .size { font-size:12px; font-weight:600; color:var(--muted); }
-    .precio-pill .amt  { font-size:15px; font-weight:700; color:var(--text); }
+    .precio-pill:hover { border-color:var(--gold-b); transform:translateY(-2px); }
+    .precio-pill .size { font-size:11px; font-weight:600; color:var(--muted); margin-bottom:2px; }
+    .precio-pill .amt  { font-size:18px; font-weight:700; color:var(--text); }
     .modal-tiempo {
       display:flex; align-items:center; gap:8px;
       background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.25);
       border-radius:10px; padding:10px 14px;
       font-size:13px; color:#fbbf24;
     }
+    @keyframes pulse-btn { 0%,100%{box-shadow:0 4px 16px rgba(37,211,102,.15)} 50%{box-shadow:0 4px 28px rgba(37,211,102,.4)} }
     .modal-wa-btn {
-      width:100%; padding:13px; border-radius:12px; border:none; cursor:pointer;
+      width:100%; padding:14px; border-radius:12px; border:none; cursor:pointer;
       background:#25D366; color:#fff;
       font-size:14px; font-weight:700;
       font-family:'Poppins',sans-serif;
       display:flex; align-items:center; justify-content:center; gap:8px;
-      transition:background .18s;
+      transition:background .18s, transform .18s;
+      animation:pulse-btn 2.5s ease-in-out infinite;
     }
-    .modal-wa-btn:hover { background:#1db954; }
+    .modal-wa-btn:hover { background:#1db954; transform:scale(1.02); }
     .modal-wa-btn.pedido {
       background:var(--gold-s); border:1px solid var(--gold-b); color:var(--gold);
+      animation:none;
     }
     .modal-wa-btn.pedido:hover { background:rgba(201,168,76,.22); }
 
@@ -542,16 +571,17 @@
     .acc-item.open .acc-header { color: var(--gold); }
     .acc-chevron {
       flex-shrink: 0;
-      width: 24px; height: 24px; border-radius: 6px;
-      background: rgba(255, 255, 255, .04);
+      width: 28px; height: 28px; border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
       border: 1px solid var(--border);
       display: flex; align-items: center; justify-content: center;
       font-size: 12px; color: var(--muted);
-      transition: transform .35s var(--ease), background .2s, color .2s;
+      transition: transform .35s var(--ease), background .2s, color .2s, box-shadow .3s;
     }
     .acc-item.open .acc-chevron {
       transform: rotate(180deg);
       background: var(--gold-s); border-color: var(--gold-b); color: var(--gold);
+      box-shadow: 0 0 10px rgba(201,168,76,.2);
     }
     .acc-body {
       display: grid;
@@ -635,7 +665,6 @@
   </div>
   <div class="grid" id="grid">
     <!-- skeletons iniciales -->
-    ${Array.from({length:8}).map(()=>`
     <div class="skeleton-card">
       <div class="skeleton skel-img"></div>
       <div class="skel-body">
@@ -643,7 +672,63 @@
         <div class="skeleton skel-line w80"></div>
         <div class="skeleton skel-line w60"></div>
       </div>
-    </div>`).join('')}
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton skel-img"></div>
+      <div class="skel-body">
+        <div class="skeleton skel-line w40"></div>
+        <div class="skeleton skel-line w80"></div>
+        <div class="skeleton skel-line w60"></div>
+      </div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton skel-img"></div>
+      <div class="skel-body">
+        <div class="skeleton skel-line w40"></div>
+        <div class="skeleton skel-line w80"></div>
+        <div class="skeleton skel-line w60"></div>
+      </div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton skel-img"></div>
+      <div class="skel-body">
+        <div class="skeleton skel-line w40"></div>
+        <div class="skeleton skel-line w80"></div>
+        <div class="skeleton skel-line w60"></div>
+      </div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton skel-img"></div>
+      <div class="skel-body">
+        <div class="skeleton skel-line w40"></div>
+        <div class="skeleton skel-line w80"></div>
+        <div class="skeleton skel-line w60"></div>
+      </div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton skel-img"></div>
+      <div class="skel-body">
+        <div class="skeleton skel-line w40"></div>
+        <div class="skeleton skel-line w80"></div>
+        <div class="skeleton skel-line w60"></div>
+      </div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton skel-img"></div>
+      <div class="skel-body">
+        <div class="skeleton skel-line w40"></div>
+        <div class="skeleton skel-line w80"></div>
+        <div class="skeleton skel-line w60"></div>
+      </div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton skel-img"></div>
+      <div class="skel-body">
+        <div class="skeleton skel-line w40"></div>
+        <div class="skeleton skel-line w80"></div>
+        <div class="skeleton skel-line w60"></div>
+      </div>
+    </div>
   </div>
 </main>
 
@@ -686,11 +771,7 @@
 <div class="modal-overlay" id="modal" onclick="closeModal(event)">
   <div class="modal-box">
     <div class="modal-handle"></div>
-    <div class="modal-header" style="align-items:center;padding:20px 20px 0">
-      <div style="flex:1;min-width:0;padding-right:12px">
-        <div class="modal-marca-tag" id="m-marca"></div>
-        <div class="modal-nombre"    id="m-nombre" style="font-size:18px;font-weight:700"></div>
-      </div>
+    <div class="modal-header" style="justify-content:flex-end;padding:20px 20px 0;position:relative;z-index:10">
       <button class="modal-close" onclick="closeModal()" aria-label="Cerrar">
         <i class="bi bi-x-lg"></i>
       </button>
@@ -700,8 +781,13 @@
         <div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>
       </div>
       <div class="modal-info-col">
+        <div style="margin-bottom:2px">
+          <div class="modal-marca-tag" id="m-marca"></div>
+          <div class="modal-nombre"    id="m-nombre"></div>
+        </div>
         <div class="modal-badges"    id="m-badges"></div>
         <div class="modal-desc"      id="m-desc"  style="display:none;margin-top:8px"></div>
+        <button class="btn-read-more" id="m-read-more" style="display:none" onclick="toggleReadMore()">Leer más ▾</button>
         
         <!-- Acordeón de detalles del perfume -->
         <div class="detail-acc">
@@ -931,10 +1017,23 @@ window.openModal = function(id) {
 
   // descripción
   const descEl = document.getElementById('m-desc');
+  const btnMore = document.getElementById('m-read-more');
+  descEl.classList.remove('expanded');
+  btnMore.innerHTML = 'Leer más ▾';
+  
   if (p.descripcion) {
     descEl.textContent  = p.descripcion;
     descEl.style.display = '';
-  } else { descEl.style.display = 'none'; }
+    // Show 'read more' only if text is relatively long
+    if (p.descripcion.length > 150) {
+      btnMore.style.display = 'inline-block';
+    } else {
+      btnMore.style.display = 'none';
+    }
+  } else { 
+    descEl.style.display = 'none'; 
+    btnMore.style.display = 'none';
+  }
 
   // Collapsible 1: Perfil Olfativo y Rendimiento
   const perfilItem = document.getElementById('acc-perfil-item');
@@ -1056,6 +1155,18 @@ window.toggleAcc = function(id) {
   document.querySelectorAll('.detail-acc .acc-item').forEach(el => el.classList.remove('open'));
   if (!wasOpen) {
     item.classList.add('open');
+  }
+};
+
+window.toggleReadMore = function() {
+  const descEl = document.getElementById('m-desc');
+  const btnMore = document.getElementById('m-read-more');
+  if (descEl.classList.contains('expanded')) {
+    descEl.classList.remove('expanded');
+    btnMore.innerHTML = 'Leer más ▾';
+  } else {
+    descEl.classList.add('expanded');
+    btnMore.innerHTML = 'Mostrar menos ▴';
   }
 };
 

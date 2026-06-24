@@ -1069,6 +1069,201 @@ footer p { font-size: 13px; color: var(--muted); }
 .grid.list-view {
   grid-template-columns: 1fr !important;
 }
+
+.footer-social { margin-bottom: 20px; }
+.footer-social > p { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; margin-bottom: 14px; }
+.social-buttons { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+.social-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 16px; border-radius: 99px;
+  font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  color: var(--muted); transition: all .18s;
+}
+.social-btn svg, .social-btn i { font-size: 15px; flex-shrink: 0; }
+.social-btn.instagram:hover { background: rgba(225,48,108,.1); border-color: rgba(225,48,108,.4); color: #e1306c; }
+.social-btn.tiktok:hover    { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.25); color: #fff; }
+.social-btn.facebook:hover  { background: rgba(24,119,242,.1); border-color: rgba(24,119,242,.4); color: #1877f2; }
+.footer-copy { font-size: 12.5px; color: var(--muted); }
+.footer-copy a, footer a { color: var(--gold); }
+footer p { font-size: 13px; color: var(--muted); }
+
+/* ============================================
+   RESPONSIVE — TABLET (≤768px)
+   ============================================ */
+   @media (max-width: 768px) {
+    .filters {
+      position: sticky;
+      padding: 10px 14px;
+    }
+  
+    /* OCULTAR SOLO LA BÚSQUEDA DE DESKTOP */
+    .filters-row1 > div:first-child {
+      display: none !important;
+    }
+  
+    /* MANTENER VISIBLE "ORDENAR POR" Y LIMPIAR */
+    .filters-row1 {
+      display: flex !important;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+  
+    .filters-row1 > div:nth-child(2) {
+      flex: 1;
+      min-width: 200px;
+    }
+  
+    /* MOSTRAR LA BÚSQUEDA DE MOBILE */
+    .filters-row-mobile {
+      display: block;
+      margin-bottom: 12px;
+    }
+  
+    .hero {
+      padding: 40px 20px 36px;
+      min-height: 300px;
+    }
+  
+    .hero-features {
+      gap: 20px;
+    }
+    .catalog {
+      padding: 20px 14px 48px;
+    }
+  
+    .grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+  
+    .ftab {
+      padding: 6px 13px;
+      font-size: 12px;
+    }
+  
+    .social-buttons {
+      gap: 8px;
+    }
+  
+    .social-btn {
+      padding: 7px 13px;
+      font-size: 12px;
+    }
+  }
+/* ============================================
+   RESPONSIVE — MOBILE (≤480px)
+   ============================================ */
+@media (max-width: 480px) {
+
+  /* ── Header compacto ── */
+  header { padding: 0 14px; }
+
+  .header-inner { height: 56px; gap: 8px; }
+
+  /* Ocultar texto del logo, mantener solo el círculo FS */
+  .logo-text { display: none; }
+
+  /* Admin: solo icono */
+  .btn-admin span { display: none; }
+  .btn-admin { padding: 8px 10px; gap: 0; }
+
+  /* WhatsApp: solo el círculo verde con el icono */
+  .btn-wa {
+    width: 38px; height: 38px;
+    padding: 0;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .btn-wa-text { display: none; }
+
+  /* Filtros */
+  .filters { top: 56px; padding: 8px 12px; }
+
+  /* Tabs sin scroll horizontal visible */
+  .filter-tabs { gap: 6px; margin-top: 8px; }
+  .ftab { padding: 6px 12px; font-size: 11.5px; }
+
+  /* Sort + clear en mobile */
+  .filters-row-sort-mobile {
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .fsort-label { font-size: 11px; }
+  .fselect { font-size: 12px; padding: 9px 10px; }
+  .btn-clear { padding: 8px 10px; font-size: 11px; }
+  .fselect { font-size: 12px; padding: 9px 10px; }
+  .btn-fclear { font-size: 12px; padding: 9px 12px; }
+
+  /* ── Grilla 2 columnas móviles ── */
+  .grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ── Carrito Full Screen ── */
+  .cart-drawer { max-width: 100% !important; border-left: none; }
+
+  /* Grid */
+  .catalog { padding: 16px 10px 60px; }
+
+  /* Hero */
+  .hero-features { gap: 14px; }
+  .hfeat-icon { width: 36px; height: 36px; font-size: 16px; }
+
+  /* Cart drawer: bottom sheet */
+  .cart-drawer {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    bottom: 0 !important; top: auto !important;
+    height: 88vh !important;
+    right: 0 !important;
+    transform: translateY(100%) !important;
+    transition: transform .3s cubic-bezier(.4,0,.2,1) !important;
+  }
+  .cart-drawer.open { transform: translateY(0) !important; }
+
+  .cart-header {
+    padding: 16px 16px 12px !important;
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .cart-header::before {
+    content: '';
+    display: block;
+    width: 40px; height: 4px;
+    background: rgba(255,255,255,.15);
+    border-radius: 2px;
+    margin: 0 auto 12px;
+    order: -1;
+  }
+  .cart-item      { padding: 10px 12px !important; gap: 10px !important; }
+  .cart-item-img  { width: 52px !important; height: 52px !important; flex-shrink: 0; }
+  .cart-item-nombre { font-size: 13px !important; }
+  .cart-item-marca  { font-size: 11px !important; }
+  .cart-item-size   { font-size: 12px !important; }
+  .cart-qty-btn  { width: 34px !important; height: 34px !important; font-size: 18px !important; }
+  .cart-qty-num  { font-size: 14px !important; min-width: 20px; text-align: center; }
+  .cart-footer   { padding: 14px 16px !important; gap: 10px !important; }
+  .btn-cart-wa   { font-size: 14px !important; padding: 14px !important; }
+  .btn-cart-clear{ font-size: 13px !important; padding: 11px !important; }
+
+  #undo-toast { bottom: 72px; }
+  #toast       { bottom: 140px; }
+}
+
+/* ============================================
+   RESPONSIVE — SMALL (≤380px)
+   ============================================ */
+@media (max-width: 380px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* ── LIST VIEW (Client Toggle) ── */
+.grid.list-view {
+  grid-template-columns: 1fr !important;
+}
 .grid.list-view .pcard {
   display: flex;
   flex-direction: row;
@@ -1087,4 +1282,163 @@ footer p { font-size: 13px; color: var(--muted); }
 }
 .grid.list-view .card-pills {
   margin-top: 6px;
+}
+
+/* ============================================
+   DRIVER.JS — FITOSCENTS THEME
+   ============================================ */
+
+/* ── Popover container ── */
+.driver-popover.driverjs-theme {
+  background: #1a1814 !important;
+  color: #ede9e1 !important;
+  border: 1px solid rgba(201,168,76,.35) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 12px 36px rgba(0,0,0,.85) !important;
+  font-family: 'Poppins', sans-serif !important;
+  padding: 18px 20px !important;
+  max-width: 300px !important;
+  min-width: 240px !important;
+  text-align: center !important;
+}
+
+/* ── Title ── */
+.driver-popover.driverjs-theme .driver-popover-title {
+  all: unset !important;
+  display: block !important;
+  color: #c9a84c !important;
+  font-family: 'Poppins', sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
+  margin: 0 0 10px 0 !important;
+  padding: 0 24px !important;
+  text-align: center !important;
+  border: none !important;
+}
+
+/* ── Description ── */
+.driver-popover.driverjs-theme .driver-popover-description {
+  all: unset !important;
+  display: block !important;
+  color: rgba(237,233,225,.85) !important;
+  font-family: 'Poppins', sans-serif !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: center !important;
+}
+
+/* ── Close (×) button ── */
+.driver-popover.driverjs-theme .driver-popover-close-btn {
+  all: unset !important;
+  position: absolute !important;
+  top: 12px !important;
+  right: 14px !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 18px !important;
+  color: #8a8880 !important;
+  cursor: pointer !important;
+  border-radius: 6px !important;
+  transition: all .15s !important;
+  z-index: 2 !important;
+}
+.driver-popover.driverjs-theme .driver-popover-close-btn:hover {
+  color: #ede9e1 !important;
+  background: rgba(255,255,255,.08) !important;
+}
+
+/* ── Footer (progress + buttons) ── */
+.driver-popover.driverjs-theme .driver-popover-footer {
+  all: unset !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-top: 16px !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  gap: 10px !important;
+}
+
+/* ── Progress text ── */
+.driver-popover.driverjs-theme .driver-popover-progress-text {
+  color: #8a8880 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+}
+
+/* ── Navigation buttons container ── */
+.driver-popover.driverjs-theme .driver-popover-navigation-btns {
+  all: unset !important;
+  display: flex !important;
+  gap: 6px !important;
+}
+
+/* ── Prev / Next buttons ── */
+.driver-popover.driverjs-theme .driver-popover-prev-btn,
+.driver-popover.driverjs-theme .driver-popover-next-btn {
+  all: unset !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 7px 14px !important;
+  border-radius: 8px !important;
+  font-family: 'Poppins', sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all .15s !important;
+  white-space: nowrap !important;
+}
+.driver-popover.driverjs-theme .driver-popover-prev-btn {
+  background: rgba(255,255,255,.06) !important;
+  color: #8a8880 !important;
+  border: 1px solid rgba(255,255,255,.1) !important;
+}
+.driver-popover.driverjs-theme .driver-popover-prev-btn:hover {
+  background: rgba(255,255,255,.1) !important;
+  color: #ede9e1 !important;
+}
+.driver-popover.driverjs-theme .driver-popover-next-btn {
+  background: rgba(201,168,76,.15) !important;
+  color: #c9a84c !important;
+  border: 1px solid rgba(201,168,76,.35) !important;
+}
+.driver-popover.driverjs-theme .driver-popover-next-btn:hover {
+  background: rgba(201,168,76,.25) !important;
+  color: #e0b95a !important;
+}
+
+/* ── Arrow ── */
+.driver-popover.driverjs-theme .driver-popover-arrow {
+  display: none !important;
+}
+
+/* ── Footer Tour Button ── */
+.footer-tour-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.07);
+  color: #8a8880;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 14px;
+  transition: all .2s;
+  font-family: 'Poppins', sans-serif;
+}
+.footer-tour-btn:hover {
+  border-color: rgba(201,168,76,.3);
+  color: #c9a84c;
+  background: rgba(201,168,76,.12);
 }
