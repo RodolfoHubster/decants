@@ -824,13 +824,14 @@ window.saveDia = async () => {
   btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando…';
   try {
     const batch = writeBatch(db);
+    const canalVal = document.getElementById('dia-canal').value;
     validas.forEach(r => {
       const p = perfumes.find(x => x.id === r.perfumeId);
       const ref = doc(collection(db, 'ventas'));
       batch.set(ref, {
         perfumeId: r.perfumeId, perfumeNombre: p?.nombre||'', perfumeMarca: p?.marca||'',
         talla: r.talla, precio: +r.precio, cantidad: +r.cantidad||1,
-        estado: r.estado, canal: 'mercado', lugar: lugarStr,
+        estado: r.estado, canal: canalVal, lugar: lugarStr,
 
         cliente: (r.cliente||'').trim(),
         notas: [r.notas?.trim(), notaGlobal].filter(Boolean).join(' | '),
