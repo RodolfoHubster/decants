@@ -2,37 +2,46 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Solo usuarios autenticados pueden acceder al panel admin
     function isAuth() {
       return request.auth != null;
     }
 
-    // Perfumes — lectura pública (catálogo), escritura solo admin
-    match /perfumes/{id} {
+    match /perfumes/{id}           { allow read: if true; allow write: if isAuth(); }
+    match /marcas/{id}             { allow read: if true; allow write: if isAuth(); }
+    match /categorias/{id}         { allow read: if true; allow write: if isAuth(); }
+    match /familias_olfativas/{id} { allow read: if true; allow write: if isAuth(); }
+    match /tipos_perfume/{id}      { allow read: if true; allow write: if isAuth(); }
+    match /paquetes/{id}           { allow read: if true; allow write: if isAuth(); }
+
+    match /novedades/{id} { allow read: if true; allow write: if isAuth(); }
+    match /anuncios/{id}  { allow read: if true; allow write: if isAuth(); }
+
+    match /pedidos/{id} { allow read, write: if isAuth(); }
+
+    match /ventas/{ventaId} {
+      allow read:           if isAuth();
+      allow update, delete: if isAuth();
+      allow create:         if isAuth()
+        && request.resource.data.keys().hasAll([
+            'perfumeId', 'perfumeNombre', 'perfumeMarca',
+            'talla', 'cantidad', 'precio',
+            'estado', 'canal', 'creadoEn'
+        ])
+        && request.resource.data.canal    in ['mercado', 'online', 'otro']
+        && request.resource.data.cantidad  > 0
+        && request.resource.data.precio   >= 0;
+    }
+
+    // ── NUEVAS ────────────────────────────────────────────────────────
+    match /perfumes_completos/{id} {
       allow read: if true;
       allow write: if isAuth();
     }
 
-    // Marcas — lectura pública, escritura solo admin
-    match /marcas/{id} {
-      allow read: if true;
-      allow write: if isAuth();
-    }
-
-    // Categorias — lectura pública, escritura solo admin
-    match /categorias/{id} {
-      allow read: if true;
-      allow write: if isAuth();
-    }
-
-    // Ventas — solo admin autenticado
-    match /ventas/{id} {
+    match /ordenes_completos/{id} {
       allow read, write: if isAuth();
     }
 
-    // Pedidos — solo admin autenticado
-    match /pedidos/{id} {
-      allow read, write: if isAuth();
-    }
+    match /{document=**} { allow read, write: if false; }
   }
 }

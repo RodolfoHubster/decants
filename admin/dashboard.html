@@ -48,20 +48,33 @@
         </div>
       </div>
 
-      <!-- Top 5 perfumes más vendidos -->
-      <div class="card">
-        <div class="card-header"><h5>🏆 Top 5 más vendidos</h5></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>#</th><th>Perfume</th><th style="text-align:right">Unidades / Total</th></tr></thead>
-            <tbody id="top5-body"><tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-faint)">Cargando...</td></tr></tbody>
-          </table>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px; margin:10px; ">
+        <!-- Top 5 Decants -->
+        <div class="card" style="margin-bottom:0">
+          <div class="card-header"><h5>🏆 Top 5 Decants</h5></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Perfume</th><th style="text-align:right">Unidades / Total</th></tr></thead>
+              <tbody id="top5-decants-body"><tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-faint)">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Top 5 Completos -->
+        <div class="card" style="margin-bottom:0">
+          <div class="card-header"><h5>🍾 Top 5 Botellas Completas</h5></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Perfume</th><th style="text-align:right">Unidades / Total</th></tr></thead>
+              <tbody id="top5-completos-body"><tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-faint)">Cargando...</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
     </div>
   </div>
 </div>
-<script type="module" src="../assets/js/dashboard.js"></script>
+<script type="module" src="../assets/js/dashboard.js?v=2.0"></script>
 </body>
 </html>

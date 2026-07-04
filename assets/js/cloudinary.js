@@ -42,56 +42,57 @@ function transform(url, tx) {
   return `${base}${tx}/${rest}`;
 }
 
-// ── Presets de transformación ──────────────────────────────────────────────
+// ── Presets de transformación (Refactorizados) ──────────────────────────────
+// Check if admin data saver is active (prevents loading heavy images)
+const isDataSaver = () => typeof localStorage !== 'undefined' && localStorage.getItem('adminDataSaver') === '1';
+// Tiny 1x1 transparent gif base64
+const blankPixel = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
 /**
- * Imagen para card del catálogo.
- * 400×400px, recorte centrado, WebP automático, calidad buena.
- * Optimizado para carga rápida en grid mobile.
+ * Imagen para card del catálogo (Reutilizable para tamaños medianos).
+ * 500x500px - Se elimina dpr_auto para evitar multiplicar cuotas.
  */
 export function imgCard(url) {
-  return transform(url, 'w_400,h_400,c_fill,g_center,f_auto,q_auto:good,dpr_auto');
+  if (isDataSaver()) return blankPixel;
+  return transform(url, 'w_500,h_500,c_fill,f_auto,q_auto');
 }
 
 /**
  * Imagen para el modal de detalle del perfume.
- * 800×800px, recorte centrado, máxima calidad visual.
+ * 800x800px.
  */
 export function imgModal(url) {
-  return transform(url, 'w_800,h_800,c_fill,g_center,f_auto,q_auto:best,dpr_auto');
+  if (isDataSaver()) return blankPixel;
+  return transform(url, 'w_800,h_800,c_fill,f_auto,q_auto');
 }
 
 /**
- * Imagen para el ítem dentro del carrito/drawer.
- * 80×80px, recorte centrado, calidad buena, carga rápida.
+ * Imagen para el ítem dentro del carrito Y miniaturas de admin.
+ * Unificamos a 100x100px para maximizar hit rate de caché y ahorrar tokens.
  */
 export function imgCart(url) {
-  return transform(url, 'w_80,h_80,c_fill,g_center,f_auto,q_auto:good');
+  if (isDataSaver()) return blankPixel;
+  return transform(url, 'w_100,h_100,c_fill,f_auto,q_auto');
 }
 
-/**
- * Miniatura para tablas del admin (perfumes, pedidos, etc.).
- * 60×60px, eco (mínima calidad suficiente para tablas).
- */
 export function imgThumb(url) {
-  return transform(url, 'w_60,h_60,c_fill,g_center,f_auto,q_auto:eco');
+  // Ahora llama a la misma transformación exacta del carrito
+  return imgCart(url);
 }
 
 /**
  * Imagen para meta tags Open Graph (compartir en redes).
- * 1200×630px, recorte con padding, calidad buena.
  */
 export function imgOg(url) {
-  return transform(url, 'w_1200,h_630,c_fill,g_center,f_auto,q_auto:good');
+  return transform(url, 'w_1200,h_630,c_fill,f_auto,q_auto');
 }
 
 /**
- * Placeholder borroso para blur-up (lazy load progresivo).
- * 20×20px muy comprimido, para usar como src inicial antes de la imagen real.
- * Decodificar como base64 directamente en <img src> para efecto blur-up.
+ * Placeholder borroso para blur-up.
  */
 export function imgPlaceholder(url) {
-  return transform(url, 'w_20,h_20,c_fill,f_auto,q_1,e_blur:200');
+  if (isDataSaver()) return blankPixel;
+  return transform(url, 'w_20,h_20,c_fill,f_auto,q_auto,e_blur:200');
 }
 
 export { CLOUD_NAME };

@@ -37,19 +37,26 @@ async function loadStats() {
   }
 
   let totalVentas = 0, ventasPend = 0, ventasCount = 0;
-  const ventasPorPerfume = {};
+  const ventasDecants = {};
+  const ventasCompletos = {};
+
   v.forEach(d => {
     const vd = d.data();
     if (vd.estado !== 'cancelada') {
       totalVentas += (+vd.precio||0) * (+vd.cantidad||1);
       ventasCount++;
       const nombre = vd.perfumeNombre || 'Sin nombre';
-      if (!ventasPorPerfume[nombre]) ventasPorPerfume[nombre] = { unidades: 0, total: 0 };
-      ventasPorPerfume[nombre].unidades += (+vd.cantidad||1);
-      ventasPorPerfume[nombre].total += (+vd.precio||0)*(+vd.cantidad||1);
+      
+      const isCompleto = vd.talla === 'Completo';
+      const targetObj = isCompleto ? ventasCompletos : ventasDecants;
+
+      if (!targetObj[nombre]) targetObj[nombre] = { unidades: 0, total: 0 };
+      targetObj[nombre].unidades += (+vd.cantidad||1);
+      targetObj[nombre].total += (+vd.precio||0)*(+vd.cantidad||1);
     }
     if (vd.estado === 'pendiente') ventasPend++;
   });
+  
   document.getElementById('s-ventas').textContent = ventasCount;
   document.getElementById('s-total').textContent = '$' + totalVentas.toLocaleString('es-MX',{minimumFractionDigits:0});
   document.getElementById('s-pend').textContent = ventasPend;
@@ -58,16 +65,17 @@ async function loadStats() {
   ped.forEach(d => { if(d.data().estado === 'nuevo') pedNuevos++; });
   document.getElementById('s-ped').textContent = pedNuevos;
 
-  // ── Top 5 perfumes más vendidos ───────────────────────────────────────────
-  const top5El = document.getElementById('top5-body');
-  if (top5El) {
-    const sorted = Object.entries(ventasPorPerfume)
+  // ── Top 5 Helper ────────────────────────────────────────────────────────
+  const renderTop5 = (dataObj, elId) => {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const sorted = Object.entries(dataObj)
       .sort((a,b) => b[1].unidades - a[1].unidades)
       .slice(0,5);
     if (!sorted.length) {
-      top5El.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-faint);padding:16px">Sin ventas aún</td></tr>';
+      el.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-faint);padding:16px">Sin ventas aún</td></tr>';
     } else {
-      top5El.innerHTML = sorted.map(([nombre, data], i) => `
+      el.innerHTML = sorted.map(([nombre, data], i) => `
         <tr>
           <td><span style="font-weight:600;color:var(--accent)">#${i+1}</span></td>
           <td><strong>${nombre}</strong></td>
@@ -77,6 +85,9 @@ async function loadStats() {
           </td>
         </tr>`).join('');
     }
-  }
+  };
+
+  renderTop5(ventasDecants, 'top5-decants-body');
+  renderTop5(ventasCompletos, 'top5-completos-body');
 }
 loadStats();

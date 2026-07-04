@@ -12,6 +12,7 @@ export function renderSidebar(active) {
     <ul class="sidebar-nav">
       <li><a href="./dashboard.html"  class="${active==='dashboard'  ?'active':''}" ><i class="bi bi-grid"></i> Dashboard</a></li>
       <li><a href="./perfumes.html"   class="${active==='perfumes'   ?'active':''}" ><i class="bi bi-droplet"></i> Perfumes</a></li>
+      <li><a href="./paquetes.html"   class="${active==='paquetes'   ?'active':''}" ><i class="bi bi-box2-heart"></i> Paquetes (Combos)</a></li>
       <li><a href="./marcas.html"     class="${active==='marcas'     ?'active':''}" ><i class="bi bi-bookmark"></i> Marcas</a></li>
       <li><a href="./categorias.html" class="${active==='categorias' ?'active':''}" ><i class="bi bi-tag"></i> Categorias</a></li>
       <li><a href="./notas.html"      class="${active==='notas'      ?'active':''}" ><i class="bi bi-flower1"></i> Notas Olfativas</a></li>
@@ -22,6 +23,14 @@ export function renderSidebar(active) {
       <li class="sidebar-section-label">Botellas Completas</li>
       <li><a href="./perfumes-completos.html" class="${active==='perfumes-completos' ?'active':''}" ><i class="bi bi-bag-heart"></i> Catálogo Completos</a></li>
       <li><a href="./encargos.html"           class="${active==='encargos'           ?'active':''}" ><i class="bi bi-clock-history"></i> Encargos</a></li>
+      <li class="sidebar-divider"></li>
+      <li>
+        <label style="display:flex;align-items:center;gap:12px;padding:12px 20px;color:var(--text-muted);cursor:pointer;font-size:13.5px;transition:all 0.2s;">
+          <i class="bi bi-wifi-off"></i>
+          <span style="flex:1;">Modo Ahorro (Sin Imágenes)</span>
+          <input type="checkbox" id="data-saver-toggle" onchange="window.toggleDataSaver(this)" style="width:18px;height:18px;accent-color:var(--accent);">
+        </label>
+      </li>
     </ul>
     <div class="sidebar-footer">
       <a href="../index.html" class="sidebar-link-index"><i class="bi bi-shop"></i> Ver tienda</a>
@@ -48,6 +57,22 @@ window.closeSidebar = () => {
   const ov = document.getElementById('sidebar-overlay');
   if (sb) sb.classList.remove('open');
   if (ov) ov.classList.remove('open');
+};
+
+// Initialize toggle state
+document.addEventListener('DOMContentLoaded', () => {
+  const chk = document.getElementById('data-saver-toggle');
+  if (chk) chk.checked = localStorage.getItem('adminDataSaver') === '1';
+});
+
+window.toggleDataSaver = (chk) => {
+  if (chk.checked) {
+    localStorage.setItem('adminDataSaver', '1');
+  } else {
+    localStorage.removeItem('adminDataSaver');
+  }
+  // Reload page to apply new image settings immediately
+  window.location.reload();
 };
 
 // ── POS (Canasta) UI Injection ──────────────────────────────────────────────

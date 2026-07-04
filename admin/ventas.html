@@ -101,6 +101,8 @@
         <div class="form-group">
           <label>Perfume *</label>
           <select class="form-control" id="v-perfume" onchange="onPerfumeChange()"><option value="">Selecciona perfume</option></select>
+          <div id="v-custom-items-container" style="display:none; margin-top:10px; background:var(--bg-card2); padding:10px; border-radius:8px; border:1px solid var(--border);"></div>
+          <input type="text" id="v-perfume-custom" class="form-control mt-2" style="display:none;" placeholder="Escribe el nombre del perfume...">
         </div>
         <div class="form-group">
           <label>Talla (ml) *</label>
@@ -370,6 +372,6 @@ window.buildPerfumePicker = function(wrap, perfumes, onChange) {
   wrap._perfGetId = () => selectedId;
 };
 </script>
-<script type="module" src="../assets/js/ventas.js?v=2.1"></script>
+<script type="module" src="../assets/js/ventas.js?v=1.6"></script>
 </body>
 </html>

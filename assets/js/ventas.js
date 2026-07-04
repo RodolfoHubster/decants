@@ -12,17 +12,25 @@ let currentPage = 1, pageSize = 10;
 
 // ── Cargar datos ──────────────────────────────────────────────────────────────
 async function loadAll() {
-  const [vs, ps] = await Promise.all([
+  const [vs, ps, pq] = await Promise.all([
     getDocs(collection(db, 'ventas')),
-    getDocs(collection(db, 'perfumes'))
+    getDocs(collection(db, 'perfumes')),
+    getDocs(collection(db, 'paquetes'))
   ]);
   perfumes = []; ps.forEach(d => perfumes.push({ id: d.id, ...d.data() }));
   perfumes.sort((a,b) => a.nombre.localeCompare(b.nombre));
+  
+  window.paquetesData = []; 
+  pq.forEach(d => window.paquetesData.push({ id: d.id, ...d.data() }));
+  window.paquetesData.sort((a,b) => a.nombre.localeCompare(b.nombre));
+  
   ventas = []; vs.forEach(d => ventas.push({ id: d.id, ...d.data() }));
   ventas.sort((a,b) => (b.creadoEn||0) - (a.creadoEn||0));
 
   const pOpts = perfumes.map(p => `<option value="${p.id}">${p.nombre} — ${p.marca||''}</option>`).join('');
-  document.getElementById('v-perfume').innerHTML = '<option value="">Selecciona perfume</option>' + pOpts;
+  const pqOpts = window.paquetesData.map(p => `<option value="${p.id}">📦 ${p.nombre}</option>`).join('');
+  
+  document.getElementById('v-perfume').innerHTML = '<option value="">Selecciona perfume o paquete</option>' + pqOpts + '<optgroup label="Perfumes">' + pOpts + '</optgroup><option value="custom" style="font-weight:bold;color:var(--warning)">✏️ Escribir Manual / Otro</option>';
 
   renderTable();
 }
@@ -66,17 +74,66 @@ function updateKPIs(fil) {
 
 window.onPerfumeChange = () => {
   const id = document.getElementById('v-perfume').value;
-  const p = perfumes.find(x => x.id === id);
+  const customInp = document.getElementById('v-perfume-custom');
   const tallaSel = document.getElementById('v-talla');
   const precioEl = document.getElementById('v-precio');
+  const customItemsCont = document.getElementById('v-custom-items-container');
+  
+  if (customItemsCont) {
+    customItemsCont.style.display = 'none';
+    customItemsCont.innerHTML = '';
+  }
+  
+  if (id === 'custom') {
+    if (customInp) customInp.style.display = 'block';
+    tallaSel.innerHTML = '<option value="Completo">Botella Completa</option><option value="Otro">Otro (Manual)</option>';
+    precioEl.value = '';
+    return;
+  }
+  if (customInp) { customInp.style.display = 'none'; customInp.value = ''; }
+
+  let p = perfumes.find(x => x.id === id);
+  let isPaquete = false;
+  if (!p && window.paquetesData) {
+    p = window.paquetesData.find(x => x.id === id);
+    if (p) isPaquete = true;
+  }
+  
   if (!p) { tallaSel.innerHTML = '<option value="">Selecciona talla</option>'; return; }
-  const opts = Object.entries(p.precios||{}).filter(([,v])=>+v>0)
-    .map(([k,v]) => `<option value="${k}" data-precio="${v}">${k} ml — $${v}</option>`).join('');
-  tallaSel.innerHTML = '<option value="">Selecciona talla</option>' + opts;
+  
+  if (isPaquete && p.esPersonalizable && customItemsCont) {
+    customItemsCont.style.display = 'block';
+    customItemsCont.innerHTML = `<label style="font-size:12px; font-weight:bold; color:var(--gold);">Elige ${p.maxSeleccion || 3} perfumes:</label>
+      <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
+        ${(p.items||[]).map(i => `
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+            <input type="checkbox" class="v-custom-chk" value="${i.nombre}" data-max="${p.maxSeleccion||3}" onchange="checkVentasCustomLimit(this)">
+            ${i.nombre} (${i.marca||''})
+          </label>
+        `).join('')}
+      </div>
+    `;
+  }
+  
+  const pr = p.precios || (p.ml && p.precio ? { [p.ml]: p.precio } : {});
+  const opts = Object.entries(pr).filter(([,v])=>+v>0)
+    .map(([k,v]) => `<option value="${isPaquete ? 'Paquete ' : ''}${k}" data-precio="${v}">${isPaquete ? 'Paquete ' : ''}${k} ml — $${v}</option>`);
+  if (!isPaquete) opts.push(`<option value="Completo" data-precio="">Botella Completa 🍾</option>`);
+
+  tallaSel.innerHTML = '<option value="">Selecciona talla</option>' + opts.join('');
   tallaSel.onchange = () => {
     const opt = tallaSel.selectedOptions[0];
     if (opt?.dataset.precio) precioEl.value = opt.dataset.precio;
   };
+};
+
+window.checkVentasCustomLimit = (chk) => {
+  const max = parseInt(chk.dataset.max) || 3;
+  const checked = document.querySelectorAll('.v-custom-chk:checked');
+  if (checked.length > max) {
+    chk.checked = false;
+    toast(`Solo puedes elegir ${max}`, 'warning');
+  }
 };
 
 window.renderTable = () => {
@@ -300,18 +357,34 @@ window.editVenta = (id) => {
   document.getElementById('v-estado').value = v.estado || 'pagada';
   document.getElementById('v-canal').value = v.canal || 'online';
   const perfSel = document.getElementById('v-perfume');
-  perfSel.value = v.perfumeId || '';
+  const customInp = document.getElementById('v-perfume-custom');
+  
+  if (!v.perfumeId && v.perfumeNombre) {
+    perfSel.value = 'custom';
+    if (customInp) {
+      customInp.style.display = 'block';
+      customInp.value = v.perfumeNombre;
+    }
+  } else {
+    perfSel.value = v.perfumeId || '';
+    if (customInp) { customInp.style.display = 'none'; customInp.value = ''; }
+  }
+
   const p = perfumes.find(x => x.id === v.perfumeId);
   const tallaSel = document.getElementById('v-talla');
   const precioEl = document.getElementById('v-precio');
+  
   if (p) {
     const opts = Object.entries(p.precios||{}).filter(([,val])=>+val>0)
-      .map(([k,val]) => `<option value="${k}" data-precio="${val}">${k} ml — $${val}</option>`).join('');
-    tallaSel.innerHTML = '<option value="">Selecciona talla</option>' + opts;
+      .map(([k,val]) => `<option value="${k}" data-precio="${val}">${k} ml — $${val}</option>`);
+    opts.push(`<option value="Completo" data-precio="">Botella Completa 🍾</option>`);
+    tallaSel.innerHTML = '<option value="">Selecciona talla</option>' + opts.join('');
     tallaSel.onchange = () => {
       const opt = tallaSel.selectedOptions[0];
       if (opt?.dataset.precio) precioEl.value = opt.dataset.precio;
     };
+  } else if (perfSel.value === 'custom') {
+    tallaSel.innerHTML = '<option value="Completo">Botella Completa</option><option value="Otro">Otro (Manual)</option>';
   } else {
     tallaSel.innerHTML = '<option value="">Selecciona talla</option>';
   }
@@ -329,12 +402,40 @@ window.save = async () => {
   const cantidad  = +document.getElementById('v-cantidad').value || 1;
   const estado    = document.getElementById('v-estado').value;
   const canal     = document.getElementById('v-canal').value;
+  
   if (!perfumeId || !talla || !precio) { toast('Completa perfume, talla y precio (*)', 'error'); return; }
-  const p = perfumes.find(x => x.id === perfumeId);
+  
+  let perfumeNombre = '';
+  let perfumeMarca = '';
+  if (perfumeId === 'custom') {
+    perfumeNombre = document.getElementById('v-perfume-custom')?.value.trim() || 'Perfume Manual';
+  } else {
+    let p = perfumes.find(x => x.id === perfumeId);
+    let isPaquete = false;
+    if (!p && window.paquetesData) {
+      p = window.paquetesData.find(x => x.id === perfumeId);
+      if (p) isPaquete = true;
+    }
+    
+    perfumeNombre = p?.nombre || '';
+    perfumeMarca = isPaquete ? 'Combos Fitoscents' : (p?.marca || '');
+    
+    if (isPaquete && p?.esPersonalizable) {
+      const checked = Array.from(document.querySelectorAll('.v-custom-chk:checked')).map(c => c.value);
+      if (checked.length < (p.maxSeleccion || 3)) {
+        toast(`Selecciona ${p.maxSeleccion || 3} perfumes para el paquete`, 'warning');
+        return;
+      }
+      perfumeNombre += ` [${checked.join(', ')}]`;
+    }
+  }
+
   const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
+  
   const data = {
-    perfumeId, perfumeNombre: p?.nombre||'', perfumeMarca: p?.marca||'',
+    perfumeId: (perfumeId === 'custom') ? '' : perfumeId,
+    perfumeNombre, perfumeMarca,
     talla, precio, cantidad, estado, canal,
     cliente: document.getElementById('v-cliente').value.trim(),
     notas:   document.getElementById('v-notas').value.trim(),
@@ -601,7 +702,11 @@ function buildCombobox(container, onSelect) {
     const list = q ? perfumes.filter(p => (p.nombre+' '+(p.marca||'')).toLowerCase().includes(q.toLowerCase())) : perfumes;
     if (e.key === 'ArrowDown') { e.preventDefault(); const n=Math.min(activeIdx+1,items.length-1); setActive(n,list); items[n]?.scrollIntoView({block:'nearest'}); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); const n=Math.max(activeIdx-1,0); setActive(n,list); items[n]?.scrollIntoView({block:'nearest'}); }
-    else if (e.key === 'Enter') { e.preventDefault(); if (activeIdx>=0&&list[activeIdx]) choose(list[activeIdx]); }
+    else if (e.key === 'Enter') { 
+      e.preventDefault(); 
+      if (activeIdx>=0&&list[activeIdx]) choose(list[activeIdx]); 
+      else if (q.trim()) choose({ id: 'custom', nombre: q.trim(), marca: '(Manual)' });
+    }
     else if (e.key === 'Escape') closeDD();
   });
 
@@ -618,11 +723,19 @@ const ESTADO_ITEMS = [
 ];
 
 function tallaItems(perfumeId) {
+  if (perfumeId === 'custom') {
+    return [
+      { value: 'Completo', label: 'Botella Completa 🍾', precio: '' },
+      { value: 'Otro', label: 'Otro (Manual)', precio: '' }
+    ];
+  }
   if (!perfumeId) return [];
   const p = perfumes.find(x => x.id === perfumeId);
   if (!p) return [];
-  return Object.entries(p.precios||{}).filter(([,v])=>+v>0)
+  const items = Object.entries(p.precios||{}).filter(([,v])=>+v>0)
     .map(([k,v]) => ({ value: k, label: `${k}ml — $${v}`, precio: +v }));
+  items.push({ value: 'Completo', label: 'Botella Completa 🍾', precio: '' });
+  return items;
 }
 
 function buildBatchRowEl(row) {

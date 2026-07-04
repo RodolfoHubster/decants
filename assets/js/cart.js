@@ -80,7 +80,14 @@ export function totalUnits(cart) {
 export function buildWhatsAppURL(cart, waNumber) {
   if (!cart.length) return null;
   const total = calcTotal(cart);
-  const lines = cart.map(i => `• ${i.marca} - ${i.nombre} (${i.size}ml) x${i.qty} — $${i.price * i.qty} MXN`).join('\n');
+  const lines = cart.map(i => {
+    let base = `• ${i.marca} - ${i.nombre} (${i.size.replace('Paquete ', '')}ml) x${i.qty} — $${i.price * i.qty} MXN`;
+    if (i.customItems && i.customItems.length) {
+      const names = i.customItems.map(c => c.nombre).join(', ');
+      base += `\n  ↳ [${names}]`;
+    }
+    return base;
+  }).join('\n');
   const msg   = `Hola! Quisiera hacer el siguiente pedido de decants:\n\n${lines}\n\n*Total estimado: $${total} MXN*\n\n¿Tienen disponibilidad? 🙏`;
   return `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`;
 }
