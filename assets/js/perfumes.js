@@ -1,9 +1,11 @@
 import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc }
   from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
-import { toast } from './toast.js';
+import { auth } from './firebase-config.js';
 import '../../admin/auth-guard.js';
+import { imgThumb } from './cloudinary.js';
 import { buildSelectOptions } from './filtros-config.js';
+import { toast } from './toast.js';
 
 const CLOUDINARY_CLOUD  = 'dxo761td7';
 const CLOUDINARY_PRESET = 'FITOSCENTS-DECANTS';
@@ -47,12 +49,13 @@ function initFiltrosSelects() {
 }
 
 async function loadAll() {
-  const [ps, cs, ms, fs, ts] = await Promise.all([
+  const [ps, cs, ms, fs, ts, pq] = await Promise.all([
     getDocs(collection(db, 'perfumes')),
     getDocs(collection(db, 'categorias')),
     getDocs(collection(db, 'marcas')),
     getDocs(collection(db, 'familias_olfativas')),
-    getDocs(collection(db, 'tipos_perfume'))
+    getDocs(collection(db, 'tipos_perfume')),
+    getDocs(collection(db, 'paquetes'))
   ]);
 
   cats   = []; cs.forEach(d => cats.push({ id: d.id,   ...d.data() }));
@@ -69,6 +72,9 @@ async function loadAll() {
   tiposData.sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre));
 
   perfumes = []; ps.forEach(d => perfumes.push({ id: d.id, ...d.data() }));
+  
+  window.paquetesData = [];
+  pq.forEach(d => window.paquetesData.push({ id: d.id, ...d.data(), isPaquete: true }));
 
   const cOpts = cats.map(c => `<option>${c.nombre}</option>`).join('');
   document.getElementById('f-cat').innerHTML   = `<option value="">Todas las categorias</option>${cOpts}`;
@@ -186,7 +192,7 @@ window.renderTable = () => {
     const pid  = p.id;
     const pnom = p.nombre.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     return `<tr>
-      <td>${p.imagen ? `<img class="td-img" src="${p.imagen}" alt="" loading="lazy">` : '<div class="td-img-placeholder"><i class="bi bi-droplet"></i></div>'}</td>
+      <td>${p.imagen ? `<img class="td-img" src="${imgThumb(p.imagen)}" alt="" loading="lazy">` : '<div class="td-img-placeholder"><i class="bi bi-droplet"></i></div>'}</td>
       <td><strong>${p.nombre}</strong>${estadoBadge}${novedadBadge}</td>
       <td><span class="badge badge-gold">${p.marca || '&#8212;'}</span></td>
       <td><span class="badge badge-info">${p.categoria || '&#8212;'}</span></td>
@@ -207,13 +213,20 @@ window.renderTable = () => {
   // ── Renderizar Grid POS ──
   const posGrid = document.getElementById('pos-grid');
   if (posGrid) {
-    posGrid.innerHTML = fil.map(p => {
-      const imgHTML = p.imagen ? `<img class="pcard-img" src="${p.imagen}" loading="lazy">` : `<div class="pcard-img" style="display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--text-faint)"><i class="bi bi-droplet"></i></div>`;
+    let posItems = [...fil];
+    if (window.paquetesData) {
+      const q = document.getElementById('search').value.toLowerCase();
+      const activePkgs = window.paquetesData.filter(p => p.activo !== false);
+      const pkgs = activePkgs.filter(p => (!q || p.nombre.toLowerCase().includes(q)));
+      posItems = posItems.concat(pkgs);
+    }
+    posGrid.innerHTML = posItems.map(p => {
+      const imgHTML = p.imagen ? `<img class="pcard-img" src="${imgThumb(p.imagen)}" loading="lazy">` : `<div class="pcard-img" style="display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--text-faint)"><i class="bi bi-droplet"></i></div>`;
       return `<div class="pcard" onclick="openPosItemModal('${p.id}')">
         ${imgHTML}
         <div class="pcard-body">
-          <div class="pcard-title">${p.nombre}</div>
-          <div class="pcard-sub">${p.marca || '—'}</div>
+          <div class="pcard-title">${p.isPaquete ? '📦 ' + p.nombre : p.nombre}</div>
+          <div class="pcard-sub">${p.isPaquete ? 'Combos Fitoscents' : (p.marca || '—')}</div>
         </div>
       </div>`;
     }).join('');
@@ -274,7 +287,12 @@ let currentPosId = null;
 
 window.openPosItemModal = (id) => {
   currentPosId = id;
-  const p = perfumes.find(x => x.id === id);
+  let p = perfumes.find(x => x.id === id);
+  let isPaquete = false;
+  if (!p && window.paquetesData) {
+    p = window.paquetesData.find(x => x.id === id);
+    if (p) isPaquete = true;
+  }
   if(!p) return;
   const imgEl = document.getElementById('pos-m-img');
   if(p.imagen) {
@@ -284,8 +302,8 @@ window.openPosItemModal = (id) => {
     imgEl.style.display = 'none';
   }
   document.getElementById('pos-m-nombre').textContent = p.nombre;
-  document.getElementById('pos-m-marca').textContent = p.marca || 'Sin marca';
-  document.getElementById('pos-m-familia').textContent = p.familia || 'Sin familia';
+  document.getElementById('pos-m-marca').textContent = isPaquete ? 'Combos Fitoscents' : (p.marca || 'Sin marca');
+  document.getElementById('pos-m-familia').textContent = isPaquete ? 'Paquete Especial' : (p.familia || 'Sin familia');
   
   const btnContainer = document.getElementById('pos-m-precios');
   btnContainer.innerHTML = '';
@@ -297,7 +315,7 @@ window.openPosItemModal = (id) => {
   } else {
     available.forEach(([ml, precio]) => {
       btnContainer.innerHTML += `<button class="btn btn-outline" style="width:100%;justify-content:space-between;padding:14px 20px;font-size:16px;border-radius:12px;border-color:var(--border);" onclick="fastAddToCart('${p.id}', '${ml}', ${precio})">
-        <span style="font-weight:600">${ml}ml</span>
+        <span style="font-weight:600">${isPaquete ? 'Paquete ' : ''}${ml}ml</span>
         <span style="color:var(--accent);font-weight:700">$${precio}</span>
       </button>`;
     });
@@ -307,7 +325,12 @@ window.openPosItemModal = (id) => {
 
 window.copyPosPrices = () => {
   if (!currentPosId) return;
-  const p = perfumes.find(x => x.id === currentPosId);
+  let p = perfumes.find(x => x.id === currentPosId);
+  let isPaquete = false;
+  if (!p && window.paquetesData) {
+    p = window.paquetesData.find(x => x.id === currentPosId);
+    if (p) isPaquete = true;
+  }
   if (!p) return;
 
   let text = `✨ *${p.nombre}*${p.marca ? ' - ' + p.marca : ''}\n\n`;
@@ -344,20 +367,46 @@ window.closePosModal = () => {
 };
 
 window.fastAddToCart = (id, ml, precio) => {
-  const p = perfumes.find(x => x.id === id);
-  if(!p) return;
-  if(window.addToPosCart) {
-    window.addToPosCart({
-      id: p.id,
-      nombre: p.nombre,
-      marca: p.marca || '',
-      imagen: p.imagen || '',
-      ml: ml,
-      precio: precio,
-      cant: 1
-    });
+  let p = perfumes.find(x => x.id === id);
+  let isPaquete = false;
+  if (!p && window.paquetesData) {
+    p = window.paquetesData.find(x => x.id === id);
+    if (p) isPaquete = true;
   }
-  closePosModal();
+  if(!p) return;
+
+  let finalNombre = p.nombre;
+  let finalMarca = isPaquete ? 'Combos Fitoscents' : (p.marca || '');
+
+  const finishAdd = (nombre) => {
+    if(window.addToPosCart) {
+      window.addToPosCart({
+        id: p.id,
+        nombre: nombre,
+        marca: finalMarca,
+        imagen: p.imagen || '',
+        ml: ml,
+        precio: precio,
+        cant: 1
+      });
+    }
+    closePosModal();
+  };
+
+  if (isPaquete && p.esPersonalizable) {
+    if (window.openPackageSelectionModal) {
+      window.openPackageSelectionModal(p, (selecciones) => {
+        if (selecciones) {
+          finishAdd(finalNombre + ` [${selecciones}]`);
+        }
+      });
+    } else {
+      const selecciones = prompt(`Este paquete requiere ${p.maxSeleccion || 3} perfumes.\\nEscribe aquí los perfumes elegidos (se añadirán al carrito):`, "");
+      if (selecciones) finishAdd(finalNombre + ` [${selecciones}]`);
+    }
+  } else {
+    finishAdd(finalNombre);
+  }
 };
 
 window.promptAddPos = (id) => {
@@ -600,3 +649,60 @@ window.exportPrices = () => {
 };
 
 loadAll();
+
+window.openPackageSelectionModal = (p, onComplete) => {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.style.zIndex = '99999';
+  
+  const max = p.maxSeleccion || 3;
+  let itemsHTML = (p.items||[]).map((i) => `
+    <label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg-card2);border-radius:8px;cursor:pointer;border:1px solid rgba(255,255,255,0.05)">
+      <input type="checkbox" class="pkg-custom-chk" value="${i.nombre}" data-max="${max}" style="width:18px;height:18px;accent-color:var(--gold)">
+      <span style="font-size:14px;color:var(--text-primary)">${i.nombre} <small style="color:var(--text-muted)">(${i.marca||''})</small></span>
+    </label>
+  `).join('');
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:400px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px">
+      <div class="modal-header">
+        <h3 style="margin:0;font-size:16px;color:var(--gold)">📦 ${p.nombre}</h3>
+        <button class="btn-icon close-pkg-modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Elige <strong>${max}</strong> perfumes de la lista:</p>
+        <div style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;padding-right:4px">
+          ${itemsHTML}
+        </div>
+      </div>
+      <div class="modal-footer" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <button class="btn btn-primary" id="btn-pkg-confirm" style="width:100%">Confirmar Selección</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const checkboxes = overlay.querySelectorAll('.pkg-custom-chk');
+  checkboxes.forEach(chk => {
+    chk.addEventListener('change', () => {
+      const checked = overlay.querySelectorAll('.pkg-custom-chk:checked');
+      if (checked.length > max) {
+        chk.checked = false;
+        if(window.toast) toast(`Solo puedes elegir ${max}`, 'warning');
+      }
+    });
+  });
+
+  const close = () => overlay.remove();
+  overlay.querySelector('.close-pkg-modal').onclick = close;
+  overlay.querySelector('#btn-pkg-confirm').onclick = () => {
+    const checked = overlay.querySelectorAll('.pkg-custom-chk:checked');
+    if (checked.length < max) {
+      if(window.toast) toast(`Selecciona ${max} perfumes`, 'warning');
+      return;
+    }
+    const result = Array.from(checked).map(c => c.value).join(', ');
+    onComplete(result);
+    close();
+  };
+};

@@ -648,9 +648,13 @@ function buildCombobox(container, onSelect) {
   }
 
   function renderItems(q) {
+    const allOpts = [...perfumes];
+    if (window.paquetesData) {
+      window.paquetesData.forEach(p => allOpts.push({ ...p, isPaquete: true }));
+    }
     const list = q
-      ? perfumes.filter(p => (p.nombre + ' ' + (p.marca||'')).toLowerCase().includes(q.toLowerCase()))
-      : perfumes;
+      ? allOpts.filter(p => (p.nombre + ' ' + (p.marca||'')).toLowerCase().includes(q.toLowerCase()))
+      : allOpts;
     dd.innerHTML = '';
     activeIdx = -1;
     if (!list.length) {
@@ -663,7 +667,8 @@ function buildCombobox(container, onSelect) {
     list.forEach((p, i) => {
       const li = document.createElement('li');
       li.style.cssText = 'padding:8px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);';
-      li.innerHTML = `<span style="color:var(--text,#e0e0e0);font-size:14px;font-weight:500;">${p.nombre}</span><br>
+      const pName = p.isPaquete ? `📦 ${p.nombre}` : p.nombre;
+      li.innerHTML = `<span style="color:var(--text,#e0e0e0);font-size:14px;font-weight:500;">${pName}</span><br>
         <span style="color:var(--text-muted,#888);font-size:12px;">${p.marca||''}</span>`;
       li.addEventListener('mousedown', e => { e.preventDefault(); choose(p); });
       li.addEventListener('mouseover', () => setActive(i, list));
@@ -685,7 +690,8 @@ function buildCombobox(container, onSelect) {
   }
 
   function choose(p) {
-    inp.value = p ? `${p.nombre} · ${p.marca||''}` : '';
+    const pName = p && p.isPaquete ? `📦 ${p.nombre}` : (p ? p.nombre : '');
+    inp.value = p ? `${pName} · ${p.marca||''}` : '';
     closeDD();
     onSelect(p);
   }
@@ -699,7 +705,11 @@ function buildCombobox(container, onSelect) {
   inp.addEventListener('keydown', e => {
     const items = dd.querySelectorAll('li');
     const q = inp.value;
-    const list = q ? perfumes.filter(p => (p.nombre+' '+(p.marca||'')).toLowerCase().includes(q.toLowerCase())) : perfumes;
+    const allOpts = [...perfumes];
+    if (window.paquetesData) {
+      window.paquetesData.forEach(p => allOpts.push({ ...p, isPaquete: true }));
+    }
+    const list = q ? allOpts.filter(p => (p.nombre+' '+(p.marca||'')).toLowerCase().includes(q.toLowerCase())) : allOpts;
     if (e.key === 'ArrowDown') { e.preventDefault(); const n=Math.min(activeIdx+1,items.length-1); setActive(n,list); items[n]?.scrollIntoView({block:'nearest'}); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); const n=Math.max(activeIdx-1,0); setActive(n,list); items[n]?.scrollIntoView({block:'nearest'}); }
     else if (e.key === 'Enter') { 
@@ -730,11 +740,18 @@ function tallaItems(perfumeId) {
     ];
   }
   if (!perfumeId) return [];
-  const p = perfumes.find(x => x.id === perfumeId);
+  let p = perfumes.find(x => x.id === perfumeId);
+  let isPaquete = false;
+  if (!p && window.paquetesData) {
+    p = window.paquetesData.find(x => x.id === perfumeId);
+    if (p) isPaquete = true;
+  }
   if (!p) return [];
   const items = Object.entries(p.precios||{}).filter(([,v])=>+v>0)
-    .map(([k,v]) => ({ value: k, label: `${k}ml — $${v}`, precio: +v }));
-  items.push({ value: 'Completo', label: 'Botella Completa 🍾', precio: '' });
+    .map(([k,v]) => ({ value: isPaquete ? `Paquete ${k}` : k, label: `${isPaquete ? 'Paquete ' : ''}${k}ml — $${v}`, precio: +v }));
+  if (!isPaquete) {
+    items.push({ value: 'Completo', label: 'Botella Completa 🍾', precio: '' });
+  }
   return items;
 }
 
@@ -837,7 +854,6 @@ function buildBatchRowEl(row) {
   tdRm.appendChild(btnRm);
   tr.appendChild(tdRm);
 
-  // ── Montar combobox de Perfume ────────────────────────────────────────────
   buildCombobox(perfWrap, (p) => {
     const r = batchRows.find(x => x.rid === rid);
     if (!r) return;
@@ -849,6 +865,13 @@ function buildBatchRowEl(row) {
     const items = tallaItems(p ? p.id : '');
     tallaWrap._setItems(items);
     updateBatchResumen();
+    
+    if (p && p.isPaquete && p.esPersonalizable) {
+      openPackageSelectionModal(p, (seleccion) => {
+        inNota.value = seleccion;
+        batchSet(rid, 'notas', seleccion);
+      });
+    }
   });
 
   return tr;
@@ -939,10 +962,18 @@ window.saveDia = async () => {
     const batch = writeBatch(db);
     const canalVal = document.getElementById('dia-canal').value;
     validas.forEach(r => {
-      const p = perfumes.find(x => x.id === r.perfumeId);
+      let p = perfumes.find(x => x.id === r.perfumeId);
+      let isPaquete = false;
+      if (!p && window.paquetesData) {
+        p = window.paquetesData.find(x => x.id === r.perfumeId);
+        if (p) isPaquete = true;
+      }
+      
       const ref = doc(collection(db, 'ventas'));
       batch.set(ref, {
-        perfumeId: r.perfumeId, perfumeNombre: p?.nombre||'', perfumeMarca: p?.marca||'',
+        perfumeId: r.perfumeId, 
+        perfumeNombre: p?.nombre||'', 
+        perfumeMarca: isPaquete ? 'Combos Fitoscents' : (p?.marca||''),
         talla: r.talla, precio: +r.precio, cantidad: +r.cantidad||1,
         estado: r.estado, canal: canalVal, lugar: lugarStr,
 
@@ -1003,7 +1034,6 @@ setTimeout(() => {
             row.estado = 'entregado';
           }
           
-          batchRefreshTotal(rid);
         }, 50);
       });
       updateBatchResumen();
@@ -1011,3 +1041,60 @@ setTimeout(() => {
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 }, 800);
+
+window.openPackageSelectionModal = (p, onComplete) => {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.style.zIndex = '99999';
+  
+  const max = p.maxSeleccion || 3;
+  let itemsHTML = (p.items||[]).map((i) => `
+    <label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg-card2);border-radius:8px;cursor:pointer;border:1px solid rgba(255,255,255,0.05)">
+      <input type="checkbox" class="pkg-custom-chk" value="${i.nombre}" data-max="${max}" style="width:18px;height:18px;accent-color:var(--gold)">
+      <span style="font-size:14px;color:var(--text-primary)">${i.nombre} <small style="color:var(--text-muted)">(${i.marca||''})</small></span>
+    </label>
+  `).join('');
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:400px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px">
+      <div class="modal-header">
+        <h3 style="margin:0;font-size:16px;color:var(--gold)">📦 ${p.nombre}</h3>
+        <button class="btn-icon close-pkg-modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Elige <strong>${max}</strong> perfumes de la lista:</p>
+        <div style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;padding-right:4px">
+          ${itemsHTML}
+        </div>
+      </div>
+      <div class="modal-footer" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <button class="btn btn-primary" id="btn-pkg-confirm" style="width:100%">Confirmar Selección</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const checkboxes = overlay.querySelectorAll('.pkg-custom-chk');
+  checkboxes.forEach(chk => {
+    chk.addEventListener('change', () => {
+      const checked = overlay.querySelectorAll('.pkg-custom-chk:checked');
+      if (checked.length > max) {
+        chk.checked = false;
+        if(window.toast) toast(`Solo puedes elegir ${max}`, 'warning');
+      }
+    });
+  });
+
+  const close = () => overlay.remove();
+  overlay.querySelector('.close-pkg-modal').onclick = close;
+  overlay.querySelector('#btn-pkg-confirm').onclick = () => {
+    const checked = overlay.querySelectorAll('.pkg-custom-chk:checked');
+    if (checked.length < max) {
+      if(window.toast) toast(`Selecciona ${max} perfumes`, 'warning');
+      return;
+    }
+    const result = Array.from(checked).map(c => c.value).join(', ');
+    onComplete(result);
+    close();
+  };
+};

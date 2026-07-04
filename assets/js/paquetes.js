@@ -2,7 +2,9 @@ import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc }
   from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
+import { auth } from './firebase-config.js';
 import '../../admin/auth-guard.js';
+import { imgThumb } from './cloudinary.js';
 
 const CLOUDINARY_CLOUD  = 'dxo761td7';
 const CLOUDINARY_PRESET = 'FITOSCENTS-DECANTS';
@@ -89,7 +91,7 @@ function renderTable() {
     <tr style="${p.activo === false ? 'opacity:0.5' : ''}">
       <td>
         <div style="width:40px;height:40px;border-radius:6px;background:var(--bg-card2);overflow:hidden;flex-shrink:0;">
-          ${p.imagen ? `<img src="${p.imagen}" style="width:100%;height:100%;object-fit:cover">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-faint)"><i class="bi bi-box2-heart"></i></div>'}
+          ${p.imagen ? `<img src="${imgThumb(p.imagen)}" style="width:100%;height:100%;object-fit:cover">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-faint)"><i class="bi bi-box2-heart"></i></div>'}
         </div>
       </td>
       <td style="font-weight:600">${p.nombre}</td>
@@ -226,7 +228,7 @@ searchInput.addEventListener('input', () => {
     sugList.innerHTML = matches.map(p => `
       <div class="sug-item" onclick="addPerfumeToPaquete('${p.id}')">
         <div style="width:32px;height:32px;border-radius:4px;background:var(--bg-card2);overflow:hidden;flex-shrink:0;">
-          ${p.imagen ? `<img src="${p.imagen}" style="width:100%;height:100%;object-fit:cover">` : ''}
+          ${p.imagen ? `<img src="${imgThumb(p.imagen)}" style="width:100%;height:100%;object-fit:cover">` : ''}
         </div>
         <div style="flex:1;">
           <div style="font-size:13px;font-weight:600;">${p.nombre}</div>
@@ -284,7 +286,7 @@ function renderPaqueteItems() {
     <div class="item-selected">
       <div style="display:flex;align-items:center;gap:10px;">
         <div style="width:36px;height:36px;border-radius:6px;background:var(--bg-card);overflow:hidden;">
-          ${item.imagen ? `<img src="${item.imagen}" style="width:100%;height:100%;object-fit:cover">` : ''}
+          ${item.imagen ? `<img src="${imgThumb(item.imagen)}" style="width:100%;height:100%;object-fit:cover">` : ''}
         </div>
         <div>
           <div style="font-size:14px;font-weight:600;color:var(--text-primary);">${item.nombre}</div>

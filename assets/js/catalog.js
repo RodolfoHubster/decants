@@ -584,7 +584,7 @@ window.openModal = (id, pushHash = true) => {
             <label class="custom-pkg-label" style="cursor:pointer; display:flex; align-items:center; gap:12px; background:var(--bg-card2); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); transition:background 0.2s;">
               <input type="checkbox" class="custom-pkg-chk" value="${i.id}" data-name="${i.nombre}" onchange="toggleCustomPkgItem(this, ${p.maxSeleccion || 3})" style="width:18px;height:18px;accent-color:var(--gold);">
               <div style="width:40px; height:40px; border-radius:6px; overflow:hidden; background:var(--bg-card); flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.2);" onclick="event.preventDefault(); window.showZoom('${i.imagen || ''}')">
-                ${i.imagen ? `<img src="${i.imagen}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="bi bi-droplet" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:16px;"></i>'}
+                ${i.imagen ? `<img src="${imgCart(i.imagen)}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="bi bi-droplet" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:16px;"></i>'}
               </div>
               <div style="flex:1;">
                 <div style="font-weight:600; font-size:13.5px; color:var(--text); line-height:1.2;">${i.nombre}</div>
@@ -601,7 +601,7 @@ window.openModal = (id, pushHash = true) => {
           ${p.items.map(i => `
             <div onclick="window.showZoom('${i.imagen || ''}')" title="Ver imagen" style="cursor:pointer; display:flex; align-items:center; gap:12px; background:var(--bg-card2); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); transition:background 0.2s, transform 0.1s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.transform='scale(1.01)';" onmouseout="this.style.background='var(--bg-card2)'; this.style.transform='scale(1)';">
               <div style="width:40px; height:40px; border-radius:6px; overflow:hidden; background:var(--bg-card); flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.2);">
-                ${i.imagen ? `<img src="${i.imagen}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="bi bi-droplet" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:16px;"></i>'}
+                ${i.imagen ? `<img src="${imgCart(i.imagen)}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="bi bi-droplet" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:16px;"></i>'}
               </div>
               <div style="flex:1;">
                 <div style="font-weight:600; font-size:13.5px; color:var(--text); line-height:1.2;">${i.nombre}</div>
@@ -967,7 +967,7 @@ function renderCartDrawer() {
   list.innerHTML = cart.map(item => `
     <div class="cart-item" data-key="${item.key}">
       <div class="cart-item-img">
-        ${item.imagen ? `<img src="${item.imagen}" alt="${item.nombre}" loading="lazy" width="80" height="80" decoding="async">` : '<div class="cart-item-no-img"><i class="bi bi-droplet"></i></div>'}
+        ${item.imagen ? `<img src="${imgCart(item.imagen)}" alt="${item.nombre}" loading="lazy" width="80" height="80" decoding="async">` : '<div class="cart-item-no-img"><i class="bi bi-droplet"></i></div>'}
       </div>
       <div class="cart-item-info">
         <div class="cart-item-marca">${item.marca}</div>
