@@ -1,4 +1,4 @@
-import { db } from './firebase-config.js';
+import { db, auth, onAuthStateChanged } from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import {
   collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp
@@ -496,4 +496,6 @@ window.remove = async function (id) {
   await load();
 };
 
-load();
+onAuthStateChanged(auth, user => {
+  if (user) load();
+});

@@ -397,6 +397,8 @@ function cardHTML(p) {
 }
 
 // ── Render grid ───────────────────────────────────────────────
+import { matchSearch } from './search-engine.js';
+
 window.renderGrid = () => {
   currentPage = 1;
   const qEl   = document.getElementById('q');
@@ -409,7 +411,7 @@ window.renderGrid = () => {
   if (sm && sm.value !== sort) sm.value = sort;
 
   filtered = all.filter(p => {
-    if (q && !p.nombre.toLowerCase().includes(q) && !(p.marca || '').toLowerCase().includes(q)) return false;
+    if (q && !matchSearch(q, p.nombre + ' ' + (p.marca || ''))) return false;
     
     // Custom filter for Paquete vs Genero
     if (gF) {

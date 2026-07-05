@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Fitoscents · Costos e Insumos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <style>
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .stat-card h3 { font-size: 16px; margin: 0 0 15px 0; display: flex; align-items: center; gap: 8px; }
+    .stat-card .form-group { margin-bottom: 15px; }
+    .stat-card .form-control { background: var(--bg); }
+    .insumo-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; }
+    .insumo-info { display: flex; flex-direction: column; }
+    .insumo-name { font-weight: 500; font-size: 14px; }
+    .insumo-detail { font-size: 12px; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-wrap"></div>
+  <div class="main-content">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
+        <span class="topbar-title">Costos e Insumos</span>
+      </div>
+      <div>
+        <button class="btn btn-primary" onclick="guardarCostosGenerales()" id="btn-save-gral"><i class="bi bi-check2"></i> Guardar Cambios</button>
+      </div>
+    </div>
+    
+    <div class="page-body">
+      <p style="color:var(--text-muted);margin-bottom:20px;font-size:14px;">Administra el costo de tus materias primas. Estos valores se usarán para calcular tu ganancia neta en la sección de Inteligencia de Negocio.</p>
+
+      <div class="card-grid">
+        
+        <!-- COSTOS GENERALES PROMEDIO -->
+        <div class="stat-card">
+          <h3><i class="bi bi-cash-stack" style="color:var(--gold)"></i> Costos Fijos Promedio (Por decant)</h3>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px;line-height:1.4">Define el costo unitario aproximado que te cuesta armar un decant (sin contar el líquido). Puedes calcular un promedio general de lo que te cuestan las botellitas vacías, etiquetas y bolsas.</p>
+          
+          <div class="form-group">
+            <label>Costo promedio Botella Vacía (MXN)</label>
+            <input type="number" class="form-control" id="c-botella" step="0.5" placeholder="Ej. 12.50">
+          </div>
+          <div class="form-group">
+            <label>Costo promedio Etiqueta (MXN)</label>
+            <input type="number" class="form-control" id="c-etiqueta" step="0.10" placeholder="Ej. 1.20">
+          </div>
+          <div class="form-group">
+            <label>Costo promedio Bolsita (MXN)</label>
+            <input type="number" class="form-control" id="c-bolsa" step="0.5" placeholder="Ej. 3.00">
+          </div>
+          <hr style="border:none;border-top:1px solid var(--border);margin:15px 0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:600;font-size:14px;">Costo Total Insumos por Decant:</span>
+            <span id="c-total-insumos" style="font-weight:700;color:var(--accent);font-size:16px;">$0.00</span>
+          </div>
+        </div>
+
+        <!-- BOTELLAS REFORZADAS -->
+        <div class="stat-card">
+          <h3><i class="bi bi-shield-check" style="color:#4f98a3"></i> Upsell: Botellas Reforzadas</h3>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px;line-height:1.4">Esta opción se mostrará en el Punto de Venta al vender decants de 5ml y 10ml, permitiéndote ofrecer al cliente una botella de mejor calidad por un costo extra.</p>
+          
+          <div class="form-group">
+            <label>Costo Extra a cobrar al cliente (MXN)</label>
+            <input type="number" class="form-control" id="c-reforzada-venta" step="1" placeholder="Ej. 15">
+          </div>
+          <div class="form-group">
+            <label>Costo Real del insumo (Opcional)</label>
+            <input type="number" class="form-control" id="c-reforzada-costo" step="0.5" placeholder="Ej. 8.50">
+            <span style="font-size:11px;color:var(--text-faint)">¿Cuánto te cuesta a ti comprar la botella reforzada? (Para estadísticas)</span>
+          </div>
+        </div>
+
+        <!-- CRUD MATERIA PRIMA (Registro Detallado) -->
+        <div class="stat-card" style="grid-column: 1 / -1;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+            <h3 style="margin:0;"><i class="bi bi-box-seam" style="color:#a36c4f"></i> Compras de Materia Prima</h3>
+            <button class="btn btn-outline btn-sm" onclick="openMateriaModal()"><i class="bi bi-plus"></i> Nueva Compra</button>
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px;line-height:1.4">Registra aquí las compras de insumos que haces (ej. Lote de 100 botellas de 5ml). Esto es útil para llevar un control de tus gastos operativos.</p>
+          
+          <div id="materia-list">
+            <div style="text-align:center;padding:20px;color:var(--text-faint);font-size:13px;">Cargando compras...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COMPRA MATERIA PRIMA -->
+<div class="modal-overlay" id="modal-materia">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-header">
+      <h4 id="modal-materia-title">Registrar Compra</h4>
+      <button class="btn-icon" onclick="closeMateriaModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="m-id">
+      <div class="form-group">
+        <label>Tipo de Insumo *</label>
+        <select class="form-control" id="m-tipo">
+          <option value="botella_vidrio">Botella de Vidrio</option>
+          <option value="botella_plastico">Botella de Plástico</option>
+          <option value="botella_reforzada">Botella Reforzada</option>
+          <option value="etiquetas">Etiquetas</option>
+          <option value="bolsas">Bolsas / Empaque</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Descripción / Detalle</label>
+        <input type="text" class="form-control" id="m-desc" placeholder="Ej. Lote 10ml Amazon">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Cantidad adquirida *</label>
+          <input type="number" class="form-control" id="m-cant" min="1" placeholder="Ej. 100">
+        </div>
+        <div class="form-group">
+          <label>Costo Total de la Compra ($) *</label>
+          <input type="number" class="form-control" id="m-total" min="0" step="0.5" placeholder="Ej. 1200">
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:10px 0;background:var(--bg);border-radius:6px;">
+        Costo por unidad: <strong style="color:var(--text);" id="m-unitario">$0.00</strong>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeMateriaModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-materia" onclick="saveMateria()"><i class="bi bi-check2"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="../assets/js/costos.js?v=1.0"></script>
+</body>
+</html>

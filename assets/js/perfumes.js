@@ -1,4 +1,4 @@
-import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc }
+import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onAuthStateChanged }
   from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { auth } from './firebase-config.js';
@@ -30,6 +30,21 @@ if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display 
 let perfumes = [], cats = [], marcas = [], imgMode = 'url';
 let familiasData = [];
 let tiposData    = [];
+// ── Definir addToPosCart para la vista POS Rápido ──
+window.addToPosCart = (item) => {
+  let cart = [];
+  try { cart = JSON.parse(localStorage.getItem('posCart') || '[]'); } catch(e){}
+  
+  const extItem = cart.find(x => x.id === item.id && x.ml === item.ml);
+  if (extItem) {
+    extItem.cant += 1;
+  } else {
+    cart.push(item);
+  }
+  localStorage.setItem('posCart', JSON.stringify(cart));
+  if (window.renderPosCart) window.renderPosCart();
+};
+
 let tableSortCol = null;
 let tableSortDir = 'asc';
 
@@ -103,6 +118,29 @@ window.switchTab = (tab) => {
   renderTable();
 };
 
+import { matchSearch } from './search-engine.js';
+
+let currentPage = 1;
+const pageSize = 100;
+
+window.changePage = (dir) => {
+  currentPage += dir;
+  renderTable();
+};
+
+window.renderPagination = (totalItems, start, end, totalPages) => {
+  const pWrap = document.getElementById('pagination-wrap');
+  if (!pWrap) return;
+  pWrap.innerHTML = `
+    <span class="page-info">Mostrando ${start}-${end} de ${totalItems}</span>
+    <div class="page-btns">
+      <button class="btn btn-outline" onclick="changePage(-1)" ${currentPage <= 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i></button>
+      <span style="padding:0 10px">Página ${currentPage} de ${totalPages}</span>
+      <button class="btn btn-outline" onclick="changePage(1)" ${currentPage >= totalPages ? 'disabled' : ''}><i class="bi bi-chevron-right"></i></button>
+    </div>
+  `;
+};
+
 window.renderTable = () => {
   const q      = document.getElementById('search').value.toLowerCase();
   const fg     = document.getElementById('f-genero').value;
@@ -111,16 +149,18 @@ window.renderTable = () => {
   const ffa    = document.getElementById('f-familia').value;
   const fti    = document.getElementById('f-tipo').value;
   const fnov   = document.getElementById('f-novedad').value;
+  const fstock = document.getElementById('f-stock').value;
   const orden  = document.getElementById('f-orden').value;
 
   let fil = perfumes.filter(p =>
-    (!q    || p.nombre.toLowerCase().includes(q) || (p.marca || '').toLowerCase().includes(q)) &&
-    (!fg   || p.genero    === fg)  &&
-    (!fc   || p.categoria === fc)  &&
-    (!fm   || p.marca     === fm)  &&
-    (!ffa  || p.familia   === ffa) &&
-    (!fti  || p.tipo      === fti) &&
-    (!fnov || p.novedad   === true)
+    (!q      || matchSearch(q, p.nombre + ' ' + (p.marca || ''))) &&
+    (!fg     || p.genero    === fg)  &&
+    (!fc     || p.categoria === fc)  &&
+    (!fm     || p.marca     === fm)  &&
+    (!ffa    || p.familia   === ffa) &&
+    (!fti    || p.tipo      === fti) &&
+    (!fnov   || p.novedad   === true) &&
+    (!fstock || p.estadoStock === fstock)
   );
 
   if (window.activeTab === 'archived') {
@@ -150,87 +190,102 @@ window.renderTable = () => {
     }
   });
 
-  document.querySelectorAll('.sort-icon').forEach(el => {
-    el.className = 'bi bi-chevron-expand sort-icon';
-    el.style.opacity = '0.3';
-  });
-  if (tableSortCol) {
-    const icon = document.getElementById('sort-' + tableSortCol);
-    if (icon) {
-      icon.className = tableSortDir === 'asc' ? 'bi bi-chevron-up sort-icon' : 'bi bi-chevron-down sort-icon';
-      icon.style.opacity = '1';
+    document.querySelectorAll('.sort-icon').forEach(el => {
+      el.className = 'bi bi-chevron-expand sort-icon';
+      el.style.opacity = '0.3';
+    });
+    if (tableSortCol) {
+      const icon = document.getElementById('sort-' + tableSortCol);
+      if (icon) {
+        icon.className = tableSortDir === 'asc' ? 'bi bi-chevron-up sort-icon' : 'bi bi-chevron-down sort-icon';
+        icon.style.opacity = '1';
+      }
     }
-  }
 
-  document.getElementById('count-label').textContent = fil.length + ' perfumes';
-  const tb = document.getElementById('tbody');
+    document.getElementById('count-label').textContent = fil.length + ' perfumes';
+    const tb = document.getElementById('tbody');
+    const ds = localStorage.getItem('adminDataSaver') === '1';
 
-  if (!fil.length) {
-    tb.innerHTML = '<tr><td colspan="10"><div class="empty-state"><i class="bi bi-droplet"></i><h3>Sin resultados</h3><p>Cambia los filtros o agrega perfumes.</p></div></td></tr>';
-    return;
-  }
+    // Pagination calc
+    const totalPages = Math.max(1, Math.ceil(fil.length / pageSize));
+    if (currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * pageSize;
+    const end = Math.min(start + pageSize, fil.length);
+    const pageItems = fil.slice(start, end);
 
-  tb.innerHTML = fil.map(p => {
-    const pr = p.precios || {};
-    const sinPrecio = !Object.values(pr).some(v => +v > 0);
-    const tags = Object.entries(pr)
-      .filter(([, v]) => +v > 0)
-      .map(([k, v]) => `<span class="badge badge-gold">${k}ml $${v}</span>`).join(' ');
-    
-    let estadoBadge = '';
-    if (p.archivado === true) estadoBadge = '<span class="badge badge-danger" style="margin-left:6px">Archivado</span>';
-    else if (p.activo === false) estadoBadge = '<span class="badge badge-warning" style="margin-left:6px;color:#000">Oculto</span>';
-    
-    const novedadBadge = p.novedad
-      ? '<span class="badge badge-info" style="margin-left:6px">✨ Novedad</span>' : '';
-    const clicks = p.clicks > 0
-      ? `<span class="clicks-badge"><i class="bi bi-eye"></i> ${p.clicks}</span>`
-      : `<span class="clicks-zero">&#8212;</span>`;
-    const alertaPrecio = (sinPrecio && p.activo !== false)
-      ? `<span class="badge badge-danger" style="margin-left:4px" title="Activo sin precios"><i class="bi bi-exclamation-triangle"></i></span>`
-      : '';
-    const pid  = p.id;
-    const pnom = p.nombre.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    return `<tr>
-      <td>${p.imagen ? `<img class="td-img" src="${imgThumb(p.imagen)}" alt="" loading="lazy">` : '<div class="td-img-placeholder"><i class="bi bi-droplet"></i></div>'}</td>
-      <td><strong>${p.nombre}</strong>${estadoBadge}${novedadBadge}</td>
-      <td><span class="badge badge-gold">${p.marca || '&#8212;'}</span></td>
-      <td><span class="badge badge-info">${p.categoria || '&#8212;'}</span></td>
-      <td><span class="badge badge-muted">${p.genero || '&#8212;'}</span></td>
-      <td><span class="badge badge-muted">${p.familia || '&#8212;'}</span></td>
-      <td><span class="badge badge-muted">${p.tipo || '&#8212;'}</span></td>
-      <td class="col-clicks">${clicks}</td>
-      <td>${tags || '<span style="color:var(--text-faint)">Sin precios</span>'}${alertaPrecio}</td>
-      <td><div style="display:flex;gap:6px">
-        <button class="btn btn-outline btn-sm" onclick="promptAddPos('${pid}')" title="Añadir a Canasta"><i class="bi bi-cart-plus" style="color:var(--accent)"></i></button>
-        <button class="btn btn-outline btn-sm" onclick="copiarLista('${pid}')" title="Copiar lista de precios"><i class="bi bi-clipboard"></i></button>
-        <button class="btn-icon" onclick="edit('${pid}')" title="Editar"><i class="bi bi-pencil"></i></button>
-        <button class="btn-icon" onclick="del('${pid}','${pnom}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
-      </div></td>
-    </tr>`;
-  }).join('');
-
-  // ── Renderizar Grid POS ──
-  const posGrid = document.getElementById('pos-grid');
-  if (posGrid) {
-    let posItems = [...fil];
-    if (window.paquetesData) {
-      const q = document.getElementById('search').value.toLowerCase();
-      const activePkgs = window.paquetesData.filter(p => p.activo !== false);
-      const pkgs = activePkgs.filter(p => (!q || p.nombre.toLowerCase().includes(q)));
-      posItems = posItems.concat(pkgs);
+    if (!fil.length) {
+      tb.innerHTML = '<tr><td colspan="10"><div class="empty-state"><i class="bi bi-search"></i><h3>No hay resultados</h3><p>Prueba buscando otra cosa.</p></div></td></tr>';
+      renderPagination(0, 0, 0, 1);
+      return;
     }
-    posGrid.innerHTML = posItems.map(p => {
-      const imgHTML = p.imagen ? `<img class="pcard-img" src="${imgThumb(p.imagen)}" loading="lazy">` : `<div class="pcard-img" style="display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--text-faint)"><i class="bi bi-droplet"></i></div>`;
-      return `<div class="pcard" onclick="openPosItemModal('${p.id}')">
-        ${imgHTML}
-        <div class="pcard-body">
-          <div class="pcard-title">${p.isPaquete ? '📦 ' + p.nombre : p.nombre}</div>
-          <div class="pcard-sub">${p.isPaquete ? 'Combos Fitoscents' : (p.marca || '—')}</div>
-        </div>
-      </div>`;
+
+    tb.innerHTML = pageItems.map(p => {
+      const pr = p.precios || {};
+      const sinPrecio = !Object.values(pr).some(v => +v > 0);
+      const tags = Object.entries(pr)
+        .filter(([, v]) => +v > 0)
+        .map(([k, v]) => `<span class="badge badge-gold">${k}ml $${v}</span>`).join(' ');
+      
+      let estadoBadge = '';
+      if (p.archivado === true) estadoBadge = '<span class="badge badge-danger" style="margin-left:6px">Archivado</span>';
+      else if (p.activo === false) estadoBadge = '<span class="badge badge-warning" style="margin-left:6px;color:#000">Oculto</span>';
+      
+      let stockBadge = '';
+      if (p.estadoStock === 'por_acabarse') stockBadge = '<span class="badge badge-warning" style="margin-left:6px;color:#000">🟡 Por acabarse</span>';
+      else if (p.estadoStock === 'agotado') stockBadge = '<span class="badge badge-danger" style="margin-left:6px">🔴 Agotado</span>';
+
+      const novedadBadge = p.novedad
+        ? '<span class="badge badge-info" style="margin-left:6px">✨ Novedad</span>' : '';
+      const clicks = p.clicks > 0
+        ? `<span class="clicks-badge"><i class="bi bi-eye"></i> ${p.clicks}</span>`
+        : `<span class="clicks-zero">&#8212;</span>`;
+      const alertaPrecio = (sinPrecio && p.activo !== false)
+        ? `<span class="badge badge-danger" style="margin-left:4px" title="Activo sin precios"><i class="bi bi-exclamation-triangle"></i></span>`
+        : '';
+      const pid  = p.id;
+      const pnom = p.nombre.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      return `<tr>
+        <td>${(!ds && p.imagen) ? `<img class="td-img" src="${imgThumb(p.imagen)}" alt="" loading="lazy">` : '<div class="td-img-placeholder"><i class="bi bi-droplet"></i></div>'}</td>
+        <td><strong>${p.nombre}</strong>${estadoBadge}${novedadBadge}${stockBadge}</td>
+        <td><span class="badge badge-gold">${p.marca || '&#8212;'}</span></td>
+        <td><span class="badge badge-info">${p.categoria || '&#8212;'}</span></td>
+        <td><span class="badge badge-muted">${p.genero || '&#8212;'}</span></td>
+        <td><span class="badge badge-muted">${p.familia || '&#8212;'}</span></td>
+        <td><span class="badge badge-muted">${p.tipo || '&#8212;'}</span></td>
+        <td class="col-clicks">${clicks}</td>
+        <td>${tags || '<span style="color:var(--text-faint)">Sin precios</span>'}${alertaPrecio}</td>
+        <td><div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick="promptAddPos('${pid}')" title="Añadir a Canasta"><i class="bi bi-cart-plus" style="color:var(--accent)"></i></button>
+          <button class="btn btn-outline btn-sm" onclick="copiarLista('${pid}')" title="Copiar lista de precios"><i class="bi bi-clipboard"></i></button>
+          <button class="btn-icon" onclick="edit('${pid}')" title="Editar"><i class="bi bi-pencil"></i></button>
+          <button class="btn-icon" onclick="del('${pid}','${pnom}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
+        </div></td>
+      </tr>`;
     }).join('');
-  }
+
+    renderPagination(fil.length, start + 1, end, totalPages);
+
+    // ── Renderizar Grid POS ──
+    const posGrid = document.getElementById('pos-grid');
+    if (posGrid) {
+      let posItems = [...fil];
+      if (window.paquetesData) {
+        const q = document.getElementById('search').value.toLowerCase();
+        const activePkgs = window.paquetesData.filter(p => p.activo !== false);
+        const pkgs = activePkgs.filter(p => (!q || matchSearch(q, p.nombre)));
+        posItems = posItems.concat(pkgs);
+      }
+      posGrid.innerHTML = posItems.map(p => {
+        const imgHTML = (!ds && p.imagen) ? `<img class="pcard-img" src="${imgThumb(p.imagen)}" loading="lazy">` : `<div class="pcard-img" style="display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--text-faint)"><i class="bi bi-droplet"></i></div>`;
+        return `<div class="pcard" onclick="openPosItemModal('${p.id}')">
+          ${imgHTML}
+          <div class="pcard-body">
+            <div class="pcard-title">${p.isPaquete ? '📦 ' + p.nombre : p.nombre}</div>
+            <div class="pcard-sub">${p.isPaquete ? 'Combos Fitoscents' : (p.marca || '—')}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
 };
 
 window.toggleAdminView = () => {
@@ -295,7 +350,10 @@ window.openPosItemModal = (id) => {
   }
   if(!p) return;
   const imgEl = document.getElementById('pos-m-img');
-  if(p.imagen) {
+  const ds = localStorage.getItem('adminDataSaver') === '1';
+  if (ds) {
+    imgEl.style.display = 'none';
+  } else if(p.imagen) {
     imgEl.src = p.imagen;
     imgEl.style.display = 'block';
   } else {
@@ -389,8 +447,9 @@ window.fastAddToCart = (id, ml, precio) => {
         precio: precio,
         cant: 1
       });
+      if(window.showToast) window.showToast('Añadido a la canasta', 'success');
+      if(window.closePosModal) window.closePosModal();
     }
-    closePosModal();
   };
 
   if (isPaquete && p.esPersonalizable) {
@@ -459,7 +518,7 @@ window.copiarLista = (id) => {
 };
 
 window.openModal = () => {
-  ['p-id','p-nombre','p-desc','p-img-url','px2','px3','px5','px10'].forEach(id => {
+  ['p-id','p-nombre','p-desc','p-img-url','px2','px3','px5','px10','p-costo','p-tamano'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('p-img-file').value = '';
@@ -469,6 +528,7 @@ window.openModal = () => {
   document.getElementById('p-tipo').innerHTML    = buildSelectOptions(tiposData,    '', 'Sin especificar');
   document.getElementById('p-marca').innerHTML   = '<option>Selecciona</option>';
   document.getElementById('p-estado').value      = 'visible';
+  document.getElementById('p-stock').value       = 'normal';
   document.getElementById('p-novedad').checked   = false;
   document.getElementById('preview-wrap').style.display = 'none';
   document.getElementById('modal-title').textContent    = 'Nuevo Perfume';
@@ -487,14 +547,24 @@ window.setMode = (m) => {
 };
 
 window.previewUrl = () => {
+  const ds = localStorage.getItem('adminDataSaver') === '1';
   const u = document.getElementById('p-img-url').value;
+  if (ds) {
+    document.getElementById('preview-wrap').style.display = 'none';
+    return;
+  }
   document.getElementById('preview-img').src = u;
   document.getElementById('preview-wrap').style.display = u ? 'block' : 'none';
 };
 
 window.previewFile = () => {
+  const ds = localStorage.getItem('adminDataSaver') === '1';
   const f = document.getElementById('p-img-file').files[0];
   if (!f) return;
+  if (ds) {
+    document.getElementById('preview-wrap').style.display = 'none';
+    return;
+  }
   const r = new FileReader();
   r.onload = e => {
     document.getElementById('preview-img').src = e.target.result;
@@ -515,13 +585,16 @@ window.edit = (id) => {
   loadMarcas();
   setTimeout(() => { document.getElementById('p-marca').value = p.marca || ''; }, 80);
   document.getElementById('p-desc').value    = p.descripcion || '';
-  document.getElementById('p-novedad').checked = !!p.novedad;  // ← nuevo
   const pr = p.precios || {};
   ['2','3','5','10'].forEach(k => { document.getElementById('px' + k).value = pr[k] || ''; });
   
   if (p.archivado) document.getElementById('p-estado').value = 'archivado';
   else if (p.activo === false) document.getElementById('p-estado').value = 'oculto';
   else document.getElementById('p-estado').value = 'visible';
+
+  document.getElementById('p-costo').value = p.costoBotella || '';
+  document.getElementById('p-tamano').value = p.tamanoBotella || '';
+  document.getElementById('p-stock').value = p.estadoStock || 'normal';
 
   document.getElementById('p-novedad').checked = p.novedad === true;
   if (p.imagen) {
@@ -570,6 +643,10 @@ window.save = async () => {
     };
     const tamanos = Object.keys(precios).filter(k => precios[k] > 0);
     const estado = document.getElementById('p-estado').value;
+    const costoBotella = +document.getElementById('p-costo').value || 0;
+    const tamanoBotella = +document.getElementById('p-tamano').value || 0;
+    const estadoStock = document.getElementById('p-stock').value || 'normal';
+
     const data = {
       nombre, genero, categoria, marca,
       familia:     document.getElementById('p-familia').value || '',
@@ -578,7 +655,8 @@ window.save = async () => {
       imagen, precios, tamanos,
       activo:    (estado === 'visible'),
       archivado: (estado === 'archivado'),
-      novedad: document.getElementById('p-novedad').checked
+      novedad: document.getElementById('p-novedad').checked,
+      costoBotella, tamanoBotella, estadoStock
     };
     if (id) {
       await updateDoc(doc(db, 'perfumes', id), data);
@@ -648,7 +726,9 @@ window.exportPrices = () => {
   toast('Lista exportada con éxito', 'success');
 };
 
-loadAll();
+onAuthStateChanged(auth, user => {
+  if (user) loadAll();
+});
 
 window.openPackageSelectionModal = (p, onComplete) => {
   const overlay = document.createElement('div');

@@ -1,10 +1,11 @@
-import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc }
+import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onAuthStateChanged }
   from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
 import { auth } from './firebase-config.js';
 import '../../admin/auth-guard.js';
 import { imgThumb } from './cloudinary.js';
+import { matchSearch } from './search-engine.js';
 
 const CLOUDINARY_CLOUD  = 'dxo761td7';
 const CLOUDINARY_PRESET = 'FITOSCENTS-DECANTS';
@@ -63,7 +64,7 @@ function renderTable() {
   const orden = oEl ? oEl.value : 'recientes';
 
   let f = paquetes.filter(p => {
-    if (q && !p.nombre.toLowerCase().includes(q)) return false;
+    if (q && !matchSearch(q, p.nombre)) return false;
     
     if (estado === 'activos' && p.activo === false) return false;
     if (estado === 'ocultos' && p.activo !== false) return false;
@@ -119,14 +120,24 @@ window.setMode = (m) => {
 };
 
 window.previewUrl = () => {
+  const ds = localStorage.getItem('adminDataSaver') === '1';
   const url = document.getElementById('p-img-url').value.trim();
+  if (ds) {
+    document.getElementById('preview-wrap').style.display = 'none';
+    return;
+  }
   document.getElementById('preview-img').src = url;
   document.getElementById('preview-wrap').style.display = url ? 'block' : 'none';
 };
 
 window.previewFile = () => {
+  const ds = localStorage.getItem('adminDataSaver') === '1';
   const f = document.getElementById('p-img-file').files[0];
   if (!f) return;
+  if (ds) {
+    document.getElementById('preview-wrap').style.display = 'none';
+    return;
+  }
   const r = new FileReader();
   r.onload = e => {
     document.getElementById('preview-img').src = e.target.result;
@@ -220,7 +231,7 @@ searchInput.addEventListener('input', () => {
     return;
   }
   
-  const matches = perfumes.filter(p => p.activo !== false && (p.nombre.toLowerCase().includes(q) || (p.marca && p.marca.toLowerCase().includes(q)))).slice(0, 10);
+  const matches = perfumes.filter(p => p.activo !== false && matchSearch(q, p.nombre + ' ' + (p.marca || ''))).slice(0, 10);
   
   if (matches.length === 0) {
     sugList.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-faint);font-size:13px;">No se encontraron perfumes</div>';
@@ -387,4 +398,6 @@ window.del = async (id, nombre) => {
 window.renderTable = renderTable;
 window.loadAll = loadAll;
 
-loadAll();
+onAuthStateChanged(auth, user => {
+  if (user) loadAll();
+});

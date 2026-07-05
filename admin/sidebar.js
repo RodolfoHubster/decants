@@ -11,18 +11,33 @@ export function renderSidebar(active) {
     </div>
     <ul class="sidebar-nav">
       <li><a href="./dashboard.html"  class="${active==='dashboard'  ?'active':''}" ><i class="bi bi-grid"></i> Dashboard</a></li>
+      
+      <li class="sidebar-divider"></li>
+      <li class="sidebar-section-label">📦 Catálogo y Productos</li>
       <li><a href="./perfumes.html"   class="${active==='perfumes'   ?'active':''}" ><i class="bi bi-droplet"></i> Perfumes</a></li>
       <li><a href="./paquetes.html"   class="${active==='paquetes'   ?'active':''}" ><i class="bi bi-box2-heart"></i> Paquetes (Combos)</a></li>
       <li><a href="./marcas.html"     class="${active==='marcas'     ?'active':''}" ><i class="bi bi-bookmark"></i> Marcas</a></li>
       <li><a href="./categorias.html" class="${active==='categorias' ?'active':''}" ><i class="bi bi-tag"></i> Categorias</a></li>
       <li><a href="./notas.html"      class="${active==='notas'      ?'active':''}" ><i class="bi bi-flower1"></i> Notas Olfativas</a></li>
-      <li><a href="./pedidos.html"    class="${active==='pedidos'    ?'active':''}" ><i class="bi bi-bag"></i> Pedidos</a></li>
-      <li><a href="./ventas.html"     class="${active==='ventas'     ?'active':''}" ><i class="bi bi-cash-stack"></i> Ventas</a></li>
-      <li><a href="./novedades.html"  class="${active==='novedades'  ?'active':''}" ><i class="bi bi-stars"></i> Novedades</a></li>
+      
       <li class="sidebar-divider"></li>
-      <li class="sidebar-section-label">Botellas Completas</li>
+      <li class="sidebar-section-label">💰 Ventas</li>
+      <li><a href="./ventas.html"     class="${active==='ventas'     ?'active':''}" ><i class="bi bi-shop"></i> Punto de Venta</a></li>
+      <li><a href="./pedidos.html"    class="${active==='pedidos'    ?'active':''}" ><i class="bi bi-bag"></i> Pedidos Web</a></li>
+      
+      <li class="sidebar-divider"></li>
+      <li class="sidebar-section-label">📈 Inteligencia de Negocio</li>
+      <li><a href="./estadisticas.html" class="${active==='estadisticas' ?'active':''}" ><i class="bi bi-bar-chart-line"></i> Estadísticas</a></li>
+      <li><a href="./costos.html"       class="${active==='costos'       ?'active':''}" ><i class="bi bi-calculator"></i> Costos e Insumos</a></li>
+      
+      <li class="sidebar-divider"></li>
+      <li class="sidebar-section-label">🍾 Botellas Completas</li>
       <li><a href="./perfumes-completos.html" class="${active==='perfumes-completos' ?'active':''}" ><i class="bi bi-bag-heart"></i> Catálogo Completos</a></li>
       <li><a href="./encargos.html"           class="${active==='encargos'           ?'active':''}" ><i class="bi bi-clock-history"></i> Encargos</a></li>
+      
+      <li class="sidebar-divider"></li>
+      <li class="sidebar-section-label">⚙️ Ajustes</li>
+      <li><a href="./novedades.html"  class="${active==='novedades'  ?'active':''}" ><i class="bi bi-stars"></i> Novedades</a></li>
       <li class="sidebar-divider"></li>
       <li>
         <label style="display:flex;align-items:center;gap:12px;padding:12px 20px;color:var(--text-muted);cursor:pointer;font-size:13.5px;transition:all 0.2s;">

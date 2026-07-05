@@ -106,7 +106,11 @@
         </div>
         <div class="form-group">
           <label>Talla (ml) *</label>
-          <select class="form-control" id="v-talla"><option value="">Selecciona talla</option></select>
+          <select class="form-control" id="v-talla" onchange="window.onTallaChange ? window.onTallaChange() : null"><option value="">Selecciona talla</option></select>
+          <label id="v-reforzada-wrap" style="display:none;align-items:center;gap:6px;margin-top:8px;font-size:13px;color:var(--text-muted);cursor:pointer">
+            <input type="checkbox" id="v-reforzada" style="accent-color:var(--accent)" onchange="window.onReforzadaChange ? window.onReforzadaChange() : null">
+            <span>Botella Reforzada (<span id="v-reforzada-lbl">+$15</span>)</span>
+          </label>
         </div>
       </div>
       <div class="form-row">
@@ -372,6 +376,6 @@ window.buildPerfumePicker = function(wrap, perfumes, onChange) {
   wrap._perfGetId = () => selectedId;
 };
 </script>
-<script type="module" src="../assets/js/ventas.js?v=1.8"></script>
+<script type="module" src="../assets/js/ventas.js?v=1.9"></script>
 </body>
 </html>

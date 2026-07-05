@@ -1,22 +1,29 @@
-import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, writeBatch }
+import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, writeBatch, getDoc, auth, onAuthStateChanged }
   from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
 import '../../admin/auth-guard.js';
-
+import { matchSearch } from './search-engine.js';
 renderSidebar('ventas');
 if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display = 'flex';
 
 let ventas = [], perfumes = [];
 let currentPage = 1, pageSize = 10;
+window.costoReforzada = 15; // default
 
 // ── Cargar datos ──────────────────────────────────────────────────────────────
 async function loadAll() {
-  const [vs, ps, pq] = await Promise.all([
+  const [vs, ps, pq, confSnap] = await Promise.all([
     getDocs(collection(db, 'ventas')),
     getDocs(collection(db, 'perfumes')),
-    getDocs(collection(db, 'paquetes'))
+    getDocs(collection(db, 'paquetes')),
+    getDoc(doc(db, 'config', 'costosOperativos')).catch(() => null)
   ]);
+  
+  if (confSnap && confSnap.exists()) {
+    window.costoReforzada = confSnap.data().reforzadaVenta || 15;
+  }
+
   perfumes = []; ps.forEach(d => perfumes.push({ id: d.id, ...d.data() }));
   perfumes.sort((a,b) => a.nombre.localeCompare(b.nombre));
   
@@ -121,10 +128,53 @@ window.onPerfumeChange = () => {
   if (!isPaquete) opts.push(`<option value="Completo" data-precio="">Botella Completa 🍾</option>`);
 
   tallaSel.innerHTML = '<option value="">Selecciona talla</option>' + opts.join('');
-  tallaSel.onchange = () => {
-    const opt = tallaSel.selectedOptions[0];
-    if (opt?.dataset.precio) precioEl.value = opt.dataset.precio;
-  };
+  
+  if (window.onTallaChange) {
+    window.onTallaChange(); // reset ui
+  }
+};
+
+window.onTallaChange = () => {
+  const tallaSel = document.getElementById('v-talla');
+  const precioEl = document.getElementById('v-precio');
+  const refWrap = document.getElementById('v-reforzada-wrap');
+  const refChk = document.getElementById('v-reforzada');
+  const refLbl = document.getElementById('v-reforzada-lbl');
+  
+  const opt = tallaSel.selectedOptions[0];
+  let basePrecio = 0;
+  
+  if (opt?.dataset.precio) {
+    basePrecio = parseFloat(opt.dataset.precio) || 0;
+    precioEl.value = basePrecio;
+  }
+  
+  const val = tallaSel.value;
+  // Solo aplica para 5ml y 10ml, y no para paquetes
+  if (val === '5' || val === '10') {
+    refWrap.style.display = 'flex';
+    refLbl.textContent = '+$' + window.costoReforzada;
+  } else {
+    refWrap.style.display = 'none';
+    refChk.checked = false;
+  }
+  
+  window.onReforzadaChange();
+};
+
+window.onReforzadaChange = () => {
+  const tallaSel = document.getElementById('v-talla');
+  const precioEl = document.getElementById('v-precio');
+  const refChk = document.getElementById('v-reforzada');
+  
+  const opt = tallaSel.selectedOptions[0];
+  if (!opt || !opt.dataset.precio) return;
+  
+  let basePrecio = parseFloat(opt.dataset.precio) || 0;
+  if (refChk && refChk.checked) {
+    basePrecio += (window.costoReforzada || 15);
+  }
+  precioEl.value = basePrecio;
 };
 
 window.checkVentasCustomLimit = (chk) => {
@@ -653,7 +703,7 @@ function buildCombobox(container, onSelect) {
       window.paquetesData.forEach(p => allOpts.push({ ...p, isPaquete: true }));
     }
     const list = q
-      ? allOpts.filter(p => (p.nombre + ' ' + (p.marca||'')).toLowerCase().includes(q.toLowerCase()))
+      ? allOpts.filter(p => matchSearch(q, p.nombre + ' ' + (p.marca||'')))
       : allOpts;
     dd.innerHTML = '';
     activeIdx = -1;
@@ -709,7 +759,7 @@ function buildCombobox(container, onSelect) {
     if (window.paquetesData) {
       window.paquetesData.forEach(p => allOpts.push({ ...p, isPaquete: true }));
     }
-    const list = q ? allOpts.filter(p => (p.nombre+' '+(p.marca||'')).toLowerCase().includes(q.toLowerCase())) : allOpts;
+    const list = q ? allOpts.filter(p => matchSearch(q, p.nombre+' '+(p.marca||''))) : allOpts;
     if (e.key === 'ArrowDown') { e.preventDefault(); const n=Math.min(activeIdx+1,items.length-1); setActive(n,list); items[n]?.scrollIntoView({block:'nearest'}); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); const n=Math.max(activeIdx-1,0); setActive(n,list); items[n]?.scrollIntoView({block:'nearest'}); }
     else if (e.key === 'Enter') { 
@@ -781,13 +831,61 @@ function buildBatchRowEl(row) {
     // auto-fill precio
     const items = tallaItems(r.perfumeId);
     const found = items.find(i => i.value === val);
+    let base = 0;
     if (found?.precio) {
-      r.precio = found.precio;
-      inPrecio.value = found.precio;
+      base = found.precio;
+      r.basePrecio = base; // guardar precio base
+      r.precio = base + (r.reforzada ? window.costoReforzada : 0);
+      inPrecio.value = r.precio;
+    }
+    
+    // Toggle reforzada visibility
+    if (val === '5' || val === '10') {
+      refWrap.style.display = 'flex';
+    } else {
+      refWrap.style.display = 'none';
+      if (refChk.checked) {
+        refChk.checked = false;
+        r.reforzada = false;
+        if (r.basePrecio) {
+          r.precio = r.basePrecio;
+          inPrecio.value = r.precio;
+        }
+      }
     }
     batchRefreshTotal(rid);
     updateBatchResumen();
   });
+  
+  const refWrap = document.createElement('label');
+  refWrap.style.display = 'none';
+  refWrap.style.alignItems = 'center';
+  refWrap.style.gap = '4px';
+  refWrap.style.marginTop = '4px';
+  refWrap.style.fontSize = '11px';
+  refWrap.style.color = 'var(--text-muted)';
+  refWrap.style.cursor = 'pointer';
+  
+  const refChk = document.createElement('input');
+  refChk.type = 'checkbox';
+  refChk.style.accentColor = 'var(--accent)';
+  refChk.onchange = () => {
+    const r = batchRows.find(x => x.rid === rid);
+    if (!r) return;
+    r.reforzada = refChk.checked;
+    if (r.basePrecio) {
+      r.precio = r.basePrecio + (r.reforzada ? window.costoReforzada : 0);
+      inPrecio.value = r.precio;
+      batchRefreshTotal(rid);
+      updateBatchResumen();
+    }
+  };
+  
+  refWrap.appendChild(refChk);
+  const refLbl = document.createElement('span');
+  refLbl.textContent = 'Reforzada';
+  refWrap.appendChild(refLbl);
+  tdTalla.appendChild(refWrap);
 
   // ── Celda Cantidad ────────────────────────────────────────────────────────
   const tdCant = document.createElement('td');
@@ -996,7 +1094,9 @@ window.saveDia = async () => {
   }
 };
 
-loadAll();
+onAuthStateChanged(auth, user => {
+  if (user) loadAll();
+});
 
 // ── Interceptar Creación de Sobre Ruedas desde Canasta ──────────────────────
 setTimeout(() => {

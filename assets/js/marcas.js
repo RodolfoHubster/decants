@@ -1,4 +1,4 @@
-import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc }
+import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, auth, onAuthStateChanged }
   from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
@@ -90,4 +90,6 @@ window.del = async (id, nombre) => {
   load();
 };
 
-load();
+onAuthStateChanged(auth, user => {
+  if (user) load();
+});

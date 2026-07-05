@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs,
-  doc, updateDoc, deleteDoc, query, orderBy, where, getDoc,
+  doc, updateDoc, deleteDoc, query, orderBy, where, getDoc, setDoc,
   increment, writeBatch, serverTimestamp,
   Timestamp }  // ← Timestamp SÍ existe pero solo en versiones >= 10.x
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -26,7 +26,7 @@ const auth    = getAuth(app);
 const storage = getStorage(app);
 
 export { db, auth, storage, collection, addDoc, getDocs, doc, updateDoc,
-  deleteDoc, query, orderBy, where, getDoc, increment, writeBatch,
+  deleteDoc, query, orderBy, where, getDoc, setDoc, increment, writeBatch,
   serverTimestamp, Timestamp,
   signInWithEmailAndPassword, signOut, onAuthStateChanged,
   ref, uploadBytes, getDownloadURL };
