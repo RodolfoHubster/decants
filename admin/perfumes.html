@@ -155,15 +155,13 @@
           </div>
         </div>
         
-        <div class="form-row">
-          <div class="form-group" style="margin-bottom:0;flex:1">
-            <label>Costo Botella ($)</label>
-            <input class="form-control" type="number" id="p-costo" min="0" placeholder="Ej. 2500">
+        <div class="form-group" style="margin-top:15px; border-top:1px solid var(--border); padding-top:15px">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+            <label style="margin:0">Inventario de Botellas (Lotes)</label>
+            <button class="btn btn-outline btn-sm" onclick="addLoteUI()"><i class="bi bi-plus-lg"></i> Agregar Botella</button>
           </div>
-          <div class="form-group" style="margin-bottom:0;flex:1">
-            <label>Tamaño (ml)</label>
-            <input class="form-control" type="number" id="p-tamano" min="0" placeholder="Ej. 100">
-          </div>
+          <div id="lotes-container" style="display:flex; flex-direction:column; gap:10px"></div>
+          <div style="font-size:11px; color:var(--text-faint); margin-top:8px;">* Selecciona el círculo izquierdo para marcar la botella actualmente abierta/en uso.</div>
         </div>
 
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px" title="Aparece en Novedades">

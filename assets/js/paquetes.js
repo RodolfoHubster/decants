@@ -88,18 +88,38 @@ function renderTable() {
     return;
   }
 
-  tbody.innerHTML = f.map(p => `
+  tbody.innerHTML = f.map(p => {
+    let bundleInfo = '';
+    let bundleBtn = '';
+    if (p.items && p.items.length > 0) {
+      const itemsHtml = p.items.map(i => `
+        <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+          <span style="color:var(--text-primary); font-size:12px;">↳ ${i.nombre} <span style="color:var(--text-muted); font-size:11px;">(${i.marca||''})</span></span>
+        </div>
+      `).join('');
+      
+      bundleInfo = `<div id="sub-pkg-${p.id}" style="display:none; margin-top:8px; padding:8px 12px; background:var(--bg-card2); border-radius:6px; border:1px solid rgba(255,255,255,0.05);">${itemsHtml}</div>`;
+      bundleBtn = `<button class="btn-icon" onclick="const e = document.getElementById('sub-pkg-${p.id}'); e.style.display = e.style.display === 'none' ? 'block' : 'none';" title="Ver fragancias" style="margin-left:8px; background:rgba(201,168,76,0.1); color:var(--gold); width:24px; height:24px; border-radius:50%; font-size:10px;"><i class="bi bi-chevron-down"></i></button>`;
+    }
+    
+    return `
     <tr style="${p.activo === false ? 'opacity:0.5' : ''}">
       <td>
         <div style="width:40px;height:40px;border-radius:6px;background:var(--bg-card2);overflow:hidden;flex-shrink:0;">
           ${p.imagen ? `<img src="${imgThumb(p.imagen)}" style="width:100%;height:100%;object-fit:cover">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-faint)"><i class="bi bi-box2-heart"></i></div>'}
         </div>
       </td>
-      <td style="font-weight:600">${p.nombre}</td>
+      <td>
+        <div style="display:flex; align-items:center;">
+          <strong style="font-weight:600">${p.nombre}</strong>
+          ${bundleBtn}
+        </div>
+        ${bundleInfo}
+      </td>
       <td style="font-size:12px;color:var(--text-muted);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.descripcion || '-'}</td>
       <td>
         ${p.precios ? Object.entries(p.precios).filter(([,v]) => v > 0).map(([k,v]) => `<div style="font-size:13px"><span style="font-weight:600;width:35px;display:inline-block">${k} ml</span> <span style="color:var(--accent);font-weight:600">$${v} MXN</span></div>`).join('') : `<div style="font-size:13px"><span style="font-weight:600;width:35px;display:inline-block">${p.ml} ml</span> <span style="color:var(--accent);font-weight:600">$${p.precio} MXN</span></div>`}
-        <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">${p.items?.length || 0} fragancias</div>
+        <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">${p.items?.length || 0} fragancias permitidas</div>
       </td>
       <td>${p.activo === false ? '<span class="badge" style="background:#555">Oculto</span>' : '<span class="badge badge-gold">Activo</span>'}</td>
       <td>
@@ -108,7 +128,7 @@ function renderTable() {
         <button class="btn-icon" onclick="del('${p.id}', '${p.nombre}')" style="color:#ef4444"><i class="bi bi-trash"></i></button>
       </td>
     </tr>
-  `).join('');
+  `}).join('');
 }
 
 window.setMode = (m) => {

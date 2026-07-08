@@ -36,6 +36,12 @@
 
       <div class="filter-bar">
         <div class="search-input-wrap"><i class="bi bi-search"></i><input class="form-control" id="search" placeholder="Buscar cliente o perfume..." oninput="renderTable()"></div>
+        <select class="form-control" style="max-width:160px" id="f-perfume-estado" onchange="renderTable()">
+          <option value="">Tipo de perfume</option>
+          <option value="activo">Solo Activos</option>
+          <option value="archivado">Archivados</option>
+          <option value="eliminado">Eliminados/Huérfanos</option>
+        </select>
         <select class="form-control" style="max-width:150px" id="f-estado" onchange="renderTable()">
           <option value="">Todos los estados</option>
           <option value="pagada">Pagada</option>
@@ -145,6 +151,10 @@
             <option value="pendiente">Pendiente ⏳</option>
             <option value="cancelada">Cancelada ❌</option>
           </select>
+        </div>
+        <div class="form-group" id="v-lote-group" style="display:none">
+          <label>Botella / Lote Asignado</label>
+          <select class="form-control" id="v-lote"></select>
         </div>
       </div>
       <div class="form-group">

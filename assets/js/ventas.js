@@ -34,7 +34,12 @@ async function loadAll() {
   ventas = []; vs.forEach(d => ventas.push({ id: d.id, ...d.data() }));
   ventas.sort((a,b) => (b.creadoEn||0) - (a.creadoEn||0));
 
-  const pOpts = perfumes.map(p => `<option value="${p.id}">${p.nombre} — ${p.marca||''}</option>`).join('');
+  const pOpts = perfumes.map(p => {
+    let label = p.nombre;
+    if (p.archivado) label = '📦 [Archivado] ' + label;
+    if (p.marca) label += ' — ' + p.marca;
+    return `<option value="${p.id}">${label}</option>`;
+  }).join('');
   const pqOpts = window.paquetesData.map(p => `<option value="${p.id}">📦 ${p.nombre}</option>`).join('');
   
   document.getElementById('v-perfume').innerHTML = '<option value="">Selecciona perfume o paquete</option>' + pqOpts + '<optgroup label="Perfumes">' + pOpts + '</optgroup><option value="custom" style="font-weight:bold;color:var(--warning)">✏️ Escribir Manual / Otro</option>';
@@ -48,15 +53,37 @@ function getFiltered() {
   const fe = document.getElementById('f-estado').value;
   const fp = document.getElementById('f-periodo').value;
   const fc = document.getElementById('f-canal').value;
-  const ahora = Date.now();
+  const fpe = document.getElementById('f-perfume-estado')?.value;
+
+  const now = Date.now();
+  
+  // Set de IDs activos y archivados para filtro rápido
+  const activeIds = new Set(perfumes.filter(p => !p.archivado).map(p => p.id));
+  const archivedIds = new Set(perfumes.filter(p => p.archivado).map(p => p.id));
+  const pkgIds = new Set(window.paquetesData.map(p => p.id));
+
   return ventas.filter(v => {
     if (fe && v.estado !== fe) return false;
     if (fc && v.canal !== fc) return false;
     if (fp) {
-      const desde = fp === 'hoy' ? new Date().setHours(0,0,0,0) : ahora - (+fp)*86400000;
+      const desde = fp === 'hoy' ? new Date().setHours(0,0,0,0) : now - (+fp)*86400000;
       if ((v.creadoEn||0) < desde) return false;
     }
-    if (q && !(v.cliente||'').toLowerCase().includes(q) && !(v.perfumeNombre||'').toLowerCase().includes(q)) return false;
+    if (q) {
+      if (!matchSearch(q, (v.cliente||'') + ' ' + (v.perfumeNombre||'') + ' ' + (v.perfumeMarca||''))) return false;
+    }
+    
+    if (fpe) {
+      // Para ventas de paquetes, iteramos sobre sus items. Si es venta normal, checamos su id.
+      let isPkg = pkgIds.has(v.perfumeId) || (v.paqueteItems && v.paqueteItems.length > 0);
+      let isActive = activeIds.has(v.perfumeId) || isPkg;
+      let isArchived = archivedIds.has(v.perfumeId);
+      let isDeleted = !isActive && !isArchived && !isPkg;
+      
+      if (fpe === 'activo' && !isActive) return false;
+      if (fpe === 'archivado' && !isArchived) return false;
+      if (fpe === 'eliminado' && !isDeleted) return false;
+    }
     return true;
   });
 }
@@ -66,9 +93,11 @@ function getFiltered() {
   const searchEl = document.getElementById('search');
   const estadoEl = document.getElementById('f-estado');
   const canalEl  = document.getElementById('f-canal');
+  const fpeEl    = document.getElementById('f-perfume-estado');
   if (searchEl) searchEl.addEventListener('input', () => { currentPage = 1; });
   if (estadoEl) estadoEl.addEventListener('change', () => { currentPage = 1; });
   if (canalEl)  canalEl.addEventListener('change', () => { currentPage = 1; });
+  if (fpeEl)    fpeEl.addEventListener('change', () => { currentPage = 1; });
 })();
 
 function updateKPIs(fil) {
@@ -129,6 +158,19 @@ window.onPerfumeChange = () => {
 
   tallaSel.innerHTML = '<option value="">Selecciona talla</option>' + opts.join('');
   
+  const loteGroup = document.getElementById('v-lote-group');
+  const loteSel = document.getElementById('v-lote');
+  if (loteGroup && loteSel) {
+    if (p.lotes && p.lotes.length > 0) {
+      loteSel.innerHTML = p.lotes.map((l, i) => `<option value="${l.id}">Botella #${i+1} (${new Date(l.fecha).toLocaleDateString('es-MX')})</option>`).join('');
+      loteSel.value = p.loteActivo || p.lotes[0].id;
+      loteGroup.style.display = 'block';
+    } else {
+      loteGroup.style.display = 'none';
+      loteSel.innerHTML = '';
+    }
+  }
+
   if (window.onTallaChange) {
     window.onTallaChange(); // reset ui
   }
@@ -211,9 +253,33 @@ window.renderTable = () => {
     const fecha = v.creadoEn ? new Date(v.creadoEn).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—';
     const total = ((+v.precio||0)*(+v.cantidad||1)).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
     const canal = v.canal || 'online';
+    let bundleInfo = '';
+    let bundleBtn = '';
+    let cleanName = v.perfumeNombre || '—';
+    if (v.paqueteItems && v.paqueteItems.length > 0) {
+      cleanName = cleanName.split(' [')[0];
+      const divPrice = ((+v.precio || 0) / v.paqueteItems.length).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
+      let tStr = v.talla || '';
+      const m = tStr.match(/\d+/);
+      if (m) tStr = `${m[0]} ml`;
+      
+      const itemsHtml = v.paqueteItems.map(i => `
+        <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+          <span style="color:var(--text-primary); font-size:12px; flex:2;">↳ ${i.nombre}</span>
+          <span style="color:var(--text-muted); font-size:12px; flex:1; text-align:center;">${tStr}</span>
+          <span style="color:var(--text-primary); font-size:12px; flex:1; text-align:right;">${divPrice}</span>
+        </div>
+      `).join('');
+      
+      bundleInfo = `<div id="sub-${v.id}" style="display:none; margin-top:8px; padding:8px 12px; background:var(--bg-card2); border-radius:6px; border:1px solid rgba(255,255,255,0.05);">${itemsHtml}</div>`;
+      bundleBtn = `<button class="btn-icon" onclick="const e = document.getElementById('sub-${v.id}'); e.style.display = e.style.display === 'none' ? 'block' : 'none';" title="Ver contenido" style="margin-left:8px; background:rgba(201,168,76,0.1); color:var(--gold); width:24px; height:24px; border-radius:50%; font-size:10px;"><i class="bi bi-chevron-down"></i></button>`;
+    }
     return `<tr>
       <td style="color:var(--text-muted);font-size:13px">${fecha}</td>
-      <td><strong>${v.perfumeNombre||'—'}</strong></td>
+      <td>
+        <div style="display:flex; align-items:center;"><strong>${cleanName}</strong>${bundleBtn}</div>
+        ${bundleInfo}
+      </td>
       <td><span class="badge-ml">${v.talla||'—'} ml × ${v.cantidad||1}</span></td>
       <td><strong>${total}</strong></td>
       <td>${v.cliente||'<span style="color:var(--text-faint)">—</span>'}</td>
@@ -267,8 +333,32 @@ window.renderJornadas = (fil) => {
       
       const tbodyHtml = grp.ventas.map(v => {
         const total = ((+v.precio||0)*(+v.cantidad||1)).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
+        let bundleInfo = '';
+        let bundleBtn = '';
+        let cleanName = v.perfumeNombre || '—';
+        if (v.paqueteItems && v.paqueteItems.length > 0) {
+          cleanName = cleanName.split(' [')[0];
+          const divPrice = ((+v.precio || 0) / v.paqueteItems.length).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
+          let tStr = v.talla || '';
+          const m = tStr.match(/\d+/);
+          if (m) tStr = `${m[0]} ml`;
+          
+          const itemsHtml = v.paqueteItems.map(i => `
+            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+              <span style="color:var(--text-primary); font-size:12px; flex:2;">↳ ${i.nombre}</span>
+              <span style="color:var(--text-muted); font-size:12px; flex:1; text-align:center;">${tStr}</span>
+              <span style="color:var(--text-primary); font-size:12px; flex:1; text-align:right;">${divPrice}</span>
+            </div>
+          `).join('');
+          
+          bundleInfo = `<div id="sub-jor-${v.id}" style="display:none; margin-top:8px; padding:8px 12px; background:var(--bg-card2); border-radius:6px; border:1px solid rgba(255,255,255,0.05);">${itemsHtml}</div>`;
+          bundleBtn = `<button class="btn-icon" onclick="event.stopPropagation(); const e = document.getElementById('sub-jor-${v.id}'); e.style.display = e.style.display === 'none' ? 'block' : 'none';" title="Ver contenido" style="margin-left:8px; background:rgba(201,168,76,0.1); color:var(--gold); width:24px; height:24px; border-radius:50%; font-size:10px;"><i class="bi bi-chevron-down"></i></button>`;
+        }
         return `<tr>
-          <td><strong>${v.perfumeNombre||'—'}</strong></td>
+          <td>
+            <div style="display:flex; align-items:center;"><strong>${cleanName}</strong>${bundleBtn}</div>
+            ${bundleInfo}
+          </td>
           <td><span class="badge-ml">${v.talla||'—'} ml × ${v.cantidad||1}</span></td>
           <td><strong>${total}</strong></td>
           <td>${v.cliente||'<span style="color:var(--text-faint)">—</span>'}</td>
@@ -389,6 +479,11 @@ window.openModal = () => {
   document.getElementById('v-canal').value = 'online';
   document.getElementById('v-perfume').value = '';
   document.getElementById('v-talla').innerHTML = '<option value="">Selecciona talla</option>';
+  const customItemsCont = document.getElementById('v-custom-items-container');
+  if (customItemsCont) {
+    customItemsCont.style.display = 'none';
+    customItemsCont.innerHTML = '';
+  }
   document.getElementById('modal-title').textContent = 'Nueva Venta';
   document.getElementById('btn-save').innerHTML = '<i class="bi bi-check2"></i> Guardar Venta';
   document.getElementById('modal').classList.add('open');
@@ -420,24 +515,79 @@ window.editVenta = (id) => {
     if (customInp) { customInp.style.display = 'none'; customInp.value = ''; }
   }
 
-  const p = perfumes.find(x => x.id === v.perfumeId);
+  let p = perfumes.find(x => x.id === v.perfumeId);
+  let isPaquete = false;
+  if (!p && window.paquetesData) {
+    p = window.paquetesData.find(x => x.id === v.perfumeId);
+    if (p) isPaquete = true;
+  }
+  
   const tallaSel = document.getElementById('v-talla');
   const precioEl = document.getElementById('v-precio');
+  const customItemsCont = document.getElementById('v-custom-items-container');
+  if (customItemsCont) customItemsCont.style.display = 'none';
   
   if (p) {
-    const opts = Object.entries(p.precios||{}).filter(([,val])=>+val>0)
-      .map(([k,val]) => `<option value="${k}" data-precio="${val}">${k} ml — $${val}</option>`);
-    opts.push(`<option value="Completo" data-precio="">Botella Completa 🍾</option>`);
+    if (isPaquete && p.esPersonalizable && customItemsCont) {
+      customItemsCont.style.display = 'block';
+      const prevIds = (v.paqueteItems || []).map(i => i.id);
+      customItemsCont.innerHTML = `<label style="font-size:12px; font-weight:bold; color:var(--gold);">Elige ${p.maxSeleccion || 3} perfumes:</label>
+        <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
+          ${(p.items||[]).map(i => {
+            const isChecked = prevIds.includes(i.id) ? 'checked' : '';
+            let pxStr = '';
+            let targetMl = '5';
+            if (v.talla) {
+              const m = v.talla.match(/\d+/);
+              if (m) targetMl = m[0];
+            }
+            let fullPerf = perfumes.find(x => x.id === i.id);
+            if (!fullPerf) fullPerf = perfumes.find(x => x.nombre === i.nombre);
+            if (fullPerf && fullPerf.precios && fullPerf.precios[targetMl]) {
+              pxStr = ` <span style="color:var(--text-faint); font-weight:normal; margin-left:auto; font-size:13px;">$${fullPerf.precios[targetMl]}</span>`;
+            }
+            return `
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+              <input type="checkbox" class="v-custom-chk" value="${i.nombre}" data-id="${i.id}" data-max="${p.maxSeleccion||3}" onchange="checkVentasCustomLimit(this)" ${isChecked}>
+              <span style="flex:1;">${i.nombre} (${i.marca||''})</span>
+              ${pxStr}
+            </label>
+          `}).join('')}
+        </div>
+      `;
+    }
+
+    const pr = p.precios || (p.ml && p.precio ? { [p.ml]: p.precio } : {});
+    const opts = Object.entries(pr).filter(([,val])=>+val>0)
+      .map(([k,val]) => `<option value="${isPaquete ? 'Paquete ' : ''}${k}" data-precio="${val}">${isPaquete ? 'Paquete ' : ''}${k} ml — $${val}</option>`);
+    if (!isPaquete) opts.push(`<option value="Completo" data-precio="">Botella Completa 🍾</option>`);
     tallaSel.innerHTML = '<option value="">Selecciona talla</option>' + opts.join('');
+    
     tallaSel.onchange = () => {
       const opt = tallaSel.selectedOptions[0];
       if (opt?.dataset.precio) precioEl.value = opt.dataset.precio;
     };
+    
+    const loteGroup = document.getElementById('v-lote-group');
+    const loteSel = document.getElementById('v-lote');
+    if (loteGroup && loteSel && !isPaquete) {
+      if (p.lotes && p.lotes.length > 0) {
+        loteSel.innerHTML = p.lotes.map((l, i) => `<option value="${l.id}">Botella #${i+1} (${new Date(l.fecha).toLocaleDateString('es-MX')})</option>`).join('');
+        loteSel.value = v.loteId || p.loteActivo || p.lotes[0].id;
+        loteGroup.style.display = 'block';
+      } else {
+        loteGroup.style.display = 'none';
+        loteSel.innerHTML = '';
+      }
+    } else if (loteGroup && isPaquete) {
+      loteGroup.style.display = 'none';
+    }
   } else if (perfSel.value === 'custom') {
     tallaSel.innerHTML = '<option value="Completo">Botella Completa</option><option value="Otro">Otro (Manual)</option>';
   } else {
     tallaSel.innerHTML = '<option value="">Selecciona talla</option>';
   }
+  
   tallaSel.value = v.talla || '';
   document.getElementById('modal-title').textContent = 'Editar Venta';
   document.getElementById('btn-save').innerHTML = '<i class="bi bi-check2"></i> Actualizar Venta';
@@ -457,6 +607,8 @@ window.save = async () => {
   
   let perfumeNombre = '';
   let perfumeMarca = '';
+  let paqueteItemsToSave = null;
+  
   if (perfumeId === 'custom') {
     perfumeNombre = document.getElementById('v-perfume-custom')?.value.trim() || 'Perfume Manual';
   } else {
@@ -470,13 +622,38 @@ window.save = async () => {
     perfumeNombre = p?.nombre || '';
     perfumeMarca = isPaquete ? 'Combos Fitoscents' : (p?.marca || '');
     
-    if (isPaquete && p?.esPersonalizable) {
-      const checked = Array.from(document.querySelectorAll('.v-custom-chk:checked')).map(c => c.value);
-      if (checked.length < (p.maxSeleccion || 3)) {
-        toast(`Selecciona ${p.maxSeleccion || 3} perfumes para el paquete`, 'warning');
-        return;
+    if (isPaquete) {
+      if (p?.esPersonalizable) {
+        const checked = Array.from(document.querySelectorAll('.v-custom-chk:checked'));
+        if (checked.length < (p.maxSeleccion || 3)) {
+          toast(`Selecciona ${p.maxSeleccion || 3} perfumes para el paquete`, 'warning');
+          return;
+        }
+        perfumeNombre += ` [${checked.map(c => c.value).join(', ')}]`;
+        paqueteItemsToSave = checked.map(c => {
+          const cid = c.dataset.id && c.dataset.id !== "undefined" ? c.dataset.id : null;
+          let subPerf = cid ? perfumes.find(x => x.id === cid) : null;
+          if (!subPerf) subPerf = perfumes.find(x => x.nombre === c.value); // Fallback por nombre para paquetes viejos
+          
+          return {
+            id: subPerf ? subPerf.id : (cid || ''),
+            nombre: c.value || '',
+            loteId: subPerf ? (subPerf.loteActivo || (subPerf.lotes && subPerf.lotes.length > 0 ? subPerf.lotes[0].id : 'lote-1')) : 'lote-1'
+          };
+        });
+      } else {
+        paqueteItemsToSave = (p?.items || []).map(i => {
+          const iid = i.id && i.id !== "undefined" ? i.id : null;
+          let subPerf = iid ? perfumes.find(x => x.id === iid) : null;
+          if (!subPerf) subPerf = perfumes.find(x => x.nombre === i.nombre);
+          
+          return {
+            id: subPerf ? subPerf.id : (iid || ''),
+            nombre: i.nombre || '',
+            loteId: subPerf ? (subPerf.loteActivo || (subPerf.lotes && subPerf.lotes.length > 0 ? subPerf.lotes[0].id : 'lote-1')) : 'lote-1'
+          };
+        });
       }
-      perfumeNombre += ` [${checked.join(', ')}]`;
     }
   }
 
@@ -490,6 +667,24 @@ window.save = async () => {
     cliente: document.getElementById('v-cliente').value.trim(),
     notas:   document.getElementById('v-notas').value.trim(),
   };
+
+  if (paqueteItemsToSave) {
+    data.paqueteItems = paqueteItemsToSave;
+  }
+
+  if (perfumeId !== 'custom') {
+    let p = perfumes.find(x => x.id === perfumeId);
+    if (!p && window.paquetesData) p = window.paquetesData.find(x => x.id === perfumeId);
+    
+    let loteVal = document.getElementById('v-lote')?.value;
+    if (loteVal && !paqueteItemsToSave) {
+      data.loteId = loteVal;
+    } else if (p && p.loteActivo && !paqueteItemsToSave) {
+      data.loteId = p.loteActivo;
+    } else if (!paqueteItemsToSave) {
+      data.loteId = 'lote-1'; // Default fallback
+    }
+  }
   try {
     if (editId) {
       await updateDoc(doc(db, 'ventas', editId), data);
@@ -499,6 +694,17 @@ window.save = async () => {
       await addDoc(collection(db, 'ventas'), data);
       toast('Venta registrada ✅', 'success');
     }
+    
+    // Check overflow
+    if (data.paqueteItems) {
+      data.paqueteItems.forEach(sub => {
+         let ml = parseInt((data.talla||'').replace('Paquete ','')) || parseInt(data.talla) || 0;
+         if(ml > 0 && window.checkLoteOverflow) window.checkLoteOverflow(sub.id, sub.loteId, ml * (+data.cantidad||1));
+      });
+    } else if (data.perfumeId && ['2','3','5','10'].includes(data.talla)) {
+      if (window.checkLoteOverflow) window.checkLoteOverflow(data.perfumeId, data.loteId, parseInt(data.talla) * (+data.cantidad||1));
+    }
+    
     closeModal();
     loadAll();
   } catch(e) { toast('Error: ' + e.message, 'error'); }
@@ -964,11 +1170,17 @@ function buildBatchRowEl(row) {
     tallaWrap._setItems(items);
     updateBatchResumen();
     
-    if (p && p.isPaquete && p.esPersonalizable) {
-      openPackageSelectionModal(p, (seleccion) => {
-        inNota.value = seleccion;
-        batchSet(rid, 'notas', seleccion);
-      });
+    if (p && p.isPaquete) {
+      if (p.esPersonalizable) {
+        openPackageSelectionModal(p, (seleccionArray) => {
+          const text = `[${seleccionArray.map(x => x.nombre).join(', ')}]`;
+          inNota.value = text;
+          batchSet(rid, 'notas', text);
+          batchSet(rid, 'paqueteItems', seleccionArray);
+        });
+      } else {
+        batchSet(rid, 'paqueteItems', (p.items || []).map(i => ({ id: i.id, nombre: i.nombre })));
+      }
     }
   });
 
@@ -1067,8 +1279,35 @@ window.saveDia = async () => {
         if (p) isPaquete = true;
       }
       
+      let paqueteItemsToSave = null;
+      if (isPaquete) {
+        let arr = r.paqueteItems;
+        if (!arr || arr.length === 0) {
+          if (!p?.esPersonalizable) {
+            arr = p?.items || [];
+          } else if (r.paqueteItemsStorefront) {
+             // Just in case we pass it from the cart
+             arr = r.paqueteItemsStorefront;
+          }
+        }
+        
+        if (arr && arr.length > 0) {
+          paqueteItemsToSave = arr.map(item => {
+            const cid = item.id && item.id !== "undefined" ? item.id : null;
+            let subPerf = cid ? perfumes.find(x => x.id === cid) : null;
+            if (!subPerf) subPerf = perfumes.find(x => x.nombre === item.nombre);
+            
+            return {
+              id: subPerf ? subPerf.id : (cid || ''),
+              nombre: item.nombre || '',
+              loteId: subPerf ? (subPerf.loteActivo || (subPerf.lotes && subPerf.lotes.length > 0 ? subPerf.lotes[0].id : 'lote-1')) : 'lote-1'
+            };
+          });
+        }
+      }
+      
       const ref = doc(collection(db, 'ventas'));
-      batch.set(ref, {
+      const dataObj = {
         perfumeId: r.perfumeId, 
         perfumeNombre: p?.nombre||'', 
         perfumeMarca: isPaquete ? 'Combos Fitoscents' : (p?.marca||''),
@@ -1077,11 +1316,35 @@ window.saveDia = async () => {
 
         cliente: (r.cliente||'').trim(),
         notas: [r.notas?.trim(), notaGlobal].filter(Boolean).join(' | '),
+        loteId: r.loteId || p?.loteActivo || 'lote-1',
         creadoEn: fechaTs
-      });
+      };
+
+      if (paqueteItemsToSave) {
+        dataObj.paqueteItems = paqueteItemsToSave;
+      }
+      
+      r._tempDataObj = dataObj; // save for overflow check
+      batch.set(ref, dataObj);
     });
     await batch.commit();
     toast(`✅ ${validas.length} venta${validas.length>1?'s':''} guardada${validas.length>1?'s':''}`, 'success');
+    
+    // Check overflow for batch
+    validas.forEach(r => {
+      const dataObj = r._tempDataObj; // We need to store it temporarily to check
+      if (dataObj) {
+        if (dataObj.paqueteItems) {
+          dataObj.paqueteItems.forEach(sub => {
+             let ml = parseInt((dataObj.talla||'').replace('Paquete ','')) || parseInt(dataObj.talla) || 0;
+             if(ml > 0 && window.checkLoteOverflow) window.checkLoteOverflow(sub.id, sub.loteId, ml * (+dataObj.cantidad||1));
+          });
+        } else if (dataObj.perfumeId && ['2','3','5','10'].includes(dataObj.talla)) {
+          if (window.checkLoteOverflow) window.checkLoteOverflow(dataObj.perfumeId, dataObj.loteId, parseInt(dataObj.talla) * (+dataObj.cantidad||1));
+        }
+      }
+    });
+
     document.getElementById('modal-dia').classList.remove('open');
     localStorage.removeItem('posCart');
     if(window.renderPosCart) window.renderPosCart();
@@ -1107,12 +1370,31 @@ setTimeout(() => {
       document.getElementById('batch-tbody').innerHTML = '';
       batchRows = [];
       cart.forEach((item) => {
+        let isPaquete = false;
+        if (window.paquetesData && window.paquetesData.find(x => x.id === item.id)) {
+           isPaquete = true;
+        }
+        let finalTalla = String(item.ml);
+        if (isPaquete && !finalTalla.startsWith('Paquete')) finalTalla = 'Paquete ' + finalTalla;
+
+        let hhmm = '';
+        if (item.addedAt) {
+           const d = new Date(item.addedAt);
+           hhmm = ' a las ' + d.toLocaleTimeString('es-MX', {hour: '2-digit', minute:'2-digit'});
+        }
+        
+        let notaBase = `🛒 Cliente compró ${item.nombre} de ${item.ml}ml a $${item.precio}${hhmm}`;
+
         const rid = ++batchRowCounter;
         const row = { 
-          rid, perfumeId: item.id, talla: String(item.ml), 
+          rid, perfumeId: item.id, talla: finalTalla, 
           cantidad: item.cant || 1, precio: item.precio, 
-          cliente: '', estado: 'entregado', notas: 'De Canasta' 
+          cliente: '', estado: 'pagada', notas: notaBase 
         };
+        if (item.paqueteItems) {
+           row.paqueteItemsStorefront = item.paqueteItems;
+           row.notas = notaBase + ' ↳ [' + item.paqueteItems.map(i => i.nombre).join(', ') + ']';
+        }
         batchRows.push(row);
         const tr = buildBatchRowEl(row);
         document.getElementById('batch-tbody').appendChild(tr);
@@ -1125,13 +1407,13 @@ setTimeout(() => {
           const tallaWrap = tr.querySelector('td:nth-child(2) div');
           if(tallaWrap && tallaWrap._setItems) {
             tallaWrap._setItems(tallaItems(item.id));
-            tallaWrap._setValue(String(item.ml));
+            tallaWrap._setValue(finalTalla);
           }
           
           const estadoWrap = tr.querySelector('td:nth-child(7) div');
           if(estadoWrap && estadoWrap._setValue) {
-            estadoWrap._setValue('entregado');
-            row.estado = 'entregado';
+            estadoWrap._setValue('pagada');
+            row.estado = 'pagada';
           }
           
         }, 50);
@@ -1142,18 +1424,29 @@ setTimeout(() => {
   }
 }, 800);
 
-window.openPackageSelectionModal = (p, onComplete) => {
+window.openPackageSelectionModal = (p, onComplete, selectedMl = null) => {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay open';
   overlay.style.zIndex = '99999';
   
   const max = p.maxSeleccion || 3;
-  let itemsHTML = (p.items||[]).map((i) => `
+  const targetMl = selectedMl || p.ml || '5';
+  
+  let itemsHTML = (p.items||[]).map((i) => {
+    let pxStr = '';
+    let fullPerf = perfumes.find(x => x.id === i.id);
+    if (!fullPerf) fullPerf = perfumes.find(x => x.nombre === i.nombre);
+    if (fullPerf && fullPerf.precios && fullPerf.precios[targetMl]) {
+      pxStr = ` <span style="color:var(--text-faint); font-weight:normal; margin-left:auto; font-size:13px;">$${fullPerf.precios[targetMl]}</span>`;
+    }
+    return `
     <label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg-card2);border-radius:8px;cursor:pointer;border:1px solid rgba(255,255,255,0.05)">
-      <input type="checkbox" class="pkg-custom-chk" value="${i.nombre}" data-max="${max}" style="width:18px;height:18px;accent-color:var(--gold)">
+      <input type="checkbox" class="pkg-custom-chk" value="${i.nombre}" data-id="${i.id}" data-max="${max}" style="width:18px;height:18px;accent-color:var(--gold)">
       <span style="font-size:14px;color:var(--text-primary)">${i.nombre} <small style="color:var(--text-muted)">(${i.marca||''})</small></span>
+      ${pxStr}
     </label>
-  `).join('');
+    `;
+  }).join('');
 
   overlay.innerHTML = `
     <div class="modal-box" style="max-width:400px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px">
@@ -1193,8 +1486,39 @@ window.openPackageSelectionModal = (p, onComplete) => {
       if(window.toast) toast(`Selecciona ${max} perfumes`, 'warning');
       return;
     }
-    const result = Array.from(checked).map(c => c.value).join(', ');
+    const result = Array.from(checked).map(c => ({ id: c.dataset.id, nombre: c.value }));
     onComplete(result);
     close();
   };
 };
+
+window.checkLoteOverflow = (perfId, loteId, mlToSell) => {
+  if (!window.perfumes || !window.ventas) return;
+  const p = window.perfumes.find(x => x.id === perfId);
+  if (!p || !p.lotes) return;
+  const l = p.lotes.find(x => x.id === loteId);
+  if (!l) return;
+  
+  let totalMl = 0;
+  window.ventas.forEach(v => {
+    if (v.perfumeId === perfId && v.loteId === loteId) {
+       if (['2','3','5','10'].includes(v.talla)) totalMl += parseInt(v.talla) * (+v.cantidad||1);
+    } else if (v.paqueteItems) {
+       const sub = v.paqueteItems.find(i => i.id === perfId);
+       if (sub && sub.loteId === loteId) {
+          let ml = 0;
+          if (v.talla && v.talla.startsWith('Paquete ')) ml = parseInt(v.talla.replace('Paquete ',''));
+          else ml = parseInt(v.talla || '0');
+          if (!isNaN(ml)) totalMl += ml * (+v.cantidad||1);
+       }
+    }
+  });
+  
+  const maxCap = parseFloat(l.tamano) || 100;
+  if (totalMl + mlToSell > maxCap) {
+    setTimeout(() => {
+      if(window.toast) toast(`⚠️ La botella activa de ${p.nombre} ha superado su límite de ml. ¡Considera crear una nueva en el catálogo!`, 'warning');
+    }, 1500);
+  }
+};
+

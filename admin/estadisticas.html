@@ -77,26 +77,44 @@
 
       <!-- Tabla de Rentabilidad -->
       <div class="table-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-          <h3 style="margin:0;font-size:16px;">Proyección de Rentabilidad por Perfume</h3>
-          <div style="font-size:12px;color:var(--text-muted);">Basado en historial de ventas y costos operativos.</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:15px">
+          <div>
+            <h3 style="margin:0;font-size:16px;">Proyección de Rentabilidad por Perfume</h3>
+            <div style="font-size:12px;color:var(--text-muted);">Basado en historial de ventas y costos operativos.</div>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap">
+            <input type="text" id="f-search" class="form-control" placeholder="Buscar perfume..." style="width:180px" oninput="renderTable()">
+            <select id="f-marca" class="form-control" style="width:140px" onchange="renderTable()">
+              <option value="">Todas las marcas</option>
+            </select>
+            <select id="f-sort" class="form-control" style="width:160px" onchange="renderTable()">
+              <option value="margin-desc">Mayor Margen</option>
+              <option value="margin-asc">Menor Margen</option>
+              <option value="revenue-desc">Mayor Ingreso</option>
+            </select>
+          </div>
         </div>
         
         <table class="profit-table">
           <thead>
             <tr>
-              <th>Perfume</th>
-              <th>Distribución Ventas</th>
-              <th class="text-right">Costo Botella Original</th>
-              <th class="text-right">Costo Insumos (Proy.)</th>
-              <th class="text-right">Ingreso Proyectado</th>
-              <th class="text-right">Ganancia Neta</th>
+              <th>Perfume / Lote</th>
+              <th style="width:140px">Progreso (ml)</th>
+              <th class="text-right">Costo Inv. Real</th>
+              <th class="text-right">Ingreso Real</th>
+              <th class="text-right">Ganancia Real</th>
+              <th class="text-right">Proyección Final</th>
             </tr>
           </thead>
           <tbody id="profit-tbody">
-            <tr><td colspan="5" style="text-align:center;color:var(--text-faint)">Cargando proyecciones...</td></tr>
+            <tr><td colspan="6" style="text-align:center;color:var(--text-faint)">Cargando proyecciones...</td></tr>
           </tbody>
         </table>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+          <div style="font-size:13px; color:var(--text-muted);" id="pagination-info">Mostrando 0 - 0 de 0</div>
+          <div style="display:flex; gap:5px;" id="pagination-controls"></div>
+        </div>
       </div>
 
     </div>

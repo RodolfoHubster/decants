@@ -38,7 +38,9 @@ window.addToPosCart = (item) => {
   const extItem = cart.find(x => x.id === item.id && x.ml === item.ml);
   if (extItem) {
     extItem.cant += 1;
+    extItem.addedAt = Date.now();
   } else {
+    item.addedAt = Date.now();
     cart.push(item);
   }
   localStorage.setItem('posCart', JSON.stringify(cart));
@@ -255,7 +257,7 @@ window.renderTable = () => {
         <td class="col-clicks">${clicks}</td>
         <td>${tags || '<span style="color:var(--text-faint)">Sin precios</span>'}${alertaPrecio}</td>
         <td><div style="display:flex;gap:6px">
-          <button class="btn btn-outline btn-sm" onclick="promptAddPos('${pid}')" title="Añadir a Canasta"><i class="bi bi-cart-plus" style="color:var(--accent)"></i></button>
+          <button class="btn btn-outline btn-sm" onclick="openPosItemModal('${pid}')" title="Añadir a Canasta"><i class="bi bi-cart-plus" style="color:var(--accent)"></i></button>
           <button class="btn btn-outline btn-sm" onclick="copiarLista('${pid}')" title="Copiar lista de precios"><i class="bi bi-clipboard"></i></button>
           <button class="btn-icon" onclick="edit('${pid}')" title="Editar"><i class="bi bi-pencil"></i></button>
           <button class="btn-icon" onclick="del('${pid}','${pnom}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
@@ -269,7 +271,7 @@ window.renderTable = () => {
     const posGrid = document.getElementById('pos-grid');
     if (posGrid) {
       let posItems = [...fil];
-      if (window.paquetesData) {
+      if (window.paquetesData && window.activeTab !== 'archived') {
         const q = document.getElementById('search').value.toLowerCase();
         const activePkgs = window.paquetesData.filter(p => p.activo !== false);
         const pkgs = activePkgs.filter(p => (!q || matchSearch(q, p.nombre)));
@@ -340,6 +342,31 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── Modal Rápido POS ──
 let currentPosId = null;
 
+window.calcSavingsAdmin = (paquete, size) => {
+  if (!paquete || !paquete.items || paquete.items.length === 0) return { saving: 0, original: 0 };
+  const pkgPrice = paquete.precios && paquete.precios[size] ? paquete.precios[size] : (paquete.ml == size ? paquete.precio : 0);
+  if (!pkgPrice) return { saving: 0, original: 0 };
+  
+  let itemPrices = [];
+  for (const item of paquete.items) {
+    const perfume = perfumes.find(x => x.id === item.id);
+    if (perfume && perfume.precios && perfume.precios[size]) {
+      itemPrices.push(perfume.precios[size]);
+    }
+  }
+  
+  const requiredCount = paquete.esPersonalizable ? (paquete.maxSeleccion || 3) : paquete.items.length;
+  if (itemPrices.length < requiredCount) return { saving: 0, original: 0 };
+  
+  itemPrices.sort((a,b) => b - a);
+  let totalIndiv = itemPrices.slice(0, requiredCount).reduce((a,b) => a + b, 0);
+
+  return {
+    saving: totalIndiv > pkgPrice ? totalIndiv - pkgPrice : 0,
+    original: totalIndiv > pkgPrice ? totalIndiv : 0
+  };
+};
+
 window.openPosItemModal = (id) => {
   currentPosId = id;
   let p = perfumes.find(x => x.id === id);
@@ -372,9 +399,23 @@ window.openPosItemModal = (id) => {
     btnContainer.innerHTML = '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:10px">No hay precios configurados</div>';
   } else {
     available.forEach(([ml, precio]) => {
+      let savingHtml = '';
+      let crossHtml = '';
+      if (isPaquete) {
+        const sv = window.calcSavingsAdmin(p, ml);
+        if (sv.saving > 0) {
+          savingHtml = `<div style="font-size:11px;color:#000;background:var(--accent);padding:2px 6px;border-radius:4px;font-weight:700;margin-left:8px;">Ahorras $${sv.saving}</div>`;
+        }
+        if (sv.original > 0) {
+          crossHtml = `<del style="opacity:0.6;font-size:0.85em;margin-right:6px;font-weight:normal;">$${sv.original}</del>`;
+        }
+      }
       btnContainer.innerHTML += `<button class="btn btn-outline" style="width:100%;justify-content:space-between;padding:14px 20px;font-size:16px;border-radius:12px;border-color:var(--border);" onclick="fastAddToCart('${p.id}', '${ml}', ${precio})">
-        <span style="font-weight:600">${isPaquete ? 'Paquete ' : ''}${ml}ml</span>
-        <span style="color:var(--accent);font-weight:700">$${precio}</span>
+        <div style="display:flex;align-items:center;">
+          <span style="font-weight:600">${isPaquete ? 'Paquete ' : ''}${ml}ml</span>
+          ${savingHtml}
+        </div>
+        <span style="color:var(--accent);font-weight:700">${crossHtml}$${precio}</span>
       </button>`;
     });
   }
@@ -436,7 +477,7 @@ window.fastAddToCart = (id, ml, precio) => {
   let finalNombre = p.nombre;
   let finalMarca = isPaquete ? 'Combos Fitoscents' : (p.marca || '');
 
-  const finishAdd = (nombre) => {
+  const finishAdd = (nombre, pItems = null) => {
     if(window.addToPosCart) {
       window.addToPosCart({
         id: p.id,
@@ -445,7 +486,9 @@ window.fastAddToCart = (id, ml, precio) => {
         imagen: p.imagen || '',
         ml: ml,
         precio: precio,
-        cant: 1
+        cant: 1,
+        loteId: p.loteActivo || null,
+        paqueteItems: pItems
       });
       if(window.showToast) window.showToast('Añadido a la canasta', 'success');
       if(window.closePosModal) window.closePosModal();
@@ -455,10 +498,13 @@ window.fastAddToCart = (id, ml, precio) => {
   if (isPaquete && p.esPersonalizable) {
     if (window.openPackageSelectionModal) {
       window.openPackageSelectionModal(p, (selecciones) => {
-        if (selecciones) {
+        if (selecciones && Array.isArray(selecciones)) {
+          const names = selecciones.map(x => x.nombre).join(', ');
+          finishAdd(finalNombre + ` [${names}]`, selecciones);
+        } else if (selecciones) {
           finishAdd(finalNombre + ` [${selecciones}]`);
         }
-      });
+      }, ml);
     } else {
       const selecciones = prompt(`Este paquete requiere ${p.maxSeleccion || 3} perfumes.\\nEscribe aquí los perfumes elegidos (se añadirán al carrito):`, "");
       if (selecciones) finishAdd(finalNombre + ` [${selecciones}]`);
@@ -497,7 +543,8 @@ window.promptAddPos = (id) => {
       imagen: p.imagen || '',
       ml: ml,
       precio: precio,
-      cant: 1
+      cant: 1,
+      loteId: p.loteActivo || null
     });
   }
 };
@@ -517,20 +564,55 @@ window.copiarLista = (id) => {
     .catch(() => toast('No se pudo copiar', 'error'));
 };
 
-window.openModal = () => {
-  ['p-id','p-nombre','p-desc','p-img-url','px2','px3','px5','px10','p-costo','p-tamano'].forEach(id => {
-    document.getElementById(id).value = '';
+window.currentLotes = [];
+window.activeLoteId = null;
+
+window.renderLotesUI = () => {
+  const container = document.getElementById('lotes-container');
+  if (!container) return;
+  container.innerHTML = window.currentLotes.map((l, i) => {
+    // Fix timezone issues by creating date string locally
+    const d = new Date(l.fecha);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return `
+    <div style="display:flex; gap:10px; align-items:center; background:var(--bg-card2); padding:10px; border-radius:8px; border:1px solid ${window.activeLoteId===l.id ? 'var(--accent)' : 'var(--border)'}">
+      <input type="radio" name="loteActivo" value="${l.id}" ${window.activeLoteId===l.id ? 'checked' : ''} onchange="window.activeLoteId='${l.id}'; window.renderLotesUI();" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer">
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+          Botella #${i+1} 
+          <input type="date" class="form-control" style="padding:2px 6px;font-size:11px;width:auto" value="${dateStr}" onchange="window.currentLotes[${i}].fecha=new Date(this.value+'T12:00:00').getTime()">
+        </div>
+        <div style="display:flex;gap:10px">
+          <input type="number" class="form-control" style="padding:4px 8px;font-size:12px" placeholder="Costo $" value="${l.costo}" onchange="window.currentLotes[${i}].costo=Number(this.value)">
+          <input type="number" class="form-control" style="padding:4px 8px;font-size:12px" placeholder="Tamaño ml" value="${l.tamano}" onchange="window.currentLotes[${i}].tamano=Number(this.value)">
+        </div>
+      </div>
+      <button class="btn-icon" style="color:var(--danger)" onclick="window.currentLotes.splice(${i},1); if(window.activeLoteId==='${l.id}') window.activeLoteId=window.currentLotes[0]?.id || null; window.renderLotesUI()"><i class="bi bi-trash"></i></button>
+    </div>
+  `}).join('');
+  if(window.currentLotes.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text-faint);font-size:12px;padding:10px">No hay botellas registradas.</div>';
+  }
+};
+
+window.addLoteUI = () => {
+  const newId = 'lote-' + Date.now();
+  window.currentLotes.push({
+    id: newId,
+    fecha: Date.now(),
+    costo: 0,
+    tamano: 100
   });
-  document.getElementById('p-img-file').value = '';
-  document.getElementById('p-genero').value   = '';
-  document.getElementById('p-cat').value      = '';
+  if (!window.activeLoteId) window.activeLoteId = newId;
+  window.renderLotesUI();
+};
+
+window.openModal = () => {
+  document.getElementById('p-id').value = '';
+  document.getElementById('p-nombre').value = '';
+  document.getElementById('p-genero').value = 'Caballero';
+  document.getElementById('p-cat').value = 'Diseñador';
   document.getElementById('p-familia').innerHTML = buildSelectOptions(familiasData, '', 'Sin especificar');
-  document.getElementById('p-tipo').innerHTML    = buildSelectOptions(tiposData,    '', 'Sin especificar');
-  document.getElementById('p-marca').innerHTML   = '<option>Selecciona</option>';
-  document.getElementById('p-estado').value      = 'visible';
-  document.getElementById('p-stock').value       = 'normal';
-  document.getElementById('p-novedad').checked   = false;
-  document.getElementById('preview-wrap').style.display = 'none';
   document.getElementById('modal-title').textContent    = 'Nuevo Perfume';
   setMode('url');
   document.getElementById('modal').classList.add('open');
@@ -592,9 +674,21 @@ window.edit = (id) => {
   else if (p.activo === false) document.getElementById('p-estado').value = 'oculto';
   else document.getElementById('p-estado').value = 'visible';
 
-  document.getElementById('p-costo').value = p.costoBotella || '';
-  document.getElementById('p-tamano').value = p.tamanoBotella || '';
   document.getElementById('p-stock').value = p.estadoStock || 'normal';
+
+  window.currentLotes = p.lotes ? JSON.parse(JSON.stringify(p.lotes)) : [];
+  window.activeLoteId = p.loteActivo || null;
+  if (window.currentLotes.length === 0 && (p.costoBotella || p.tamanoBotella)) {
+    const fallbackId = 'lote-' + (p.creadoEn || Date.now());
+    window.currentLotes.push({
+      id: fallbackId,
+      fecha: p.creadoEn || Date.now(),
+      costo: p.costoBotella || 0,
+      tamano: p.tamanoBotella || 0
+    });
+    window.activeLoteId = fallbackId;
+  }
+  window.renderLotesUI();
 
   document.getElementById('p-novedad').checked = p.novedad === true;
   if (p.imagen) {
@@ -643,8 +737,6 @@ window.save = async () => {
     };
     const tamanos = Object.keys(precios).filter(k => precios[k] > 0);
     const estado = document.getElementById('p-estado').value;
-    const costoBotella = +document.getElementById('p-costo').value || 0;
-    const tamanoBotella = +document.getElementById('p-tamano').value || 0;
     const estadoStock = document.getElementById('p-stock').value || 'normal';
 
     const data = {
@@ -656,7 +748,7 @@ window.save = async () => {
       activo:    (estado === 'visible'),
       archivado: (estado === 'archivado'),
       novedad: document.getElementById('p-novedad').checked,
-      costoBotella, tamanoBotella, estadoStock
+      lotes: window.currentLotes, loteActivo: window.activeLoteId, estadoStock
     };
     if (id) {
       await updateDoc(doc(db, 'perfumes', id), data);
@@ -730,18 +822,29 @@ onAuthStateChanged(auth, user => {
   if (user) loadAll();
 });
 
-window.openPackageSelectionModal = (p, onComplete) => {
+window.openPackageSelectionModal = (p, onComplete, selectedMl = null) => {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay open';
   overlay.style.zIndex = '99999';
   
   const max = p.maxSeleccion || 3;
-  let itemsHTML = (p.items||[]).map((i) => `
+  const targetMl = selectedMl || p.ml || '5';
+  
+  let itemsHTML = (p.items||[]).map((i) => {
+    let pxStr = '';
+    let fullPerf = perfumes.find(x => x.id === i.id);
+    if (!fullPerf) fullPerf = perfumes.find(x => x.nombre === i.nombre);
+    if (fullPerf && fullPerf.precios && fullPerf.precios[targetMl]) {
+      pxStr = ` <span style="color:var(--text-faint); font-weight:normal; margin-left:auto; font-size:13px;">$${fullPerf.precios[targetMl]}</span>`;
+    }
+    return `
     <label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg-card2);border-radius:8px;cursor:pointer;border:1px solid rgba(255,255,255,0.05)">
-      <input type="checkbox" class="pkg-custom-chk" value="${i.nombre}" data-max="${max}" style="width:18px;height:18px;accent-color:var(--gold)">
+      <input type="checkbox" class="pkg-custom-chk" value="${i.nombre}" data-id="${i.id}" data-max="${max}" style="width:18px;height:18px;accent-color:var(--gold)">
       <span style="font-size:14px;color:var(--text-primary)">${i.nombre} <small style="color:var(--text-muted)">(${i.marca||''})</small></span>
+      ${pxStr}
     </label>
-  `).join('');
+    `;
+  }).join('');
 
   overlay.innerHTML = `
     <div class="modal-box" style="max-width:400px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px">
@@ -781,8 +884,8 @@ window.openPackageSelectionModal = (p, onComplete) => {
       if(window.toast) toast(`Selecciona ${max} perfumes`, 'warning');
       return;
     }
-    const result = Array.from(checked).map(c => c.value).join(', ');
-    onComplete(result);
+    const arr = Array.from(checked).map(c => ({ id: c.dataset.id, nombre: c.value }));
+    onComplete(arr);
     close();
   };
 };
