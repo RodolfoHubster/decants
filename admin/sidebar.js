@@ -24,6 +24,7 @@ export function renderSidebar(active) {
       <li class="sidebar-section-label">💰 Ventas</li>
       <li><a href="./ventas.html"     class="${active==='ventas'     ?'active':''}" ><i class="bi bi-shop"></i> Punto de Venta</a></li>
       <li><a href="./pedidos.html"    class="${active==='pedidos'    ?'active':''}" ><i class="bi bi-bag"></i> Pedidos Web</a></li>
+      <li><a href="./consignaciones.html" class="${active==='consignaciones' ?'active':''}" ><i class="bi bi-geo-alt"></i> Puntos Externos</a></li>
       
       <li class="sidebar-divider"></li>
       <li class="sidebar-section-label">📈 Inteligencia de Negocio</li>
@@ -163,8 +164,16 @@ function injectCanastaUI() {
     }
   };
 
-  window.clearPosCart = () => {
-    if(confirm('¿Seguro que deseas limpiar la canasta?')) {
+  window.clearPosCart = async () => {
+    const res = await Swal.fire({
+      title: '¿Limpiar canasta?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, limpiar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#ef4444'
+    });
+    if(res.isConfirmed) {
       window.savePosCart([]);
     }
   };

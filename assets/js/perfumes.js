@@ -769,10 +769,22 @@ window.save = async () => {
 
 
 window.del = async (id, nombre) => {
-  if (!confirm('Eliminar ' + nombre + '?')) return;
-  await deleteDoc(doc(db, 'perfumes', id));
-  toast('Eliminado', 'info');
-  loadAll();
+  const result = await Swal.fire({
+    title: '¿Eliminar perfume?',
+    text: `Estás a punto de eliminar "${nombre}" del catálogo.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#4f98a3',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar'
+  });
+  
+  if (result.isConfirmed) {
+    await deleteDoc(doc(db, 'perfumes', id));
+    toast('Eliminado', 'info');
+    loadAll();
+  }
 };
 
 window.exportPrices = () => {

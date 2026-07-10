@@ -732,10 +732,22 @@ window.guardarEstado = async () => {
 };
 
 window.del = async (id) => {
-  if (!confirm('¿Eliminar esta venta?')) return;
-  await deleteDoc(doc(db,'ventas',id));
-  toast('Venta eliminada', 'info');
-  loadAll();
+  const result = await Swal.fire({
+    title: '¿Estás seguro?',
+    text: "Eliminarás esta venta permanentemente",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#4f98a3',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar'
+  });
+  
+  if (result.isConfirmed) {
+    await deleteDoc(doc(db,'ventas',id));
+    toast('Venta eliminada', 'info');
+    loadAll();
+  }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

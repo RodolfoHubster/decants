@@ -9,16 +9,20 @@
   <link rel="stylesheet" href="../assets/css/variables.css">
   <link rel="stylesheet" href="../assets/css/global.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@4/dark.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
   <style>
     .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
     .kpi-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display:flex; flex-direction:column; gap:8px; }
     .kpi-title { font-size: 13px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
     .kpi-value { font-size: 28px; font-weight: 700; color: var(--text); }
+    .kpi-value.profit { color: #22c55e; }
     
     .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-    @media (max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
-    .chart-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-    .chart-card h3 { font-size: 16px; margin: 0 0 15px 0; font-weight: 600; }
+    .chart-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    @media (max-width: 900px) { .chart-grid, .chart-grid-3 { grid-template-columns: 1fr; } }
+    .chart-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display:flex; flex-direction:column; }
+    .chart-card h3 { font-size: 16px; margin: 0 0 15px 0; font-weight: 600; display:flex; justify-content:space-between; align-items:center; }
     
     .table-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; overflow-x: auto; }
     .profit-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -29,6 +33,11 @@
     
     .badge-profit { background: rgba(34, 197, 94, 0.15); color: #22c55e; padding: 4px 8px; border-radius: 6px; font-weight: 600; }
     .badge-loss { background: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 4px 8px; border-radius: 6px; font-weight: 600; }
+    
+    .list-item { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:13px; }
+    .list-item:last-child { border-bottom: none; }
+    .list-item-title { font-weight: 500; }
+    .list-item-sub { color: var(--text-faint); font-size: 11px; }
   </style>
 </head>
 <body>
@@ -40,7 +49,15 @@
         <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
         <span class="topbar-title">Inteligencia de Negocio</span>
       </div>
-      <div>
+      <div style="display:flex; gap:10px; align-items:center">
+        <select id="f-periodo-global" class="form-control" style="width:160px; height:36px; font-size:13px;" onchange="window.loadData()">
+          <option value="all">Histórico Completo</option>
+          <option value="hoy">Hoy</option>
+          <option value="7">Últimos 7 días</option>
+          <option value="30" selected>Últimos 30 días</option>
+          <option value="mes">Este Mes</option>
+          <option value="anio">Este Año</option>
+        </select>
         <button class="btn btn-outline" onclick="loadData()"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
       </div>
     </div>
@@ -50,28 +67,68 @@
       <!-- KPIs -->
       <div class="kpi-grid">
         <div class="kpi-card">
-          <span class="kpi-title">Ingresos Totales (Histórico)</span>
+          <span class="kpi-title">Ganancia Neta</span>
+          <span class="kpi-value profit" id="kpi-ganancia">$0</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-title">Ingresos Totales</span>
           <span class="kpi-value" id="kpi-ingresos">$0</span>
         </div>
         <div class="kpi-card">
-          <span class="kpi-title">Decants Vendidos</span>
-          <span class="kpi-value" id="kpi-decants">0</span>
+          <span class="kpi-title">Costo / Inversión</span>
+          <span class="kpi-value" id="kpi-costo" style="color:#ef4444">$0</span>
         </div>
         <div class="kpi-card">
-          <span class="kpi-title">Ml Totales Despachados</span>
-          <span class="kpi-value" id="kpi-ml">0 ml</span>
+          <span class="kpi-title">Margen Global</span>
+          <span class="kpi-value" id="kpi-margen">0%</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-title">Ticket Promedio</span>
+          <span class="kpi-value" id="kpi-ticket">$0</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-title">Decants / Ml Despachados</span>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span class="kpi-value" id="kpi-decants">0</span>
+            <span style="color:var(--text-muted); font-size:14px" id="kpi-ml">0 ml</span>
+          </div>
         </div>
       </div>
 
-      <!-- Gráficos -->
-      <div class="chart-grid">
+      <!-- Gráficos Principales -->
+      <div class="chart-card" style="margin-bottom:20px;">
+        <h3>Tendencia de Ingresos <span style="font-size:12px;color:var(--text-muted);font-weight:normal" id="trend-label"></span></h3>
+        <div style="height:250px; width:100%"><canvas id="chartTendencia"></canvas></div>
+      </div>
+
+      <!-- Gráficos Secundarios -->
+      <div class="chart-grid-3">
         <div class="chart-card">
-          <h3>Distribución de Tamaños (Preferencias del Cliente)</h3>
-          <canvas id="chartTallas"></canvas>
+          <h3>Distribución por Canal</h3>
+          <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:200px;"><canvas id="chartCanales"></canvas></div>
         </div>
         <div class="chart-card">
-          <h3>Top 5 Perfumes Más Vendidos</h3>
-          <canvas id="chartTop"></canvas>
+          <h3>Top 5 Tamaños Favoritos</h3>
+          <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:200px;"><canvas id="chartTallas"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Top 5 Marcas Rentables</h3>
+          <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:200px;"><canvas id="chartMarcas"></canvas></div>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-card">
+          <h3>🏆 Top 5 Mejores Clientes</h3>
+          <div id="top-clientes-list" style="display:flex; flex-direction:column; flex:1">
+            <div style="text-align:center; padding:20px; color:var(--text-faint)">Cargando clientes...</div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>⚠️ Alertas de Inventario (Por acabarse)</h3>
+          <div id="alertas-inventario-list" style="display:flex; flex-direction:column; flex:1; overflow-y:auto; max-height:300px">
+            <div style="text-align:center; padding:20px; color:var(--text-faint)">Cargando inventario...</div>
+          </div>
         </div>
       </div>
 
