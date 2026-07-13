@@ -45,6 +45,74 @@ async function loadAll() {
   document.getElementById('v-perfume').innerHTML = '<option value="">Selecciona perfume o paquete</option>' + pqOpts + '<optgroup label="Perfumes">' + pOpts + '</optgroup><option value="custom" style="font-weight:bold;color:var(--warning)">✏️ Escribir Manual / Otro</option>';
 
   renderTable();
+
+  // ── Interceptar Creación de Sobre Ruedas desde Canasta ──────────────────────
+  if (window.location.search.includes('openS=1')) {
+    if(window.openDia) window.openDia();
+    const cart = JSON.parse(localStorage.getItem('posCart')||'[]');
+    if(cart.length > 0) {
+      document.getElementById('batch-tbody').innerHTML = '';
+      batchRows = [];
+      cart.forEach((item) => {
+        let isPaquete = false;
+        if (window.paquetesData && window.paquetesData.find(x => x.id === item.id)) {
+           isPaquete = true;
+        }
+        let finalTalla = String(item.ml);
+        if (isPaquete && !finalTalla.startsWith('Paquete')) finalTalla = 'Paquete ' + finalTalla;
+
+        let hhmm = '';
+        if (item.addedAt) {
+           const d = new Date(item.addedAt);
+           hhmm = ' a las ' + d.toLocaleTimeString('es-MX', {hour: '2-digit', minute:'2-digit'});
+        }
+        
+        let notaBase = `🛒 Cliente compró ${item.nombre} de ${item.ml}ml a $${item.precio}${hhmm}`;
+
+        const rid = ++batchRowCounter;
+        const row = { 
+          rid, perfumeId: item.id, talla: finalTalla, 
+          cantidad: item.cant || 1, precio: item.precio, 
+          cliente: '', estado: 'pagada', notas: notaBase 
+        };
+        if (item.paqueteItems) {
+           row.paqueteItemsStorefront = item.paqueteItems;
+           row.notas = notaBase + ' ↳ [' + item.paqueteItems.map(i => i.nombre).join(', ') + ']';
+        }
+        batchRows.push(row);
+        const tr = buildBatchRowEl(row);
+        document.getElementById('batch-tbody').appendChild(tr);
+
+        // Forzar UI para que coincida con el row precargado (ahora seguro porque hay perfumes)
+        setTimeout(() => {
+          const inpPerf = tr.querySelector('td:nth-child(1) input');
+          if(inpPerf) inpPerf.value = `${item.nombre} · ${item.marca||''}`;
+          
+          const tallaWrap = tr.querySelector('td:nth-child(2) div');
+          if(tallaWrap && tallaWrap._setItems) {
+            tallaWrap._setItems(tallaItems(item.id));
+            tallaWrap._setValue(finalTalla); // esto disparará onChange y batchRefreshTotal
+          }
+          
+          const estadoWrap = tr.querySelector('td:nth-child(7) div');
+          if(estadoWrap && estadoWrap._setValue) {
+            estadoWrap._setValue('pagada');
+            row.estado = 'pagada';
+          }
+          
+          // Re-aplicar el precio y total porque onChange de _setValue podría haber sobreescrito el precio
+          // Si era un precio personalizado o manual desde el carrito
+          batchSet(rid, 'precio', item.precio);
+          const inPrecio = tr.querySelector('.td-precio input');
+          if(inPrecio) inPrecio.value = item.precio;
+          batchRefreshTotal(rid);
+          
+        }, 50);
+      });
+      updateBatchResumen();
+    }
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
 }
 
 // ── Filtros ───────────────────────────────────────────────────────────────────
@@ -1200,7 +1268,14 @@ function buildBatchRowEl(row) {
     // Actualizar opciones de talla
     const items = tallaItems(p ? p.id : '');
     tallaWrap._setItems(items);
-    updateBatchResumen();
+    
+    // AUTO-SELECCIONAR TALLA
+    if (items.length > 0) {
+      const defaultTalla = items.find(i => i.value === '5') || items[0];
+      tallaWrap._setValue(defaultTalla.value);
+    } else {
+      updateBatchResumen();
+    }
     
     if (p && p.isPaquete) {
       if (p.esPersonalizable) {
@@ -1393,68 +1468,7 @@ onAuthStateChanged(auth, user => {
   if (user) loadAll();
 });
 
-// ── Interceptar Creación de Sobre Ruedas desde Canasta ──────────────────────
-setTimeout(() => {
-  if (window.location.search.includes('openS=1')) {
-    if(window.openDia) window.openDia();
-    const cart = JSON.parse(localStorage.getItem('posCart')||'[]');
-    if(cart.length > 0) {
-      document.getElementById('batch-tbody').innerHTML = '';
-      batchRows = [];
-      cart.forEach((item) => {
-        let isPaquete = false;
-        if (window.paquetesData && window.paquetesData.find(x => x.id === item.id)) {
-           isPaquete = true;
-        }
-        let finalTalla = String(item.ml);
-        if (isPaquete && !finalTalla.startsWith('Paquete')) finalTalla = 'Paquete ' + finalTalla;
-
-        let hhmm = '';
-        if (item.addedAt) {
-           const d = new Date(item.addedAt);
-           hhmm = ' a las ' + d.toLocaleTimeString('es-MX', {hour: '2-digit', minute:'2-digit'});
-        }
-        
-        let notaBase = `🛒 Cliente compró ${item.nombre} de ${item.ml}ml a $${item.precio}${hhmm}`;
-
-        const rid = ++batchRowCounter;
-        const row = { 
-          rid, perfumeId: item.id, talla: finalTalla, 
-          cantidad: item.cant || 1, precio: item.precio, 
-          cliente: '', estado: 'pagada', notas: notaBase 
-        };
-        if (item.paqueteItems) {
-           row.paqueteItemsStorefront = item.paqueteItems;
-           row.notas = notaBase + ' ↳ [' + item.paqueteItems.map(i => i.nombre).join(', ') + ']';
-        }
-        batchRows.push(row);
-        const tr = buildBatchRowEl(row);
-        document.getElementById('batch-tbody').appendChild(tr);
-
-        // Forzar UI para que coincida con el row precargado
-        setTimeout(() => {
-          const inpPerf = tr.querySelector('td:nth-child(1) input');
-          if(inpPerf) inpPerf.value = `${item.nombre} · ${item.marca||''}`;
-          
-          const tallaWrap = tr.querySelector('td:nth-child(2) div');
-          if(tallaWrap && tallaWrap._setItems) {
-            tallaWrap._setItems(tallaItems(item.id));
-            tallaWrap._setValue(finalTalla);
-          }
-          
-          const estadoWrap = tr.querySelector('td:nth-child(7) div');
-          if(estadoWrap && estadoWrap._setValue) {
-            estadoWrap._setValue('pagada');
-            row.estado = 'pagada';
-          }
-          
-        }, 50);
-      });
-      updateBatchResumen();
-    }
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-}, 800);
+// ── Interceptar Creación de Sobre Ruedas desde Canasta se movió a loadAll() ──
 
 window.openPackageSelectionModal = (p, onComplete, selectedMl = null) => {
   const overlay = document.createElement('div');
