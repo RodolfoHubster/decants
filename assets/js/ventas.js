@@ -969,7 +969,27 @@ function buildCombobox(container, onSelect) {
 
   inp.addEventListener('focus', openDD);
   inp.addEventListener('input', () => { openDD(); renderItems(inp.value); });
-  inp.addEventListener('blur', () => setTimeout(closeDD, 150));
+  inp.addEventListener('blur', () => {
+    setTimeout(() => {
+      // Si escribieron algo pero no seleccionaron, auto-seleccionar
+      const q = inp.value.trim();
+      if (q && q.indexOf('·') === -1) {
+        const allOpts = [...perfumes];
+        if (window.paquetesData) {
+          window.paquetesData.forEach(p => allOpts.push({ ...p, isPaquete: true }));
+        }
+        const exact = allOpts.find(p => p.nombre.toLowerCase() === q.toLowerCase());
+        if (exact) {
+          choose(exact);
+        } else {
+          choose({ id: 'custom', nombre: q, marca: '(Manual)' });
+        }
+      } else if (!q) {
+        onSelect(null);
+      }
+      closeDD();
+    }, 200);
+  });
   inp.addEventListener('keydown', e => {
     const items = dd.querySelectorAll('li');
     const q = inp.value;
