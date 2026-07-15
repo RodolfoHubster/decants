@@ -613,7 +613,27 @@ window.openModal = () => {
   document.getElementById('p-genero').value = 'Caballero';
   document.getElementById('p-cat').value = 'Diseñador';
   document.getElementById('p-familia').innerHTML = buildSelectOptions(familiasData, '', 'Sin especificar');
-  document.getElementById('modal-title').textContent    = 'Nuevo Perfume';
+  document.getElementById('p-tipo').innerHTML = buildSelectOptions(tiposData, '', 'Sin especificar');
+  loadMarcas();
+  setTimeout(() => { document.getElementById('p-marca').value = ''; }, 80);
+  document.getElementById('p-desc').value = '';
+  
+  ['2','3','5','10'].forEach(k => { document.getElementById('px' + k).value = ''; });
+  
+  document.getElementById('p-estado').value = 'visible';
+  document.getElementById('p-stock').value = 'normal';
+  
+  window.currentLotes = [];
+  window.activeLoteId = null;
+  window.renderLotesUI();
+  
+  document.getElementById('p-novedad').checked = false;
+  document.getElementById('p-img-url').value = '';
+  if (document.getElementById('p-img-file')) document.getElementById('p-img-file').value = '';
+  document.getElementById('preview-wrap').style.display = 'none';
+  document.getElementById('preview-img').src = '';
+  
+  document.getElementById('modal-title').textContent = 'Nuevo Perfume';
   setMode('url');
   document.getElementById('modal').classList.add('open');
 };

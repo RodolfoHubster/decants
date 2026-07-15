@@ -927,9 +927,10 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
     isOpen ? closeDD() : openDD();
   });
 
-  document.addEventListener('mousedown', e => {
+  const outsideClick = e => {
     if (!container.contains(e.target) && !dd.contains(e.target)) closeDD();
-  });
+  };
+  document.addEventListener('mousedown', outsideClick);
 
   // API pública
   container._getValue  = () => selectedValue;
@@ -945,7 +946,10 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
     labelEl.textContent = defaultLabel;
     btn.style.color = 'var(--text-muted)';
   };
-  container._destroy = () => dd.remove();
+  container._destroy = () => {
+    dd.remove();
+    document.removeEventListener('mousedown', outsideClick);
+  };
 
   return container;
 }
@@ -1076,8 +1080,13 @@ function buildCombobox(container, onSelect) {
     else if (e.key === 'Escape') closeDD();
   });
 
-  document.getElementById('modal-dia')?.addEventListener('scroll', () => { if (dd.style.display!=='none') reposition(); }, { passive:true });
-  container._destroyCombobox = () => dd.remove();
+  const onScroll = () => { if (dd.style.display!=='none') reposition(); };
+  const modalDia = document.getElementById('modal-dia');
+  modalDia?.addEventListener('scroll', onScroll, { passive:true });
+  container._destroyCombobox = () => {
+    dd.remove();
+    modalDia?.removeEventListener('scroll', onScroll);
+  };
   return { inp };
 }
 
@@ -1539,14 +1548,14 @@ window.openPackageSelectionModal = (p, onComplete, selectedMl = null) => {
 };
 
 window.checkLoteOverflow = (perfId, loteId, mlToSell) => {
-  if (!window.perfumes || !window.ventas) return;
-  const p = window.perfumes.find(x => x.id === perfId);
+  if (!perfumes || !ventas) return;
+  const p = perfumes.find(x => x.id === perfId);
   if (!p || !p.lotes) return;
   const l = p.lotes.find(x => x.id === loteId);
   if (!l) return;
   
   let totalMl = 0;
-  window.ventas.forEach(v => {
+  ventas.forEach(v => {
     if (v.perfumeId === perfId && v.loteId === loteId) {
        if (['2','3','5','10'].includes(v.talla)) totalMl += parseInt(v.talla) * (+v.cantidad||1);
     } else if (v.paqueteItems) {

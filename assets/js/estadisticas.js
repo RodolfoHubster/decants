@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 window.loadData = async () => {
-  const btn = document.querySelector('.btn-outline');
+  const btn = document.getElementById('btn-actualizar-stats');
   if(btn) btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Cargando...';
   
   try {

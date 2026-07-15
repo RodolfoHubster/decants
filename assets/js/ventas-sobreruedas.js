@@ -166,6 +166,9 @@ function nuevaFila() {
       style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
              border-radius:8px;padding:7px 9px;color:#ede9e1;font-size:13px;
              font-family:'Poppins',sans-serif;outline:none;min-width:0">
+    <input type="hidden" name="perfumeId" value="">
+    <input type="hidden" name="perfumeNombre" value="">
+    <input type="hidden" name="perfumeMarca" value="">
     <div class="sr-drop" style="display:none;position:absolute;top:calc(100% + 2px);left:6px;right:6px;
          background:#1a1814;border:1px solid rgba(201,168,76,.35);border-radius:10px;
          z-index:3000;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.7)"></div>`;
@@ -191,12 +194,15 @@ function nuevaFila() {
       el.addEventListener('mousedown', e => {
         e.preventDefault();
         perfInput.value = el.dataset.nombre + ' · ' + el.dataset.marca;
+        tr.querySelector('[name=perfumeId]').value = el.dataset.id || 'custom';
+        tr.querySelector('[name=perfumeNombre]').value = el.dataset.nombre;
+        tr.querySelector('[name=perfumeMarca]').value = el.dataset.marca;
         perfDrop.style.display = 'none';
         const perf = perfumes.find(p => p.id === el.dataset.id);
-        if (perf?.precios) {
-          const ops = Object.entries(perf.precios)
+        if (perf?.precios || (perf?.ml && perf?.precio)) {
+          const ops = perf?.precios ? Object.entries(perf.precios)
             .filter(([, v]) => Number(v) > 0)
-            .map(([k, v]) => ({ talla: k, precio: Number(v) }));
+            .map(([k, v]) => ({ talla: k, precio: Number(v) })) : [{ talla: perf.ml, precio: Number(perf.precio) }];
           if (ops.length) renderTallaDrop(ops);
         }
         SRrecalcTotal();
@@ -268,7 +274,6 @@ function nuevaFila() {
       tallaDrop.style.display = 'none';
     }
   });
-  document.addEventListener('click', e => { if (!tdTalla.contains(e.target)) tallaDrop.style.display = 'none'; });
 
   /* ── 3. CANTIDAD ── */
   const tdQty = document.createElement('td');
@@ -350,7 +355,6 @@ function nuevaFila() {
   estadoBtn.addEventListener('click', () => {
     estadoDrop.style.display = estadoDrop.style.display === 'none' ? 'block' : 'none';
   });
-  document.addEventListener('click', e => { if (!tdEstado.contains(e.target)) estadoDrop.style.display = 'none'; });
 
   /* ── 8. NOTA ── */
   const tdNota = document.createElement('td');
@@ -451,16 +455,19 @@ window.SRguardar = async function () {
   let omitidas = 0;
 
   rows.forEach(tr => {
-    const perfume  = tr.querySelector('[name=perfume]')?.value.trim();
+    const perfInputText = tr.querySelector('[name=perfume]')?.value.trim();
+    const perfumeId     = tr.querySelector('[name=perfumeId]')?.value || 'custom';
+    const perfumeNombre = tr.querySelector('[name=perfumeNombre]')?.value || perfInputText;
+    const perfumeMarca  = tr.querySelector('[name=perfumeMarca]')?.value || '';
     const talla    = tr.querySelector('[name=talla]')?.value.trim();
     const cantidad = parseFloat(tr.querySelector('[name=cantidad]')?.value) || 0;
     const precio   = parseFloat(tr.querySelector('[name=precio]')?.value)   || 0;
     const cliente  = tr.querySelector('[name=cliente]')?.value.trim() || 'Venta física';
     const estado   = tr.querySelector('[name=estado]')?.value || 'pagada';
-    const nota     = tr.querySelector('[name=nota]')?.value.trim() || '';
+    const notas    = tr.querySelector('[name=nota]')?.value.trim() || '';
 
-    if (!perfume || cantidad <= 0 || precio <= 0) { omitidas++; return; }
-    lineas.push({ perfume, talla: talla || '—', cantidad, precio, total: cantidad * precio, cliente, estado, nota });
+    if (!perfInputText || cantidad <= 0 || precio <= 0) { omitidas++; return; }
+    lineas.push({ perfumeId, perfumeNombre, perfumeMarca, talla: talla || '—', cantidad, precio, total: cantidad * precio, cliente, estado, notas });
   });
 
   if (lineas.length === 0) {
@@ -478,17 +485,19 @@ window.SRguardar = async function () {
     await Promise.all(lineas.map(l =>
       addDoc(col, {
         fecha    : fechaTS,
-        perfume  : l.perfume,
+        perfumeId: l.perfumeId,
+        perfumeNombre: l.perfumeNombre,
+        perfumeMarca: l.perfumeMarca,
         talla    : l.talla,
         cantidad : l.cantidad,
         precio   : l.precio,
         total    : l.total,
         cliente  : l.cliente,
         estado   : l.estado,
-        nota     : l.nota,
+        notas    : l.notas,
         notaDia  : notaDia,
         canal    : 'sobre_ruedas',
-        creadoEn : ahora,
+        creadoEn : Date.now(),
       })
     ));
 
@@ -520,3 +529,12 @@ export function initVentasSobreRuedas(perfumesCache) {
     document.body.insertAdjacentHTML('beforeend', MODAL_HTML);
   }
 }
+
+// Global click listener to close dropdowns without leaking memory per row
+document.addEventListener('click', e => {
+  document.querySelectorAll('.sr-drop').forEach(drop => {
+    if (drop.style.display !== 'none' && !drop.parentElement.contains(e.target)) {
+      drop.style.display = 'none';
+    }
+  });
+});

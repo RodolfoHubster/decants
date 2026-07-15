@@ -34,3 +34,30 @@ th.col-clicks {
 td.col-clicks {
     text-align: center;
 }
+
+/* ============================================
+   RESPONSIVE TABLE (MOBILE)
+   ============================================ */
+@media (max-width: 768px) {
+    /* Ocultar columnas secundarias en móviles para evitar scroll infinito */
+    /* Columnas: 3=Marca, 4=Cat, 5=Gen, 6=Fam, 7=Tipo, 8=Clicks */
+    table th:nth-child(3), table td:nth-child(3),
+    table th:nth-child(4), table td:nth-child(4),
+    table th:nth-child(5), table td:nth-child(5),
+    table th:nth-child(6), table td:nth-child(6),
+    table th:nth-child(7), table td:nth-child(7),
+    table th:nth-child(8), table td:nth-child(8) {
+        display: none;
+    }
+    
+    /* Ajustar padding de las celdas restantes para ahorrar espacio */
+    table th, table td {
+        padding: 10px 8px;
+    }
+    
+    /* El nombre puede romper en varias lineas si es necesario */
+    table td:nth-child(2) {
+        white-space: normal;
+        min-width: 120px;
+    }
+}

@@ -1,4 +1,4 @@
-import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc }
+import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, getDoc }
   from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
@@ -31,8 +31,11 @@ function updateKPIs() {
 
 // ─── AUTO-VENTA al marcar entregado ──────────────────────────────────────────
 async function generarVentasDesdePedido(pedido) {
-  // Solo si no se generaron ventas antes para este pedido
   if (pedido.ventasGeneradas) return;
+
+  const freshSnap = await getDoc(doc(db, 'pedidos', pedido.id));
+  if (freshSnap.exists() && freshSnap.data().ventasGeneradas) return;
+
   const promises = (pedido.items || []).map(item => {
     if (!item.perfume || !item.talla) return null;
     const perfumeEncontrado = perfumes.find(p => p.nombre === item.perfume);

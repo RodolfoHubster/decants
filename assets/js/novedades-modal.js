@@ -239,10 +239,7 @@ const LS_PREFIX = 'fitoscents_nov_visto_';
 // ─── Persistencia localStorage ───────────────────────────────────────────────────
 function yaVisto(nov) {
   const key = LS_PREFIX + nov.id;
-  const raw = localStorage.getItem(key);
-  if (!raw) return false;
-  if (!nov.duracionDias || nov.duracionDias <= 0) return true;
-  return (Date.now() - parseInt(raw, 10)) < nov.duracionDias * 86400000;
+  return localStorage.getItem(key) !== null;
 }
 function marcarVisto(nov) {
   localStorage.setItem(LS_PREFIX + nov.id, String(Date.now()));
@@ -379,6 +376,7 @@ function initCarousel(novedades) {
 
   function goTo(idx) {
     current = idx;
+    marcarVisto(novedades[current]);
     wrap.style.transform = `translateX(-${current * 100}%)`;
     titulo.textContent = novedades[current].titulo || 'Novedades';
     if (counter) counter.textContent = `${current + 1} / ${total}`;
@@ -464,7 +462,6 @@ export async function initNovedadesModal() {
     if (hayNoVista) {
       overlay.classList.add('open');
       document.body.style.overflow = 'hidden';
-      novedades.forEach(n => marcarVisto(n));
     }
 
   } catch (err) {

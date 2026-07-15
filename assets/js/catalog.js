@@ -336,7 +336,7 @@ function calcSavings(paquete, size) {
   for (const item of paquete.items) {
     const perfume = all.find(x => x.id === item.id);
     if (perfume && perfume.precios && perfume.precios[size]) {
-      itemPrices.push(perfume.precios[size]);
+      itemPrices.push(Number(perfume.precios[size]));
     }
   }
   
@@ -511,10 +511,29 @@ function patchGridBadges() {
   });
 }
 
+function checkCartTTL() {
+  if (cart.length > 0 && loadCart().length === 0) {
+    cart = [];
+    showToast('Tu carrito anterior expiró por inactividad');
+  }
+}
+
 function persistCart() {
   if (cart.length) saveCart(cart);
   else clearSavedCart();
 }
+
+window.addEventListener('storage', (e) => {
+  if (e.key === 'decants_cart') {
+    cart = loadCart();
+    updateCartBadge();
+    if (document.getElementById('cart-drawer')?.classList.contains('open')) {
+      renderCartDrawer();
+    }
+    patchGridBadges();
+    syncModalCartBtn();
+  }
+});
 
 window.loadMore = () => {
   currentPage++;
@@ -549,7 +568,8 @@ window.openModal = (id, pushHash = true) => {
   const p = all.find(x => x.id === id);
   if (!p) return;
   modalData = p;
-  updateDoc(doc(db, 'perfumes', id), { clicks: increment(1) }).catch(() => {});
+  const colName = p.tipo === 'paquete' ? 'paquetes' : 'perfumes';
+  updateDoc(doc(db, colName, id), { clicks: increment(1) }).catch(() => {});
 
   if (pushHash) window.location.hash = '/perfumes/' + perfumeURL(p).replace('#/perfumes/', '');
   const precio = minPrecio(p);
@@ -759,7 +779,11 @@ window.modalIncrement = () => {
   if (!modalData) return;
   const sel = document.querySelector('.mpill.sel');
   if (!sel) return;
-  const key = modalData.id + '-' + sel.dataset.size;
+  checkCartTTL();
+  let key = modalData.id + '-' + sel.dataset.size;
+  if (modalData.tipo === 'paquete' && modalData.esPersonalizable && window.customPackageSelections) {
+    key += '-' + window.customPackageSelections.map(x => x.id).sort().join(',');
+  }
   const idx = cart.findIndex(i => i.key === key);
   if (idx === -1) return;
   if (cart[idx].qty >= MAX_QTY) { showToast(`Máximo ${MAX_QTY} unidades`); return; }
@@ -772,7 +796,11 @@ window.modalDecrement = () => {
   if (!modalData) return;
   const sel = document.querySelector('.mpill.sel');
   if (!sel) return;
-  const key  = modalData.id + '-' + sel.dataset.size;
+  checkCartTTL();
+  let key = modalData.id + '-' + sel.dataset.size;
+  if (modalData.tipo === 'paquete' && modalData.esPersonalizable && window.customPackageSelections) {
+    key += '-' + window.customPackageSelections.map(x => x.id).sort().join(',');
+  }
   const item = cart.find(i => i.key === key);
   if (!item) return;
   if (item.qty === 1) {
@@ -821,6 +849,7 @@ window.addToCart = () => {
   if (!modalData) return;
   const sel = document.querySelector('.mpill.sel');
   if (!sel) { flashPills(); return; }
+  checkCartTTL();
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable) {
     if (window.customPackageSelections.length < (modalData.maxSeleccion || 3)) {
       showToast(`Selecciona ${modalData.maxSeleccion || 3} perfumes primero`, 'warning');
@@ -855,6 +884,7 @@ window.addToCart = () => {
 };
 
 window.incrementCartItem = key => {
+  checkCartTTL();
   const idx = cart.findIndex(i => i.key === key);
   if (idx === -1) return;
   if (cart[idx].qty >= MAX_QTY) { showToast(`Máximo ${MAX_QTY} unidades por talla`); return; }
@@ -871,6 +901,7 @@ window.incrementCartItem = key => {
 };
 
 window.decrementCartItem = key => {
+  checkCartTTL();
   const item = cart.find(i => i.key === key);
   if (!item) return;
   if (item.qty === 1) {
