@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Fitoscents · Clientes</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@4/dark.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
+  <style>
+    .client-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+    .client-header { padding: 16px 20px; background: rgba(255,255,255,0.02); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; }
+    .client-header:hover { background: rgba(255,255,255,0.05); }
+    .client-name { font-size: 16px; font-weight: 600; color: var(--gold); display: flex; align-items: center; gap: 8px; margin: 0; }
+    .client-summary { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+    .client-stat { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+    .client-stat.warning { color: #f59e0b; }
+    .client-stat.success { color: #22c55e; }
+    .client-body { padding: 0; display: none; border-top: 1px solid var(--border); background: rgba(0,0,0,0.2); }
+    .client-body.open { display: block; }
+    
+    .timeline { padding: 20px; list-style: none; margin: 0; display: flex; flex-direction: column; gap: 16px; }
+    .timeline-item { display: flex; gap: 16px; align-items: flex-start; }
+    .tl-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+    .tl-icon.venta { background: rgba(79, 152, 163, 0.1); color: var(--primary); }
+    .tl-icon.encargo { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+    
+    .tl-content { flex: 1; background: rgba(255,255,255,0.03); padding: 14px 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
+    .tl-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .tl-title { font-weight: 600; font-size: 14px; color: var(--text); }
+    .tl-date { font-size: 12px; color: var(--text-muted); }
+    .tl-desc { font-size: 13px; color: var(--text-faint); margin: 0; }
+    .tl-price { font-weight: 600; color: var(--accent); font-size: 14px; }
+    .tl-status { font-size: 11px; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; font-weight: 600; }
+    .tl-status.pagada, .tl-status.entregado { background: rgba(34,197,94,0.1); color: #22c55e; }
+    .tl-status.pendiente, .tl-status.buscando, .tl-status.conseguido, .tl-status.avisado { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    
+    .btn-edit-client { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; transition: 0.2s; }
+    .btn-edit-client:hover { color: var(--gold); background: rgba(255,255,255,0.1); }
+    
+    .btn-tl-action { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text); padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 6px; }
+    .btn-tl-action:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+    
+    .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-wrap"></div>
+  <div class="main-content">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
+        <span class="topbar-title">Directorio de Clientes</span>
+      </div>
+    </div>
+    
+    <div class="page-body">
+      <div class="kpi-row">
+        <div class="kpi-card"><div class="kpi-label">👥 Total de Clientes</div><div class="kpi-value" id="k-clientes">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">📦 Encargos Activos</div><div class="kpi-value" id="k-encargos">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">⏳ Ventas Pendientes</div><div class="kpi-value" id="k-pendientes">0</div></div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="search-input-wrap" style="flex:1;"><i class="bi bi-search"></i><input class="form-control" id="search" placeholder="Buscar por nombre de cliente..." oninput="renderClientes()"></div>
+        <select class="form-control" style="max-width:180px" id="f-estado" onchange="renderClientes()">
+          <option value="">Todos los clientes</option>
+          <option value="deuda">Con deuda (Pendientes)</option>
+          <option value="encargos">Con encargos activos</option>
+          <option value="al-corriente">Al corriente</option>
+        </select>
+        <select class="form-control" style="max-width:180px" id="f-orden" onchange="renderClientes()">
+          <option value="alfabetico">Alfabético (A-Z)</option>
+          <option value="gasto">Mayor Gasto Histórico</option>
+          <option value="deuda">Mayor Deuda</option>
+        </select>
+      </div>
+
+      <div id="clientes-container">
+        <!-- Tarjetas de clientes -->
+        <div style="text-align:center;padding:40px;color:var(--text-muted);"><i class="bi bi-hourglass-split" style="font-size:32px;"></i><p>Cargando directorio...</p></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script type="module" src="../assets/js/clientes.js"></script>
+</body>
+</html>

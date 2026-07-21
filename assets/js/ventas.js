@@ -34,15 +34,28 @@ async function loadAll() {
   ventas = []; vs.forEach(d => ventas.push({ id: d.id, ...d.data() }));
   ventas.sort((a,b) => (b.creadoEn||0) - (a.creadoEn||0));
 
-  const pOpts = perfumes.map(p => {
-    let label = p.nombre;
-    if (p.archivado) label = '📦 [Archivado] ' + label;
-    if (p.marca) label += ' — ' + p.marca;
-    return `<option value="${p.id}">${label}</option>`;
-  }).join('');
-  const pqOpts = window.paquetesData.map(p => `<option value="${p.id}">📦 ${p.nombre}</option>`).join('');
-  
-  document.getElementById('v-perfume').innerHTML = '<option value="">Selecciona perfume o paquete</option>' + pqOpts + '<optgroup label="Perfumes">' + pOpts + '</optgroup><option value="custom" style="font-weight:bold;color:var(--warning)">✏️ Escribir Manual / Otro</option>';
+  const comboData = [
+    ...window.paquetesData.map(pq => ({ id: pq.id, nombre: '📦 ' + pq.nombre, marca: '' })),
+    ...perfumes.map(p => ({
+      id: p.id,
+      nombre: (p.archivado ? '📦 [Archivado] ' : '') + p.nombre,
+      marca: p.marca || '',
+      precios: p.precios,
+      lotes: p.lotes
+    })),
+    { id: 'custom', nombre: '✏️ Escribir Manual / Otro', marca: '' }
+  ];
+
+  if (window.buildPerfumePicker) {
+    window.buildPerfumePicker(
+      document.getElementById('v-perfume-wrap'),
+      comboData,
+      (p) => {
+        document.getElementById('v-perfume').value = p ? p.id : '';
+        if (window.onPerfumeChange) window.onPerfumeChange();
+      }
+    );
+  }
 
   renderTable();
 
@@ -176,6 +189,89 @@ function updateKPIs(fil) {
   document.getElementById('k-pend').textContent = fil.filter(v=>v.estado==='pendiente').length;
 }
 
+window.onLoteChange = () => {
+  const pId = document.getElementById('v-perfume').value;
+  const isPaquete = !!(window.paquetesData && window.paquetesData.find(x => x.id === pId));
+  const lId = document.getElementById('v-lote')?.value || 'lote-1';
+  if (pId && pId !== 'custom') {
+    window.updateTallaOptions(pId, lId, isPaquete);
+  }
+};
+
+window.getLoteRemaining = (perfId, loteId) => {
+  if (!perfumes || !ventas) return { cap: 100, sold: 0, rem: 100, hasResto: false };
+  const p = perfumes.find(x => x.id === perfId);
+  if (!p || !p.lotes) return { cap: parseFloat(p?.tamanoBotella)||100, sold: 0, rem: parseFloat(p?.tamanoBotella)||100, hasResto: false };
+  const l = p.lotes.find(x => x.id === loteId);
+  if (!l) return { cap: parseFloat(p.tamanoBotella)||100, sold: 0, rem: parseFloat(p.tamanoBotella)||100, hasResto: false };
+  
+  let totalMl = 0;
+  let hasResto = false;
+  ventas.forEach(v => {
+    if (v.estado === 'cancelada') return; // ignore canceled!
+    if (v.perfumeId === perfId && v.loteId === loteId) {
+       if (['2','3','5','10'].includes(v.talla)) totalMl += parseInt(v.talla) * (+v.cantidad||1);
+       if (v.talla === 'Resto') hasResto = true;
+    } else if (v.paqueteItems) {
+       const sub = v.paqueteItems.find(i => i.id === perfId);
+       if (sub && sub.loteId === loteId) {
+          let ml = 0;
+          if (v.talla && v.talla.startsWith('Paquete ')) ml = parseInt(v.talla.replace('Paquete ',''));
+          else ml = parseInt(v.talla || '0');
+          if (!isNaN(ml)) totalMl += ml * (+v.cantidad||1);
+       }
+    }
+  });
+  
+  const cap = parseFloat(l.tamano) || 100;
+  if (hasResto) totalMl = cap;
+  
+  return { cap, sold: totalMl, rem: Math.max(0, cap - totalMl), hasResto };
+};
+
+window.updateTallaOptions = (perfId, loteId, isPaquete) => {
+  const tallaSel = document.getElementById('v-talla');
+  let p = perfumes.find(x => x.id === perfId);
+  if (!p && window.paquetesData) p = window.paquetesData.find(x => x.id === perfId);
+  if (!p) return;
+
+  const pr = p.precios || (p.ml && p.precio ? { [p.ml]: p.precio } : {});
+  let availableMl = 999;
+  let hasResto = false;
+  
+  if (!isPaquete) {
+    const st = window.getLoteRemaining(perfId, loteId);
+    availableMl = st.rem;
+    hasResto = st.hasResto;
+  }
+
+  const opts = Object.entries(pr).filter(([k,v]) => {
+     if (+v <= 0) return false;
+     // Filter decant sizes if bottle doesn't have enough ml!
+     const sizeMl = parseInt(k);
+     if (!isPaquete && !isNaN(sizeMl) && sizeMl > availableMl) return false;
+     return true;
+  }).map(([k,v]) => `<option value="${isPaquete ? 'Paquete ' : ''}${k}" data-precio="${v}">${isPaquete ? 'Paquete ' : ''}${k} ml — $${v}</option>`);
+  
+  if (!isPaquete) {
+    // Only show Resto if not already sold, and there is SOME remaining capacity
+    if (!hasResto && availableMl > 0) {
+      opts.push(`<option value="Resto" data-precio="">Resto de Botella (Usada) 🍾</option>`);
+    }
+    opts.push(`<option value="Completo" data-precio="">Botella Sellada 🍾</option>`);
+  }
+
+  const currentVal = tallaSel.value;
+  tallaSel.innerHTML = '<option value="">Selecciona talla</option>' + opts.join('');
+  
+  if (currentVal) {
+    const exists = Array.from(tallaSel.options).some(o => o.value === currentVal);
+    if (exists) tallaSel.value = currentVal;
+  }
+
+  if (window.onTallaChange) window.onTallaChange();
+};
+
 window.onPerfumeChange = () => {
   const id = document.getElementById('v-perfume').value;
   const customInp = document.getElementById('v-perfume-custom');
@@ -219,19 +315,14 @@ window.onPerfumeChange = () => {
     `;
   }
   
-  const pr = p.precios || (p.ml && p.precio ? { [p.ml]: p.precio } : {});
-  const opts = Object.entries(pr).filter(([,v])=>+v>0)
-    .map(([k,v]) => `<option value="${isPaquete ? 'Paquete ' : ''}${k}" data-precio="${v}">${isPaquete ? 'Paquete ' : ''}${k} ml — $${v}</option>`);
-  if (!isPaquete) opts.push(`<option value="Completo" data-precio="">Botella Completa 🍾</option>`);
-
-  tallaSel.innerHTML = '<option value="">Selecciona talla</option>' + opts.join('');
-  
   const loteGroup = document.getElementById('v-lote-group');
   const loteSel = document.getElementById('v-lote');
+  let actLoteId = 'lote-1';
   if (loteGroup && loteSel) {
     if (p.lotes && p.lotes.length > 0) {
       loteSel.innerHTML = p.lotes.map((l, i) => `<option value="${l.id}">Botella #${i+1} (${new Date(l.fecha).toLocaleDateString('es-MX')})</option>`).join('');
       loteSel.value = p.loteActivo || p.lotes[0].id;
+      actLoteId = loteSel.value;
       loteGroup.style.display = 'block';
     } else {
       loteGroup.style.display = 'none';
@@ -239,9 +330,7 @@ window.onPerfumeChange = () => {
     }
   }
 
-  if (window.onTallaChange) {
-    window.onTallaChange(); // reset ui
-  }
+  window.updateTallaOptions(id, actLoteId, isPaquete);
 };
 
 window.onTallaChange = () => {
@@ -546,6 +635,8 @@ window.openModal = () => {
   document.getElementById('v-estado').value = 'pagada';
   document.getElementById('v-canal').value = 'online';
   document.getElementById('v-perfume').value = '';
+  const pWrap = document.getElementById('v-perfume-wrap');
+  if (pWrap && pWrap._perfReset) pWrap._perfReset();
   document.getElementById('v-talla').innerHTML = '<option value="">Selecciona talla</option>';
   const customItemsCont = document.getElementById('v-custom-items-container');
   if (customItemsCont) {
@@ -574,12 +665,16 @@ window.editVenta = (id) => {
   
   if (!v.perfumeId && v.perfumeNombre) {
     perfSel.value = 'custom';
+    const pWrap = document.getElementById('v-perfume-wrap');
+    if (pWrap && pWrap._perfSetId) pWrap._perfSetId('custom');
     if (customInp) {
       customInp.style.display = 'block';
       customInp.value = v.perfumeNombre;
     }
   } else {
     perfSel.value = v.perfumeId || '';
+    const pWrap = document.getElementById('v-perfume-wrap');
+    if (pWrap && pWrap._perfSetId) pWrap._perfSetId(v.perfumeId || '');
     if (customInp) { customInp.style.display = 'none'; customInp.value = ''; }
   }
 
@@ -628,7 +723,10 @@ window.editVenta = (id) => {
     const pr = p.precios || (p.ml && p.precio ? { [p.ml]: p.precio } : {});
     const opts = Object.entries(pr).filter(([,val])=>+val>0)
       .map(([k,val]) => `<option value="${isPaquete ? 'Paquete ' : ''}${k}" data-precio="${val}">${isPaquete ? 'Paquete ' : ''}${k} ml — $${val}</option>`);
-    if (!isPaquete) opts.push(`<option value="Completo" data-precio="">Botella Completa 🍾</option>`);
+    if (!isPaquete) {
+      opts.push(`<option value="Resto" data-precio="">Resto de Botella (Usada) 🍾</option>`);
+      opts.push(`<option value="Completo" data-precio="">Botella Sellada 🍾</option>`);
+    }
     tallaSel.innerHTML = '<option value="">Selecciona talla</option>' + opts.join('');
     
     tallaSel.onchange = () => {
@@ -769,8 +867,15 @@ window.save = async () => {
          let ml = parseInt((data.talla||'').replace('Paquete ','')) || parseInt(data.talla) || 0;
          if(ml > 0 && window.checkLoteOverflow) window.checkLoteOverflow(sub.id, sub.loteId, ml * (+data.cantidad||1));
       });
-    } else if (data.perfumeId && ['2','3','5','10'].includes(data.talla)) {
-      if (window.checkLoteOverflow) window.checkLoteOverflow(data.perfumeId, data.loteId, parseInt(data.talla) * (+data.cantidad||1));
+    } else if (data.perfumeId) {
+      if (['2','3','5','10'].includes(data.talla)) {
+        if (window.checkLoteOverflow) window.checkLoteOverflow(data.perfumeId, data.loteId, parseInt(data.talla) * (+data.cantidad||1));
+      } else if (data.talla === 'Resto') {
+        try {
+          await updateDoc(doc(db, 'perfumes', data.perfumeId), { estadoStock: 'agotado' });
+          if(window.toast) toast(`Perfume marcado como agotado automáticamente`, 'info');
+        } catch(e) { console.error('Error auto-agotando', e); }
+      }
     }
     
     closeModal();
@@ -1115,7 +1220,8 @@ function tallaItems(perfumeId) {
   const items = Object.entries(p.precios||{}).filter(([,v])=>+v>0)
     .map(([k,v]) => ({ value: isPaquete ? `Paquete ${k}` : k, label: `${isPaquete ? 'Paquete ' : ''}${k}ml — $${v}`, precio: +v }));
   if (!isPaquete) {
-    items.push({ value: 'Completo', label: 'Botella Completa 🍾', precio: '' });
+    items.push({ value: 'Resto', label: 'Resto de Botella (Usada) 🍾', precio: '' });
+    items.push({ value: 'Completo', label: 'Botella Sellada 🍾', precio: '' });
   }
   return items;
 }
@@ -1358,6 +1464,7 @@ window.openDia = () => {
   const hoy = new Date().toISOString().slice(0,10);
   document.getElementById('dia-fecha').value = hoy;
   document.getElementById('dia-nota-global').value = '';
+  if (document.getElementById('dia-cliente-global')) document.getElementById('dia-cliente-global').value = '';
   batchRows = []; batchRowCounter = 0;
   document.getElementById('batch-tbody').innerHTML = '';
   updateBatchResumen();
@@ -1376,6 +1483,7 @@ window.closeDia = () => {
 window.saveDia = async () => {
   const fechaStr   = document.getElementById('dia-fecha').value;
   const lugarStr   = document.getElementById('dia-lugar').value.trim();
+  const globalCliente = document.getElementById('dia-cliente-global').value.trim();
   const notaGlobal = document.getElementById('dia-nota-global').value.trim();
   if (!fechaStr) { toast('Pon la fecha del evento', 'error'); return; }
   const validas = batchRows.filter(r => r.perfumeId && r.talla && +r.precio > 0);
@@ -1430,7 +1538,7 @@ window.saveDia = async () => {
         talla: r.talla, precio: +r.precio, cantidad: +r.cantidad||1,
         estado: r.estado, canal: canalVal, lugar: lugarStr,
 
-        cliente: (r.cliente||'').trim(),
+        cliente: (r.cliente||globalCliente||'').trim(),
         notas: [r.notas?.trim(), notaGlobal].filter(Boolean).join(' | '),
         loteId: r.loteId || p?.loteActivo || 'lote-1',
         creadoEn: fechaTs
@@ -1455,8 +1563,16 @@ window.saveDia = async () => {
              let ml = parseInt((dataObj.talla||'').replace('Paquete ','')) || parseInt(dataObj.talla) || 0;
              if(ml > 0 && window.checkLoteOverflow) window.checkLoteOverflow(sub.id, sub.loteId, ml * (+dataObj.cantidad||1));
           });
-        } else if (dataObj.perfumeId && ['2','3','5','10'].includes(dataObj.talla)) {
-          if (window.checkLoteOverflow) window.checkLoteOverflow(dataObj.perfumeId, dataObj.loteId, parseInt(dataObj.talla) * (+dataObj.cantidad||1));
+        } else if (dataObj.perfumeId) {
+          if (['2','3','5','10'].includes(dataObj.talla)) {
+            if (window.checkLoteOverflow) window.checkLoteOverflow(dataObj.perfumeId, dataObj.loteId, parseInt(dataObj.talla) * (+dataObj.cantidad||1));
+          } else if (dataObj.talla === 'Resto') {
+            try {
+              updateDoc(doc(db, 'perfumes', dataObj.perfumeId), { estadoStock: 'agotado' }).then(() => {
+                if(window.toast) toast(`Perfume marcado como agotado automáticamente`, 'info');
+              });
+            } catch(e) {}
+          }
         }
       }
     });
@@ -1555,9 +1671,11 @@ window.checkLoteOverflow = (perfId, loteId, mlToSell) => {
   if (!l) return;
   
   let totalMl = 0;
+  let hasResto = false;
   ventas.forEach(v => {
     if (v.perfumeId === perfId && v.loteId === loteId) {
        if (['2','3','5','10'].includes(v.talla)) totalMl += parseInt(v.talla) * (+v.cantidad||1);
+       if (v.talla === 'Resto') hasResto = true;
     } else if (v.paqueteItems) {
        const sub = v.paqueteItems.find(i => i.id === perfId);
        if (sub && sub.loteId === loteId) {
@@ -1570,10 +1688,13 @@ window.checkLoteOverflow = (perfId, loteId, mlToSell) => {
   });
   
   const maxCap = parseFloat(l.tamano) || 100;
+  if (hasResto) totalMl = maxCap;
+  
   if (totalMl + mlToSell > maxCap) {
     setTimeout(() => {
       if(window.toast) toast(`⚠️ La botella activa de ${p.nombre} ha superado su límite de ml. ¡Considera crear una nueva en el catálogo!`, 'warning');
     }, 1500);
   }
 };
+
 

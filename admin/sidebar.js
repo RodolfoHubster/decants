@@ -21,7 +21,8 @@ export function renderSidebar(active) {
       <li><a href="./notas.html"      class="${active==='notas'      ?'active':''}" ><i class="bi bi-flower1"></i> Notas Olfativas</a></li>
       
       <li class="sidebar-divider"></li>
-      <li class="sidebar-section-label">💰 Ventas</li>
+      <li class="sidebar-section-label">💰 Ventas y Clientes</li>
+      <li><a href="./clientes.html"   class="${active==='clientes'   ?'active':''}" ><i class="bi bi-people"></i> Directorio de Clientes</a></li>
       <li><a href="./ventas.html"     class="${active==='ventas'     ?'active':''}" ><i class="bi bi-shop"></i> Punto de Venta</a></li>
       <li><a href="./pedidos.html"    class="${active==='pedidos'    ?'active':''}" ><i class="bi bi-bag"></i> Pedidos Web</a></li>
       <li><a href="./consignaciones.html" class="${active==='consignaciones' ?'active':''}" ><i class="bi bi-geo-alt"></i> Puntos Externos</a></li>

@@ -108,7 +108,8 @@
       <div class="form-row">
         <div class="form-group">
           <label>Perfume *</label>
-          <select class="form-control" id="v-perfume" onchange="onPerfumeChange()"><option value="">Selecciona perfume</option></select>
+          <div id="v-perfume-wrap"></div>
+          <input type="hidden" id="v-perfume">
           <div id="v-custom-items-container" style="display:none; margin-top:10px; background:var(--bg-card2); padding:10px; border-radius:8px; border:1px solid var(--border);"></div>
           <input type="text" id="v-perfume-custom" class="form-control mt-2" style="display:none;" placeholder="Escribe el nombre del perfume...">
         </div>
@@ -156,7 +157,7 @@
         </div>
         <div class="form-group" id="v-lote-group" style="display:none">
           <label>Botella / Lote Asignado</label>
-          <select class="form-control" id="v-lote"></select>
+          <select class="form-control" id="v-lote" onchange="if(window.onLoteChange) window.onLoteChange()"></select>
         </div>
       </div>
       <div class="form-group">
@@ -217,7 +218,10 @@
           <input type="text" id="dia-lugar" placeholder="Lugar (ej. Mercado Centro)">
         </div>
         <div class="dia-notas-wrap">
-          <input type="text" id="dia-nota-global" placeholder="Nota del día (ej. Lluvia…) — opcional">
+          <input type="text" id="dia-cliente-global" placeholder="Cliente de todo el pedido">
+        </div>
+        <div class="dia-notas-wrap">
+          <input type="text" id="dia-nota-global" placeholder="Nota del día (opcional)">
         </div>
       </div>
 
@@ -386,6 +390,7 @@ window.buildPerfumePicker = function(wrap, perfumes, onChange) {
   // API pública: reset
   wrap._perfReset = () => select(null);
   wrap._perfGetId = () => selectedId;
+  wrap._perfSetId = (id) => select(perfumes.find(p => p.id === id) || null);
 };
 </script>
 <script type="module" src="../assets/js/ventas.js?v=1.9"></script>

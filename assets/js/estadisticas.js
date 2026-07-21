@@ -344,11 +344,19 @@ function renderAlertasInventario() {
   if (!container) return;
   
   // Need to calculate total sold + total consigned (unsold)
-  const pSolds = {};
+  const pSoldsData = {};
   ventas.forEach(v => {
+    if (!pSoldsData[v.perfumeId]) pSoldsData[v.perfumeId] = { ml: 0, byLote: {} };
+    const pData = pSoldsData[v.perfumeId];
+    const lid = v.loteId || 'lote-1';
+    if (!pData.byLote[lid]) pData.byLote[lid] = { ml: 0, hasResto: false };
+    
     if (['2','3','5','10'].includes(v.talla)) {
-      if (!pSolds[v.perfumeId]) pSolds[v.perfumeId] = 0;
-      pSolds[v.perfumeId] += parseFloat(v.talla) * (+v.cantidad || 1);
+      const mlVendido = parseFloat(v.talla) * (+v.cantidad || 1);
+      pData.ml += mlVendido;
+      pData.byLote[lid].ml += mlVendido;
+    } else if (v.talla === 'Resto') {
+      pData.byLote[lid].hasResto = true;
     }
   });
   
@@ -360,31 +368,49 @@ function renderAlertasInventario() {
         c.items.forEach(item => {
           const unsolds = (item.cantidad || 0) - (item.vendidos || 0);
           if (unsolds > 0) {
-            if (!pSolds[item.perfumeId]) pSolds[item.perfumeId] = 0;
-            pSolds[item.perfumeId] += parseFloat(item.talla) * unsolds;
+            if (!pSoldsData[item.perfumeId]) pSoldsData[item.perfumeId] = { ml: 0, byLote: {} };
+            const lid = item.loteId || 'lote-1';
+            if (!pSoldsData[item.perfumeId].byLote[lid]) pSoldsData[item.perfumeId].byLote[lid] = { ml: 0, hasResto: false };
+            
+            const mlUnsold = parseFloat(item.talla) * unsolds;
+            pSoldsData[item.perfumeId].ml += mlUnsold;
+            pSoldsData[item.perfumeId].byLote[lid].ml += mlUnsold;
           }
         });
       }
     });
     
-    _finishRenderAlertas(pSolds, container);
+    _finishRenderAlertas(pSoldsData, container);
   }).catch(e => {
     console.error("Error loading consignaciones for alerts:", e);
-    _finishRenderAlertas(pSolds, container); // Fallback to just ventas
+    _finishRenderAlertas(pSoldsData, container); // Fallback to just ventas
   });
 }
 
-function _finishRenderAlertas(pSolds, container) {
+function _finishRenderAlertas(pSoldsData, container) {
   const alerts = [];
   perfumes.forEach(p => {
     if (p.archivado || p.activo === false) return; // Skip archived/hidden
-    const sold = pSolds[p.id] || 0;
+    const data = pSoldsData[p.id] || { ml: 0, byLote: {} };
     
     let totalCap = 0;
+    let sold = 0;
+    
     if (p.lotes && p.lotes.length > 0) {
-      totalCap = p.lotes.reduce((sum, l) => sum + (+l.tamano || 0), 0);
-    } else if (p.tamanoBotella) {
-      totalCap = +p.tamanoBotella;
+      p.lotes.forEach(l => {
+         const lCap = +l.tamano || 0;
+         totalCap += lCap;
+         
+         const lSoldData = data.byLote[l.id] || { ml: 0, hasResto: false };
+         let lSold = lSoldData.ml;
+         if (lSoldData.hasResto) lSold = lCap;
+         
+         sold += lSold;
+      });
+    } else {
+      totalCap = +p.tamanoBotella || 0;
+      sold = data.ml;
+      if (data.byLote['lote-1']?.hasResto) sold = totalCap;
     }
     
     let pct = 0;
@@ -491,6 +517,7 @@ function renderProfitability() {
       let totalMlVendidos = 0;
       let totalDecantsVendidos = 0;
       let ingresoReal = 0;
+      let restoVendido = false;
       const distribucion = { '2':0, '3':0, '5':0, '10':0 };
       
       loteHist.forEach(v => {
@@ -501,11 +528,18 @@ function renderProfitability() {
           totalMlVendidos += (parseInt(v.talla) * c);
           totalDecantsVendidos += c;
           ingresoReal += (+v.precio || 0) * c;
+        } else if (v.talla === 'Resto') {
+          const c = +v.cantidad || 1;
+          ingresoReal += (+v.precio || 0) * c;
+          restoVendido = true;
         }
       });
       
       const costoBotella = parseFloat(l.costo) || 0;
       const tamanoBotella = parseFloat(l.tamano) || 100;
+      
+      if (restoVendido) totalMlVendidos = tamanoBotella; // Force 100% progress
+      
       const progresoPorcentaje = tamanoBotella > 0 ? Math.min(100, Math.round((totalMlVendidos / tamanoBotella) * 100)) : 0;
       
       const costoInsumosReal = totalDecantsVendidos * costoInsumoUnitario;
@@ -514,27 +548,30 @@ function renderProfitability() {
       
       let totalDecantsProyectados = 0;
       let ingresoTotalProyectado = 0;
+      let costoTotalInsumos = costoInsumosReal;
+      let gananciaNetaFinal = gananciaReal;
       
-      if (totalMlVendidos > 0) {
-        const factor = tamanoBotella / totalMlVendidos;
-        ['2','3','5','10'].forEach(talla => {
-          const cant = distribucion[talla] * factor;
-          totalDecantsProyectados += cant;
-          ingresoTotalProyectado += cant * (+p.precios[talla] || 0);
-        });
-      } else {
-        const avgMlPerDecant = (2*0.25) + (3*0.25) + (5*0.25) + (10*0.25); // 5 ml
-        totalDecantsProyectados = tamanoBotella / avgMlPerDecant;
-        ingresoTotalProyectado = totalDecantsProyectados * (
-          (0.25 * (+p.precios['2'] || 0)) +
-          (0.25 * (+p.precios['3'] || 0)) +
-          (0.25 * (+p.precios['5'] || 0)) +
-          (0.25 * (+p.precios['10'] || 0))
-        );
+      if (!restoVendido && totalMlVendidos < tamanoBotella) {
+        if (totalMlVendidos > 0) {
+          const factor = tamanoBotella / totalMlVendidos;
+          ['2','3','5','10'].forEach(talla => {
+            const cant = distribucion[talla] * factor;
+            totalDecantsProyectados += cant;
+            ingresoTotalProyectado += cant * (+p.precios[talla] || 0);
+          });
+        } else {
+          const avgMlPerDecant = (2*0.25) + (3*0.25) + (5*0.25) + (10*0.25); // 5 ml
+          totalDecantsProyectados = tamanoBotella / avgMlPerDecant;
+          ingresoTotalProyectado = totalDecantsProyectados * (
+            (0.25 * (+p.precios['2'] || 0)) +
+            (0.25 * (+p.precios['3'] || 0)) +
+            (0.25 * (+p.precios['5'] || 0)) +
+            (0.25 * (+p.precios['10'] || 0))
+          );
+        }
+        costoTotalInsumos = totalDecantsProyectados * costoInsumoUnitario;
+        gananciaNetaFinal = ingresoTotalProyectado - (costoBotella + costoTotalInsumos);
       }
-      
-      const costoTotalInsumos = totalDecantsProyectados * costoInsumoUnitario;
-      const gananciaNetaFinal = ingresoTotalProyectado - (costoBotella + costoTotalInsumos);
       
       sumGanancia += gananciaReal; // Ordenar y totalizar usando la ganancia REAL
       sumIngreso += ingresoReal;

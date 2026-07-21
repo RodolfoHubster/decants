@@ -43,7 +43,7 @@ const ESTADO_OPTS = [
   { val:'cancelada', label:'Cancelada', icon:'❌', color:'#f87171' },
 ];
 
-const TALLAS_DEFAULT = ['2ml','3ml','5ml','10ml','15ml','20ml','30ml','50ml','100ml'];
+const TALLAS_DEFAULT = ['2','3','5','10','Resto','Completo'];
 
 /* ─── HTML del modal ──────────────────────────────────────────────────────── */
 const MODAL_HTML = /* html */`
@@ -203,6 +203,8 @@ function nuevaFila() {
           const ops = perf?.precios ? Object.entries(perf.precios)
             .filter(([, v]) => Number(v) > 0)
             .map(([k, v]) => ({ talla: k, precio: Number(v) })) : [{ talla: perf.ml, precio: Number(perf.precio) }];
+          ops.push({ talla: 'Resto', precio: '' });
+          ops.push({ talla: 'Completo', precio: '' });
           if (ops.length) renderTallaDrop(ops);
         }
         SRrecalcTotal();
