@@ -36,12 +36,23 @@
     .tl-status { font-size: 11px; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; font-weight: 600; }
     .tl-status.pagada, .tl-status.entregado { background: rgba(34,197,94,0.1); color: #22c55e; }
     .tl-status.pendiente, .tl-status.buscando, .tl-status.conseguido, .tl-status.avisado { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .tl-status.cancelada { background: rgba(239,68,68,0.1); color: #ef4444; }
+    .tl-status.quedo_mal { background: rgba(127,29,29,0.2); color: #fca5a5; border: 1px solid rgba(127,29,29,0.5); }
     
     .btn-edit-client { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; transition: 0.2s; }
     .btn-edit-client:hover { color: var(--gold); background: rgba(255,255,255,0.1); }
     
     .btn-tl-action { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text); padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 6px; }
     .btn-tl-action:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+    
+    .client-card.banned { border-color: rgba(239,68,68,0.5); }
+    .client-card.banned .client-header { background: rgba(239,68,68,0.05); }
+    .client-card.banned .client-name { color: #ef4444; }
+    .badge-banned { background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 8px; vertical-align: middle; }
+    
+    .btn-ban-client { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; transition: 0.2s; margin-left: 4px; }
+    .btn-ban-client:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+    .client-card.banned .btn-ban-client { color: #ef4444; }
     
     .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
   </style>

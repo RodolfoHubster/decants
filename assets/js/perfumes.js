@@ -617,6 +617,7 @@ window.openModal = () => {
   loadMarcas();
   setTimeout(() => { document.getElementById('p-marca').value = ''; }, 80);
   document.getElementById('p-desc').value = '';
+  document.getElementById('p-barcode').value = '';
   
   ['2','3','5','10'].forEach(k => { document.getElementById('px' + k).value = ''; });
   
@@ -687,6 +688,7 @@ window.edit = (id) => {
   loadMarcas();
   setTimeout(() => { document.getElementById('p-marca').value = p.marca || ''; }, 80);
   document.getElementById('p-desc').value    = p.descripcion || '';
+  document.getElementById('p-barcode').value = p.barcode || '';
   const pr = p.precios || {};
   ['2','3','5','10'].forEach(k => { document.getElementById('px' + k).value = pr[k] || ''; });
   
@@ -721,6 +723,138 @@ window.edit = (id) => {
   document.getElementById('modal-title').textContent = 'Editar Perfume';
   document.getElementById('modal').classList.add('open');
 };
+
+    document.getElementById('btn-ia-name')?.addEventListener('click', async () => {
+        const prodTitle = document.getElementById('p-nombre').value.trim();
+        if (!prodTitle) {
+            toast('Por favor, escribe el nombre del perfume primero.', 'warning');
+            return;
+        }
+        
+        const geminiKey = localStorage.getItem('gemini_api_key');
+        if (!geminiKey) {
+            toast('Configura tu API Key en Ajustes para usar la IA.', 'warning');
+            return;
+        }
+        
+        const btn = document.getElementById('btn-ia-name');
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        btn.disabled = true;
+        toast('🤖 Generando perfil olfativo con Inteligencia Artificial...', 'info');
+        
+        try {
+            const getOpts = id => {
+                const el = document.getElementById(id);
+                return el ? Array.from(el.options).map(o => o.text).join(', ') : '';
+            };
+            
+            const promptText = `
+Eres un experto sommelier de perfumes. 
+Se te ha dado este nombre de perfume: "${prodTitle}".
+Completa el siguiente JSON estrictamente y devuélvelo en formato JSON válido. 
+No incluyas markdown ni explicaciones, solo el JSON puro.
+
+{
+  "title": "Nombre exacto y completo del perfume",
+  "brand": "Marca diseñadora (ej. Carolina Herrera)",
+  "category": "Una de estas: ${getOpts('p-cat') || 'Cítrico, Amaderado, Floral, Dulce'}",
+  "gender": "Caballero, Dama o Unisex",
+  "family": "Familia Olfativa exacta",
+  "type": "Diseñador, Nicho, Árabe o Indie",
+  "desc": "Descripción detallada y poética (2-3 párrafos)",
+  "px2": "Precio competitivo MXN 2ml: 80-120 diseñador, 180-280 nicho, 50-90 árabe",
+  "px3": "Precio competitivo MXN 3ml: 120-170 diseñador, 250-380 nicho, 70-110 árabe",
+  "px5": "Precio competitivo MXN 5ml: 180-260 diseñador, 400-600 nicho, 110-170 árabe",
+  "px10": "Precio competitivo MXN 10ml: 320-450 diseñador, 750-1200 nicho, 200-300 árabe"
+}
+`;
+            
+            const reqUrl = "https://api.groq.com/openai/v1/chat/completions";
+            const res3 = await fetch(reqUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${geminiKey}`
+                },
+                body: JSON.stringify({
+                    model: "llama-3.3-70b-versatile",
+                    messages: [{ role: "user", content: promptText }],
+                    temperature: 0.1,
+                    response_format: { type: "json_object" }
+                })
+            });
+            
+            if (!res3.ok) throw new Error("Groq API falló: " + res3.statusText);
+            const aiData = await res3.json();
+            let aiText = aiData.choices[0].message.content;
+            
+            const match = aiText.match(/\{[\s\S]*\}/);
+            if (match) aiText = match[0];
+            
+            let aiJson;
+            try {
+                aiJson = JSON.parse(aiText);
+            } catch (err) {
+                // Fallback: replace unescaped control characters
+                aiText = aiText.replace(/[\u0000-\u001F]+/g, " ");
+                aiJson = JSON.parse(aiText);
+            }
+            
+            if (aiJson.brand) {
+                const marcaSelect = document.getElementById('p-marca');
+                if (marcaSelect) {
+                    const brandClean = aiJson.brand.split(',')[0].trim().toLowerCase();
+                    let bestMatch = '';
+                    for (let opt of marcaSelect.options) {
+                        if (opt.value && opt.text.toLowerCase().includes(brandClean)) { bestMatch = opt.value; break; }
+                    }
+                    if (bestMatch) marcaSelect.value = bestMatch;
+                }
+            }
+            if (aiJson.category) {
+                const catSelect = document.getElementById('p-cat');
+                if (catSelect) {
+                    for (let opt of catSelect.options) {
+                        if (opt.text === aiJson.category) { catSelect.value = opt.value; break; }
+                    }
+                }
+            }
+            if (aiJson.gender && document.getElementById('p-genero')) document.getElementById('p-genero').value = aiJson.gender;
+            if (aiJson.family) {
+                const famSelect = document.getElementById('p-familia');
+                if (famSelect && !famSelect.value) {
+                    let bestFam = '';
+                    for (let opt of famSelect.options) {
+                        if (opt.value && opt.text.toLowerCase().includes(aiJson.family.toLowerCase())) { bestFam = opt.value; break; }
+                    }
+                    if (bestFam) famSelect.value = bestFam;
+                }
+            }
+            if (aiJson.type) {
+                const typeSelect = document.getElementById('p-tipo');
+                if (typeSelect && !typeSelect.value) {
+                    let bestType = '';
+                    for (let opt of typeSelect.options) {
+                        if (opt.value && opt.text.toLowerCase().includes(aiJson.type.toLowerCase())) { bestType = opt.value; break; }
+                    }
+                    if (bestType) typeSelect.value = bestType;
+                }
+            }
+            if (aiJson.desc && !document.getElementById('p-desc').value) document.getElementById('p-desc').value = aiJson.desc;
+            if (aiJson.px2 && !document.getElementById('px2').value) document.getElementById('px2').value = aiJson.px2;
+            if (aiJson.px3 && !document.getElementById('px3').value) document.getElementById('px3').value = aiJson.px3;
+            if (aiJson.px5 && !document.getElementById('px5').value) document.getElementById('px5').value = aiJson.px5;
+            if (aiJson.px10 && !document.getElementById('px10').value) document.getElementById('px10').value = aiJson.px10;
+            
+            toast('✨ ¡Perfil IA completado con éxito!', 'success');
+        } catch (e) {
+            console.error('Gemini error:', e);
+            toast('Error al consultar la Inteligencia Artificial: ' + e.message, 'error');
+        } finally {
+            btn.innerHTML = '<i class="bi bi-magic"></i> IA';
+            btn.disabled = false;
+        }
+    });
 
 window.save = async () => {
   const id        = document.getElementById('p-id').value;
@@ -764,6 +898,7 @@ window.save = async () => {
       familia:     document.getElementById('p-familia').value || '',
       tipo:        document.getElementById('p-tipo').value    || '',
       descripcion: document.getElementById('p-desc').value.trim(),
+      barcode:     document.getElementById('p-barcode').value.trim(),
       imagen, precios, tamanos,
       activo:    (estado === 'visible'),
       archivado: (estado === 'archivado'),
@@ -921,3 +1056,243 @@ window.openPackageSelectionModal = (p, onComplete, selectedMl = null) => {
     close();
   };
 };
+
+// ── Evento Autocompletado por Código de Barras ─────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const barcodeInput = document.getElementById('p-barcode');
+  if (barcodeInput) {
+    barcodeInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const codeRaw = barcodeInput.value.trim();
+        const code = codeRaw.replace(/\D/g, '');
+        if (!code) return;
+        
+        toast('Buscando información del código de barras en BD pública...', 'info');
+        try {
+          let res = await fetch(`https://world.openbeautyfacts.org/api/v0/product/${code}.json`);
+          let data = null;
+          if (res.ok) {
+              try { data = await res.json(); } catch(e) {}
+          }
+          
+          let prodTitle = '';
+          let prodBrand = '';
+          let prodDesc = '';
+          let prodImg = '';
+          
+          if (data && data.status === 1 && data.product) {
+            const prod = data.product;
+            prodTitle = prod.product_name || prod.product_name_es || prod.product_name_en || prod.product_name_fr || '';
+            prodBrand = prod.brands || '';
+            prodDesc = prod.categories || '';
+            prodImg = prod.image_url || prod.image_front_url || '';
+          }
+          
+          if (prodTitle) {
+            if (!document.getElementById('p-nombre').value) document.getElementById('p-nombre').value = prodTitle;
+            
+            // Fuzzy match en el dropdown de Marca
+            if (prodBrand) {
+              const marcaSelect = document.getElementById('p-marca');
+              if (marcaSelect && !marcaSelect.value) {
+                const brandClean = prodBrand.split(',')[0].trim().toLowerCase();
+                let bestMatch = '';
+                for (let opt of marcaSelect.options) {
+                  if (opt.value && opt.text.toLowerCase().includes(brandClean)) { bestMatch = opt.value; break; }
+                }
+                // Si no hay match exacto, busca al revés
+                if (!bestMatch) {
+                  for (let opt of marcaSelect.options) {
+                    if (opt.value && brandClean.includes(opt.text.toLowerCase().split(' ')[0])) { bestMatch = opt.value; break; }
+                  }
+                }
+                if (bestMatch) marcaSelect.value = bestMatch;
+              }
+            }
+            
+            if (prodDesc && !document.getElementById('p-desc').value) document.getElementById('p-desc').value = prodDesc;
+            if (prodImg && !document.getElementById('p-img-url').value) {
+                document.getElementById('p-img-url').value = prodImg;
+                if (window.previewUrl) window.previewUrl();
+            }
+            
+            // Integración Gemini IA
+            const geminiKey = localStorage.getItem('gemini_api_key');
+            if (geminiKey && prodTitle) {
+                toast('🤖 Generando perfil olfativo con Inteligencia Artificial...', 'info');
+                try {
+                    const getOpts = id => {
+                        const el = document.getElementById(id);
+                        return el ? Array.from(el.options).map(o => o.value).filter(v => v).join(', ') : '';
+                    };
+                    
+                    const pBrand = prodBrand ? prodBrand.split(',')[0] : '';
+                    const promptText = `Eres un experto perfumista. Para el perfume "${prodTitle}"${pBrand ? ` de la marca "${pBrand}"` : ''}:
+Elige la mejor opción de estas listas exactas (responde con el texto exacto, o vacío si no aplica):
+- Marca: [${getOpts('p-marca')}]
+- Familia: [${getOpts('p-familia')}]
+- Categoría: [${getOpts('p-cat')}]
+- Tipo: [${getOpts('p-tipo')}]
+- Género: [Caballero, Dama, Unisex]
+
+Sugiéreme precios en MXN para decants (2ml, 3ml, 5ml, 10ml) considerando su valor real de mercado.
+Para la descripción ("desc"), redacta una reseña detallada, poética y persuasiva (de 3 a 4 oraciones). Habla de su apertura, desarrollo, fijación y ocasiones de uso, usando un tono de marketing elegante.
+
+Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown ni \`\`\`) con esta estructura exacta:
+{"marca":"","familia":"","categoria":"","tipo":"","genero":"","salida":"","corazon":"","fondo":"","desc":"Descripción detallada y poética","px2":0,"px3":0,"px5":0,"px10":0}`;
+                    
+                    const groqUrl = `https://api.groq.com/openai/v1/chat/completions`;
+                    const groqRes = await fetch(groqUrl, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${geminiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: "llama-3.3-70b-versatile",
+                            messages: [{ role: "user", content: promptText }],
+                            temperature: 0.2
+                        })
+                    });
+                    
+                    const data = await groqRes.json();
+                    
+                    if (data.error) {
+                        console.error("Error IA:", data.error.message);
+                        return;
+                    }
+                    
+                    let aiText = data.choices[0].message.content;
+                    const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) { aiText = jsonMatch[0]; }
+                    
+                    const aiJson = JSON.parse(aiText);
+                        let finalDesc = aiJson.desc || '';
+                        if (aiJson.salida) finalDesc += `\n\nSalida: ${aiJson.salida}`;
+                        if (aiJson.corazon) finalDesc += `\nCorazón: ${aiJson.corazon}`;
+                        if (aiJson.fondo) finalDesc += `\nFondo: ${aiJson.fondo}`;
+                        finalDesc = finalDesc.trim();
+                        document.getElementById('p-desc').value = finalDesc;
+                        
+                        if (aiJson.marca && !document.getElementById('p-marca').value) document.getElementById('p-marca').value = aiJson.marca;
+                        if (aiJson.familia) document.getElementById('p-familia').value = aiJson.familia;
+                        if (aiJson.categoria) document.getElementById('p-cat').value = aiJson.categoria;
+                        if (aiJson.tipo) document.getElementById('p-tipo').value = aiJson.tipo;
+                        if (aiJson.genero) document.getElementById('p-genero').value = aiJson.genero;
+                        
+                        if (aiJson.px2 && !document.getElementById('px2').value) document.getElementById('px2').value = aiJson.px2;
+                        if (aiJson.px3 && !document.getElementById('px3').value) document.getElementById('px3').value = aiJson.px3;
+                        if (aiJson.px5 && !document.getElementById('px5').value) document.getElementById('px5').value = aiJson.px5;
+                        if (aiJson.px10 && !document.getElementById('px10').value) document.getElementById('px10').value = aiJson.px10;
+                        
+                        toast('✨ ¡Perfil IA completado con éxito!', 'success');
+                } catch (e) {
+                    console.error('Gemini error:', e);
+                    toast('¡Datos básicos completados! (Ocurrió un error con la IA: ' + e.message + ')', 'warning');
+                }
+            } else {
+                toast('¡Información encontrada en BD y autocompletada!', 'success');
+            }
+          } else {
+            const geminiKey = localStorage.getItem('gemini_api_key');
+            if (!geminiKey) {
+                toast('El código no se encontró en la BD pública (Configura tu API Key en Ajustes para usar IA).', 'warning');
+                return;
+            }
+            toast('No encontrado en BD pública. Consultando a la Inteligencia Artificial...', 'info');
+            
+            try {
+                const getOpts = id => {
+                    const el = document.getElementById(id);
+                    return el ? Array.from(el.options).map(o => o.value).filter(v => v).join(', ') : '';
+                };
+                const promptText = `El usuario escaneó el código de barras "${code}" de un perfume.
+Identifica el nombre exacto del perfume y su marca. Si el código no te suena para nada a un perfume conocido, responde el JSON con "title": "NO_ENCONTRADO".
+Si lo reconoces, elige la mejor opción de estas listas exactas para clasificarlo:
+- Marca: [${getOpts('p-marca')}]
+- Familia: [${getOpts('p-familia')}]
+- Categoría: [${getOpts('p-cat')}]
+- Tipo: [${getOpts('p-tipo')}]
+- Género: [Caballero, Dama, Unisex]
+
+Sugiéreme precios en MXN competitivos y realistas para decants. Como guía (ajusta según la marca y tipo):
+- Diseñador (ej. Versace): 2ml: 80-120, 3ml: 120-170, 5ml: 180-260, 10ml: 320-450
+- Nicho (ej. Creed): 2ml: 180-280, 3ml: 250-380, 5ml: 400-600, 10ml: 750-1200
+- Árabe (ej. Lattafa): 2ml: 50-90, 3ml: 70-110, 5ml: 110-170, 10ml: 200-300
+Para la descripción ("desc"), redacta una reseña detallada, poética y persuasiva (de 3 a 4 oraciones). Habla de su apertura, desarrollo, fijación y ocasiones de uso, usando un tono de marketing elegante.
+
+Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown) con esta estructura exacta:
+{"title":"Nombre del perfume","marca":"","familia":"","categoria":"","tipo":"","genero":"","salida":"","corazon":"","fondo":"","desc":"Descripción detallada y poética","px2":0,"px3":0,"px5":0,"px10":0}`;
+
+                const groqUrl = `https://api.groq.com/openai/v1/chat/completions`;
+                const groqRes = await fetch(groqUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${geminiKey}` },
+                    body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{ role: "user", content: promptText }], temperature: 0.2, response_format: { type: "json_object" } })
+                });
+                
+                const data = await groqRes.json();
+                if (data.choices && data.choices.length > 0) {
+                    let aiText = data.choices[0].message.content;
+                    const match = aiText.match(/\{[\s\S]*\}/);
+                    if (match) aiText = match[0];
+                    
+                    let aiJson;
+                    try {
+                        aiJson = JSON.parse(aiText);
+                    } catch (err) {
+                        aiText = aiText.replace(/[\u0000-\u001F]+/g, " ");
+                        aiJson = JSON.parse(aiText);
+                    }
+                    
+                    if (aiJson.title === "NO_ENCONTRADO") {
+                        toast('Barcode no reconocido. Escribe el nombre a mano y usa el botón de IA.', 'warning');
+                        return;
+                    }
+                    
+                    document.getElementById('p-nombre').value = aiJson.title || '';
+                    
+                    let finalDesc = aiJson.desc || '';
+                    if (aiJson.salida) finalDesc += `\n\nSalida: ${aiJson.salida}`;
+                    if (aiJson.corazon) finalDesc += `\nCorazón: ${aiJson.corazon}`;
+                    if (aiJson.fondo) finalDesc += `\nFondo: ${aiJson.fondo}`;
+                    finalDesc = finalDesc.trim();
+                    document.getElementById('p-desc').value = finalDesc;
+                    
+                    if (aiJson.marca) {
+                        const brandClean = aiJson.marca.trim().toLowerCase();
+                        const marcaSelect = document.getElementById('p-marca');
+                        let bestMatch = '';
+                        for (let opt of marcaSelect.options) {
+                            if (opt.value && opt.text.toLowerCase().includes(brandClean)) { bestMatch = opt.value; break; }
+                        }
+                        if (bestMatch) marcaSelect.value = bestMatch;
+                        else document.getElementById('p-marca').value = aiJson.marca;
+                    }
+                    
+                    if (aiJson.familia) document.getElementById('p-familia').value = aiJson.familia;
+                    if (aiJson.categoria) document.getElementById('p-cat').value = aiJson.categoria;
+                    if (aiJson.tipo) document.getElementById('p-tipo').value = aiJson.tipo;
+                    if (aiJson.genero) document.getElementById('p-genero').value = aiJson.genero;
+                    
+                    if (aiJson.px2) document.getElementById('px2').value = aiJson.px2;
+                    if (aiJson.px3) document.getElementById('px3').value = aiJson.px3;
+                    if (aiJson.px5) document.getElementById('px5').value = aiJson.px5;
+                    if (aiJson.px10) document.getElementById('px10').value = aiJson.px10;
+                    
+                    toast('✨ ¡Perfume identificado mágicamente por la IA!', 'success');
+                }
+            } catch (e) {
+                console.error('Groq fallback error:', e);
+                toast('Error al intentar identificar con IA: ' + e.message, 'error');
+            }
+          }
+        } catch (err) {
+          console.error(err);
+          toast('Hubo un error de conexión al buscar el código.', 'error');
+        }
+      }
+    });
+  }
+});

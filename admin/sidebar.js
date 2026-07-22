@@ -39,6 +39,7 @@ export function renderSidebar(active) {
       
       <li class="sidebar-divider"></li>
       <li class="sidebar-section-label">⚙️ Ajustes</li>
+      <li><a href="./ajustes.html"    class="${active==='ajustes'    ?'active':''}" ><i class="bi bi-gear-fill"></i> Inteligencia Artificial</a></li>
       <li><a href="./novedades.html"  class="${active==='novedades'  ?'active':''}" ><i class="bi bi-stars"></i> Novedades</a></li>
       <li class="sidebar-divider"></li>
       <li>

@@ -74,9 +74,9 @@ window.undoDelete = () => {
 
 // ── Helpers ───────────────────────────────────────────────
 function minPrecio(p) {
-  if (p.tipo === 'paquete') return Number(p.precio) || 9999;
   const vals = Object.values(p.precios || {}).map(Number).filter(v => v > 0);
-  return vals.length ? Math.min(...vals) : 9999;
+  if (vals.length) return Math.min(...vals);
+  return Number(p.precio) || 9999;
 }
 
 window.syncMobileSearch = () => {

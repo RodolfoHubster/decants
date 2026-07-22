@@ -28,6 +28,7 @@
 .badge-estado.pagada   { background:rgba(92,184,92,.14);  color:var(--success); border:1px solid rgba(92,184,92,.3);  }
 .badge-estado.pendiente{ background:rgba(201,168,76,.12); color:var(--accent);  border:1px solid var(--accent-border); }
 .badge-estado.cancelada{ background:rgba(224,92,92,.12);  color:var(--danger);  border:1px solid rgba(224,92,92,.3);  }
+.badge-estado.quedo_mal{ background:rgba(127,29,29,.2);  color:#fca5a5;  border:1px solid rgba(127,29,29,.5);  }
 
 /* ── Talla / cantidad badge ───────────────────────────────────────────────────── */
 .badge-ml{

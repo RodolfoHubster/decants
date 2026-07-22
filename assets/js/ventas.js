@@ -13,16 +13,19 @@ window.costoReforzada = 15; // default
 
 // ── Cargar datos ──────────────────────────────────────────────────────────────
 async function loadAll() {
-  const [vs, ps, pq, confSnap] = await Promise.all([
+  const [vs, ps, pq, confSnap, blSnap] = await Promise.all([
     getDocs(collection(db, 'ventas')),
     getDocs(collection(db, 'perfumes')),
     getDocs(collection(db, 'paquetes')),
-    getDoc(doc(db, 'config', 'costosOperativos')).catch(() => null)
+    getDoc(doc(db, 'config', 'costosOperativos')).catch(() => null),
+    getDoc(doc(db, 'config', 'blacklist')).catch(() => null)
   ]);
   
   if (confSnap && confSnap.exists()) {
     window.costoReforzada = confSnap.data().reforzadaVenta || 15;
   }
+  
+  window.blacklistCache = (blSnap && blSnap.exists()) ? blSnap.data().names || [] : [];
 
   perfumes = []; ps.forEach(d => perfumes.push({ id: d.id, ...d.data() }));
   perfumes.sort((a,b) => a.nombre.localeCompare(b.nombre));
@@ -629,7 +632,9 @@ window.exportCSV = () => {
 
 // ── Modal individual ──────────────────────────────────────────────────────────
 window.openModal = () => {
-  ['v-id','v-cliente','v-notas'].forEach(id => document.getElementById(id).value = '');
+  ['v-id','v-cliente','v-notas','v-barcode'].forEach(id => {
+    if(document.getElementById(id)) document.getElementById(id).value = '';
+  });
   document.getElementById('v-precio').value = '';
   document.getElementById('v-cantidad').value = 1;
   document.getElementById('v-estado').value = 'pagada';
@@ -646,6 +651,10 @@ window.openModal = () => {
   document.getElementById('modal-title').textContent = 'Nueva Venta';
   document.getElementById('btn-save').innerHTML = '<i class="bi bi-check2"></i> Guardar Venta';
   document.getElementById('modal').classList.add('open');
+  setTimeout(() => {
+    const bc = document.getElementById('v-barcode');
+    if (bc) bc.focus();
+  }, 100);
 };
 window.closeModal = () => document.getElementById('modal').classList.remove('open');
 
@@ -768,8 +777,18 @@ window.save = async () => {
   const cantidad  = +document.getElementById('v-cantidad').value || 1;
   const estado    = document.getElementById('v-estado').value;
   const canal     = document.getElementById('v-canal').value;
+  const clienteName = document.getElementById('v-cliente').value.trim();
   
   if (!perfumeId || !talla || !precio) { toast('Completa perfume, talla y precio (*)', 'error'); return; }
+  
+  if (clienteName && window.blacklistCache && window.blacklistCache.map(n => n.toLowerCase()).includes(clienteName.toLowerCase())) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Cliente Bloqueado 🚫',
+      text: `El cliente "${clienteName}" se encuentra en la Lista Negra. No puedes registrarle nuevas ventas.`
+    });
+    return;
+  }
   
   let perfumeNombre = '';
   let perfumeMarca = '';
@@ -1488,6 +1507,19 @@ window.saveDia = async () => {
   if (!fechaStr) { toast('Pon la fecha del evento', 'error'); return; }
   const validas = batchRows.filter(r => r.perfumeId && r.talla && +r.precio > 0);
   if (!validas.length) { toast('Agrega al menos una venta con perfume, talla y precio', 'error'); return; }
+  
+  if (window.blacklistCache) {
+    const checkName = (name) => name && window.blacklistCache.map(n => n.toLowerCase()).includes(name.trim().toLowerCase());
+    if (checkName(globalCliente)) {
+      Swal.fire({ icon: 'error', title: 'Cliente Bloqueado 🚫', text: `El cliente "${globalCliente}" está en la Lista Negra.` });
+      return;
+    }
+    const blockedRow = validas.find(r => checkName(r.cliente));
+    if (blockedRow) {
+      Swal.fire({ icon: 'error', title: 'Cliente Bloqueado 🚫', text: `El cliente "${blockedRow.cliente}" en una de las ventas está en la Lista Negra.` });
+      return;
+    }
+  }
   const [y,m,d] = fechaStr.split('-').map(Number);
   const fechaTs = new Date(y, m-1, d, 12, 0, 0).getTime();
   const btn = document.getElementById('btn-dia-save');
@@ -1698,3 +1730,33 @@ window.checkLoteOverflow = (perfId, loteId, mlToSell) => {
 };
 
 
+// ── Evento Barcode Scanner ───────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const barcodeInput = document.getElementById('v-barcode');
+  if (barcodeInput) {
+    barcodeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const code = barcodeInput.value.trim();
+        if (!code) return;
+        
+        // Find perfume by barcode
+        const p = perfumes.find(x => x.barcode === code);
+        if (p) {
+          // Select it in the custom autocomplete
+          const pWrap = document.getElementById('v-perfume-wrap');
+          if (pWrap && pWrap._perfSelect) {
+            pWrap._perfSelect(p.id, p.nombre, p.marca);
+            barcodeInput.value = '';
+            toast(`✔️ ${p.nombre} seleccionado por código`);
+            // focus the save button or price
+            document.getElementById('v-talla').focus();
+          }
+        } else {
+          toast('Código no encontrado: ' + code, 'warning');
+          barcodeInput.select();
+        }
+      }
+    });
+  }
+});

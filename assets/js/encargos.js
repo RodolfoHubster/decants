@@ -1,7 +1,7 @@
 import { db, auth, onAuthStateChanged } from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import {
-  collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp
+  collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 renderSidebar('encargos');
@@ -11,10 +11,17 @@ let items = [];
 let currentPage = 1;
 let pageSize = 10;
 let currentView = localStorage.getItem('encargos_view') || 'table';
+window.blacklistCache = [];
 
 // ── Cargar ────────────────────────────────────────────────
 async function load() {
-  const snap = await getDocs(collection(db, COL));
+  const [snap, blSnap] = await Promise.all([
+    getDocs(collection(db, COL)),
+    getDoc(doc(db, 'config', 'blacklist')).catch(() => null)
+  ]);
+  
+  window.blacklistCache = (blSnap && blSnap.exists()) ? blSnap.data().names || [] : [];
+  
   items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   items.sort((a, b) => (b.creadoEn?.seconds || 0) - (a.creadoEn?.seconds || 0));
   updateStats();
@@ -22,7 +29,7 @@ async function load() {
 }
 
 function updateStats() {
-  const keys = ['pendiente','buscando','conseguido','avisado','entregado'];
+  const keys = ['pendiente','buscando','conseguido','avisado','entregado','cancelado','quedo_mal'];
   keys.forEach(k => {
     const el = document.getElementById(`s-${k}`);
     if (el) el.textContent = items.filter(i => i.estado === k).length;
@@ -124,6 +131,7 @@ window.renderTable = function () {
           <option value="avisado"    ${e.estado==='avisado'    ?'selected':''}>📱 Avisado</option>
           <option value="entregado"  ${e.estado==='entregado'  ?'selected':''}>📦 Entregado</option>
           <option value="cancelado"  ${e.estado==='cancelado'  ?'selected':''}>❌ Cancelado</option>
+          <option value="quedo_mal"  ${e.estado==='quedo_mal'  ?'selected':''}>👎 Quedó mal</option>
         </select>
       </td>
       <td style="font-size:12px">${fecha}</td>
@@ -286,6 +294,15 @@ window.save = async function () {
     alert('Perfume, marca, tamaño y cliente son obligatorios.');
     return;
   }
+  
+  if (cliente && window.blacklistCache && window.blacklistCache.map(n => n.toLowerCase()).includes(cliente.toLowerCase())) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Cliente Bloqueado 🚫',
+      text: `El cliente "${cliente}" se encuentra en la Lista Negra. No puedes registrarle nuevos encargos.`
+    });
+    return;
+  }
 
   btn.disabled = true;
   btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
@@ -315,6 +332,7 @@ window.save = async function () {
 
     closeModal();
     await load();
+    window.allClientsData = []; // Forzar recarga del dropdown de clientes
   } catch (err) {
     console.error(err);
     alert('Error al guardar: ' + err.message);
@@ -361,7 +379,7 @@ window.renderKanban = function () {
     return (!q || txt.includes(q)) && (!fe || i.estado === fe);
   });
 
-  const columns = ['pendiente', 'buscando', 'conseguido', 'avisado', 'entregado', 'cancelado'];
+  const columns = ['pendiente', 'buscando', 'conseguido', 'avisado', 'entregado', 'cancelado', 'quedo_mal'];
   const grouped = {};
   columns.forEach(col => grouped[col] = []);
 
@@ -499,3 +517,92 @@ window.remove = async function (id) {
 onAuthStateChanged(auth, user => {
   if (user) load();
 });
+
+// ── Dropdown de Clientes ──────────────────────────────────
+window.allClientsData = [];
+window.fetchClientsForDropdown = async function() {
+  const clientsMap = new Map();
+  // Primero procesamos encargos (que ya están en items, así que tienen contacto)
+  if (typeof items !== 'undefined' && items.length > 0) {
+    items.forEach(e => {
+      const nom = (e.cliente || '').trim();
+      if (!nom) return;
+      if (!clientsMap.has(nom.toLowerCase())) {
+        clientsMap.set(nom.toLowerCase(), {
+          nombre: nom,
+          medio: e.medio || 'whatsapp',
+          contacto: e.contacto || ''
+        });
+      }
+    });
+  }
+  // También cargamos ventas rápido para tener TODOS los clientes disponibles
+  try {
+    const vs = await getDocs(collection(db, 'ventas'));
+    vs.forEach(d => {
+      const v = d.data();
+      const nom = (v.cliente || '').trim();
+      if (!nom) return;
+      if (!clientsMap.has(nom.toLowerCase())) {
+        clientsMap.set(nom.toLowerCase(), { nombre: nom, medio: 'whatsapp', contacto: '' });
+      }
+    });
+  } catch(err) { console.error('Error fetching ventas for clients dropdown', err); }
+  
+  window.allClientsData = Array.from(clientsMap.values()).sort((a,b) => a.nombre.localeCompare(b.nombre));
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('e-cliente');
+  const dropdown = document.getElementById('e-cliente-dropdown');
+  if (!input || !dropdown) return;
+  
+  const renderList = (query) => {
+    let html = `<div style="padding:10px 12px; cursor:pointer; font-weight:bold; border-bottom:1px solid var(--border); color:var(--primary)" onmousedown="selectClientRow('', '', '')"><i class="bi bi-person-plus"></i> Nuevo Cliente${query ? ': ' + query : ''}</div>`;
+    
+    const q = query.toLowerCase();
+    const filtered = window.allClientsData.filter(c => c.nombre.toLowerCase().includes(q));
+    
+    filtered.forEach(c => {
+      html += `<div style="padding:10px 12px; cursor:pointer; border-bottom:1px solid var(--border)" onmousedown="selectClientRow('${c.nombre.replace(/'/g,"\\'").replace(/"/g,'&quot;')}', '${c.medio}', '${c.contacto}')">
+        <div style="font-weight:500">${c.nombre}</div>
+        ${c.contacto ? `<div style="font-size:11px; opacity:0.7; margin-top:2px"><i class="bi bi-telephone"></i> ${c.contacto} (${c.medio})</div>` : ''}
+      </div>`;
+    });
+    
+    dropdown.innerHTML = html;
+  };
+
+  input.addEventListener('focus', () => {
+    dropdown.style.display = 'flex';
+    if(window.allClientsData.length === 0) {
+      dropdown.innerHTML = `<div style="padding:10px 12px; font-size:12px; opacity:0.7;"><span class="spinner-border spinner-border-sm"></span> Cargando clientes...</div>`;
+      window.fetchClientsForDropdown().then(() => renderList(input.value.trim()));
+    } else {
+      renderList(input.value.trim());
+    }
+  });
+  
+  input.addEventListener('input', () => {
+    renderList(input.value.trim());
+  });
+  
+  input.addEventListener('blur', () => {
+    setTimeout(() => { dropdown.style.display = 'none'; }, 150);
+  });
+});
+
+window.selectClientRow = function(nombre, medio, contacto) {
+  const input = document.getElementById('e-cliente');
+  if (nombre === '') {
+    // Nuevo Cliente: dejamos el nombre que haya escrito y limpiamos contacto
+    document.getElementById('e-medio').value = 'whatsapp';
+    document.getElementById('e-contacto').value = '';
+  } else {
+    input.value = nombre;
+    if (medio) document.getElementById('e-medio').value = medio;
+    if (contacto) document.getElementById('e-contacto').value = contacto;
+  }
+  window.actualizarContactoPlaceholder();
+  document.getElementById('e-cliente-dropdown').style.display = 'none';
+};

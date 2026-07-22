@@ -1,4 +1,4 @@
-import { db, collection, getDocs, doc, updateDoc, writeBatch } from './firebase-config.js';
+import { db, collection, getDocs, doc, updateDoc, writeBatch, getDoc, setDoc } from './firebase-config.js';
 import { toast } from './toast.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import '../../admin/auth-guard.js';
@@ -10,13 +10,21 @@ if (window.innerWidth <= 768) {
 }
 
 let clientesData = []; // Array of { nombre, ventas: [], encargos: [] }
+window.blacklistCache = []; // To keep it globally available
 
 async function loadData() {
   try {
-    const [vs, os] = await Promise.all([
+    const [vs, os, blSnap] = await Promise.all([
       getDocs(collection(db, 'ventas')),
-      getDocs(collection(db, 'ordenes_completos'))
+      getDocs(collection(db, 'ordenes_completos')),
+      getDoc(doc(db, 'config', 'blacklist')).catch(() => null)
     ]);
+    
+    if (blSnap && blSnap.exists()) {
+      window.blacklistCache = blSnap.data().names || [];
+    } else {
+      window.blacklistCache = [];
+    }
 
     const ventas = [];
     vs.forEach(d => ventas.push({ id: d.id, ...d.data() }));
@@ -82,12 +90,15 @@ async function loadData() {
         }
       });
       
+      const isBanned = window.blacklistCache.map(n => n.toLowerCase()).includes(g.nombreOriginal.toLowerCase());
+      
       return {
         ...g,
         totalComprado,
         totalPendiente,
         pendingVentas,
-        pendingEncargos
+        pendingEncargos,
+        isBanned
       };
     });
 
@@ -219,10 +230,15 @@ window.renderClientes = () => {
     }
     
     return `
-      <div class="client-card">
+      <div class="client-card ${c.isBanned ? 'banned' : ''}">
         <div class="client-header" onclick="toggleClient(${idx})">
           <div style="display:flex;flex-direction:column;gap:4px;">
-            <h3 class="client-name"><i class="bi bi-person-circle"></i> ${c.nombreOriginal} <button class="btn-edit-client" onclick="event.stopPropagation(); renameClient('${c.nombreOriginal.replace(/'/g, "\\'")}')" title="Renombrar cliente"><i class="bi bi-pencil"></i></button></h3>
+            <h3 class="client-name">
+              <i class="bi bi-person-circle"></i> ${c.nombreOriginal} 
+              <button class="btn-edit-client" onclick="event.stopPropagation(); renameClient('${c.nombreOriginal.replace(/'/g, "\\'")}')" title="Renombrar cliente"><i class="bi bi-pencil"></i></button>
+              <button class="btn-ban-client" onclick="event.stopPropagation(); toggleBan('${c.nombreOriginal.replace(/'/g, "\\'")}')" title="${c.isBanned ? 'Desbloquear cliente' : 'Añadir a Lista Negra'}"><i class="bi bi-slash-circle"></i></button>
+              ${c.isBanned ? '<span class="badge-banned">⚠️ LISTA NEGRA</span>' : ''}
+            </h3>
             <div class="client-summary">
               ${statsHtml.join('')}
               <div class="client-stat" style="color:var(--text-faint)">Histórico: $${c.totalComprado.toLocaleString('es-MX')}</div>
@@ -281,18 +297,54 @@ window.renameClient = async (oldName) => {
 
 window.changeStatus = async (id, type, currentStatus) => {
   const options = type === 'venta' 
-    ? { 'pendiente': 'Pendiente', 'pagada': 'Pagada', 'cancelada': 'Cancelada' }
-    : { 'pendiente': 'Pendiente', 'buscando': 'Buscando', 'conseguido': 'Conseguido', 'avisado': 'Avisado', 'entregado': 'Entregado' };
-    
-  const { value: newStatus } = await Swal.fire({
+    ? [
+        { id: 'pagada', icon: '✅', label: 'Pagada', color: '#22c55e' },
+        { id: 'pendiente', icon: '⏳', label: 'Pendiente', color: '#f59e0b' },
+        { id: 'cancelada', icon: '❌', label: 'Cancelada', color: '#ef4444' },
+        { id: 'quedo_mal', icon: '👎', label: 'Quedó Mal', color: '#7f1d1d' }
+      ]
+    : [
+        { id: 'conseguido', icon: '✅', label: 'Conseguido', color: '#22c55e' },
+        { id: 'entregado', icon: '📦', label: 'Entregado', color: '#8b5cf6' },
+        { id: 'avisado', icon: '📱', label: 'Avisado', color: '#3b82f6' },
+        { id: 'buscando', icon: '🔍', label: 'Buscando', color: '#f59e0b' },
+        { id: 'pendiente', icon: '⏳', label: 'Pendiente', color: '#64748b' },
+        { id: 'cancelada', icon: '❌', label: 'Cancelada', color: '#ef4444' },
+        { id: 'quedo_mal', icon: '👎', label: 'Quedó Mal', color: '#7f1d1d' }
+      ];
+
+  const html = `
+    <style>
+      .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+      .status-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--text); cursor: pointer; transition: 0.2s; }
+      .status-btn:hover { background: rgba(255,255,255,0.05); }
+      .status-btn.active { border-color: currentColor; background: rgba(255,255,255,0.1); box-shadow: 0 0 10px currentColor; }
+      .status-icon { font-size: 24px; margin-bottom: 4px; }
+      .status-label { font-size: 13px; font-weight: 600; color: var(--text); }
+    </style>
+    <div class="status-grid">
+      ${options.map(o => `
+        <div class="status-btn ${currentStatus === o.id ? 'active' : ''}" style="border-color: ${o.color}" onclick="window.tempSelectedStatus='${o.id}'; Swal.clickConfirm();">
+          <div class="status-icon">${o.icon}</div>
+          <div class="status-label">${o.label}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  window.tempSelectedStatus = null;
+  const res = await Swal.fire({
     title: 'Cambiar Estado',
-    input: 'select',
-    inputOptions: options,
-    inputValue: currentStatus,
-    showCancelButton: true
+    html: html,
+    showConfirmButton: false,
+    showCancelButton: true,
+    cancelButtonText: 'Cancelar',
+    customClass: { popup: 'swal-wide' }
   });
   
-  if (newStatus && newStatus !== currentStatus) {
+  const newStatus = window.tempSelectedStatus;
+  
+  if (res.isConfirmed && newStatus && newStatus !== currentStatus) {
     try {
       const collectionName = type === 'venta' ? 'ventas' : 'ordenes_completos';
       await updateDoc(doc(db, collectionName, id), { estado: newStatus });
@@ -301,6 +353,45 @@ window.changeStatus = async (id, type, currentStatus) => {
     } catch (e) {
       console.error(e);
       toast('Error al cambiar estado', 'error');
+    }
+  }
+};
+
+window.toggleBan = async (clientName) => {
+  const isBanned = window.blacklistCache.map(n => n.toLowerCase()).includes(clientName.toLowerCase());
+  
+  const text = isBanned 
+    ? `¿Estás seguro de que deseas desbloquear a <b>${clientName}</b>?`
+    : `¿Estás seguro de que deseas añadir a <b>${clientName}</b> a la lista negra?<br><br><small>El sistema bloqueará cualquier intento de nueva venta o encargo para este cliente.</small>`;
+    
+  const res = await Swal.fire({
+    title: isBanned ? '🔓 Desbloquear Cliente' : '🚫 Bloquear Cliente',
+    html: text,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: isBanned ? '#22c55e' : '#ef4444',
+    confirmButtonText: isBanned ? 'Sí, desbloquear' : 'Sí, bloquear',
+    cancelButtonText: 'Cancelar'
+  });
+  
+  if (res.isConfirmed) {
+    try {
+      let newBlacklist = [...window.blacklistCache];
+      
+      if (isBanned) {
+        newBlacklist = newBlacklist.filter(n => n.toLowerCase() !== clientName.toLowerCase());
+      } else {
+        newBlacklist.push(clientName);
+      }
+      
+      await setDoc(doc(db, 'config', 'blacklist'), { names: newBlacklist }, { merge: true });
+      window.blacklistCache = newBlacklist;
+      
+      toast(isBanned ? 'Cliente desbloqueado' : 'Cliente bloqueado correctamente', 'success');
+      loadData();
+    } catch (e) {
+      console.error(e);
+      toast('Error al actualizar lista negra', 'error');
     }
   }
 };

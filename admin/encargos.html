@@ -46,6 +46,7 @@
           <option value="avisado">Avisado al cliente</option>
           <option value="entregado">Entregado</option>
           <option value="cancelado">Cancelado</option>
+          <option value="quedo_mal">Quedó mal</option>
         </select>
       </div>
       <!-- Toolbar with bulk actions and pagination -->
@@ -57,6 +58,7 @@
           <option value="conseguido">Marcar como Conseguido</option>
           <option value="avisado">Marcar como Avisado</option>
           <option value="entregado">Marcar como Entregado</option>
+          <option value="quedo_mal">Marcar como Quedó mal</option>
           <option value="cancelado">Eliminar</option>
           <option value="export">Exportar CSV</option>
         </select>
@@ -138,6 +140,13 @@
             </div>
             <div class="kanban-cards" id="k-cards-cancelado" data-status="cancelado" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
           </div>
+          <div class="kanban-col">
+            <div class="kanban-col-header" style="border-left: 3px solid #7f1d1d">
+              <span>👎 Quedó mal</span>
+              <span class="count" id="k-count-quedo_mal">0</span>
+            </div>
+            <div class="kanban-cards" id="k-cards-quedo_mal" data-status="quedo_mal" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -176,7 +185,11 @@
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Nombre del cliente *</label><input class="form-control" id="e-cliente" placeholder="Nombre completo..."></div>
+        <div class="form-group" style="position:relative;">
+          <label>Nombre del cliente *</label>
+          <input class="form-control" id="e-cliente" placeholder="Buscar o crear nuevo..." autocomplete="off">
+          <div id="e-cliente-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:9999; background:var(--bg-card); border:1px solid var(--border); border-radius:6px; margin-top:4px; max-height:200px; overflow-y:auto; box-shadow:0 8px 16px rgba(0,0,0,0.5); flex-direction:column;"></div>
+        </div>
         <div class="form-group">
           <label>Medio de contacto</label>
           <select class="form-control" id="e-medio" onchange="actualizarContactoPlaceholder()">
@@ -212,6 +225,7 @@
             <option value="avisado">📱 Avisado al cliente</option>
             <option value="entregado">📦 Entregado</option>
             <option value="cancelado">❌ Cancelado</option>
+            <option value="quedo_mal">👎 Quedó mal</option>
           </select>
         </div>
       </div>

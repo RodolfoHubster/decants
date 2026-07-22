@@ -49,6 +49,7 @@
           <option value="pagada">Pagada</option>
           <option value="pendiente">Pendiente</option>
           <option value="cancelada">Cancelada</option>
+          <option value="quedo_mal">Quedó mal</option>
         </select>
         <select class="form-control" style="max-width:150px" id="f-canal" onchange="renderTable()">
           <option value="">Todos los canales</option>
@@ -105,6 +106,10 @@
     <div class="modal-header"><h4 id="modal-title">Nueva Venta</h4><button class="btn-icon" onclick="closeModal()"><i class="bi bi-x-lg"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="v-id">
+      <div class="form-group" style="margin-bottom:16px;">
+        <label><i class="bi bi-upc-scan"></i> Escáner de Código de Barras</label>
+        <input type="text" class="form-control" id="v-barcode" placeholder="Haz clic aquí y escanea el producto..." style="border: 2px solid var(--accent); background: rgba(201,168,76,0.05); font-weight:600">
+      </div>
       <div class="form-row">
         <div class="form-group">
           <label>Perfume *</label>
@@ -153,6 +158,7 @@
             <option value="pagada">Pagada ✅</option>
             <option value="pendiente">Pendiente ⏳</option>
             <option value="cancelada">Cancelada ❌</option>
+            <option value="quedo_mal">Quedó mal 👎</option>
           </select>
         </div>
         <div class="form-group" id="v-lote-group" style="display:none">
