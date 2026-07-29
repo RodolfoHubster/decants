@@ -9,9 +9,9 @@ import { imgCard, imgModal, imgCart, imgOg } from './cloudinary.js';
 
 // ── Tipos fijos (chips del panel — mapean al campo `categoria` del perfume) ─
 const TIPOS_PERMITIDOS = [
-  { nombre: 'Diseñador', emoji: '👔' },
-  { nombre: 'Árabe',     emoji: '🕌' },
-  { nombre: 'Nicho',     emoji: '💎' },
+  { nombre: 'Diseñador', emoji: '<i class="bi bi-person-badge"></i>' },
+  { nombre: 'Árabe',     emoji: '<i class="bi bi-moon-stars"></i>' },
+  { nombre: 'Nicho',     emoji: '<i class="bi bi-gem"></i>' },
 ];
 
 // ── Auth ───────────────────────────────────────────────
@@ -69,7 +69,7 @@ window.undoDelete = () => {
   const t = document.getElementById('undo-toast');
   if (t) t.classList.remove('show');
   clearTimeout(undoTimer);
-  showToast('↩ Acción deshecha');
+  showToast('Acción deshecha');
 };
 
 // ── Helpers ───────────────────────────────────────────────
@@ -194,7 +194,7 @@ async function load() {
   renderGrid();
   if (cart.length) {
     const mins = cartExpiresInMinutes();
-    showToast(`🛒 Pedido restaurado (${cart.length} item${cart.length > 1 ? 's' : ''})${mins ? ` · expira en ${mins} min` : ''}`);
+    showToast(`Pedido restaurado (${cart.length} item${cart.length > 1 ? 's' : ''})${mins ? ` · expira en ${mins} min` : ''}`);
     updateCartBadge();
   }
 

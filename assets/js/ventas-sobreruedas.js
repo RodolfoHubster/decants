@@ -38,9 +38,10 @@ let perfumes = [];
 
 /* ─── constantes ───────────────────────────────────────────────────────────── */
 const ESTADO_OPTS = [
-  { val:'pagada',    label:'Pagada',    icon:'✅', color:'#4ade80' },
-  { val:'pendiente', label:'Pendiente', icon:'⏳', color:'#fbbf24' },
-  { val:'cancelada', label:'Cancelada', icon:'❌', color:'#f87171' },
+  { val:'pagada',    label:'Pagada',    icon:'<i class="bi bi-check-circle-fill"></i>', color:'#4ade80' },
+  { val:'pendiente', label:'Pendiente', icon:'<i class="bi bi-hourglass-split"></i>', color:'#fbbf24' },
+  { val:'cancelada', label:'Cancelada', icon:'<i class="bi bi-x-circle-fill"></i>', color:'#f87171' },
+  { val:'quedo_mal', label:'Quedó mal', icon:'<i class="bi bi-hand-thumbs-down-fill"></i>', color:'#f87171' }
 ];
 
 const TALLAS_DEFAULT = ['2','3','5','10','Resto','Completo'];
@@ -62,7 +63,7 @@ const MODAL_HTML = /* html */`
     <div style="display:flex;align-items:center;justify-content:space-between;
                 padding:16px 20px 12px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0">
       <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:20px">🛞</span>
+        <span style="font-size:22px; color:var(--accent)"><i class="bi bi-car-front-fill"></i></span>
         <div>
           <div style="font-size:15px;font-weight:700;color:#ede9e1">Registro del Día — Sobre Ruedas</div>
           <div style="font-size:11px;color:#8a8880">Ventas sobre ruedas — carga rápida</div>
@@ -318,7 +319,7 @@ function nuevaFila() {
              border-radius:8px;padding:6px 10px;color:#4ade80;font-size:12px;font-weight:600;
              font-family:'Poppins',sans-serif;cursor:pointer;white-space:nowrap;
              display:flex;align-items:center;gap:5px">
-      <span class="sr-estado-label">Pagada ✅</span>
+      <span class="sr-estado-label"><i class="bi bi-check-circle-fill"></i> Pagada</span>
       <i class="bi bi-chevron-down" style="font-size:9px"></i>
     </button>
     <input type="hidden" name="estado" value="pagada">
@@ -346,7 +347,7 @@ function nuevaFila() {
       e.preventDefault();
       const op = ESTADO_OPTS.find(o => o.val === el.dataset.val);
       estadoInput.value          = op.val;
-      estadoLabel.textContent    = op.label + ' ' + op.icon;
+      estadoLabel.innerHTML      = op.icon + ' ' + op.label;
       estadoBtn.style.color       = op.color;
       estadoBtn.style.background  = op.color + '1a';
       estadoBtn.style.borderColor = op.color + '55';
@@ -444,14 +445,14 @@ window.SRcerrar = function (e) {
 /* ─── guardar todo ────────────────────────────────────────────────────────── */
 window.SRguardar = async function () {
   const fechaVal = $('sr-fecha')?.value;
-  if (!fechaVal) { showToast('⚠️ Elige la fecha del evento', 'err'); return; }
+  if (!fechaVal) { showToast('Elige la fecha del evento', 'err'); return; }
 
   const [y, m, d] = fechaVal.split('-').map(Number);
   const fechaTS = Timestamp.fromDate(new Date(y, m - 1, d, 12, 0, 0));
   const notaDia = $('sr-nota-dia')?.value.trim() || '';
 
   const rows = $('sr-body')?.querySelectorAll('tr') ?? [];
-  if (!rows.length) { showToast('⚠️ Agrega al menos una venta', 'err'); return; }
+  if (!rows.length) { showToast('Agrega al menos una venta', 'err'); return; }
 
   const lineas = [];
   let omitidas = 0;
@@ -473,7 +474,7 @@ window.SRguardar = async function () {
   });
 
   if (lineas.length === 0) {
-    showToast('⚠️ Completa al menos una línea (perfume, cantidad, precio)', 'err');
+    showToast('Completa al menos una línea (perfume, cantidad, precio)', 'err');
     return;
   }
 
@@ -503,9 +504,9 @@ window.SRguardar = async function () {
       })
     ));
 
-    const msg = omitidas > 0
-      ? `✅ ${lineas.length} venta(s) guardadas (${omitidas} línea(s) incompletas omitidas)`
-      : `✅ ${lineas.length} venta(s) guardadas correctamente`;
+    const msg = omitidas > 0 
+      ? `${lineas.length} venta(s) guardadas (${omitidas} línea(s) incompletas omitidas)`
+      : `${lineas.length} venta(s) guardadas correctamente`;
     showToast(msg);
 
     if ($('sr-body')) $('sr-body').innerHTML = '';
@@ -515,7 +516,7 @@ window.SRguardar = async function () {
 
   } catch (err) {
     console.error(err);
-    showToast('❌ Error al guardar: ' + err.message, 'err');
+    showToast('Error al guardar: ' + err.message, 'err');
   } finally {
     if (btn) {
       btn.disabled = false;

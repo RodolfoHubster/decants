@@ -1,4 +1,4 @@
-import { db, collection, getDocs, doc, getDoc, auth, onAuthStateChanged } from './firebase-config.js';
+import { db, collection, getDocs, doc, getDoc, updateDoc, auth, onAuthStateChanged } from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 
 let ventas = [];
@@ -114,35 +114,64 @@ function renderKPIs() {
     
     ventasUnicas.add(v.id || Math.random()); // For ticket promedio
     
-    if (v.talla !== 'Completo' && v.talla !== 'Otro') {
-      let t = 0;
-      if (v.paqueteItems && v.talla.startsWith('Paquete ')) {
-        t = parseFloat(v.talla.replace('Paquete ', '')) || 0;
-      } else {
-        t = parseFloat(v.talla) || 0;
-      }
-      decants += cant;
-      ml += (t * cant);
+    if (v.talla === 'Completo') {
+      const p = perfumes.find(x => x.id === v.perfumeId);
+      if (p) costoTotalInversion += (+p.costoBotella || 0) * cant;
+    } else if (v.paqueteItems && Array.isArray(v.paqueteItems)) {
+      // Es un paquete
+      let t = parseFloat(v.talla.replace('Paquete ', '')) || 0;
+      let itemCount = v.paqueteItems.length;
       
-      // Calculate a rough cost for KPI. We know the cost of insumos:
-      costoTotalInversion += (costoInsumoUnitario * cant);
-      // For the liquid cost, we ideally need the exact lote cost. To keep it fast, we estimate it from the perfume's default cost if available.
-      const p = perfumes.find(x => x.id === v.perfumeId);
-      if (p) {
-        // Average cost per ml from first lote or general
-        let costoMl = 0;
-        if (p.lotes && p.lotes.length > 0) {
-          costoMl = (+p.lotes[0].costo || 0) / (+p.lotes[0].tamano || 1);
-        } else if (p.costoBotella && p.tamanoBotella) {
-          costoMl = (+p.costoBotella) / (+p.tamanoBotella);
-        }
-        costoTotalInversion += (costoMl * t * cant);
+      if (t > 0) {
+        decants += (itemCount * cant);
+        ml += (t * itemCount * cant);
+        
+        // Insumos: 1 bolsa por paquete, pero N botellas y N etiquetas
+        let costoInsumosPaquete = (+costosOp.bolsa || 0) + (((+costosOp.botella || 0) + (+costosOp.etiqueta || 0)) * itemCount);
+        costoTotalInversion += (costoInsumosPaquete * cant);
+        
+        // Liquid costs for each item in the package
+        v.paqueteItems.forEach(item => {
+          const p = perfumes.find(x => x.id === item.id);
+          if (p) {
+            let costoMl = 0;
+            if (p.lotes && p.lotes.length > 0) {
+              costoMl = (+p.lotes[0].costo || 0) / (+p.lotes[0].tamano || 1);
+            } else if (p.costoBotella && p.tamanoBotella) {
+              costoMl = (+p.costoBotella) / (+p.tamanoBotella);
+            }
+            costoTotalInversion += (costoMl * t * cant);
+          }
+        });
       }
-    } else if (v.talla === 'Completo') {
-      // For complete bottles, roughly cost is the bottle cost
-      const p = perfumes.find(x => x.id === v.perfumeId);
-      if (p) {
-        costoTotalInversion += (+p.costoBotella || 0) * cant;
+    } else if (v.talla !== 'Otro') {
+      // Decant normal, pero puede ser una talla personalizada ej. "15" o "Resto"
+      let t = parseFloat(v.talla);
+      if (!isNaN(t) && t > 0) {
+        decants += cant;
+        ml += (t * cant);
+        costoTotalInversion += (costoInsumoUnitario * cant);
+        
+        const p = perfumes.find(x => x.id === v.perfumeId);
+        if (p) {
+          let costoMl = 0;
+          if (p.lotes && p.lotes.length > 0) {
+            costoMl = (+p.lotes[0].costo || 0) / (+p.lotes[0].tamano || 1);
+          } else if (p.costoBotella && p.tamanoBotella) {
+            costoMl = (+p.costoBotella) / (+p.tamanoBotella);
+          }
+          costoTotalInversion += (costoMl * t * cant);
+        }
+      } else if (v.talla === 'Resto') {
+        decants += cant;
+        costoTotalInversion += (costoInsumoUnitario * cant);
+        const p = perfumes.find(x => x.id === v.perfumeId);
+        if (p) {
+          let costoResto = 0;
+          if (p.lotes && p.lotes.length > 0) costoResto = +p.lotes[0].costo || 0;
+          else costoResto = +p.costoBotella || 0;
+          costoTotalInversion += (costoResto * cant);
+        }
       }
     }
     
@@ -346,17 +375,36 @@ function renderAlertasInventario() {
   // Need to calculate total sold + total consigned (unsold)
   const pSoldsData = {};
   ventas.forEach(v => {
-    if (!pSoldsData[v.perfumeId]) pSoldsData[v.perfumeId] = { ml: 0, byLote: {} };
-    const pData = pSoldsData[v.perfumeId];
-    const lid = v.loteId || 'lote-1';
-    if (!pData.byLote[lid]) pData.byLote[lid] = { ml: 0, hasResto: false };
-    
-    if (['2','3','5','10'].includes(v.talla)) {
-      const mlVendido = parseFloat(v.talla) * (+v.cantidad || 1);
-      pData.ml += mlVendido;
-      pData.byLote[lid].ml += mlVendido;
-    } else if (v.talla === 'Resto') {
-      pData.byLote[lid].hasResto = true;
+    if (v.paqueteItems && Array.isArray(v.paqueteItems)) {
+      let t = parseFloat(v.talla.replace('Paquete ', '')) || 0;
+      if (t > 0) {
+        v.paqueteItems.forEach(item => {
+          if (!pSoldsData[item.id]) pSoldsData[item.id] = { ml: 0, byLote: {} };
+          const pData = pSoldsData[item.id];
+          const lid = item.loteId || 'lote-1';
+          if (!pData.byLote[lid]) pData.byLote[lid] = { ml: 0, hasResto: false };
+          
+          const mlVendido = t * (+v.cantidad || 1);
+          pData.ml += mlVendido;
+          pData.byLote[lid].ml += mlVendido;
+        });
+      }
+    } else {
+      if (!pSoldsData[v.perfumeId]) pSoldsData[v.perfumeId] = { ml: 0, byLote: {} };
+      const pData = pSoldsData[v.perfumeId];
+      const lid = v.loteId || 'lote-1';
+      if (!pData.byLote[lid]) pData.byLote[lid] = { ml: 0, hasResto: false };
+      
+      if (v.talla === 'Resto') {
+        pData.byLote[lid].hasResto = true;
+      } else if (v.talla !== 'Completo' && v.talla !== 'Otro') {
+        const t = parseFloat(v.talla);
+        if (!isNaN(t) && t > 0) {
+          const mlVendido = t * (+v.cantidad || 1);
+          pData.ml += mlVendido;
+          pData.byLote[lid].ml += mlVendido;
+        }
+      }
     }
   });
   
@@ -404,6 +452,10 @@ function _finishRenderAlertas(pSoldsData, container) {
          const lSoldData = data.byLote[l.id] || { ml: 0, hasResto: false };
          let lSold = lSoldData.ml;
          if (lSoldData.hasResto) lSold = lCap;
+         
+         // Include manual adjustments
+         let lAjuste = parseFloat(l.mlAjuste) || 0;
+         lSold += lAjuste;
          
          sold += lSold;
       });
@@ -514,26 +566,30 @@ function renderProfitability() {
       const isFirst = idx === 0;
       const loteHist = hist.filter(v => v.loteId === l.id || (isFirst && !v.loteId));
       
-      let totalMlVendidos = 0;
+      let totalMlVendidosVentas = 0;
       let totalDecantsVendidos = 0;
       let ingresoReal = 0;
       let restoVendido = false;
       const distribucion = { '2':0, '3':0, '5':0, '10':0 };
       
       loteHist.forEach(v => {
-        // Ignorar "Completo" y "Otro" en estas métricas
-        if (['2','3','5','10'].includes(v.talla)) {
-          const c = +v.cantidad || 1;
-          distribucion[v.talla] += c;
-          totalMlVendidos += (parseInt(v.talla) * c);
-          totalDecantsVendidos += c;
-          ingresoReal += (+v.precio || 0) * c;
-        } else if (v.talla === 'Resto') {
+        if (v.talla === 'Resto') {
           const c = +v.cantidad || 1;
           ingresoReal += (+v.precio || 0) * c;
           restoVendido = true;
+        } else if (v.talla !== 'Completo' && v.talla !== 'Otro') {
+          const t = parseFloat(v.talla);
+          if (!isNaN(t) && t > 0) {
+            const c = +v.cantidad || 1;
+            totalMlVendidosVentas += (t * c);
+            totalDecantsVendidos += c;
+            ingresoReal += (+v.precio || 0) * c;
+          }
         }
       });
+      
+      let mlAjuste = parseFloat(l.mlAjuste) || 0;
+      let totalMlVendidos = totalMlVendidosVentas + mlAjuste;
       
       const costoBotella = parseFloat(l.costo) || 0;
       const tamanoBotella = parseFloat(l.tamano) || 100;
@@ -554,19 +610,19 @@ function renderProfitability() {
       if (!restoVendido && totalMlVendidos < tamanoBotella) {
         if (totalMlVendidos > 0) {
           const factor = tamanoBotella / totalMlVendidos;
-          ['2','3','5','10'].forEach(talla => {
-            const cant = distribucion[talla] * factor;
-            totalDecantsProyectados += cant;
-            ingresoTotalProyectado += cant * (+p.precios[talla] || 0);
-          });
+          totalDecantsProyectados = totalDecantsVendidos * factor;
+          ingresoTotalProyectado = ingresoReal * factor;
         } else {
           const avgMlPerDecant = (2*0.25) + (3*0.25) + (5*0.25) + (10*0.25); // 5 ml
           totalDecantsProyectados = tamanoBotella / avgMlPerDecant;
+          let sumP = (+p.precios['2']||0) + (+p.precios['3']||0) + (+p.precios['5']||0) + (+p.precios['10']||0);
+          if (sumP === 0) sumP = avgMlPerDecant * 30; // fallback $30/ml if no prices set
+          
           ingresoTotalProyectado = totalDecantsProyectados * (
             (0.25 * (+p.precios['2'] || 0)) +
             (0.25 * (+p.precios['3'] || 0)) +
             (0.25 * (+p.precios['5'] || 0)) +
-            (0.25 * (+p.precios['10'] || 0))
+            (0.25 * (+p.precios['10'] || 0)) || sumP / 4
           );
         }
         costoTotalInsumos = totalDecantsProyectados * costoInsumoUnitario;
@@ -586,7 +642,10 @@ function renderProfitability() {
         costoInversionReal,
         ingresoReal,
         gananciaReal,
-        gananciaNetaFinal
+        gananciaNetaFinal,
+        tamanoBotella,
+        mlVendidosVentas: totalMlVendidosVentas,
+        restoVendido
       });
     });
     
@@ -706,7 +765,10 @@ function renderProfitability() {
           <tr class="lotes-row-${r.pid}" style="display:none; background:var(--bg-card2)">
             <td style="padding-left:35px; border-left:3px solid var(--accent)">↳ ${l.nombre}</td>
             <td>
-              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">${l.progresoTexto}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:flex;align-items:center;gap:8px;">
+                <span>${l.progresoTexto}</span>
+                ${!l.restoVendido ? `<button onclick="event.stopPropagation(); window.abrirModalAjuste('${r.pid}', '${l.id}', ${l.tamanoBotella}, ${l.mlVendidosVentas})" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);color:var(--accent);border-radius:5px;padding:2px 8px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><i class='bi bi-pencil-fill'></i> Ajustar</button>` : ''}
+              </div>
               <div style="height:4px;background:rgba(255,255,255,0.1);border-radius:2px;width:100%;max-width:120px;overflow:hidden">
                 <div style="height:100%;width:${l.progresoPorcentaje}%;background:${colorProgreso}"></div>
               </div>
@@ -757,3 +819,118 @@ function renderStatsPagination(totalItems, totalPages) {
   
   container.innerHTML = html;
 }
+
+// ==========================================
+// CRUD: Ajuste Manual de Líquido
+// ==========================================
+let ajusteActual = null;
+
+window.abrirModalAjuste = (pid, lid, tamano, mlVendidos) => {
+  ajusteActual = { pid, lid, tamano, mlVendidos };
+  
+  const m = document.getElementById('modal-ajuste');
+  if (!m) return;
+  
+  document.getElementById('ajuste-capacidad').textContent = tamano + ' ml';
+  document.getElementById('ajuste-vendido').textContent = mlVendidos + ' ml';
+  
+  // Buscar si ya tiene un ajuste guardado
+  const p = perfumes.find(x => x.id === pid);
+  let mlAjuste = 0;
+  if (p && p.lotes) {
+    const l = p.lotes.find(x => x.id === lid);
+    if (l && l.mlAjuste) mlAjuste = parseFloat(l.mlAjuste) || 0;
+  }
+  
+  const restanteCalculado = tamano - mlVendidos - mlAjuste;
+  document.getElementById('ajuste-calculado').textContent = Math.max(0, restanteCalculado) + ' ml';
+  
+  const inReal = document.getElementById('ajuste-real-ml');
+  inReal.value = Math.max(0, restanteCalculado);
+  
+  const preview = document.getElementById('ajuste-preview');
+  preview.innerHTML = '';
+  
+  inReal.oninput = () => {
+    const val = parseFloat(inReal.value);
+    if (isNaN(val) || val < 0 || val > tamano) {
+      preview.innerHTML = '<span style="color:#ef4444">Valor inválido</span>';
+      return;
+    }
+    const consumidoTotal = tamano - val;
+    const nuevoAjuste = consumidoTotal - mlVendidos;
+    
+    if (nuevoAjuste > 0) {
+      preview.innerHTML = `Se registrará una merma/pérdida de <strong>${nuevoAjuste} ml</strong>.`;
+    } else if (nuevoAjuste < 0) {
+      preview.innerHTML = `Se recuperarán <strong>${Math.abs(nuevoAjuste)} ml</strong> al inventario.`;
+    } else {
+      preview.innerHTML = 'Sin cambios.';
+    }
+  };
+  
+  m.classList.add('open');
+};
+
+window.guardarAjusteLiquido = async () => {
+  if (!ajusteActual) return;
+  
+  const inReal = document.getElementById('ajuste-real-ml');
+  const val = parseFloat(inReal.value);
+  if (isNaN(val) || val < 0 || val > ajusteActual.tamano) {
+    alert("Por favor ingresa un nivel de mililitros válido (entre 0 y la capacidad de la botella).");
+    return;
+  }
+  
+  const consumidoTotal = ajusteActual.tamano - val;
+  const nuevoAjuste = consumidoTotal - ajusteActual.mlVendidos;
+  
+  const btn = document.getElementById('btn-guardar-ajuste');
+  const oldText = btn.innerHTML;
+  btn.innerHTML = 'Guardando...';
+  btn.disabled = true;
+  
+  try {
+    const pRef = doc(db, 'perfumes', ajusteActual.pid);
+    const pSnap = await getDoc(pRef);
+    if (!pSnap.exists()) throw new Error("Perfume no encontrado");
+    
+    const pData = pSnap.data();
+    const lotes = pData.lotes || [];
+    const loteIndex = lotes.findIndex(x => x.id === ajusteActual.lid);
+    
+    if (loteIndex === -1) {
+      // Si no existe el array de lotes, es una botella migrada, la inicializamos
+      lotes.push({
+        id: 'lote-1',
+        fecha: pData.creadoEn || Date.now(),
+        costo: pData.costoBotella,
+        tamano: pData.tamanoBotella,
+        mlAjuste: nuevoAjuste
+      });
+    } else {
+      lotes[loteIndex].mlAjuste = nuevoAjuste;
+    }
+    
+    await updateDoc(pRef, { lotes });
+    
+    // Update local variable so we don't have to fetch everything again
+    const localP = perfumes.find(x => x.id === ajusteActual.pid);
+    if (localP) localP.lotes = lotes;
+    
+    document.getElementById('modal-ajuste').classList.remove('open');
+    
+    // Recalcular todo
+    window.renderTable();
+    if (typeof renderAlertasInventario === 'function') {
+      renderAlertasInventario();
+    }
+    
+  } catch(e) {
+    console.error(e);
+    alert("Hubo un error al guardar el ajuste.");
+  } finally {
+    btn.innerHTML = oldText;
+    btn.disabled = false;
+  }
+};

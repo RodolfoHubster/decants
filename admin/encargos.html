@@ -100,49 +100,49 @@
         <div class="kanban-board">
           <div class="kanban-col">
             <div class="kanban-col-header" style="border-left: 3px solid #fbbf24">
-              <span>⏳ Pendiente</span>
+              <span><i class="bi bi-hourglass-split"></i> Pendiente</span>
               <span class="count" id="k-count-pendiente">0</span>
             </div>
             <div class="kanban-cards" id="k-cards-pendiente" data-status="pendiente" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
           </div>
           <div class="kanban-col">
             <div class="kanban-col-header" style="border-left: 3px solid #818cf8">
-              <span>🔍 Buscando</span>
+              <span><i class="bi bi-search"></i> Buscando</span>
               <span class="count" id="k-count-buscando">0</span>
             </div>
             <div class="kanban-cards" id="k-cards-buscando" data-status="buscando" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
           </div>
           <div class="kanban-col">
             <div class="kanban-col-header" style="border-left: 3px solid #22c55e">
-              <span>✅ Conseguido</span>
+              <span><i class="bi bi-check-circle-fill"></i> Conseguido</span>
               <span class="count" id="k-count-conseguido">0</span>
             </div>
             <div class="kanban-cards" id="k-cards-conseguido" data-status="conseguido" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
           </div>
           <div class="kanban-col">
             <div class="kanban-col-header" style="border-left: 3px solid #38bdf8">
-              <span>📱 Avisado</span>
+              <span><i class="bi bi-telephone"></i> Avisado</span>
               <span class="count" id="k-count-avisado">0</span>
             </div>
             <div class="kanban-cards" id="k-cards-avisado" data-status="avisado" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
           </div>
           <div class="kanban-col">
             <div class="kanban-col-header" style="border-left: 3px solid #94a3b8">
-              <span>📦 Entregado</span>
+              <span><i class="bi bi-box-seam"></i> Entregado</span>
               <span class="count" id="k-count-entregado">0</span>
             </div>
             <div class="kanban-cards" id="k-cards-entregado" data-status="entregado" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
           </div>
           <div class="kanban-col">
             <div class="kanban-col-header" style="border-left: 3px solid #ef4444">
-              <span>❌ Cancelado</span>
+              <span><i class="bi bi-x-circle-fill"></i> Cancelado</span>
               <span class="count" id="k-count-cancelado">0</span>
             </div>
             <div class="kanban-cards" id="k-cards-cancelado" data-status="cancelado" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
           </div>
           <div class="kanban-col">
             <div class="kanban-col-header" style="border-left: 3px solid #7f1d1d">
-              <span>👎 Quedó mal</span>
+              <span><i class="bi bi-hand-thumbs-down-fill"></i> Quedó mal</span>
               <span class="count" id="k-count-quedo_mal">0</span>
             </div>
             <div class="kanban-cards" id="k-cards-quedo_mal" data-status="quedo_mal" ondragover="allowDrop(event)" ondrop="drop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
@@ -219,13 +219,13 @@
         <div class="form-group">
           <label>Estado</label>
           <select class="form-control" id="e-estado">
-            <option value="pendiente">⏳ Pendiente</option>
-            <option value="buscando">🔍 Buscando proveedor</option>
-            <option value="conseguido">✅ Conseguido</option>
-            <option value="avisado">📱 Avisado al cliente</option>
-            <option value="entregado">📦 Entregado</option>
-            <option value="cancelado">❌ Cancelado</option>
-            <option value="quedo_mal">👎 Quedó mal</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="buscando">Buscando proveedor</option>
+            <option value="conseguido">Conseguido</option>
+            <option value="avisado">Avisado al cliente</option>
+            <option value="entregado">Entregado</option>
+            <option value="cancelado">Cancelado</option>
+            <option value="quedo_mal">Quedó mal</option>
           </select>
         </div>
       </div>

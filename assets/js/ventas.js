@@ -38,15 +38,15 @@ async function loadAll() {
   ventas.sort((a,b) => (b.creadoEn||0) - (a.creadoEn||0));
 
   const comboData = [
-    ...window.paquetesData.map(pq => ({ id: pq.id, nombre: '📦 ' + pq.nombre, marca: '' })),
+    ...window.paquetesData.map(pq => ({ id: pq.id, nombre: '<i class="bi bi-box-seam" style="margin-right:4px;"></i> ' + pq.nombre, marca: '' })),
     ...perfumes.map(p => ({
       id: p.id,
-      nombre: (p.archivado ? '📦 [Archivado] ' : '') + p.nombre,
+      nombre: (p.archivado ? '<i class="bi bi-archive" style="margin-right:4px;"></i> [Archivado] ' : '') + p.nombre,
       marca: p.marca || '',
       precios: p.precios,
       lotes: p.lotes
     })),
-    { id: 'custom', nombre: '✏️ Escribir Manual / Otro', marca: '' }
+    { id: 'custom', nombre: '<i class="bi bi-pencil" style="margin-right:4px;"></i> Escribir Manual / Otro', marca: '' }
   ];
 
   if (window.buildPerfumePicker) {
@@ -83,7 +83,7 @@ async function loadAll() {
            hhmm = ' a las ' + d.toLocaleTimeString('es-MX', {hour: '2-digit', minute:'2-digit'});
         }
         
-        let notaBase = `🛒 Cliente compró ${item.nombre} de ${item.ml}ml a $${item.precio}${hhmm}`;
+        let notaBase = `Cliente compró ${item.nombre} de ${item.ml}ml a $${item.precio}${hhmm}`;
 
         const rid = ++batchRowCounter;
         const row = { 
@@ -627,7 +627,7 @@ window.exportCSV = () => {
   a.href = URL.createObjectURL(blob);
   a.download = `ventas_${document.getElementById('f-periodo').value||'total'}_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
-  toast('CSV exportado ✅', 'success');
+  toast('CSV exportado', 'success');
 };
 
 // ── Modal individual ──────────────────────────────────────────────────────────
@@ -733,8 +733,8 @@ window.editVenta = (id) => {
     const opts = Object.entries(pr).filter(([,val])=>+val>0)
       .map(([k,val]) => `<option value="${isPaquete ? 'Paquete ' : ''}${k}" data-precio="${val}">${isPaquete ? 'Paquete ' : ''}${k} ml — $${val}</option>`);
     if (!isPaquete) {
-      opts.push(`<option value="Resto" data-precio="">Resto de Botella (Usada) 🍾</option>`);
-      opts.push(`<option value="Completo" data-precio="">Botella Sellada 🍾</option>`);
+      opts.push(`<option value="Resto" data-precio="">Resto de Botella (Usada)</option>`);
+      opts.push(`<option value="Completo" data-precio="">Botella Sellada</option>`);
     }
     tallaSel.innerHTML = '<option value="">Selecciona talla</option>' + opts.join('');
     
@@ -784,7 +784,7 @@ window.save = async () => {
   if (clienteName && window.blacklistCache && window.blacklistCache.map(n => n.toLowerCase()).includes(clienteName.toLowerCase())) {
     Swal.fire({
       icon: 'error',
-      title: 'Cliente Bloqueado 🚫',
+      title: 'Cliente Bloqueado <i class="bi bi-slash-circle"></i>',
       text: `El cliente "${clienteName}" se encuentra en la Lista Negra. No puedes registrarle nuevas ventas.`
     });
     return;
@@ -873,11 +873,11 @@ window.save = async () => {
   try {
     if (editId) {
       await updateDoc(doc(db, 'ventas', editId), data);
-      toast('Venta actualizada ✅', 'success');
+      toast('Venta actualizada', 'success');
     } else {
-      data.creadoEn = Date.now();
+      data.creadoEn = serverTimestamp();
       await addDoc(collection(db, 'ventas'), data);
-      toast('Venta registrada ✅', 'success');
+      toast('Venta registrada', 'success');
     }
     
     // Check overflow
@@ -1131,7 +1131,7 @@ function buildCombobox(container, onSelect) {
     list.forEach((p, i) => {
       const li = document.createElement('li');
       li.style.cssText = 'padding:8px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);';
-      const pName = p.isPaquete ? `📦 ${p.nombre}` : p.nombre;
+      const pName = p.isPaquete ? `<i class="bi bi-box-seam"></i> ${p.nombre}` : p.nombre;
       li.innerHTML = `<span style="color:var(--text,#e0e0e0);font-size:14px;font-weight:500;">${pName}</span><br>
         <span style="color:var(--text-muted,#888);font-size:12px;">${p.marca||''}</span>`;
       li.addEventListener('mousedown', e => { e.preventDefault(); choose(p); });
@@ -1154,8 +1154,8 @@ function buildCombobox(container, onSelect) {
   }
 
   function choose(p) {
-    const pName = p && p.isPaquete ? `📦 ${p.nombre}` : (p ? p.nombre : '');
-    inp.value = p ? `${pName} · ${p.marca||''}` : '';
+    const pName = p && p.isPaquete ? `[Paquete] ${p.nombre}` : (p ? p.nombre : '');
+    inp.value = p ? `${pName} ${p.marca ? '· ' + p.marca : ''}` : '';
     closeDD();
     onSelect(p);
   }
@@ -1224,7 +1224,7 @@ const ESTADO_ITEMS = [
 function tallaItems(perfumeId) {
   if (perfumeId === 'custom') {
     return [
-      { value: 'Completo', label: 'Botella Completa 🍾', precio: '' },
+      { value: 'Completo', label: 'Botella Completa', precio: '' },
       { value: 'Otro', label: 'Otro (Manual)', precio: '' }
     ];
   }
@@ -1584,7 +1584,7 @@ window.saveDia = async () => {
       batch.set(ref, dataObj);
     });
     await batch.commit();
-    toast(`✅ ${validas.length} venta${validas.length>1?'s':''} guardada${validas.length>1?'s':''}`, 'success');
+    toast(`${validas.length} venta${validas.length>1?'s':''} guardada${validas.length>1?'s':''}`, 'success');
     
     // Check overflow for batch
     validas.forEach(r => {

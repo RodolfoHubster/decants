@@ -57,7 +57,7 @@ window.renderTable = function () {
   tbody.innerHTML = filtered.map(p => {
     const precios = buildPreciosHTML(p.precios || {});
     const dispClass = p.disponibilidad === 'en-stock' ? 'en-stock' : p.disponibilidad === 'bajo-pedido' ? 'bajo-pedido' : 'agotado';
-    const dispLabel = p.disponibilidad === 'en-stock' ? '✅ En Stock' : p.disponibilidad === 'bajo-pedido' ? '🕐 Bajo Pedido' : '❌ Agotado';
+    const dispLabel = p.disponibilidad === 'en-stock' ? '<i class="bi bi-check-circle-fill"></i> En Stock' : p.disponibilidad === 'bajo-pedido' ? '<i class="bi bi-clock"></i> Bajo Pedido' : '<i class="bi bi-x-circle-fill"></i> Agotado';
     const archiveBtn = p.activo !== false
       ? `<button class="btn btn-sm btn-outline" onclick="toggleActivo('${p.id}', false)" title="Archivar (Ocultar)"><i class="bi bi-eye-slash"></i></button>`
       : `<button class="btn btn-sm btn-outline" style="color:var(--accent)" onclick="toggleActivo('${p.id}', true)" title="Desarchivar (Mostrar)"><i class="bi bi-eye"></i></button>`;
@@ -194,7 +194,7 @@ async function uploadCloudinary(file) {
         const btn = document.getElementById('btn-ia-name');
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
         btn.disabled = true;
-        toast('🤖 Generando perfil olfativo con Inteligencia Artificial...', 'info');
+        toast('Generando perfil olfativo con Inteligencia Artificial...', 'info');
         
         try {
             const promptText = `
@@ -283,7 +283,7 @@ No incluyas markdown ni explicaciones, solo el JSON puro.
             if (aiJson.px150) document.getElementById('px150').value = aiJson.px150;
             if (aiJson.px200) document.getElementById('px200').value = aiJson.px200;
             
-            toast('✨ ¡Perfil IA completado con éxito!', 'success');
+            toast('¡Perfil IA completado con éxito!', 'success');
         } catch (e) {
             console.error('Gemini error:', e);
             toast('Error al consultar la Inteligencia Artificial: ' + e.message, 'error');
@@ -466,7 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Integración Gemini IA
             const geminiKey = localStorage.getItem('gemini_api_key');
             if (geminiKey && prodTitle) {
-                toast('🤖 Generando perfil olfativo con Inteligencia Artificial...', 'info');
+                toast('Generando perfil olfativo con Inteligencia Artificial...', 'info');
                 try {
                     const getOpts = id => {
                         const el = document.getElementById(id);
@@ -532,7 +532,7 @@ Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown ni \`\`\`) 
                         if (aiJson.px150 && !document.getElementById('px150').value) document.getElementById('px150').value = aiJson.px150;
                         if (aiJson.px200 && !document.getElementById('px200').value) document.getElementById('px200').value = aiJson.px200;
                         
-                        toast('✨ ¡Perfil IA completado con éxito!', 'success');
+                        toast('¡Perfil IA completado con éxito!', 'success');
                 } catch (e) {
                     console.error('Gemini error:', e);
                     toast('¡Datos básicos completados! (Ocurrió un error con la IA: ' + e.message + ')', 'warning');
@@ -629,7 +629,7 @@ Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown) con esta e
                     if (aiJson.px150) document.getElementById('px150').value = aiJson.px150;
                     if (aiJson.px200) document.getElementById('px200').value = aiJson.px200;
                     
-                    toast('✨ ¡Perfume identificado mágicamente por la IA!', 'success');
+                    toast('¡Perfume identificado mágicamente por la IA!', 'success');
                 }
             } catch (e) {
                 console.error('Groq fallback error:', e);

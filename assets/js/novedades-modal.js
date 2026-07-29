@@ -267,7 +267,7 @@ async function buildSlideDOM(nov) {
   if (nov.perfumeIds?.length) {
     const titleEl = document.createElement('div');
     titleEl.className = 'nov-perfs-title';
-    titleEl.textContent = '✨ Perfumes destacados';
+    titleEl.innerHTML = '<i class="bi bi-stars"></i> Perfumes destacados';
     slide.appendChild(titleEl);
 
     const grid = document.createElement('div');
@@ -322,7 +322,7 @@ function buildDOM() {
     <div id="nov-box">
       <div class="nov-header">
         <div class="nov-header-left">
-          <span class="nov-badge">🆕 Novedad</span>
+          <span class="nov-badge"><i class="bi bi-asterisk"></i> Novedad</span>
           <div class="nov-titulo" id="nov-titulo"></div>
         </div>
         <button class="nov-close" id="nov-close-btn" aria-label="Cerrar">
@@ -346,7 +346,7 @@ function buildDOM() {
       </div>
 
       <div class="nov-footer">
-        <button class="nov-btn-close-all" id="nov-btn-close-all">Entendido 👍</button>
+        <button class="nov-btn-close-all" id="nov-btn-close-all">Entendido</button>
       </div>
     </div>
   `;
@@ -356,7 +356,7 @@ function buildDOM() {
   fab.id = 'nov-fab';
   fab.title = 'Ver novedades';
   fab.setAttribute('aria-label', 'Ver novedades');
-  fab.innerHTML = '🆕';
+  fab.innerHTML = '<i class="bi bi-asterisk"></i>';
   document.body.appendChild(fab);
 
   return { overlay, fab };

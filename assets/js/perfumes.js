@@ -233,11 +233,11 @@ window.renderTable = () => {
       else if (p.activo === false) estadoBadge = '<span class="badge badge-warning" style="margin-left:6px;color:#000">Oculto</span>';
       
       let stockBadge = '';
-      if (p.estadoStock === 'por_acabarse') stockBadge = '<span class="badge badge-warning" style="margin-left:6px;color:#000">🟡 Por acabarse</span>';
-      else if (p.estadoStock === 'agotado') stockBadge = '<span class="badge badge-danger" style="margin-left:6px">🔴 Agotado</span>';
+      if (p.estadoStock === 'por_acabarse') stockBadge = '<span class="badge badge-warning" style="margin-left:6px;color:#000"><i class="bi bi-circle-fill" style="font-size:10px;margin-right:2px"></i> Por acabarse</span>';
+      else if (p.estadoStock === 'agotado') stockBadge = '<span class="badge badge-danger" style="margin-left:6px"><i class="bi bi-circle-fill" style="font-size:10px;margin-right:2px"></i> Agotado</span>';
 
       const novedadBadge = p.novedad
-        ? '<span class="badge badge-info" style="margin-left:6px">✨ Novedad</span>' : '';
+        ? '<span class="badge badge-info" style="margin-left:6px"><i class="bi bi-stars"></i> Novedad</span>' : '';
       const clicks = p.clicks > 0
         ? `<span class="clicks-badge"><i class="bi bi-eye"></i> ${p.clicks}</span>`
         : `<span class="clicks-zero">&#8212;</span>`;
@@ -282,7 +282,7 @@ window.renderTable = () => {
         return `<div class="pcard" onclick="openPosItemModal('${p.id}')">
           ${imgHTML}
           <div class="pcard-body">
-            <div class="pcard-title">${p.isPaquete ? '📦 ' + p.nombre : p.nombre}</div>
+            <div class="pcard-title">${p.isPaquete ? '<i class="bi bi-box-seam"></i> ' + p.nombre : p.nombre}</div>
             <div class="pcard-sub">${p.isPaquete ? 'Combos Fitoscents' : (p.marca || '—')}</div>
           </div>
         </div>`;
@@ -431,19 +431,23 @@ window.copyPosPrices = () => {
     if (p) isPaquete = true;
   }
   if (!p) return;
-
-  let text = `✨ *${p.nombre}*${p.marca ? ' - ' + p.marca : ''}\n\n`;
-  const pr = p.precios || {};
-  const sizes = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
+  let text = `*${p.nombre}*\n`;
+  if (!isPaquete) text += `${p.marca}\n\n`;
   
-  if (sizes.length === 0) {
-    text += 'Sin presentaciones disponibles.';
+  if (isPaquete) {
+    const pr = p.precios || {};
+    const available = Object.entries(pr).filter(([k,v]) => v > 0).sort((a,b)=>a[0]-b[0]);
+    available.forEach(([ml, price]) => {
+      text += `Paquete ${ml}ml — $${price} MXN\n`;
+    });
   } else {
-    sizes.forEach(([ml, price]) => {
-      text += `💧 ${ml}ml — $${price} MXN\n`;
+    const pr = p.precios || {};
+    const available = Object.entries(pr).filter(([k,v]) => v > 0).sort((a,b)=>a[0]-b[0]);
+    available.forEach(([ml, price]) => {
+      text += `${ml}ml — $${price} MXN\n`;
     });
   }
-  text += `\n📦 *Decants 100% Originales*`;
+  text += `\n*Decants 100% Originales*`;
   
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('btn-copy-pos');
@@ -560,7 +564,7 @@ window.copiarLista = (id) => {
   if (!lineas.length) { toast('Este perfume no tiene precios configurados', 'error'); return; }
   const texto = `${p.nombre}\n${lineas.join(' | ')}`;
   navigator.clipboard.writeText(texto)
-    .then(() => toast('Lista copiada al portapapeles ✅', 'success'))
+    .then(() => toast('Lista copiada al portapapeles', 'success'))
     .catch(() => toast('No se pudo copiar', 'error'));
 };
 
@@ -740,7 +744,7 @@ window.edit = (id) => {
         const btn = document.getElementById('btn-ia-name');
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
         btn.disabled = true;
-        toast('🤖 Generando perfil olfativo con Inteligencia Artificial...', 'info');
+        toast('Generando perfil olfativo con Inteligencia Artificial...', 'info');
         
         try {
             const getOpts = id => {
@@ -846,7 +850,7 @@ No incluyas markdown ni explicaciones, solo el JSON puro.
             if (aiJson.px5 && !document.getElementById('px5').value) document.getElementById('px5').value = aiJson.px5;
             if (aiJson.px10 && !document.getElementById('px10').value) document.getElementById('px10').value = aiJson.px10;
             
-            toast('✨ ¡Perfil IA completado con éxito!', 'success');
+            toast('¡Perfil IA completado con éxito!', 'success');
         } catch (e) {
             console.error('Gemini error:', e);
             toast('Error al consultar la Inteligencia Artificial: ' + e.message, 'error');
@@ -910,7 +914,7 @@ window.save = async () => {
     } else {
       await addDoc(collection(db, 'perfumes'), { ...data, clicks: 0, creadoEn: Date.now() });
     }
-    toast(id ? 'Perfume actualizado ✅' : 'Perfume creado ✅', 'success');
+    toast(id ? 'Perfume actualizado' : 'Perfume creado', 'success');
     closeModal();
     loadAll();
   } catch (e) {
@@ -1016,7 +1020,7 @@ window.openPackageSelectionModal = (p, onComplete, selectedMl = null) => {
   overlay.innerHTML = `
     <div class="modal-box" style="max-width:400px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px">
       <div class="modal-header">
-        <h3 style="margin:0;font-size:16px;color:var(--gold)">📦 ${p.nombre}</h3>
+        <h3 style="margin:0;font-size:16px;color:var(--gold)"><i class="bi bi-box-seam"></i> ${p.nombre}</h3>
         <button class="btn-icon close-pkg-modal"><i class="bi bi-x-lg"></i></button>
       </div>
       <div class="modal-body">
@@ -1120,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Integración Gemini IA
             const geminiKey = localStorage.getItem('gemini_api_key');
             if (geminiKey && prodTitle) {
-                toast('🤖 Generando perfil olfativo con Inteligencia Artificial...', 'info');
+                toast('Generando perfil olfativo con Inteligencia Artificial...', 'info');
                 try {
                     const getOpts = id => {
                         const el = document.getElementById(id);
@@ -1136,7 +1140,10 @@ Elige la mejor opción de estas listas exactas (responde con el texto exacto, o 
 - Tipo: [${getOpts('p-tipo')}]
 - Género: [Caballero, Dama, Unisex]
 
-Sugiéreme precios en MXN para decants (2ml, 3ml, 5ml, 10ml) considerando su valor real de mercado.
+Sugiéreme precios en MXN competitivos y exactos para decants. Como guía (ajusta según la marca y tipo):
+- Diseñador: 2ml: 70-90, 3ml: 90-130, 5ml: 140-190, 10ml: 240-330
+- Nicho: 2ml: 140-200, 3ml: 190-280, 5ml: 300-450, 10ml: 550-850
+- Árabe: 2ml: 40-60, 3ml: 60-80, 5ml: 90-130, 10ml: 160-220
 Para la descripción ("desc"), redacta una reseña detallada, poética y persuasiva (de 3 a 4 oraciones). Habla de su apertura, desarrollo, fijación y ocasiones de uso, usando un tono de marketing elegante.
 
 Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown ni \`\`\`) con esta estructura exacta:
@@ -1186,7 +1193,7 @@ Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown ni \`\`\`) 
                         if (aiJson.px5 && !document.getElementById('px5').value) document.getElementById('px5').value = aiJson.px5;
                         if (aiJson.px10 && !document.getElementById('px10').value) document.getElementById('px10').value = aiJson.px10;
                         
-                        toast('✨ ¡Perfil IA completado con éxito!', 'success');
+                        toast('¡Perfil IA completado con éxito!', 'success');
                 } catch (e) {
                     console.error('Gemini error:', e);
                     toast('¡Datos básicos completados! (Ocurrió un error con la IA: ' + e.message + ')', 'warning');
@@ -1216,10 +1223,10 @@ Si lo reconoces, elige la mejor opción de estas listas exactas para clasificarl
 - Tipo: [${getOpts('p-tipo')}]
 - Género: [Caballero, Dama, Unisex]
 
-Sugiéreme precios en MXN competitivos y realistas para decants. Como guía (ajusta según la marca y tipo):
-- Diseñador (ej. Versace): 2ml: 80-120, 3ml: 120-170, 5ml: 180-260, 10ml: 320-450
-- Nicho (ej. Creed): 2ml: 180-280, 3ml: 250-380, 5ml: 400-600, 10ml: 750-1200
-- Árabe (ej. Lattafa): 2ml: 50-90, 3ml: 70-110, 5ml: 110-170, 10ml: 200-300
+Sugiéreme precios en MXN competitivos y exactos para decants. Como guía (ajusta según la marca y tipo):
+- Diseñador (ej. Versace): 2ml: 70-90, 3ml: 90-130, 5ml: 140-190, 10ml: 240-330
+- Nicho (ej. Creed): 2ml: 140-200, 3ml: 190-280, 5ml: 300-450, 10ml: 550-850
+- Árabe (ej. Lattafa): 2ml: 40-60, 3ml: 60-80, 5ml: 90-130, 10ml: 160-220
 Para la descripción ("desc"), redacta una reseña detallada, poética y persuasiva (de 3 a 4 oraciones). Habla de su apertura, desarrollo, fijación y ocasiones de uso, usando un tono de marketing elegante.
 
 Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown) con esta estructura exacta:

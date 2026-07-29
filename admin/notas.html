@@ -47,7 +47,7 @@
           <table>
             <thead>
               <tr>
-                <th style="width:48px">Emoji</th>
+                <th style="width:48px">Icono</th>
                 <th>Nombre</th>
                 <th>Descripción</th>
                 <th>Acciones</th>
@@ -74,12 +74,12 @@
 
       <div class="form-row" style="align-items:flex-end;gap:12px">
         <div class="form-group" style="flex:0 0 72px">
-          <label>Emoji</label>
-          <input class="form-control" id="n-emoji" placeholder="🌸" maxlength="4"
-            style="font-size:22px;text-align:center;padding:6px 4px"
-            oninput="document.getElementById('emoji-live').textContent=this.value||'?'">
+          <label>Icono (clase Bootstrap)</label>
+          <input class="form-control" id="n-emoji" placeholder="bi bi-star" maxlength="30"
+            style="text-align:center;font-size:16px"
+            oninput="document.getElementById('emoji-live-icon').className=this.value||'bi bi-question-circle'">
         </div>
-        <div style="font-size:36px;padding-bottom:6px" id="emoji-live">?</div>
+        <div style="font-size:36px;padding-bottom:6px" id="emoji-live"><i id="emoji-live-icon" class="bi bi-question-circle"></i></div>
         <div class="form-group" style="flex:1">
           <label>Nombre *</label>
           <input class="form-control" id="n-nombre" placeholder="Floral, Oriental, Amaderado...">

@@ -28,7 +28,7 @@
         <div>
           <label class="form-label" style="font-size:13px;font-weight:600;margin-bottom:6px;display:block">Texto del anuncio</label>
           <input class="form-control" id="an-texto"
-            placeholder="Ej: ✨ ¡Nuevo! Baccarat Rouge 540 ya disponible — consúltanos"
+            placeholder="Ej: ¡Nuevo! Baccarat Rouge 540 ya disponible — consúltanos"
             style="max-width:600px">
           <p class="hint" style="margin-top:5px">Máx. 120 caracteres. Usa emojis para darle vida.</p>
         </div>
@@ -116,7 +116,7 @@ window.guardar = async () => {
   btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
   try {
     await setDoc(REF, { texto, activo, updatedAt: Date.now() });
-    toast('Anuncio guardado ✅', 'success');
+    toast('Anuncio guardado', 'success');
     syncUI();
   } catch(e) {
     console.error(e);

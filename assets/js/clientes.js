@@ -237,7 +237,7 @@ window.renderClientes = () => {
               <i class="bi bi-person-circle"></i> ${c.nombreOriginal} 
               <button class="btn-edit-client" onclick="event.stopPropagation(); renameClient('${c.nombreOriginal.replace(/'/g, "\\'")}')" title="Renombrar cliente"><i class="bi bi-pencil"></i></button>
               <button class="btn-ban-client" onclick="event.stopPropagation(); toggleBan('${c.nombreOriginal.replace(/'/g, "\\'")}')" title="${c.isBanned ? 'Desbloquear cliente' : 'Añadir a Lista Negra'}"><i class="bi bi-slash-circle"></i></button>
-              ${c.isBanned ? '<span class="badge-banned">⚠️ LISTA NEGRA</span>' : ''}
+              ${c.isBanned ? '<span class="badge-banned"><i class="bi bi-exclamation-triangle-fill"></i> LISTA NEGRA</span>' : ''}
             </h3>
             <div class="client-summary">
               ${statsHtml.join('')}
@@ -296,22 +296,27 @@ window.renameClient = async (oldName) => {
 };
 
 window.changeStatus = async (id, type, currentStatus) => {
-  const options = type === 'venta' 
-    ? [
-        { id: 'pagada', icon: '✅', label: 'Pagada', color: '#22c55e' },
-        { id: 'pendiente', icon: '⏳', label: 'Pendiente', color: '#f59e0b' },
-        { id: 'cancelada', icon: '❌', label: 'Cancelada', color: '#ef4444' },
-        { id: 'quedo_mal', icon: '👎', label: 'Quedó Mal', color: '#7f1d1d' }
-      ]
-    : [
-        { id: 'conseguido', icon: '✅', label: 'Conseguido', color: '#22c55e' },
-        { id: 'entregado', icon: '📦', label: 'Entregado', color: '#8b5cf6' },
-        { id: 'avisado', icon: '📱', label: 'Avisado', color: '#3b82f6' },
-        { id: 'buscando', icon: '🔍', label: 'Buscando', color: '#f59e0b' },
-        { id: 'pendiente', icon: '⏳', label: 'Pendiente', color: '#64748b' },
-        { id: 'cancelada', icon: '❌', label: 'Cancelada', color: '#ef4444' },
-        { id: 'quedo_mal', icon: '👎', label: 'Quedó Mal', color: '#7f1d1d' }
-      ];
+  const getOptions = (tipo) => {
+      if (tipo === 'venta') {
+        return [
+        { id: 'pagada', icon: '<i class="bi bi-check-circle-fill"></i>', label: 'Pagada', color: '#22c55e' },
+        { id: 'pendiente', icon: '<i class="bi bi-hourglass-split"></i>', label: 'Pendiente', color: '#f59e0b' },
+        { id: 'cancelada', icon: '<i class="bi bi-x-circle-fill"></i>', label: 'Cancelada', color: '#ef4444' },
+        { id: 'quedo_mal', icon: '<i class="bi bi-hand-thumbs-down-fill"></i>', label: 'Quedó Mal', color: '#7f1d1d' }
+        ];
+      } else {
+        return [
+        { id: 'conseguido', icon: '<i class="bi bi-check-circle-fill"></i>', label: 'Conseguido', color: '#22c55e' },
+        { id: 'entregado', icon: '<i class="bi bi-box-seam"></i>', label: 'Entregado', color: '#8b5cf6' },
+        { id: 'avisado', icon: '<i class="bi bi-telephone"></i>', label: 'Avisado', color: '#3b82f6' },
+        { id: 'buscando', icon: '<i class="bi bi-search"></i>', label: 'Buscando', color: '#f59e0b' },
+        { id: 'pendiente', icon: '<i class="bi bi-hourglass-split"></i>', label: 'Pendiente', color: '#64748b' },
+        { id: 'cancelada', icon: '<i class="bi bi-x-circle-fill"></i>', label: 'Cancelada', color: '#ef4444' },
+        { id: 'quedo_mal', icon: '<i class="bi bi-hand-thumbs-down-fill"></i>', label: 'Quedó Mal', color: '#7f1d1d' }
+        ];
+      }
+  };
+  const options = getOptions(type);
 
   const html = `
     <style>
@@ -365,7 +370,7 @@ window.toggleBan = async (clientName) => {
     : `¿Estás seguro de que deseas añadir a <b>${clientName}</b> a la lista negra?<br><br><small>El sistema bloqueará cualquier intento de nueva venta o encargo para este cliente.</small>`;
     
   const res = await Swal.fire({
-    title: isBanned ? '🔓 Desbloquear Cliente' : '🚫 Bloquear Cliente',
+    title: isBanned ? '<i class="bi bi-unlock"></i> Desbloquear Cliente' : '<i class="bi bi-slash-circle"></i> Bloquear Cliente',
     html: text,
     icon: 'warning',
     showCancelButton: true,

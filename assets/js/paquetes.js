@@ -390,7 +390,7 @@ window.save = async () => {
       await addDoc(collection(db, 'paquetes'), { ...data, clicks: 0, creadoEn: Date.now() });
     }
     
-    toast(id ? 'Paquete actualizado ✅' : 'Paquete creado ✅', 'success');
+    toast(id ? 'Paquete actualizado' : 'Paquete creado', 'success');
     closeModal();
     loadAll();
   } catch (e) {

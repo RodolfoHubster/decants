@@ -30,10 +30,10 @@
     <div class="page-body">
 
       <div class="kpi-row">
-        <div class="kpi-card"><div class="kpi-label">💰 Total vendido</div><div class="kpi-value" id="k-total">$0</div><div class="kpi-sub" id="kpi-periodo-label">todas las ventas</div></div>
-        <div class="kpi-card"><div class="kpi-label">📦 Decants vendidos</div><div class="kpi-value" id="k-cant">0</div><div class="kpi-sub">unidades</div></div>
-        <div class="kpi-card"><div class="kpi-label">✅ Pagadas</div><div class="kpi-value" id="k-pagadas">0</div><div class="kpi-sub">cobradas</div></div>
-        <div class="kpi-card"><div class="kpi-label">⏳ Pendientes</div><div class="kpi-value" id="k-pend">0</div><div class="kpi-sub">por cobrar</div></div>
+        <div class="kpi-card"><div class="kpi-label"><i class="bi bi-cash-coin" style="color:var(--primary); margin-right:4px;"></i> Total vendido</div><div class="kpi-value" id="k-total">$0</div><div class="kpi-sub" id="kpi-periodo-label">todas las ventas</div></div>
+        <div class="kpi-card"><div class="kpi-label"><i class="bi bi-box-seam" style="color:var(--primary); margin-right:4px;"></i> Decants vendidos</div><div class="kpi-value" id="k-cant">0</div><div class="kpi-sub">unidades</div></div>
+        <div class="kpi-card"><div class="kpi-label"><i class="bi bi-check-circle-fill" style="color:var(--success, #22c55e); margin-right:4px;"></i> Pagadas</div><div class="kpi-value" id="k-pagadas">0</div><div class="kpi-sub">cobradas</div></div>
+        <div class="kpi-card"><div class="kpi-label"><i class="bi bi-hourglass-split" style="color:var(--warning, #eab308); margin-right:4px;"></i> Pendientes</div><div class="kpi-value" id="k-pend">0</div><div class="kpi-sub">por cobrar</div></div>
       </div>
 
       <div class="filter-bar">
@@ -155,10 +155,10 @@
         <div class="form-group">
           <label>Estado *</label>
           <select class="form-control" id="v-estado">
-            <option value="pagada">Pagada ✅</option>
-            <option value="pendiente">Pendiente ⏳</option>
-            <option value="cancelada">Cancelada ❌</option>
-            <option value="quedo_mal">Quedó mal 👎</option>
+            <option value="pagada">Pagada</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="cancelada">Cancelada</option>
+            <option value="quedo_mal">Quedó mal</option>
           </select>
         </div>
         <div class="form-group" id="v-lote-group" style="display:none">
@@ -187,9 +187,9 @@
       <div class="form-group">
         <label>Nuevo estado</label>
         <select class="form-control" id="es-valor">
-          <option value="pagada">Pagada ✅</option>
-          <option value="pendiente">Pendiente ⏳</option>
-          <option value="cancelada">Cancelada ❌</option>
+          <option value="pagada">Pagada</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="cancelada">Cancelada</option>
         </select>
       </div>
     </div>
@@ -216,8 +216,8 @@
         <input type="date" id="dia-fecha">
         <div class="dia-canal-wrap" style="flex:0.5;min-width:130px;">
           <select id="dia-canal" style="width:100%;height:100%;border:none;background:rgba(255,255,255,0.05);color:var(--text);border-radius:6px;padding:0 8px;font-size:14px;outline:none">
-            <option value="mercado">⛺ Sobre Ruedas</option>
-            <option value="otro">🏢 Venta General (Fuera)</option>
+            <option value="mercado">Sobre Ruedas</option>
+            <option value="otro">Venta General (Fuera)</option>
           </select>
         </div>
         <div class="dia-lugar-wrap" style="flex:0.5;min-width:140px;">

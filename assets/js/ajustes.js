@@ -49,7 +49,7 @@ window.saveKey = () => {
   localStorage.setItem('gemini_api_key', input);
   document.getElementById('btn-delete').style.display = 'inline-flex';
   document.getElementById('btn-test').style.display = 'inline-flex';
-  toast('✅ API Key guardada de forma segura', 'success');
+  toast('API Key guardada de forma segura', 'success');
 };
 
 window.deleteKey = () => {
@@ -58,7 +58,7 @@ window.deleteKey = () => {
     document.getElementById('gemini-key').value = '';
     document.getElementById('btn-delete').style.display = 'none';
     document.getElementById('btn-test').style.display = 'none';
-    toast('🗑️ API Key eliminada', 'info');
+    toast('API Key eliminada', 'info');
   }
 };
 
@@ -89,7 +89,7 @@ window.testKey = async () => {
     if (data.error) {
       alert('Error de API:\\n' + data.error.message);
     } else if (data.choices && data.choices.length > 0) {
-      alert('✅ ¡Conexión exitosa! La Inteligencia Artificial respondió:\\n"' + data.choices[0].message.content + '"');
+      alert('¡Conexión exitosa! La Inteligencia Artificial respondió:\\n"' + data.choices[0].message.content + '"');
     } else {
       alert('Respuesta desconocida de la API:\\n' + JSON.stringify(data));
     }

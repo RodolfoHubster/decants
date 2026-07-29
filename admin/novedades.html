@@ -24,7 +24,7 @@
       <span>Dashboard</span>
     </a>
     <div>
-      <div class="page-title">🆕 Novedades</div>
+      <div class="page-title"><i class="bi bi-asterisk"></i> Novedades</div>
       <div class="page-sub">Gestiona el modal de novedades del catálogo</div>
     </div>
   </div>
@@ -189,7 +189,7 @@ window.guardarNovedad = async () => {
   const duracion = parseInt(document.getElementById('n-duracion').value) || 0;
   const activo   = document.getElementById('n-activo').checked;
 
-  if (!titulo) { toast('⚠️ El título es requerido'); return; }
+  if (!titulo) { toast('El título es requerido'); return; }
 
   const btn = document.getElementById('btn-guardar');
   btn.disabled = true;
@@ -203,16 +203,16 @@ window.guardarNovedad = async () => {
 
     if (editingId) {
       await updateDoc(doc(db, 'novedades', editingId), data);
-      toast('✅ Novedad actualizada');
+      toast('Novedad actualizada');
     } else {
       data.creadoEn = serverTimestamp();
       await addDoc(collection(db, 'novedades'), data);
-      toast('✅ Novedad creada');
+      toast('Novedad creada');
     }
     resetForm();
     await loadNovedades();
   } catch (e) {
-    toast('❌ Error: ' + e.message);
+    toast('Error: ' + e.message);
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="bi bi-check-lg"></i> Guardar novedad';
@@ -270,9 +270,9 @@ async function loadNovedades() {
             <div class="nov-item-titulo">${n.titulo}</div>
             <div class="nov-item-meta">
               ${tagHtml}
-              ${fechaStr ? `<span style="font-size:11px;color:var(--muted)">📅 ${fechaStr}</span>` : ''}
-              ${n.duracionDias > 0 ? `<span style="font-size:11px;color:var(--muted)">⏱ ${n.duracionDias} día${n.duracionDias!==1?'s':''}</span>` : '<span style="font-size:11px;color:var(--muted)">Sin límite</span>'}
-              ${n.perfumeIds?.length ? `<span style="font-size:11px;color:var(--muted)">💧 ${n.perfumeIds.length} perfume${n.perfumeIds.length!==1?'s':''}</span>` : ''}
+              ${fechaStr ? `<span style="font-size:11px;color:var(--muted)"><i class="bi bi-calendar"></i> ${fechaStr}</span>` : ''}
+              ${n.duracionDias > 0 ? `<span style="font-size:11px;color:var(--muted)"><i class="bi bi-stopwatch"></i> ${n.duracionDias} día${n.duracionDias!==1?'s':''}</span>` : '<span style="font-size:11px;color:var(--muted)">Sin límite</span>'}
+              ${n.perfumeIds?.length ? `<span style="font-size:11px;color:var(--muted)"><i class="bi bi-droplet"></i> ${n.perfumeIds.length} perfume${n.perfumeIds.length!==1?'s':''}</span>` : ''}
             </div>
           </div>
         </div>
@@ -291,14 +291,14 @@ async function loadNovedades() {
 
 window.toggleActivo = async (id, activo) => {
   await updateDoc(doc(db, 'novedades', id), { activo });
-  toast(activo ? '✅ Novedad activada' : '⭕ Novedad desactivada');
+  toast(activo ? 'Novedad activada' : 'Novedad desactivada');
   loadNovedades();
 };
 
 window.eliminarNovedad = async id => {
   if (!confirm('¿Eliminar esta novedad?')) return;
   await deleteDoc(doc(db, 'novedades', id));
-  toast('🗑️ Novedad eliminada');
+  toast('Novedad eliminada');
   loadNovedades();
 };
 

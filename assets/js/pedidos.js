@@ -121,7 +121,7 @@ window.guardarTracking = async () => {
   const p   = pedidos.find(x => x.id === id);
   const historial = [...(p?.historial || []), { accion: `Guia de rastreo: ${num || '(eliminada)'}`, fecha: Date.now() }];
   await updateDoc(doc(db, 'pedidos', id), { tracking: num, historial });
-  toast('Guia actualizada ✅', 'success');
+  toast('Guia actualizada', 'success');
   closeTracking();
   loadAll();
 };
@@ -137,7 +137,7 @@ window.cambiarEstado = async (id, estado) => {
   if (estado === 'entregado' && p) {
     try {
       await generarVentasDesdePedido({ ...p, estado: 'entregado' });
-      toast('Pedido entregado — ventas registradas automaticamente ✅', 'success');
+      toast('Pedido entregado — ventas registradas automaticamente', 'success');
     } catch (e) {
       toast('Estado actualizado pero error al generar ventas: ' + e.message, 'error');
     }
@@ -241,7 +241,7 @@ window.save = async () => {
       historial: [{ accion: 'Pedido creado', fecha: Date.now() }]
     };
     await addDoc(collection(db, 'pedidos'), data);
-    toast('Pedido creado ✅', 'success');
+    toast('Pedido creado', 'success');
     closeModal();
     loadAll();
   } catch (e) {

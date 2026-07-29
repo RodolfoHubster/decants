@@ -58,7 +58,7 @@ function renderTable() {
 
   tbody.innerHTML = lista.map((item, idx) => `
     <tr>
-      <td style="font-size:22px;text-align:center;width:48px">${item.emoji || '—'}</td>
+      <td style="font-size:22px;text-align:center;width:48px"><i class="${item.emoji || 'bi bi-dash'}"></i></td>
       <td><strong>${item.nombre}</strong></td>
       <td style="color:var(--text-muted);font-size:13px">${item.descripcion || '—'}</td>
       <td><div style="display:flex;gap:6px">
@@ -78,6 +78,7 @@ window.openModal = (id = null) => {
   document.getElementById('n-nombre').value      = item?.nombre      || '';
   document.getElementById('n-emoji').value       = item?.emoji       || '';
   document.getElementById('n-descripcion').value = item?.descripcion || '';
+  document.getElementById('emoji-live-icon').className = item?.emoji || 'bi bi-question-circle';
   document.getElementById('modal-title').textContent = item
     ? `Editar ${activeTab === 'familias' ? 'familia olfativa' : 'tipo'}`
     : `Nueva ${activeTab === 'familias' ? 'familia olfativa' : 'tipo'}`;
@@ -104,11 +105,11 @@ window.save = async () => {
     const data = { nombre, emoji, descripcion: desc };
     if (id) {
       await updateDoc(doc(db, colName, id), data);
-      toast(`${activeTab === 'familias' ? 'Familia' : 'Tipo'} actualizado ✅`, 'success');
+      toast(`${activeTab === 'familias' ? 'Familia' : 'Tipo'} actualizado`, 'success');
     } else {
       const lista = activeTab === 'familias' ? familias : tipos;
       await addDoc(collection(db, colName), { ...data, orden: lista.length });
-      toast(`${activeTab === 'familias' ? 'Familia' : 'Tipo'} creado ✅`, 'success');
+      toast(`${activeTab === 'familias' ? 'Familia' : 'Tipo'} creado`, 'success');
     }
     closeModal();
     loadAll();

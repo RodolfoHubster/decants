@@ -125,13 +125,13 @@ window.renderTable = function () {
       <td>${precioStr}${restanStr}</td>
       <td>
         <select class="estado-badge estado-${e.estado} estado-select" onchange='changeEstado(${JSON.stringify(e.id)}, this.value)'>
-          <option value="pendiente"  ${e.estado==='pendiente'  ?'selected':''}>⏳ Pendiente</option>
-          <option value="buscando"   ${e.estado==='buscando'   ?'selected':''}>🔍 Buscando</option>
-          <option value="conseguido" ${e.estado==='conseguido' ?'selected':''}>✅ Conseguido</option>
-          <option value="avisado"    ${e.estado==='avisado'    ?'selected':''}>📱 Avisado</option>
-          <option value="entregado"  ${e.estado==='entregado'  ?'selected':''}>📦 Entregado</option>
-          <option value="cancelado"  ${e.estado==='cancelado'  ?'selected':''}>❌ Cancelado</option>
-          <option value="quedo_mal"  ${e.estado==='quedo_mal'  ?'selected':''}>👎 Quedó mal</option>
+          <option value="pendiente"  ${e.estado==='pendiente'  ?'selected':''}>Pendiente</option>
+          <option value="buscando"   ${e.estado==='buscando'   ?'selected':''}>Buscando</option>
+          <option value="conseguido" ${e.estado==='conseguido' ?'selected':''}>Conseguido</option>
+          <option value="avisado"    ${e.estado==='avisado'    ?'selected':''}>Avisado</option>
+          <option value="entregado"  ${e.estado==='entregado'  ?'selected':''}>Entregado</option>
+          <option value="cancelado"  ${e.estado==='cancelado'  ?'selected':''}>Cancelado</option>
+          <option value="quedo_mal"  ${e.estado==='quedo_mal'  ?'selected':''}>Quedó mal</option>
         </select>
       </td>
       <td style="font-size:12px">${fecha}</td>
@@ -220,11 +220,11 @@ document.addEventListener('change', function (e) {
 // ── WhatsApp ──────────────────────────────────────────────
 window.sendWA = function (e) {
   const msg = encodeURIComponent(
-    `¡Hola ${e.cliente}! 👋\n` +
-    `Te avisamos que ya conseguimos tu pedido:\n` +
-    `🌿 *${e.perfume}* ${e.concentracion ? '(' + e.concentracion + ')' : ''} — ${e.tamano}\n` +
-    `💰 Precio: $${Number(e.precio || 0).toLocaleString()} MXN\n\n` +
-    `¿Cuándo puedes pasar a recogerlo? 😊`
+    `¡Hola ${e.cliente}!\n` +
+    `Acaba de llegar tu encargo:\n\n` +
+    `*${e.perfume}* ${e.concentracion ? '(' + e.concentracion + ')' : ''} — ${e.tamano}\n` +
+    `Precio: $${Number(e.precio || 0).toLocaleString()} MXN\n\n` +
+    `¿Cuándo puedes pasar a recogerlo?`
   );
   const num = e.contacto.replace(/\D/g,'');
   window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
@@ -291,14 +291,14 @@ window.save = async function () {
   const cliente = document.getElementById('e-cliente').value.trim();
 
   if (!perfume || !marca || !tamano || !cliente) {
-    alert('Perfume, marca, tamaño y cliente son obligatorios.');
+    toast('Perfume, marca, tamaño y cliente son obligatorios.', 'warning');
     return;
   }
   
   if (cliente && window.blacklistCache && window.blacklistCache.map(n => n.toLowerCase()).includes(cliente.toLowerCase())) {
     Swal.fire({
       icon: 'error',
-      title: 'Cliente Bloqueado 🚫',
+      title: 'Cliente Bloqueado <i class="bi bi-slash-circle"></i>',
       text: `El cliente "${cliente}" se encuentra en la Lista Negra. No puedes registrarle nuevos encargos.`
     });
     return;
