@@ -12,6 +12,7 @@ service cloud.firestore {
     match /familias_olfativas/{id} { allow read: if true; allow write: if isAuth(); }
     match /tipos_perfume/{id}      { allow read: if true; allow write: if isAuth(); }
     match /paquetes/{id}           { allow read: if true; allow write: if isAuth(); }
+    match /accesorios/{id}         { allow read: if true; allow write: if isAuth(); }
 
     match /novedades/{id} { allow read: if true; allow write: if isAuth(); }
     match /anuncios/{id}  { allow read: if true; allow write: if isAuth(); }
@@ -39,6 +40,10 @@ service cloud.firestore {
     }
 
     match /ordenes_completos/{id} {
+      allow read, write: if isAuth();
+    }
+
+    match /consignaciones/{id} {
       allow read, write: if isAuth();
     }
 

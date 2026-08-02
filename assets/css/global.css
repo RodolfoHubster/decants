@@ -162,6 +162,7 @@ tbody td{padding:12px 16px;font-size:13.5px;vertical-align:middle}
 /* ── Modals ─────────────────────────────────────────────────────────────────── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;opacity:0;visibility:hidden;transition:all var(--transition)}
 .modal-overlay.open{opacity:1;visibility:visible}
+body.modal-open { overflow: hidden; }
 .modal-box{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;transform:scale(.96) translateY(8px);transition:transform var(--transition)}
 .modal-overlay.open .modal-box{transform:scale(1) translateY(0)}
 .modal-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}

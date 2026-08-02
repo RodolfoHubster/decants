@@ -18,6 +18,17 @@
     .insumo-info { display: flex; flex-direction: column; }
     .insumo-name { font-weight: 500; font-size: 14px; }
     .insumo-detail { font-size: 12px; color: var(--text-muted); }
+    
+    .kpi-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .kpi-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 5px; }
+    .kpi-card .title { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+    .kpi-card .val { font-size: 24px; font-weight: 700; color: var(--text); }
+    
+    .table-wrap { overflow-x: auto; margin-top: 15px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--text-muted); font-weight: 500; }
+    tr:hover td { background: var(--bg-card2); }
   </style>
 </head>
 <body>
@@ -36,6 +47,13 @@
     
     <div class="page-body">
       <p style="color:var(--text-muted);margin-bottom:20px;font-size:14px;">Administra el costo de tus materias primas. Estos valores se usarán para calcular tu ganancia neta en la sección de Inteligencia de Negocio.</p>
+
+      <div class="kpi-bar">
+        <div class="kpi-card"><span class="title">Gasto Total Histórico</span><span class="val" id="kpi-total-hist">$0</span></div>
+        <div class="kpi-card"><span class="title">Gasto Este Mes</span><span class="val" id="kpi-total-mes">$0</span></div>
+        <div class="kpi-card"><span class="title">Promedio Calculado / Decant</span><span class="val" id="kpi-promedio" style="color:var(--gold)">$0</span></div>
+        <div class="kpi-card"><span class="title">Nº Compras</span><span class="val" id="kpi-compras">0</span></div>
+      </div>
 
       <div class="card-grid">
         
@@ -61,6 +79,10 @@
             <span style="font-weight:600;font-size:14px;">Costo Total Insumos por Decant:</span>
             <span id="c-total-insumos" style="font-weight:700;color:var(--accent);font-size:16px;">$0.00</span>
           </div>
+          <div id="promedio-banner" style="display:none; margin-top:15px; padding:10px; background:rgba(201,168,76,0.1); border:1px solid var(--gold-b); border-radius:8px; font-size:12px;">
+            <i class="bi bi-lightbulb" style="color:var(--gold)"></i> <strong>Sugerencia:</strong> El costo promedio calculado de tus últimas compras es de <span id="sugerencia-val" style="font-weight:bold">$0.00</span>.
+            <button class="btn btn-outline btn-sm" style="margin-top:8px; width:100%" onclick="aplicarPromedioCalculado()">Aplicar este valor</button>
+          </div>
         </div>
 
         <!-- BOTELLAS REFORZADAS -->
@@ -83,12 +105,22 @@
         <div class="stat-card" style="grid-column: 1 / -1;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
             <h3 style="margin:0;"><i class="bi bi-box-seam" style="color:#a36c4f"></i> Compras de Materia Prima</h3>
-            <button class="btn btn-outline btn-sm" onclick="openMateriaModal()"><i class="bi bi-plus"></i> Nueva Compra</button>
+            <div style="display:flex; gap:10px;">
+              <select id="f-mes" class="form-control" style="width:160px" onchange="renderInsumos()">
+                <option value="todos">Todos los meses</option>
+              </select>
+              <button class="btn btn-outline btn-sm" onclick="openMateriaModal()"><i class="bi bi-plus"></i> Nueva Compra</button>
+            </div>
           </div>
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px;line-height:1.4">Registra aquí las compras de insumos que haces (ej. Lote de 100 botellas de 5ml). Esto es útil para llevar un control de tus gastos operativos.</p>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px;line-height:1.4">Registra aquí las compras de insumos que haces. Esto es útil para llevar un control de tus gastos operativos.</p>
           
-          <div id="materia-list">
-            <div style="text-align:center;padding:20px;color:var(--text-faint);font-size:13px;">Cargando compras...</div>
+          <div class="table-wrap">
+            <table id="materia-table">
+              <thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Cant.</th><th>Precio Unit.</th><th>Total</th><th>Acciones</th></tr></thead>
+              <tbody id="materia-list">
+                <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-faint)">Cargando compras...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -112,8 +144,12 @@
           <option value="botella_vidrio">Botella de Vidrio</option>
           <option value="botella_plastico">Botella de Plástico</option>
           <option value="botella_reforzada">Botella Reforzada</option>
+          <option value="kit_decant_travel">Kit Decant Travel</option>
+          <option value="frasco_vidrio">Frasco de Vidrio (Suelto)</option>
+          <option value="atomizador">Atomizador</option>
           <option value="etiquetas">Etiquetas</option>
           <option value="bolsas">Bolsas / Empaque</option>
+          <option value="cinta">Cinta / Embalaje</option>
           <option value="otro">Otro</option>
         </select>
       </div>

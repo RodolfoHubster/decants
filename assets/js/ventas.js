@@ -9,16 +9,18 @@ if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display 
 
 let ventas = [], perfumes = [];
 let currentPage = 1, pageSize = 10;
+let jorCurrentPage = 1, jorPageSize = 10, jorSearchQuery = '';
 window.costoReforzada = 15; // default
 
 // ── Cargar datos ──────────────────────────────────────────────────────────────
 async function loadAll() {
-  const [vs, ps, pq, confSnap, blSnap] = await Promise.all([
+  const [vs, ps, pq, confSnap, blSnap, accSnap] = await Promise.all([
     getDocs(collection(db, 'ventas')),
     getDocs(collection(db, 'perfumes')),
     getDocs(collection(db, 'paquetes')),
     getDoc(doc(db, 'config', 'costosOperativos')).catch(() => null),
-    getDoc(doc(db, 'config', 'blacklist')).catch(() => null)
+    getDoc(doc(db, 'config', 'blacklist')).catch(() => null),
+    getDocs(collection(db, 'accesorios')).catch(() => [])
   ]);
   
   if (confSnap && confSnap.exists()) {
@@ -34,10 +36,20 @@ async function loadAll() {
   pq.forEach(d => window.paquetesData.push({ id: d.id, ...d.data() }));
   window.paquetesData.sort((a,b) => a.nombre.localeCompare(b.nombre));
   
+  window.accesoriosData = [];
+  accSnap.forEach(d => {
+    let acc = { id: d.id, ...d.data() };
+    if (acc.activo !== false) {
+      window.accesoriosData.push(acc);
+    }
+  });
+  window.accesoriosData.sort((a,b) => a.nombre.localeCompare(b.nombre));
+
   ventas = []; vs.forEach(d => ventas.push({ id: d.id, ...d.data() }));
   ventas.sort((a,b) => (b.creadoEn||0) - (a.creadoEn||0));
 
   const comboData = [
+    ...window.accesoriosData.map(acc => ({ id: acc.id, nombre: '<i class="bi bi-bag-plus" style="margin-right:4px;"></i> ' + acc.nombre, marca: 'Accesorio', isAccesorio: true })),
     ...window.paquetesData.map(pq => ({ id: pq.id, nombre: '<i class="bi bi-box-seam" style="margin-right:4px;"></i> ' + pq.nombre, marca: '' })),
     ...perfumes.map(p => ({
       id: p.id,
@@ -83,13 +95,15 @@ async function loadAll() {
            hhmm = ' a las ' + d.toLocaleTimeString('es-MX', {hour: '2-digit', minute:'2-digit'});
         }
         
-        let notaBase = `Cliente compró ${item.nombre} de ${item.ml}ml a $${item.precio}${hhmm}`;
+        let notaBase = `Venta: ${item.nombre} de ${item.ml}ml a $${item.precio}${hhmm}`;
 
         const rid = ++batchRowCounter;
         const row = { 
           rid, perfumeId: item.id, talla: finalTalla, 
           cantidad: item.cant || 1, precio: item.precio, 
-          cliente: '', estado: 'pagada', notas: notaBase 
+          cliente: '', estado: 'pagada', notas: notaBase,
+          costoCompleto: item.costoCompleto,
+          creadoEnOffset: item.cartClientId || 0
         };
         if (item.paqueteItems) {
            row.paqueteItemsStorefront = item.paqueteItems;
@@ -235,8 +249,22 @@ window.getLoteRemaining = (perfId, loteId) => {
 window.updateTallaOptions = (perfId, loteId, isPaquete) => {
   const tallaSel = document.getElementById('v-talla');
   let p = perfumes.find(x => x.id === perfId);
-  if (!p && window.paquetesData) p = window.paquetesData.find(x => x.id === perfId);
+  let isAccesorio = false;
+  if (!p && window.paquetesData) {
+    p = window.paquetesData.find(x => x.id === perfId);
+    // isPaquete should already be true if it was selected from picker
+  }
+  if (!p && window.accesoriosData) {
+    p = window.accesoriosData.find(x => x.id === perfId);
+    if (p) isAccesorio = true;
+  }
   if (!p) return;
+  
+  if (isAccesorio) {
+    tallaSel.innerHTML = `<option value="1 ud" data-precio="${p.precio}">1 ud — $${p.precio}</option>`;
+    if (window.onTallaChange) window.onTallaChange();
+    return;
+  }
 
   const pr = p.precios || (p.ml && p.precio ? { [p.ml]: p.precio } : {});
   let availableMl = 999;
@@ -291,6 +319,11 @@ window.onPerfumeChange = () => {
     if (customInp) customInp.style.display = 'block';
     tallaSel.innerHTML = '<option value="Completo">Botella Completa</option><option value="Otro">Otro (Manual)</option>';
     precioEl.value = '';
+    const loteGrp = document.getElementById('v-lote-group');
+    if (loteGrp) {
+      loteGrp.style.display = 'none';
+      document.getElementById('v-lote').innerHTML = '';
+    }
     return;
   }
   if (customInp) { customInp.style.display = 'none'; customInp.value = ''; }
@@ -346,12 +379,24 @@ window.onTallaChange = () => {
   const opt = tallaSel.selectedOptions[0];
   let basePrecio = 0;
   
-  if (opt?.dataset.precio) {
-    basePrecio = parseFloat(opt.dataset.precio) || 0;
-    precioEl.value = basePrecio;
+  const val = tallaSel.value;
+  const costoGrp = document.getElementById('v-costo-group');
+  if (costoGrp) {
+    if (val === 'Completo') costoGrp.style.display = 'block';
+    else { costoGrp.style.display = 'none'; document.getElementById('v-costo').value = ''; }
   }
   
-  const val = tallaSel.value;
+  if (opt?.dataset.precio) {
+    basePrecio = parseFloat(opt.dataset.precio) || 0;
+    precioEl.value = basePrecio || '';
+    if (val === 'Completo') {
+       precioEl.placeholder = 'Costo opcional en Notas'; // Or we can add an extra field
+       document.getElementById('v-reforzada-wrap').style.display = 'none';
+    } else {
+       precioEl.placeholder = '0.00';
+    }
+  }
+  
   // Solo aplica para 5ml y 10ml, y no para paquetes
   if (val === '5' || val === '10') {
     refWrap.style.display = 'flex';
@@ -413,6 +458,8 @@ window.renderTable = () => {
     const fecha = v.creadoEn ? new Date(v.creadoEn).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—';
     const total = ((+v.precio||0)*(+v.cantidad||1)).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
     const canal = v.canal || 'online';
+    const metodo = v.metodoPago || 'efectivo';
+    const metodoMap = { efectivo: '💵 Efectivo', transferencia: '🏦 Transfer.', tarjeta: '💳 Tarjeta', otro: 'Otro' };
     let bundleInfo = '';
     let bundleBtn = '';
     let cleanName = v.perfumeNombre || '—';
@@ -444,6 +491,7 @@ window.renderTable = () => {
       <td><strong>${total}</strong></td>
       <td>${v.cliente||'<span style="color:var(--text-faint)">—</span>'}</td>
       <td><span class="badge-canal ${canalClass[canal]}">${canalLabel[canal]||canal}</span></td>
+      <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${metodoMap[metodo]||metodo}</td>
       <td><span class="badge-estado ${v.estado||'pendiente'}">${v.estado||'pendiente'}</span></td>
       <td><div style="display:flex;gap:6px">
         <button class="btn-icon" onclick="editVenta('${v.id}')" title="Editar venta"><i class="bi bi-pencil-square"></i></button>
@@ -458,6 +506,10 @@ window.renderTable = () => {
 
 // ── Jornadas Sobre Ruedas rendering ──────────────────────────────────────────
 window.renderJornadas = (fil) => {
+  if (!fil) {
+    const q = document.getElementById('search') ? document.getElementById('search').value.trim() : '';
+    fil = typeof getFilteredData === 'function' ? getFilteredData(q) : ventas;
+  }
   const container = document.getElementById('jornadas-sr');
   const list = document.getElementById('jornadas-list');
   if (!container || !list) return;
@@ -480,19 +532,44 @@ window.renderJornadas = (fil) => {
     if (v.notas) {
       const parts = v.notas.split(' | ');
       if (parts.length > 1) grupos[dateKey].nota = parts[parts.length - 1];
-      else if (!grupos[dateKey].nota) grupos[dateKey].nota = v.notas;
+      else if (!v.notas.startsWith('Cliente compró') && !v.notas.startsWith('Venta:')) {
+        if (!grupos[dateKey].nota) grupos[dateKey].nota = v.notas;
+      }
     }
   });
 
-  list.innerHTML = Object.entries(grupos)
-    .sort((a, b) => b[1].ts - a[1].ts) // descending
-    .map(([dateKey, grp], idx) => {
+  let arrGrupos = Object.entries(grupos).sort((a, b) => b[1].ts - a[1].ts);
+  
+  if (jorSearchQuery) {
+    const q = jorSearchQuery.toLowerCase();
+    arrGrupos = arrGrupos.filter(([dateKey, grp]) => {
+      const dateObj = new Date(dateKey + 'T12:00:00');
+      const dateStr = dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }).toLowerCase();
+      if (dateStr.includes(q)) return true;
+      if (grp.lugar && grp.lugar.toLowerCase().includes(q)) return true;
+      if (grp.nota && grp.nota.toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }
+  
+  const totalItems = arrGrupos.length;
+  const totalPages = Math.ceil(totalItems / jorPageSize) || 1;
+  if (jorCurrentPage > totalPages) jorCurrentPage = totalPages;
+  if (jorCurrentPage < 1) jorCurrentPage = 1;
+  
+  const startIndex = (jorCurrentPage - 1) * jorPageSize;
+  const endIndex = Math.min(startIndex + jorPageSize, totalItems);
+  const pageItems = arrGrupos.slice(startIndex, endIndex);
+
+  list.innerHTML = pageItems.map(([dateKey, grp], idx) => {
       const dateObj = new Date(dateKey + 'T12:00:00');
       const dateStr = dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
       const totalVendido = grp.ventas.reduce((s,v) => s + (+v.precio||0)*(+v.cantidad||1), 0);
       
       const tbodyHtml = grp.ventas.map(v => {
         const total = ((+v.precio||0)*(+v.cantidad||1)).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
+        const metodo = v.metodoPago || 'efectivo';
+        const metodoMap = { efectivo: '💵 Efect.', transferencia: '🏦 Transf.', tarjeta: '💳 Tarjeta', otro: 'Otro' };
         let bundleInfo = '';
         let bundleBtn = '';
         let cleanName = v.perfumeNombre || '—';
@@ -522,6 +599,7 @@ window.renderJornadas = (fil) => {
           <td><span class="badge-ml">${v.talla||'—'} ml × ${v.cantidad||1}</span></td>
           <td><strong>${total}</strong></td>
           <td>${v.cliente||'<span style="color:var(--text-faint)">—</span>'}</td>
+          <td style="font-size:12px; color:var(--text-muted);">${metodoMap[metodo]||metodo}</td>
           <td><span class="badge-estado ${v.estado||'pendiente'}">${v.estado||'pendiente'}</span></td>
           <td><div style="display:flex;gap:6px">
             <button class="btn-icon" onclick="editVenta('${v.id}')" title="Editar venta"><i class="bi bi-pencil-square"></i></button>
@@ -542,7 +620,8 @@ window.renderJornadas = (fil) => {
                 <span>${grp.ventas.length} ventas</span>
                 <strong>$${totalVendido.toLocaleString('es-MX', {minimumFractionDigits:0})}</strong>
               </div>
-              <i class="bi bi-chevron-down jornada-toggle"></i>
+              <button class="btn-icon" style="margin-left:15px; font-size:16px; color:var(--primary);" onclick="event.stopPropagation(); window.editarGrupoDia('${dateKey}')" title="Editar Jornada Completa"><i class="bi bi-pencil-square"></i></button>
+              <i class="bi bi-chevron-down jornada-toggle" style="margin-left:5px;"></i>
             </div>
           </div>
           <div class="jornada-body">
@@ -550,7 +629,7 @@ window.renderJornadas = (fil) => {
               ${grp.nota ? `<div class="jornada-notas"><i class="bi bi-info-circle"></i> <span>${grp.nota}</span></div>` : ''}
               <div class="jornada-table-wrap">
                 <table>
-                  <thead><tr><th>Perfume</th><th>Talla</th><th>Precio</th><th>Cliente</th><th>Estado</th><th>Acciones</th></tr></thead>
+                  <thead><tr><th>Perfume</th><th>Talla</th><th>Precio</th><th>Cliente</th><th>Método</th><th>Estado</th><th>Acciones</th></tr></thead>
                   <tbody>${tbodyHtml}</tbody>
                 </table>
               </div>
@@ -559,6 +638,50 @@ window.renderJornadas = (fil) => {
         </div>
       `;
     }).join('');
+    
+  renderJorPagination(totalItems, totalItems === 0 ? 0 : startIndex + 1, endIndex, totalPages);
+};
+
+// ── Jornadas Pagination ──────────────────────────────────────────────────────
+function renderJorPagination(total, from, to, totalPages) {
+  const infoEl = document.getElementById('jor-pagination-info');
+  if (total === 0) {
+    infoEl.textContent = '0 jornadas';
+  } else {
+    infoEl.textContent = `${from}–${to} de ${total}`;
+  }
+  const wrap = document.getElementById('jor-pagination-controls');
+  if (totalPages <= 1) { wrap.innerHTML = ''; return; }
+  let html = '';
+  html += `<button class="page-btn" onclick="goToJorPage(${jorCurrentPage - 1})" ${jorCurrentPage === 1 ? 'disabled' : ''} title="Anterior"><i class="bi bi-chevron-left"></i></button>`;
+  const pages = buildPageNumbers(jorCurrentPage, totalPages);
+  pages.forEach(p => {
+    if (p === '...') {
+      html += `<button class="page-btn page-ellipsis" disabled>…</button>`;
+    } else {
+      html += `<button class="page-btn${p === jorCurrentPage ? ' active' : ''}" onclick="goToJorPage(${p})">${p}</button>`;
+    }
+  });
+  html += `<button class="page-btn" onclick="goToJorPage(${jorCurrentPage + 1})" ${jorCurrentPage === totalPages ? 'disabled' : ''} title="Siguiente"><i class="bi bi-chevron-right"></i></button>`;
+  wrap.innerHTML = html;
+}
+
+window.onJorSearch = () => {
+  jorSearchQuery = document.getElementById('jor-search').value.trim();
+  jorCurrentPage = 1;
+  renderJornadas();
+};
+
+window.onJorPageSizeChange = () => {
+  jorPageSize = parseInt(document.getElementById('jor-page-size').value) || 10;
+  jorCurrentPage = 1;
+  renderJornadas();
+};
+
+window.goToJorPage = (p) => {
+  jorCurrentPage = p;
+  renderJornadas();
+  document.getElementById('jornadas-sr').scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
 // ── Pagination rendering ─────────────────────────────────────────────────────
@@ -651,12 +774,16 @@ window.openModal = () => {
   document.getElementById('modal-title').textContent = 'Nueva Venta';
   document.getElementById('btn-save').innerHTML = '<i class="bi bi-check2"></i> Guardar Venta';
   document.getElementById('modal').classList.add('open');
+  document.body.classList.add('modal-open');
   setTimeout(() => {
     const bc = document.getElementById('v-barcode');
     if (bc) bc.focus();
   }, 100);
 };
-window.closeModal = () => document.getElementById('modal').classList.remove('open');
+window.closeModal = () => {
+  document.getElementById('modal').classList.remove('open');
+  document.body.classList.remove('modal-open');
+};
 
 // ── Editar venta existente (CRUD) ─────────────────────────────────────────────
 window.editVenta = (id) => {
@@ -669,6 +796,7 @@ window.editVenta = (id) => {
   document.getElementById('v-cantidad').value = v.cantidad || 1;
   document.getElementById('v-estado').value = v.estado || 'pagada';
   document.getElementById('v-canal').value = v.canal || 'online';
+  document.getElementById('v-metodopago').value = v.metodoPago || 'efectivo';
   const perfSel = document.getElementById('v-perfume');
   const customInp = document.getElementById('v-perfume-custom');
   
@@ -759,6 +887,11 @@ window.editVenta = (id) => {
     }
   } else if (perfSel.value === 'custom') {
     tallaSel.innerHTML = '<option value="Completo">Botella Completa</option><option value="Otro">Otro (Manual)</option>';
+    const loteGroup = document.getElementById('v-lote-group');
+    if (loteGroup) {
+      loteGroup.style.display = 'none';
+      document.getElementById('v-lote').innerHTML = '';
+    }
   } else {
     tallaSel.innerHTML = '<option value="">Selecciona talla</option>';
   }
@@ -767,6 +900,7 @@ window.editVenta = (id) => {
   document.getElementById('modal-title').textContent = 'Editar Venta';
   document.getElementById('btn-save').innerHTML = '<i class="bi bi-check2"></i> Actualizar Venta';
   document.getElementById('modal').classList.add('open');
+  document.body.classList.add('modal-open');
 };
 
 window.save = async () => {
@@ -777,7 +911,10 @@ window.save = async () => {
   const cantidad  = +document.getElementById('v-cantidad').value || 1;
   const estado    = document.getElementById('v-estado').value;
   const canal     = document.getElementById('v-canal').value;
+  const metodoPago = document.getElementById('v-metodopago').value;
   const clienteName = document.getElementById('v-cliente').value.trim();
+  const costoStr = document.getElementById('v-costo')?.value;
+  const costo = costoStr ? +costoStr : null;
   
   if (!perfumeId || !talla || !precio) { toast('Completa perfume, talla y precio (*)', 'error'); return; }
   
@@ -848,10 +985,14 @@ window.save = async () => {
   const data = {
     perfumeId: (perfumeId === 'custom') ? '' : perfumeId,
     perfumeNombre, perfumeMarca,
-    talla, precio, cantidad, estado, canal,
+    talla, precio, cantidad, estado, canal, metodoPago,
     cliente: document.getElementById('v-cliente').value.trim(),
     notas:   document.getElementById('v-notas').value.trim(),
   };
+  
+  if (costo !== null && costo >= 0) {
+    data.costoCompleto = costo;
+  }
 
   if (paqueteItemsToSave) {
     data.paqueteItems = paqueteItemsToSave;
@@ -887,13 +1028,22 @@ window.save = async () => {
          if(ml > 0 && window.checkLoteOverflow) window.checkLoteOverflow(sub.id, sub.loteId, ml * (+data.cantidad||1));
       });
     } else if (data.perfumeId) {
-      if (['2','3','5','10'].includes(data.talla)) {
-        if (window.checkLoteOverflow) window.checkLoteOverflow(data.perfumeId, data.loteId, parseInt(data.talla) * (+data.cantidad||1));
-      } else if (data.talla === 'Resto') {
+      let isAccesorio = window.accesoriosData && window.accesoriosData.find(x => x.id === data.perfumeId);
+      if (isAccesorio) {
         try {
-          await updateDoc(doc(db, 'perfumes', data.perfumeId), { estadoStock: 'agotado' });
-          if(window.toast) toast(`Perfume marcado como agotado automáticamente`, 'info');
-        } catch(e) { console.error('Error auto-agotando', e); }
+          const newStock = Math.max(0, (isAccesorio.stock || 0) - (+data.cantidad || 1));
+          await updateDoc(doc(db, 'accesorios', data.perfumeId), { stock: newStock });
+          isAccesorio.stock = newStock;
+        } catch(e) { console.error('Error actualizando stock accesorio', e); }
+      } else {
+        if (['2','3','5','10'].includes(data.talla)) {
+          if (window.checkLoteOverflow) window.checkLoteOverflow(data.perfumeId, data.loteId, parseInt(data.talla) * (+data.cantidad||1));
+        } else if (data.talla === 'Resto' || data.talla === 'Completo') {
+          try {
+            await updateDoc(doc(db, 'perfumes', data.perfumeId), { estadoStock: 'agotado' });
+            if(window.toast) toast(`Perfume marcado como agotado automáticamente`, 'info');
+          } catch(e) { console.error('Error auto-agotando', e); }
+        }
       }
     }
     
@@ -912,8 +1062,12 @@ window.editEstado = (id, estado) => {
   document.getElementById('es-id').value = id;
   document.getElementById('es-valor').value = estado;
   document.getElementById('modal-estado').classList.add('open');
+  document.body.classList.add('modal-open');
 };
-window.closeEstado = () => document.getElementById('modal-estado').classList.remove('open');
+window.closeEstado = () => {
+  document.getElementById('modal-estado').classList.remove('open');
+  document.body.classList.remove('modal-open');
+};
 window.guardarEstado = async () => {
   const id     = document.getElementById('es-id').value;
   const estado = document.getElementById('es-valor').value;
@@ -973,6 +1127,7 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
     'padding:4px 0',
     'display:none',
     'min-width:130px',
+    'overflow-y:auto'
   ].join(';');
   document.body.appendChild(dd);
 
@@ -981,7 +1136,19 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
 
   function reposition() {
     const r = btn.getBoundingClientRect();
-    dd.style.top   = (r.bottom + 3) + 'px';
+    const spaceBelow = window.innerHeight - r.bottom;
+    const spaceAbove = r.top;
+    
+    if (spaceBelow < 260 && spaceAbove > spaceBelow) {
+      dd.style.top = 'auto';
+      dd.style.bottom = (window.innerHeight - r.top + 3) + 'px';
+      dd.style.maxHeight = Math.min(260, spaceAbove - 10) + 'px';
+    } else {
+      dd.style.bottom = 'auto';
+      dd.style.top = (r.bottom + 3) + 'px';
+      dd.style.maxHeight = Math.min(260, spaceBelow - 10) + 'px';
+    }
+    
     dd.style.left  = r.left + 'px';
     dd.style.width = Math.max(r.width, 130) + 'px';
   }
@@ -1056,6 +1223,15 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
   };
   document.addEventListener('mousedown', outsideClick);
 
+  const closeOnScroll = (e) => {
+    if (e.target === dd || (e.target instanceof Node && dd.contains(e.target))) return;
+    if (dd.style.display !== 'none') closeDD();
+  };
+  window.addEventListener('scroll', closeOnScroll, true);
+  window.addEventListener('resize', closeOnScroll, true);
+  window.addEventListener('touchmove', closeOnScroll, { capture: true, passive: true });
+  window.addEventListener('wheel', closeOnScroll, { capture: true, passive: true });
+
   // API pública
   container._getValue  = () => selectedValue;
   container._setValue  = (v) => {
@@ -1073,6 +1249,10 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
   container._destroy = () => {
     dd.remove();
     document.removeEventListener('mousedown', outsideClick);
+    window.removeEventListener('scroll', closeOnScroll, true);
+    window.removeEventListener('resize', closeOnScroll, true);
+    window.removeEventListener('touchmove', closeOnScroll, true);
+    window.removeEventListener('wheel', closeOnScroll, true);
   };
 
   return container;
@@ -1106,7 +1286,19 @@ function buildCombobox(container, onSelect) {
 
   function reposition() {
     const r = inp.getBoundingClientRect();
-    dd.style.top  = (r.bottom + 4) + 'px';
+    const spaceBelow = window.innerHeight - r.bottom;
+    const spaceAbove = r.top;
+    
+    if (spaceBelow < 260 && spaceAbove > spaceBelow) {
+      dd.style.top = 'auto';
+      dd.style.bottom = (window.innerHeight - r.top + 4) + 'px';
+      dd.style.maxHeight = Math.min(260, spaceAbove - 10) + 'px';
+    } else {
+      dd.style.bottom = 'auto';
+      dd.style.top = (r.bottom + 4) + 'px';
+      dd.style.maxHeight = Math.min(260, spaceBelow - 10) + 'px';
+    }
+    
     dd.style.left = r.left + 'px';
     dd.style.width = Math.max(r.width, 220) + 'px';
   }
@@ -1204,12 +1396,21 @@ function buildCombobox(container, onSelect) {
     else if (e.key === 'Escape') closeDD();
   });
 
-  const onScroll = () => { if (dd.style.display!=='none') reposition(); };
-  const modalDia = document.getElementById('modal-dia');
-  modalDia?.addEventListener('scroll', onScroll, { passive:true });
+  const closeOnScroll = (e) => { 
+    if (e.target === dd || (e.target instanceof Node && dd.contains(e.target))) return;
+    if (dd.style.display !== 'none') closeDD(); 
+  };
+  window.addEventListener('scroll', closeOnScroll, true);
+  window.addEventListener('resize', closeOnScroll, true);
+  window.addEventListener('touchmove', closeOnScroll, { capture: true, passive: true });
+  window.addEventListener('wheel', closeOnScroll, { capture: true, passive: true });
+  
   container._destroyCombobox = () => {
     dd.remove();
-    modalDia?.removeEventListener('scroll', onScroll);
+    window.removeEventListener('scroll', closeOnScroll, true);
+    window.removeEventListener('resize', closeOnScroll, true);
+    window.removeEventListener('touchmove', closeOnScroll, true);
+    window.removeEventListener('wheel', closeOnScroll, true);
   };
   return { inp };
 }
@@ -1231,11 +1432,25 @@ function tallaItems(perfumeId) {
   if (!perfumeId) return [];
   let p = perfumes.find(x => x.id === perfumeId);
   let isPaquete = false;
+  let isAccesorio = false;
   if (!p && window.paquetesData) {
     p = window.paquetesData.find(x => x.id === perfumeId);
     if (p) isPaquete = true;
   }
+  if (!p && window.accesoriosData) {
+    p = window.accesoriosData.find(x => x.id === perfumeId);
+    if (p) isAccesorio = true;
+  }
   if (!p) return [];
+  
+  if (isAccesorio) {
+    if (p.precios && Object.values(p.precios).some(v => +v > 0)) {
+      return Object.entries(p.precios).filter(([,v])=>+v>0)
+        .map(([k,v]) => ({ value: k, label: `${k}ml — $${v}`, precio: +v }));
+    }
+    return [{ value: '1 ud', label: `1 ud — $${p.precio}`, precio: p.precio }];
+  }
+  
   const items = Object.entries(p.precios||{}).filter(([,v])=>+v>0)
     .map(([k,v]) => ({ value: isPaquete ? `Paquete ${k}` : k, label: `${isPaquete ? 'Paquete ' : ''}${k}ml — $${v}`, precio: +v }));
   if (!isPaquete) {
@@ -1356,7 +1571,7 @@ function buildBatchRowEl(row) {
   const tdCliente = document.createElement('td');
   tdCliente.className = 'td-cliente';
   const inCliente = document.createElement('input');
-  inCliente.type = 'text'; inCliente.value = cliente || ''; inCliente.placeholder = 'Cliente';
+  inCliente.type = 'text'; inCliente.value = cliente || ''; inCliente.placeholder = 'Opcional';
   inCliente.oninput = () => batchSet(rid,'cliente',inCliente.value);
   tdCliente.appendChild(inCliente);
   tr.appendChild(tdCliente);
@@ -1449,6 +1664,11 @@ window.addBatchRow = () => {
 };
 
 window.removeBatchRow = (rid) => {
+  const target = batchRows.find(r => r.rid === rid);
+  if (target && target.docId) {
+    window.deletedBatchRows = window.deletedBatchRows || [];
+    window.deletedBatchRows.push(target.docId);
+  }
   batchRows = batchRows.filter(r => r.rid !== rid);
   const row = document.querySelector(`#batch-tbody tr[data-rid="${rid}"]`);
   // destruir portales
@@ -1484,11 +1704,13 @@ window.openDia = () => {
   document.getElementById('dia-fecha').value = hoy;
   document.getElementById('dia-nota-global').value = '';
   if (document.getElementById('dia-cliente-global')) document.getElementById('dia-cliente-global').value = '';
-  batchRows = []; batchRowCounter = 0;
+  document.getElementById('modal-dia-title').textContent = 'Registro del Día';
+  batchRows = []; batchRowCounter = 0; window.deletedBatchRows = [];
   document.getElementById('batch-tbody').innerHTML = '';
   updateBatchResumen();
   addBatchRow(); addBatchRow(); addBatchRow();
   document.getElementById('modal-dia').classList.add('open');
+  document.body.classList.add('modal-open');
 };
 
 window.closeDia = () => {
@@ -1497,6 +1719,7 @@ window.closeDia = () => {
     tr.querySelectorAll('div').forEach(d => { d._destroyCombobox?.(); d._destroy?.(); });
   });
   document.getElementById('modal-dia').classList.remove('open');
+  document.body.classList.remove('modal-open');
 };
 
 window.saveDia = async () => {
@@ -1527,6 +1750,7 @@ window.saveDia = async () => {
   try {
     const batch = writeBatch(db);
     const canalVal = document.getElementById('dia-canal').value;
+    const metodoVal = document.getElementById('dia-metodopago')?.value || 'efectivo';
     validas.forEach(r => {
       let p = perfumes.find(x => x.id === r.perfumeId);
       let isPaquete = false;
@@ -1561,28 +1785,49 @@ window.saveDia = async () => {
           });
         }
       }
+      let finalNotas = r.notas || '';
+      if (notaGlobal) {
+        finalNotas = finalNotas ? (finalNotas + ' | ' + notaGlobal) : notaGlobal;
+      }
       
-      const ref = doc(collection(db, 'ventas'));
       const dataObj = {
-        perfumeId: r.perfumeId, 
-        perfumeNombre: p?.nombre||'', 
-        perfumeMarca: isPaquete ? 'Combos Fitoscents' : (p?.marca||''),
-        talla: r.talla, precio: +r.precio, cantidad: +r.cantidad||1,
-        estado: r.estado, canal: canalVal, lugar: lugarStr,
-
-        cliente: (r.cliente||globalCliente||'').trim(),
-        notas: [r.notas?.trim(), notaGlobal].filter(Boolean).join(' | '),
-        loteId: r.loteId || p?.loteActivo || 'lote-1',
-        creadoEn: fechaTs
+        perfumeId: r.perfumeId,
+        perfumeNombre: p ? p.nombre : '',
+        perfumeMarca: p ? p.marca : '',
+        talla: r.talla,
+        cantidad: +r.cantidad || 1,
+        precio: +r.precio || 0,
+        cliente: r.cliente || globalCliente,
+        estado: r.estado,
+        notas: finalNotas,
+        canal: canalVal,
+        metodoPago: metodoVal,
+        lugar: lugarStr,
+        creadoEn: r.creadoEn || (fechaTs + (r.creadoEnOffset || 0)),
+        loteId: r.loteId || (p ? (p.loteActivo || 'lote-1') : 'lote-1')
       };
+      let ref;
+      if (r.docId) {
+        ref = doc(db, 'ventas', r.docId);
+        // Retain original creation date if it's an update
+      } else {
+        ref = doc(collection(db, 'ventas'));
+      }
 
       if (paqueteItemsToSave) {
         dataObj.paqueteItems = paqueteItemsToSave;
       }
       
       r._tempDataObj = dataObj; // save for overflow check
-      batch.set(ref, dataObj);
+      batch.set(ref, dataObj, { merge: true });
     });
+    
+    if (window.deletedBatchRows && window.deletedBatchRows.length > 0) {
+      window.deletedBatchRows.forEach(id => {
+        batch.delete(doc(db, 'ventas', id));
+      });
+    }
+    
     await batch.commit();
     toast(`${validas.length} venta${validas.length>1?'s':''} guardada${validas.length>1?'s':''}`, 'success');
     
@@ -1596,20 +1841,31 @@ window.saveDia = async () => {
              if(ml > 0 && window.checkLoteOverflow) window.checkLoteOverflow(sub.id, sub.loteId, ml * (+dataObj.cantidad||1));
           });
         } else if (dataObj.perfumeId) {
-          if (['2','3','5','10'].includes(dataObj.talla)) {
-            if (window.checkLoteOverflow) window.checkLoteOverflow(dataObj.perfumeId, dataObj.loteId, parseInt(dataObj.talla) * (+dataObj.cantidad||1));
-          } else if (dataObj.talla === 'Resto') {
+          let isAccesorio = window.accesoriosData && window.accesoriosData.find(x => x.id === dataObj.perfumeId);
+          if (isAccesorio) {
             try {
-              updateDoc(doc(db, 'perfumes', dataObj.perfumeId), { estadoStock: 'agotado' }).then(() => {
-                if(window.toast) toast(`Perfume marcado como agotado automáticamente`, 'info');
+              const newStock = Math.max(0, (isAccesorio.stock || 0) - (+dataObj.cantidad || 1));
+              updateDoc(doc(db, 'accesorios', dataObj.perfumeId), { stock: newStock }).then(() => {
+                isAccesorio.stock = newStock;
               });
             } catch(e) {}
+          } else {
+            if (['2','3','5','10'].includes(dataObj.talla)) {
+              if (window.checkLoteOverflow) window.checkLoteOverflow(dataObj.perfumeId, dataObj.loteId, parseInt(dataObj.talla) * (+dataObj.cantidad||1));
+            } else if (dataObj.talla === 'Resto' || dataObj.talla === 'Completo') {
+              try {
+                updateDoc(doc(db, 'perfumes', dataObj.perfumeId), { estadoStock: 'agotado' }).then(() => {
+                  if(window.toast) toast(`Perfume marcado como agotado automáticamente`, 'info');
+                });
+              } catch(e) {}
+            }
           }
         }
       }
     });
 
     document.getElementById('modal-dia').classList.remove('open');
+    document.body.classList.remove('modal-open');
     localStorage.removeItem('posCart');
     if(window.renderPosCart) window.renderPosCart();
     loadAll();
@@ -1729,6 +1985,133 @@ window.checkLoteOverflow = (perfId, loteId, mlToSell) => {
   }
 };
 
+
+window.openEditarDia = () => {
+  const select = document.getElementById('s-dia-editar');
+  if (!select) return;
+  
+  const dates = new Set();
+  ventas.forEach(v => {
+    if (v.creadoEn) {
+      let d = v.creadoEn;
+      if (typeof d.toDate === 'function') d = d.toDate();
+      else d = new Date(d); // Handles number or string
+      
+      if (!isNaN(d.getTime())) {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        dates.add(`${yyyy}-${mm}-${dd}`);
+      }
+    }
+  });
+  
+  const sortedDates = Array.from(dates).sort().reverse();
+  
+  select.innerHTML = '<option value="">-- Selecciona --</option>' + sortedDates.map(d => {
+    const [y, m, day] = d.split('-');
+    const dateObj = new Date(y, parseInt(m)-1, day);
+    return `<option value="${d}">${dateObj.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</option>`;
+  }).join('');
+  
+  document.getElementById('modal-select-dia').classList.add('open');
+  document.body.classList.add('modal-open');
+};
+
+window.loadDiaSeleccionado = () => {
+  const val = document.getElementById('s-dia-editar').value;
+  if (!val) {
+    toast('Selecciona un día', 'warning');
+    return;
+  }
+  document.getElementById('modal-select-dia').classList.remove('open');
+  document.body.classList.remove('modal-open');
+  editarGrupoDia(val);
+};
+
+window.editarGrupoDia = (fechaStr) => {
+  const targetDate = new Date(fechaStr + 'T12:00:00'); // avoid timezone shifts
+  
+  const vdia = ventas.filter(v => {
+    if (!v.creadoEn) return false;
+    let d = v.creadoEn;
+    if (typeof d.toDate === 'function') d = d.toDate();
+    else if (typeof d === 'number') d = new Date(d);
+    const dstr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return dstr === fechaStr;
+  });
+  
+  document.getElementById('modal-dia-title').textContent = `Editando Día: ${targetDate.toLocaleDateString('es-MX')}`;
+  
+  batchRows = []; batchRowCounter = 0; window.deletedBatchRows = [];
+  document.getElementById('batch-tbody').innerHTML = '';
+  
+  document.getElementById('dia-fecha').value = fechaStr;
+  // Use first common properties for global fields if available
+  if (vdia.length > 0) {
+    const first = vdia[0];
+    document.getElementById('dia-canal').value = first.canal || 'mercado';
+    document.getElementById('dia-metodopago').value = first.metodoPago || 'efectivo';
+    document.getElementById('dia-lugar').value = first.lugar || '';
+    // if client is the same across all?
+    const allSameClient = vdia.every(v => v.cliente === first.cliente);
+    if (allSameClient) document.getElementById('dia-cliente-global').value = first.cliente || '';
+  }
+  
+  vdia.forEach(v => {
+    const rid = ++batchRowCounter;
+    // For packages, try to reconstruct the package name if it matches, else it will just use custom/other.
+    // For simplicity, we assign the perfumeId directly
+    let isPaquete = window.paquetesData && window.paquetesData.some(x => x.id === v.perfumeId);
+    let pName = v.perfumeNombre || '';
+    if (isPaquete && pName.includes('[')) {
+       // Extract the actual package name for UI
+       pName = pName.split(' [')[0];
+    }
+    
+    // Si no tiene perfumeId, era "Otro (Manual)"
+    const pId = v.perfumeId || 'custom';
+    
+    const row = { 
+      rid, docId: v.id, perfumeId: pId, talla: v.talla, 
+      cantidad: v.cantidad || 1, precio: v.precio, 
+      cliente: v.cliente || '', estado: v.estado || 'pagada', 
+      notas: v.notas || '', creadoEn: v.creadoEn,
+      loteId: v.loteId
+    };
+    
+    batchRows.push(row);
+    const tr = buildBatchRowEl(row);
+    tr.dataset.rid = rid;
+    document.getElementById('batch-tbody').appendChild(tr);
+    
+    // Fill UI components
+    setTimeout(() => {
+      const inpPerf = tr.querySelector('td:nth-child(1) input');
+      let dName = (pId === 'custom') ? (v.perfumeNombre || 'Otro (Manual)') : `${pName} · ${v.perfumeMarca||''}`;
+      if(inpPerf) inpPerf.value = dName;
+      
+      const tallaWrap = tr.querySelector('td:nth-child(2) div');
+      if(tallaWrap && tallaWrap._setItems) {
+        tallaWrap._setItems(tallaItems(pId));
+        tallaWrap._setValue(row.talla);
+      }
+      
+      const estadoWrap = tr.querySelector('td:nth-child(7) div');
+      if(estadoWrap && estadoWrap._setValue) {
+        estadoWrap._setValue(row.estado);
+      }
+      
+      const inPrecio = tr.querySelector('.td-precio input');
+      if(inPrecio) inPrecio.value = row.precio;
+      batchRefreshTotal(rid);
+    }, 50);
+  });
+  
+  document.getElementById('modal-dia').classList.add('open');
+  document.body.classList.add('modal-open');
+  updateBatchResumen();
+};
 
 // ── Evento Barcode Scanner ───────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {

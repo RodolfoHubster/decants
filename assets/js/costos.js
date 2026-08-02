@@ -91,29 +91,139 @@ async function loadInsumos() {
   try {
     const querySnapshot = await getDocs(collection(db, 'insumos'));
     insumos = querySnapshot.docs.map(d => ({id: d.id, ...d.data()}));
+    populateMonthFilter();
     renderInsumos();
+    updateKPIs();
   } catch(e) {
     console.error("Error loading insumos:", e);
-    document.getElementById('materia-list').innerHTML = '<div style="color:var(--danger);padding:15px">Error al cargar datos.</div>';
+    document.getElementById('materia-list').innerHTML = '<tr><td colspan="7" style="color:var(--danger);padding:15px;text-align:center;">Error al cargar datos.</td></tr>';
   }
 }
 
+function populateMonthFilter() {
+  const fMes = document.getElementById('f-mes');
+  if (!fMes) return;
+  const months = new Set();
+  insumos.forEach(ins => {
+    if (ins.fecha) {
+      const d = new Date(ins.fecha);
+      months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+  });
+  
+  const sortedMonths = Array.from(months).sort().reverse();
+  
+  let html = '<option value="todos">Todos los meses</option>';
+  sortedMonths.forEach(m => {
+    const [y, mo] = m.split('-');
+    const dateObj = new Date(y, parseInt(mo)-1, 1);
+    const monthName = dateObj.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+    html += `<option value="${m}">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</option>`;
+  });
+  
+  const val = fMes.value;
+  fMes.innerHTML = html;
+  if (sortedMonths.includes(val)) fMes.value = val;
+}
+
+function updateKPIs() {
+  const d = new Date();
+  const currentMonthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  
+  let totalHist = 0;
+  let totalMes = 0;
+  let totalUnidadesDecant = 0;
+  let totalCostoDecant = 0;
+  
+  insumos.forEach(ins => {
+    const cost = +ins.total || 0;
+    const qty = +ins.cantidad || 0;
+    
+    totalHist += cost;
+    
+    if (ins.fecha) {
+      const insD = new Date(ins.fecha);
+      const mKey = `${insD.getFullYear()}-${String(insD.getMonth() + 1).padStart(2, '0')}`;
+      if (mKey === currentMonthKey) {
+        totalMes += cost;
+      }
+    }
+    
+    // Para el promedio automático, consideramos envases (vidrio, plastico, reforzada), etiquetas y bolsas
+    if (['botella_vidrio', 'botella_plastico', 'botella_reforzada', 'etiquetas', 'bolsas'].includes(ins.tipo)) {
+      totalCostoDecant += cost;
+      if (['botella_vidrio', 'botella_plastico', 'botella_reforzada'].includes(ins.tipo)) {
+         totalUnidadesDecant += qty; // asumimos que la cantidad de botellas es la base para dividir
+      }
+    }
+  });
+  
+  document.getElementById('kpi-total-hist').textContent = totalHist.toLocaleString('es-MX', {style: 'currency', currency: 'MXN'});
+  document.getElementById('kpi-total-mes').textContent = totalMes.toLocaleString('es-MX', {style: 'currency', currency: 'MXN'});
+  document.getElementById('kpi-compras').textContent = insumos.length;
+  
+  let promedioCalc = 0;
+  if (totalUnidadesDecant > 0) {
+    promedioCalc = totalCostoDecant / totalUnidadesDecant;
+  }
+  
+  document.getElementById('kpi-promedio').textContent = promedioCalc.toLocaleString('es-MX', {style: 'currency', currency: 'MXN'});
+  
+  const banner = document.getElementById('promedio-banner');
+  if (promedioCalc > 0) {
+    const sugVal = document.getElementById('sugerencia-val');
+    if (sugVal) sugVal.textContent = promedioCalc.toLocaleString('es-MX', {style: 'currency', currency: 'MXN'});
+    if (banner) banner.style.display = 'block';
+    window._promedioCalculado = promedioCalc;
+  } else if (banner) {
+    banner.style.display = 'none';
+  }
+}
+
+window.aplicarPromedioCalculado = () => {
+  if (window._promedioCalculado > 0) {
+    // Distribuir equitativamente o solo en botella por simplicidad. Lo ponemos en botella y borramos el resto para que sume el total exacto, o calculamos porcentualmente. 
+    // Para simplificar, ponemos todo en 'botella' y 0 en el resto para reflejar el promedio global.
+    document.getElementById('c-botella').value = window._promedioCalculado.toFixed(2);
+    document.getElementById('c-etiqueta').value = '0';
+    document.getElementById('c-bolsa').value = '0';
+    calcTotalInsumos();
+    toast('Promedio aplicado a Botella. No olvides Guardar Cambios.', 'info');
+  }
+};
+
 function renderInsumos() {
   const list = document.getElementById('materia-list');
-  if (insumos.length === 0) {
-    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-faint);font-size:13px;">No hay compras registradas.</div>';
+  const fMes = document.getElementById('f-mes')?.value || 'todos';
+  
+  let filtered = insumos;
+  if (fMes !== 'todos') {
+    filtered = insumos.filter(ins => {
+      if (!ins.fecha) return false;
+      const d = new Date(ins.fecha);
+      const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      return mKey === fMes;
+    });
+  }
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-faint);font-size:13px;">No hay compras en este periodo.</td></tr>';
     return;
   }
   
   // Sort descending by date
-  insumos.sort((a,b) => (b.fecha || 0) - (a.fecha || 0));
+  filtered.sort((a,b) => (b.fecha || 0) - (a.fecha || 0));
   
   const typeIcons = {
     'botella_vidrio': '<i class="bi bi-droplet" style="color:#4f98a3"></i>',
     'botella_plastico': '<i class="bi bi-droplet-half" style="color:#a38b4f"></i>',
     'botella_reforzada': '<i class="bi bi-shield-check" style="color:var(--gold)"></i>',
+    'kit_decant_travel': '<i class="bi bi-airplane" style="color:#f59e0b"></i>',
+    'frasco_vidrio': '<i class="bi bi-droplet-fill" style="color:#0ea5e9"></i>',
+    'atomizador': '<i class="bi bi-wind" style="color:#6366f1"></i>',
     'etiquetas': '<i class="bi bi-tags" style="color:#7a4fa3"></i>',
     'bolsas': '<i class="bi bi-bag" style="color:#4fa365"></i>',
+    'cinta': '<i class="bi bi-tape" style="color:#eab308"></i>',
     'otro': '<i class="bi bi-box" style="color:#888"></i>'
   };
   
@@ -121,30 +231,40 @@ function renderInsumos() {
     'botella_vidrio': 'Botella de Vidrio',
     'botella_plastico': 'Botella de Plástico',
     'botella_reforzada': 'Botella Reforzada',
+    'kit_decant_travel': 'Kit Decant Travel',
+    'frasco_vidrio': 'Frasco de Vidrio (Suelto)',
+    'atomizador': 'Atomizador',
     'etiquetas': 'Etiquetas',
     'bolsas': 'Bolsas / Empaque',
+    'cinta': 'Cinta / Embalaje',
     'otro': 'Otro'
   };
 
-  list.innerHTML = insumos.map(ins => {
-    const date = new Date(ins.fecha).toLocaleDateString('es-MX');
+  list.innerHTML = filtered.map(ins => {
+    const date = new Date(ins.fecha).toLocaleDateString('es-MX', {day:'2-digit', month:'short', year:'numeric'});
     const unitario = (ins.total / ins.cantidad).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
     const total = (ins.total).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
     
     return `
-    <div class="insumo-item">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div style="font-size:24px;width:32px;text-align:center">${typeIcons[ins.tipo] || typeIcons['otro']}</div>
-        <div class="insumo-info">
-          <div class="insumo-name">${typeNames[ins.tipo] || 'Insumo'} <span style="color:var(--text-muted);font-weight:400;font-size:12px">(${date})</span></div>
-          <div class="insumo-detail">${ins.descripcion || 'Sin descripción'} — ${ins.cantidad} unidades a ${unitario} c/u</div>
+    <tr>
+      <td style="color:var(--text-muted);font-size:12px;">${date}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="font-size:16px;">${typeIcons[ins.tipo] || typeIcons['otro']}</div>
+          <div>${typeNames[ins.tipo] || 'Insumo'}</div>
         </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:15px;">
-        <div style="font-weight:600;font-size:15px;color:var(--accent)">${total}</div>
-        <button class="btn-icon" onclick="deleteInsumo('${ins.id}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
-      </div>
-    </div>
+      </td>
+      <td style="color:var(--text-muted);">${ins.descripcion || '—'}</td>
+      <td><span class="badge-ml">${ins.cantidad} ud</span></td>
+      <td>${unitario}</td>
+      <td><strong>${total}</strong></td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="btn-icon" onclick="editInsumo('${ins.id}')" title="Editar"><i class="bi bi-pencil-square"></i></button>
+          <button class="btn-icon" onclick="deleteInsumo('${ins.id}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
+        </div>
+      </td>
+    </tr>
     `;
   }).join('');
 }
@@ -174,7 +294,23 @@ function calcUnitario() {
   }
 }
 
+window.editInsumo = (id) => {
+  const ins = insumos.find(x => x.id === id);
+  if (!ins) return;
+  
+  document.getElementById('m-id').value = id;
+  document.getElementById('m-tipo').value = ins.tipo;
+  document.getElementById('m-desc').value = ins.descripcion || '';
+  document.getElementById('m-cant').value = ins.cantidad;
+  document.getElementById('m-total').value = ins.total;
+  calcUnitario();
+  
+  document.getElementById('modal-materia-title').textContent = 'Editar Compra';
+  document.getElementById('modal-materia').classList.add('open');
+};
+
 window.saveMateria = async () => {
+  const id = document.getElementById('m-id').value;
   const tipo = document.getElementById('m-tipo').value;
   const desc = document.getElementById('m-desc').value.trim();
   const cant = +document.getElementById('m-cant').value;
@@ -191,12 +327,17 @@ window.saveMateria = async () => {
   
   try {
     const data = {
-      tipo, descripcion: desc, cantidad: cant, total,
-      fecha: Date.now()
+      tipo, descripcion: desc, cantidad: cant, total
     };
     
-    await addDoc(collection(db, 'insumos'), data);
-    toast('Compra registrada', 'success');
+    if (id) {
+      await updateDoc(doc(db, 'insumos', id), data);
+      toast('Compra actualizada', 'success');
+    } else {
+      data.fecha = Date.now();
+      await addDoc(collection(db, 'insumos'), data);
+      toast('Compra registrada', 'success');
+    }
     closeMateriaModal();
     loadInsumos();
   } catch(e) {
@@ -208,12 +349,13 @@ window.saveMateria = async () => {
 };
 
 window.deleteInsumo = async (id) => {
-  if (!confirm('¿Eliminar este registro de compra?')) return;
-  try {
-    await deleteDoc(doc(db, 'insumos', id));
-    toast('Eliminado', 'info');
-    loadInsumos();
-  } catch(e) {
-    toast('Error al eliminar', 'error');
+  if (confirm('¿Estás seguro de eliminar esta compra?')) {
+    try {
+      await deleteDoc(doc(db, 'insumos', id));
+      toast('Compra eliminada', 'success');
+      loadInsumos();
+    } catch(e) {
+      toast('Error al eliminar: ' + e.message, 'error');
+    }
   }
 };

@@ -87,6 +87,10 @@
           <span class="kpi-value" id="kpi-ticket">$0</span>
         </div>
         <div class="kpi-card">
+          <span class="kpi-title">Clientes Atendidos</span>
+          <span class="kpi-value" id="kpi-clientes">0</span>
+        </div>
+        <div class="kpi-card">
           <span class="kpi-title">Decants / Ml Despachados</span>
           <div style="display:flex; align-items:baseline; gap:8px;">
             <span class="kpi-value" id="kpi-decants">0</span>
@@ -102,10 +106,14 @@
       </div>
 
       <!-- Gráficos Secundarios -->
-      <div class="chart-grid-3">
+      <div class="chart-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:15px;" id="grid-4-charts">
         <div class="chart-card">
           <h3>Distribución por Canal</h3>
           <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:200px;"><canvas id="chartCanales"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Método de Pago</h3>
+          <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:200px;"><canvas id="chartMetodos"></canvas></div>
         </div>
         <div class="chart-card">
           <h3>Top 5 Tamaños Favoritos</h3>

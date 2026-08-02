@@ -16,6 +16,7 @@ export function renderSidebar(active) {
       <li class="sidebar-section-label"><i class="bi bi-box-seam"></i> Catálogo y Productos</li>
       <li><a href="./perfumes.html"   class="${active==='perfumes'   ?'active':''}" ><i class="bi bi-droplet"></i> Perfumes</a></li>
       <li><a href="./paquetes.html"   class="${active==='paquetes'   ?'active':''}" ><i class="bi bi-box2-heart"></i> Paquetes (Combos)</a></li>
+      <li><a href="./accesorios.html" class="${active==='accesorios' ?'active':''}" ><i class="bi bi-bag-plus"></i> Accesorios Extras</a></li>
       <li><a href="./marcas.html"     class="${active==='marcas'     ?'active':''}" ><i class="bi bi-bookmark"></i> Marcas</a></li>
       <li><a href="./categorias.html" class="${active==='categorias' ?'active':''}" ><i class="bi bi-tag"></i> Categorias</a></li>
       <li><a href="./notas.html"      class="${active==='notas'      ?'active':''}" ><i class="bi bi-flower1"></i> Notas Olfativas</a></li>
@@ -144,16 +145,45 @@ function injectCanastaUI() {
   window.getPosCart = () => JSON.parse(localStorage.getItem('posCart')||'[]');
   window.savePosCart = (cart) => { localStorage.setItem('posCart', JSON.stringify(cart)); window.renderPosCart(); };
   
+  window.nextPosClient = () => {
+    let currentId = parseInt(localStorage.getItem('posClientId') || '1');
+    const cart = window.getPosCart();
+    
+    // Prevent incrementing if the current client is empty
+    const hasItems = cart.some(item => (item.cartClientId || 1) === currentId);
+    if (!hasItems && cart.length > 0) {
+      if(window.toast) window.toast('El cliente actual está vacío. Añade perfumes primero.', 'warning');
+      return;
+    }
+    
+    // Jump to max existing client + 1 (not current + 1)
+    const maxCid = cart.reduce((max, item) => Math.max(max, item.cartClientId || 1), 0);
+    const newId = Math.max(maxCid, currentId) + 1;
+    localStorage.setItem('posClientId', newId);
+    if(window.toast) window.toast(`Cliente ${newId} listo`, 'success');
+    else if(window.showToast) window.showToast(`Cliente ${newId} listo`, 'success');
+    window.renderPosCart();
+  };
+
+  window.setActivePosClient = (cid) => {
+    localStorage.setItem('posClientId', cid);
+    window.renderPosCart();
+  };
+
   window.addToPosCart = (item) => {
     const cart = window.getPosCart();
+    if (cart.length === 0) localStorage.setItem('posClientId', '1');
+    item.cartClientId = parseInt(localStorage.getItem('posClientId') || '1');
     cart.push(item);
     window.savePosCart(cart);
-    if(window.showToast) window.showToast('Agregado a la canasta', 'success');
+    if(window.toast) window.toast('Agregado a la canasta', 'success');
+    else if(window.showToast) window.showToast('Agregado a la canasta', 'success');
   };
-  
+
   window.removeFromPosCart = (idx) => {
     const cart = window.getPosCart();
     cart.splice(idx,1);
+    if (cart.length === 0) localStorage.setItem('posClientId', '1');
     window.savePosCart(cart);
   };
   
@@ -176,6 +206,7 @@ function injectCanastaUI() {
       confirmButtonColor: '#ef4444'
     });
     if(res.isConfirmed) {
+      localStorage.setItem('posClientId', '1');
       window.savePosCart([]);
     }
   };
@@ -195,26 +226,62 @@ function injectCanastaUI() {
 
     container.innerHTML = '';
     let total = 0;
+    
+    // Agrupar por cartClientId
+    const groups = {};
     cart.forEach((item, idx) => {
       total += Number(item.precio) * Number(item.cant);
-      container.innerHTML += `
-        <div style="display:flex;gap:16px;padding:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;align-items:center;">
-          <img src="${item.imagen || '../assets/img/placeholder.png'}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;background:var(--bg-card2);flex-shrink:0;">
+      const cid = item.cartClientId || 1;
+      if (!groups[cid]) groups[cid] = { total: 0, count: 0, itemsHtml: '' };
+      groups[cid].total += Number(item.precio) * Number(item.cant);
+      groups[cid].count += item.cant;
+      
+      groups[cid].itemsHtml += `
+        <div style="display:flex;gap:12px;padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;align-items:center;margin-bottom:8px;">
+          <img src="${item.imagen || '../assets/img/placeholder.png'}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;background:var(--bg-card2);flex-shrink:0;">
           <div style="flex:1;min-width:0;">
-            <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">${item.marca || 'Marca'}</div>
-            <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;color:var(--text-primary);line-height:1.2">${item.nombre}</div>
-            <div style="font-size:13px;color:var(--text-muted);">${item.ml}ml — <span style="font-weight:700;color:var(--text-primary);">$${item.precio}</span></div>
+            <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;color:var(--text-primary);line-height:1.2">${item.nombre}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${item.ml}ml — <span style="font-weight:700;color:var(--text-primary);">$${item.precio}</span></div>
           </div>
-          <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
-            <button class="btn-icon" style="color:#ef4444;border:1px solid var(--border);border-radius:8px;background:none;width:36px;height:36px;display:flex;justify-content:center;align-items:center;transition:all 0.2s;" onclick="removeFromPosCart(${idx})"><i class="bi bi-trash"></i></button>
-            <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg-card2);height:36px;">
-              <button style="border:none;background:none;padding:0 12px;color:var(--text-muted);cursor:pointer;height:100%;font-size:16px;" onclick="updatePosCartCant(${idx}, -1)">-</button>
-              <div style="font-size:14px;font-weight:600;min-width:20px;text-align:center;color:var(--text-primary);">${item.cant}</div>
-              <button style="border:none;background:none;padding:0 12px;color:var(--text-muted);cursor:pointer;height:100%;font-size:16px;" onclick="updatePosCartCant(${idx}, 1)">+</button>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <button class="btn-icon" style="color:#ef4444;border:1px solid var(--border);border-radius:6px;background:none;width:30px;height:30px;display:flex;justify-content:center;align-items:center;" onclick="removeFromPosCart(${idx})"><i class="bi bi-trash" style="font-size:14px;"></i></button>
+            <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--bg-card2);height:30px;">
+              <button style="border:none;background:none;padding:0 8px;color:var(--text-muted);cursor:pointer;height:100%;font-size:14px;" onclick="updatePosCartCant(${idx}, -1)">-</button>
+              <div style="font-size:13px;font-weight:600;min-width:16px;text-align:center;color:var(--text-primary);">${item.cant}</div>
+              <button style="border:none;background:none;padding:0 8px;color:var(--text-muted);cursor:pointer;height:100%;font-size:14px;" onclick="updatePosCartCant(${idx}, 1)">+</button>
             </div>
           </div>
         </div>`;
     });
+    
+    // Asegurar que el cliente actual esté visible, incluso si está vacío
+    const currentCid = parseInt(localStorage.getItem('posClientId') || '1');
+    if (!groups[currentCid]) {
+      groups[currentCid] = { total: 0, count: 0, itemsHtml: `<div style="font-size:12px;color:var(--text-faint);font-style:italic;text-align:center;padding:10px 0;">Agrega perfumes para este cliente...</div>` };
+    }
+    
+    // Renderizar grupos
+    Object.keys(groups).sort((a,b)=>a-b).forEach(cid => {
+      const g = groups[cid];
+      const isActive = parseInt(cid) === currentCid;
+      
+      container.innerHTML += `
+        <div style="margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:6px; border-radius:8px; cursor:${isActive ? 'default' : 'pointer'}; background:${isActive ? 'rgba(201,168,76,0.1)' : 'transparent'}; transition:all 0.2s;" ${!isActive ? `onclick="setActivePosClient(${cid})"` : ''} title="${!isActive ? 'Click para agregar a este cliente' : ''}">
+            <div style="font-size:14px;font-weight:700;color:var(--text-primary);">👤 Cliente ${cid} ${isActive ? '<span class="badge badge-gold" style="font-size:10px;margin-left:6px;border-radius:4px;padding:2px 6px;">Actual</span>' : ''} <span style="font-size:12px;color:var(--text-muted);font-weight:normal;margin-left:4px;">(${g.count} art.)</span></div>
+            <div style="font-size:14px;font-weight:700;color:var(--gold);">$${g.total}</div>
+          </div>
+          ${g.itemsHtml}
+        </div>
+      `;
+    });
+
+    container.innerHTML += `
+      <button class="btn btn-outline" style="width:100%;justify-content:center;border-style:dashed;color:var(--text-muted);border-color:var(--border);" onclick="nextPosClient()">
+        <i class="bi bi-person-plus"></i> Siguiente Cliente (Separador)
+      </button>
+    `;
+    
     document.getElementById('pos-total').textContent = `$${total} MXN`;
   };
   

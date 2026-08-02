@@ -127,15 +127,17 @@ function showSkeletons() {
 async function load() {
   showSkeletons();
 
-  const [perfSnap, famSnap, paqSnap] = await Promise.all([
+  const [perfSnap, famSnap, paqSnap, accSnap] = await Promise.all([
     getDocs(query(collection(db, 'perfumes'), where('activo', '==', true))),
     getDocs(collection(db, 'familias_olfativas')),
-    getDocs(query(collection(db, 'paquetes'), where('activo', '==', true)))
+    getDocs(query(collection(db, 'paquetes'), where('activo', '==', true))),
+    getDocs(query(collection(db, 'accesorios'), where('activo', '==', true)))
   ]);
 
   all = [];
   perfSnap.forEach(d => all.push({ id: d.id, ...d.data() }));
   paqSnap.forEach(d => all.push({ id: d.id, tipo: 'paquete', ...d.data() }));
+  accSnap.forEach(d => all.push({ id: d.id, tipo: 'accesorio', marca: 'Accesorios', isAccesorio: true, ...d.data() }));
 
   // Tipos: los 3 fijos — se usan para filtrar por p.categoria
   const tiposData = TIPOS_PERMITIDOS;
@@ -385,7 +387,7 @@ function cardHTML(p) {
       ${savingsTag}
       ${src
         ? `<img src="${src}" alt="${p.nombre}" loading="lazy" width="400" height="400" decoding="async">`
-        : `<div class="card-no-img"><i class="bi ${p.tipo === 'paquete' ? 'bi-box2-heart' : 'bi-droplet'}"></i></div>`}
+        : `<div class="card-no-img"><i class="bi ${p.tipo === 'paquete' ? 'bi-box2-heart' : (p.tipo === 'accesorio' ? 'bi-bag' : 'bi-droplet')}"></i></div>`}
       ${units > 0 ? `<div class="card-in-cart"><i class="bi bi-bag-check-fill"></i>${units > 1 ? ` <span>${units}</span>` : ''}</div>` : ''}
     </div>
     <div class="card-body">
@@ -586,7 +588,7 @@ window.openModal = (id, pushHash = true) => {
   const modalSrc = imgModal(p.imagen);
   document.getElementById('modal-img').innerHTML = modalSrc
     ? `<img src="${modalSrc}" alt="${p.nombre}" width="800" height="800" decoding="async">`
-    : '<div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>';
+    : `<div class="modal-img-placeholder"><i class="bi ${p.tipo === 'paquete' ? 'bi-box2-heart' : (p.tipo === 'accesorio' ? 'bi-bag' : 'bi-droplet')}"></i></div>`;
   document.getElementById('modal-nombre').textContent = p.nombre;
   document.getElementById('modal-marca').textContent  = p.marca || '';
   document.getElementById('modal-desc').textContent   = p.descripcion || 'Sin descripción disponible.';

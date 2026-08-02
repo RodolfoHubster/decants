@@ -35,7 +35,13 @@ window.addToPosCart = (item) => {
   let cart = [];
   try { cart = JSON.parse(localStorage.getItem('posCart') || '[]'); } catch(e){}
   
-  const extItem = cart.find(x => x.id === item.id && x.ml === item.ml);
+  // Reset client counter if cart was empty
+  if (cart.length === 0) localStorage.setItem('posClientId', '1');
+  const currentClientId = parseInt(localStorage.getItem('posClientId') || '1');
+  item.cartClientId = currentClientId;
+  
+  // Only merge if same perfume+ml AND same client
+  const extItem = cart.find(x => x.id === item.id && x.ml === item.ml && (x.cartClientId || 1) === currentClientId);
   if (extItem) {
     extItem.cant += 1;
     extItem.addedAt = Date.now();
@@ -66,13 +72,14 @@ function initFiltrosSelects() {
 }
 
 async function loadAll() {
-  const [ps, cs, ms, fs, ts, pq] = await Promise.all([
+  const [ps, cs, ms, fs, ts, pq, accSnap] = await Promise.all([
     getDocs(collection(db, 'perfumes')),
     getDocs(collection(db, 'categorias')),
     getDocs(collection(db, 'marcas')),
     getDocs(collection(db, 'familias_olfativas')),
     getDocs(collection(db, 'tipos_perfume')),
-    getDocs(collection(db, 'paquetes'))
+    getDocs(collection(db, 'paquetes')),
+    getDocs(collection(db, 'accesorios'))
   ]);
 
   cats   = []; cs.forEach(d => cats.push({ id: d.id,   ...d.data() }));
@@ -88,7 +95,17 @@ async function loadAll() {
   ts.forEach(d => tiposData.push({ id: d.id, ...d.data() }));
   tiposData.sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre));
 
-  perfumes = []; ps.forEach(d => perfumes.push({ id: d.id, ...d.data() }));
+  perfumes = []; 
+  ps.forEach(d => perfumes.push({ id: d.id, ...d.data() }));
+  accSnap.forEach(d => perfumes.push({ 
+    id: d.id, 
+    isAccesorio: true, 
+    categoria: 'Accesorios', 
+    marca: 'Accesorios', 
+    familia: 'Sin especificar',
+    tipo: 'Sin especificar',
+    ...d.data() 
+  }));
   
   window.paquetesData = [];
   pq.forEach(d => window.paquetesData.push({ id: d.id, ...d.data(), isPaquete: true }));
@@ -396,7 +413,16 @@ window.openPosItemModal = (id) => {
   const available = Object.entries(pr).filter(([,v])=>+v>0);
   
   if(available.length === 0) {
-    btnContainer.innerHTML = '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:10px">No hay precios configurados</div>';
+    if (p.isAccesorio) {
+      btnContainer.innerHTML = `<button class="btn btn-outline" style="width:100%;justify-content:space-between;padding:14px 20px;font-size:16px;border-radius:12px;border-color:var(--border);" onclick="fastAddToCart('${p.id}', '1 ud', ${p.precio || 0})">
+        <div style="display:flex;align-items:center;">
+          <span style="font-weight:600">1 ud</span>
+        </div>
+        <span style="color:var(--accent);font-weight:700">$${p.precio || 0}</span>
+      </button>`;
+    } else {
+      btnContainer.innerHTML = '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:10px">No hay precios configurados</div>';
+    }
   } else {
     available.forEach(([ml, precio]) => {
       let savingHtml = '';
@@ -412,12 +438,31 @@ window.openPosItemModal = (id) => {
       }
       btnContainer.innerHTML += `<button class="btn btn-outline" style="width:100%;justify-content:space-between;padding:14px 20px;font-size:16px;border-radius:12px;border-color:var(--border);" onclick="fastAddToCart('${p.id}', '${ml}', ${precio})">
         <div style="display:flex;align-items:center;">
-          <span style="font-weight:600">${isPaquete ? 'Paquete ' : ''}${ml}ml</span>
+          <span style="font-weight:600">${isPaquete ? 'Paquete ' : ''}${ml}${p.isAccesorio ? 'ml' : 'ml'}</span>
           ${savingHtml}
         </div>
         <span style="color:var(--accent);font-weight:700">${crossHtml}$${precio}</span>
       </button>`;
     });
+  }
+
+  // Add Completo and Resto for regular perfumes
+  if (!isPaquete && !p.isAccesorio) {
+    btnContainer.innerHTML += `
+      <div style="width:100%; height:1px; background:var(--border); margin:10px 0;"></div>
+      <button class="btn btn-outline" style="width:100%;justify-content:space-between;padding:14px 20px;font-size:16px;border-radius:12px;border-color:var(--border);" onclick="askCustomPriceAndAddToCart('${p.id}', 'Resto')">
+        <div style="display:flex;align-items:center;">
+          <span style="font-weight:600">Resto de Botella (Usada) 🍾</span>
+        </div>
+        <i class="bi bi-pencil" style="font-size:14px;color:var(--text-muted)"></i>
+      </button>
+      <button class="btn btn-outline" style="width:100%;justify-content:space-between;padding:14px 20px;font-size:16px;border-radius:12px;border-color:var(--border);margin-top:10px;" onclick="askCustomPriceAndAddToCart('${p.id}', 'Completo')">
+        <div style="display:flex;align-items:center;">
+          <span style="font-weight:600">Botella Sellada 🍾</span>
+        </div>
+        <i class="bi bi-pencil" style="font-size:14px;color:var(--text-muted)"></i>
+      </button>
+    `;
   }
   document.getElementById('modal-pos').classList.add('open');
 };
@@ -469,7 +514,90 @@ window.closePosModal = () => {
   document.getElementById('modal-pos').classList.remove('open');
 };
 
-window.fastAddToCart = (id, ml, precio) => {
+window.askCustomPriceAndAddToCart = async (id, talla) => {
+  const result = await Swal.fire({
+    title: `Precio para ${talla}`,
+    html: `
+      <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 15px;">Ingresa el precio de venta ($MXN)</div>
+      <input id="swal-custom-price" type="number" class="form-control" placeholder="Ej. 1500" style="text-align:center; font-size: 18px; padding: 12px; border-radius: 8px; width: 80%; margin: 0 auto; display: block; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); outline: none;">
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Añadir',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: 'var(--accent)',
+    cancelButtonColor: 'var(--bg-card2)',
+    background: 'var(--bg-card)',
+    color: 'var(--text-primary)',
+    didOpen: () => {
+      document.querySelector('.swal2-container').style.zIndex = '99999';
+      document.getElementById('swal-custom-price').focus();
+    },
+    preConfirm: () => {
+      const val = document.getElementById('swal-custom-price').value;
+      if (!val || isNaN(val) || Number(val) < 0) {
+        Swal.showValidationMessage('Debes ingresar un precio válido');
+      }
+      return val;
+    }
+  });
+
+  if (result.isConfirmed) {
+    const precioStr = result.value;
+    let extraNotas = '';
+    let costo = null;
+    if (talla === 'Completo') {
+      const resCosto = await Swal.fire({
+        title: `Costo de Adquisición (Opcional)`,
+        html: `
+          <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 15px;">¿Cuánto te costó la botella? ($MXN)</div>
+          <input id="swal-custom-costo" type="number" class="form-control" placeholder="Ej. 1000" style="text-align:center; font-size: 18px; padding: 12px; border-radius: 8px; width: 80%; margin: 0 auto; display: block; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); outline: none;">
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Guardar',
+        cancelButtonText: 'Omitir',
+        confirmButtonColor: 'var(--accent)',
+        cancelButtonColor: 'var(--bg-card2)',
+        background: 'var(--bg-card)',
+        color: 'var(--text-primary)',
+        didOpen: () => {
+          document.querySelector('.swal2-container').style.zIndex = '99999';
+          document.getElementById('swal-custom-costo').focus();
+        },
+        preConfirm: () => {
+          return document.getElementById('swal-custom-costo').value;
+        }
+      });
+      if (resCosto.isConfirmed && resCosto.value && !isNaN(resCosto.value) && Number(resCosto.value) >= 0) {
+        costo = Number(resCosto.value);
+      }
+    }
+    
+    // We add it to cart
+    let p = perfumes.find(x => x.id === id);
+    if (!p) return;
+    
+    if (window.addToPosCart) {
+      const itemData = {
+        id: p.id,
+        nombre: p.nombre,
+        marca: p.marca || '',
+        imagen: p.imagen || '',
+        talla: talla,
+        precio: Number(precioStr),
+        isPaquete: false,
+        isReforzada: false
+      };
+      if (costo !== null) {
+        itemData.costoCompleto = costo;
+      }
+      window.addToPosCart(itemData);
+      window.closePosModal();
+      if (window.toast) window.toast('Añadido a la canasta', 'success');
+    }
+  }
+};
+
+window.fastAddToCart = async (id, ml, precio) => {
   let p = perfumes.find(x => x.id === id);
   let isPaquete = false;
   if (!p && window.paquetesData) {
@@ -480,6 +608,33 @@ window.fastAddToCart = (id, ml, precio) => {
 
   let finalNombre = p.nombre;
   let finalMarca = isPaquete ? 'Combos Fitoscents' : (p.marca || '');
+  let finalPrecio = precio;
+  let finalMl = String(ml);
+
+  // Check if it's a decant size (like 5, 10, Paquete 10)
+  const mlNum = parseInt(finalMl.replace('Paquete ', ''));
+  if (!p.isAccesorio && (mlNum === 5 || mlNum === 10)) {
+    const result = await Swal.fire({
+      title: '¿Añadir en Travel Spray?',
+      text: 'Se sumarán $15 al precio final.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, es Travel (+ $15)',
+      cancelButtonText: 'No, envase normal',
+      confirmButtonColor: 'var(--accent)',
+      cancelButtonColor: 'var(--bg-card2)',
+      background: 'var(--bg-card)',
+      color: 'var(--text-primary)',
+      didOpen: () => {
+        document.querySelector('.swal2-container').style.zIndex = '99999';
+      }
+    });
+    if (result.isConfirmed) {
+      finalPrecio += 15;
+      finalNombre += ' (Travel)';
+      // also pass a flag if needed, but for now we append to name and price
+    }
+  }
 
   const finishAdd = (nombre, pItems = null) => {
     if(window.addToPosCart) {
@@ -488,8 +643,8 @@ window.fastAddToCart = (id, ml, precio) => {
         nombre: nombre,
         marca: finalMarca,
         imagen: p.imagen || '',
-        ml: ml,
-        precio: precio,
+        ml: finalMl,
+        precio: finalPrecio,
         cant: 1,
         loteId: p.loteActivo || null,
         paqueteItems: pItems
@@ -683,6 +838,10 @@ window.previewFile = () => {
 window.edit = (id) => {
   const p = perfumes.find(x => x.id === id);
   if (!p) return;
+  if (p.isAccesorio) {
+    toast('Este es un accesorio. Ve a la pestaña de "Accesorios" para editarlo.', 'warning');
+    return;
+  }
   document.getElementById('p-id').value     = p.id;
   document.getElementById('p-nombre').value = p.nombre;
   document.getElementById('p-genero').value = p.genero || '';
@@ -928,6 +1087,12 @@ window.save = async () => {
 
 
 window.del = async (id, nombre) => {
+  const p = perfumes.find(x => x.id === id);
+  if (p && p.isAccesorio) {
+    toast('Para eliminar accesorios, ve a la pestaña de "Accesorios".', 'warning');
+    return;
+  }
+  
   const result = await Swal.fire({
     title: '¿Eliminar perfume?',
     text: `Estás a punto de eliminar "${nombre}" del catálogo.`,

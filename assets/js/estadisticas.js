@@ -10,6 +10,7 @@ let chartTopObj = null;
 let chartTendenciaObj = null;
 let chartCanalesObj = null;
 let chartMarcasObj = null;
+let chartMetodosObj = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   renderSidebar('estadisticas');
@@ -112,8 +113,15 @@ function renderKPIs() {
     const cant = +v.cantidad || 1;
     const precio = +v.precio || 0;
     
-    ventasUnicas.add(v.id || Math.random()); // For ticket promedio
-    
+    let orderKey = '';
+    if (v.cliente && v.cliente.trim() !== '') {
+      const d = new Date(v.creadoEn || 0);
+      const dateStr = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      orderKey = v.cliente.trim().toLowerCase() + '_' + dateStr;
+    } else {
+      orderKey = (v.creadoEn || Math.random()).toString();
+    }
+    ventasUnicas.add(orderKey);
     if (v.talla === 'Completo') {
       const p = perfumes.find(x => x.id === v.perfumeId);
       if (p) costoTotalInversion += (+p.costoBotella || 0) * cant;
@@ -187,6 +195,9 @@ function renderKPIs() {
   document.getElementById('kpi-costo').textContent = costoTotalInversion.toLocaleString('es-MX', {style:'currency', currency:'MXN'});
   document.getElementById('kpi-margen').textContent = margen.toFixed(1) + '%';
   document.getElementById('kpi-ticket').textContent = ticketPromedio.toLocaleString('es-MX', {style:'currency', currency:'MXN'});
+  if (document.getElementById('kpi-clientes')) {
+    document.getElementById('kpi-clientes').textContent = ventasUnicas.size;
+  }
   
   document.getElementById('kpi-decants').textContent = decants.toLocaleString();
   document.getElementById('kpi-ml').textContent = ml.toLocaleString() + ' ml';
@@ -269,6 +280,33 @@ function renderCharts() {
     });
   }
 
+  // 2b. Métodos de Pago
+  const metodosCount = { 'efectivo': 0, 'transferencia': 0, 'tarjeta': 0, 'otro': 0 };
+  ventasFiltradas.forEach(v => {
+    const m = v.metodoPago || 'efectivo';
+    if (metodosCount[m] !== undefined) metodosCount[m] += (+v.precio || 0) * (+v.cantidad || 1);
+  });
+
+  const ctxMetodos = document.getElementById('chartMetodos');
+  if (ctxMetodos) {
+    if (chartMetodosObj) chartMetodosObj.destroy();
+    chartMetodosObj = new Chart(ctxMetodos, {
+      type: 'doughnut',
+      data: {
+        labels: ['Efectivo 💵', 'Transfer. 🏦', 'Tarjeta 💳', 'Otro'],
+        datasets: [{
+          data: [metodosCount['efectivo'], metodosCount['transferencia'], metodosCount['tarjeta'], metodosCount['otro']],
+          backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#6b7280'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { color: textColor } } }
+      }
+    });
+  }
+
   // 3. Distribución de Tallas
   const tallasCount = { '2':0, '3':0, '5':0, '10':0 };
   ventasFiltradas.forEach(v => {
@@ -339,9 +377,15 @@ function renderTopClientes() {
   const cData = {};
   ventasFiltradas.forEach(v => {
     const name = v.cliente ? v.cliente.trim() : 'Mostrador / Anónimo';
-    if (!cData[name]) cData[name] = { count: 0, ingresos: 0 };
+    if (!cData[name]) cData[name] = { count: 0, ingresos: 0, items: [] };
     cData[name].count++;
     cData[name].ingresos += (+v.precio || 0) * (+v.cantidad || 1);
+    let itemName = v.perfumeNombre || '';
+    if (itemName) {
+      if (v.talla) itemName += ` ${v.talla}${v.talla.includes('ml') || v.talla === 'Completo' || v.talla === 'Resto' || v.talla === 'Otro' ? '' : 'ml'}`;
+      if (+v.cantidad > 1) itemName += ` (x${v.cantidad})`;
+      cData[name].items.push(itemName);
+    }
   });
   
   const top = Object.entries(cData)
@@ -357,15 +401,21 @@ function renderTopClientes() {
     return;
   }
   
-  container.innerHTML = top.map((x, i) => `
+  container.innerHTML = top.map((x, i) => {
+    // Unique list of up to 5 items to show
+    const uniqueItems = [...new Set(x[1].items)];
+    const itemsStr = uniqueItems.slice(0, 4).join(', ') + (uniqueItems.length > 4 ? ', ...' : '');
+    
+    return `
     <div class="list-item">
       <div>
         <div class="list-item-title">#${i+1} ${x[0]}</div>
-        <div class="list-item-sub">${x[1].count} compras</div>
+        <div class="list-item-sub" style="margin-bottom:2px;">${x[1].count} artículo${x[1].count > 1 ? 's' : ''}</div>
+        ${itemsStr ? `<div style="font-size:10px; color:var(--text-faint); max-width: 250px; white-space: normal;">🛒 ${itemsStr}</div>` : ''}
       </div>
       <div style="color:#C9A84C; font-weight:600">${x[1].ingresos.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}</div>
     </div>
-  `).join('');
+  `}).join('');
 }
 
 function renderAlertasInventario() {
@@ -438,7 +488,7 @@ function renderAlertasInventario() {
 function _finishRenderAlertas(pSoldsData, container) {
   const alerts = [];
   perfumes.forEach(p => {
-    if (p.archivado || p.activo === false) return; // Skip archived/hidden
+    if (p.archivado) return; // Skip archived, but show hidden (activo===false) since they still need restock
     const data = pSoldsData[p.id] || { ml: 0, byLote: {} };
     
     let totalCap = 0;
@@ -917,6 +967,47 @@ window.guardarAjusteLiquido = async () => {
     // Update local variable so we don't have to fetch everything again
     const localP = perfumes.find(x => x.id === ajusteActual.pid);
     if (localP) localP.lotes = lotes;
+    
+    // Auto-update estadoStock based on the new ajuste level
+    if (localP) {
+      // Recalculate total sold for this perfume
+      let totalCap = 0;
+      let totalSold = 0;
+      (localP.lotes || []).forEach(l => {
+        const lCap = +l.tamano || 0;
+        totalCap += lCap;
+        // Gather sold ml from ventas
+        let lSold = 0;
+        ventas.forEach(v => {
+          if (v.paqueteItems && Array.isArray(v.paqueteItems)) {
+            const t = parseFloat(String(v.talla).replace('Paquete ', '')) || 0;
+            v.paqueteItems.forEach(pi => {
+              if (pi.id === localP.id && (pi.loteId || 'lote-1') === l.id) {
+                lSold += t * (+v.cantidad || 1);
+              }
+            });
+          } else if (v.perfumeId === localP.id && (v.loteId || 'lote-1') === l.id) {
+            if (v.talla === 'Resto') { lSold = lCap; }
+            else if (v.talla !== 'Completo' && v.talla !== 'Otro') {
+              const t = parseFloat(v.talla);
+              if (!isNaN(t) && t > 0) lSold += t * (+v.cantidad || 1);
+            }
+          }
+        });
+        lSold += parseFloat(l.mlAjuste) || 0;
+        totalSold += lSold;
+      });
+      
+      const pct = totalCap > 0 ? (totalSold / totalCap) * 100 : 0;
+      let newEstado = 'normal';
+      if (pct >= 100) newEstado = 'agotado';
+      else if (pct >= 85) newEstado = 'por_acabarse';
+      
+      if (localP.estadoStock !== newEstado) {
+        localP.estadoStock = newEstado;
+        await updateDoc(pRef, { estadoStock: newEstado });
+      }
+    }
     
     document.getElementById('modal-ajuste').classList.remove('open');
     

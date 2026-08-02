@@ -22,6 +22,7 @@
         <span class="topbar-title">Ventas</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-outline btn-sm icon-btn-mobile" onclick="openEditarDia()" title="Editar Día"><i class="bi bi-pencil-square"></i> <span>Editar Día</span></button>
         <button class="btn btn-outline btn-sm icon-btn-mobile" onclick="exportCSV()" title="Exportar CSV"><i class="bi bi-download"></i> <span>Exportar</span></button>
         <button class="btn btn-outline btn-sm icon-btn-mobile" style="border-color:var(--warning,#d97706);color:var(--warning,#d97706)" onclick="openDia()" title="Registro del Día"><i class="bi bi-truck"></i> <span>Registro del Día</span></button>
         <button class="btn btn-primary icon-btn-mobile" onclick="openModal()" title="Nueva Venta"><i class="bi bi-plus-lg"></i> <span>Nueva Venta</span></button>
@@ -69,7 +70,7 @@
         <div class="card-header"><h5>Historial de Ventas</h5><span class="badge badge-muted" id="count-label">0 ventas</span></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Fecha</th><th>Perfume</th><th>Talla</th><th>Precio</th><th>Cliente</th><th>Canal</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Perfume</th><th>Talla</th><th>Precio</th><th>Cliente</th><th>Canal</th><th>Método</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody id="tbody"></tbody>
           </table>
         </div>
@@ -89,11 +90,31 @@
       </div>
 
       <div id="jornadas-sr" style="margin-top:32px; display:none;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-          <i class="bi bi-truck" style="font-size:20px;color:var(--warning,#d97706)"></i>
-          <h4 style="font-size:16px;font-weight:600">Historial de Sobre Ruedas</h4>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <i class="bi bi-truck" style="font-size:20px;color:var(--warning,#d97706)"></i>
+            <h4 style="font-size:16px;font-weight:600">Historial de Sobre Ruedas</h4>
+          </div>
+          <div class="search-input-wrap" style="width:240px;max-width:100%;">
+            <i class="bi bi-search"></i>
+            <input type="text" class="form-control" id="jor-search" placeholder="Buscar lugar o nota..." oninput="onJorSearch()">
+          </div>
         </div>
-        <div id="jornadas-list" style="display:flex;flex-direction:column;gap:16px;"></div>
+        <div id="jornadas-list" style="display:flex;flex-direction:column;gap:16px;margin-bottom:16px;"></div>
+        
+        <div class="pagination-bar" id="jor-pagination-bar">
+          <div class="pagination-left">
+            <label for="jor-page-size">Mostrar</label>
+            <select class="page-size-select" id="jor-page-size" onchange="onJorPageSizeChange()">
+              <option value="5">5</option>
+              <option value="10" selected>10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+            <span class="pagination-info" id="jor-pagination-info"></span>
+          </div>
+          <div class="pagination-controls" id="jor-pagination-controls"></div>
+        </div>
       </div>
 
     </div>
@@ -132,7 +153,11 @@
           <label>Precio de venta ($MXN) *</label>
           <input class="form-control" type="number" id="v-precio" placeholder="0.00" min="0">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="v-costo-group" style="display:none">
+          <label>Costo de Botella ($MXN)</label>
+          <input class="form-control" type="number" id="v-costo" placeholder="Costo original" min="0">
+        </div>
+        <div class="form-group" id="v-cantidad-group">
           <label>Cantidad</label>
           <input class="form-control" type="number" id="v-cantidad" value="1" min="1">
         </div>
@@ -147,6 +172,15 @@
           <select class="form-control" id="v-canal">
             <option value="online">Online / WhatsApp</option>
             <option value="mercado">Sobre ruedas</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Método de Pago</label>
+          <select class="form-control" id="v-metodopago">
+            <option value="efectivo">Efectivo 💵</option>
+            <option value="transferencia">Transferencia 🏦</option>
+            <option value="tarjeta">Tarjeta 💳</option>
             <option value="otro">Otro</option>
           </select>
         </div>
@@ -206,7 +240,7 @@
     <div class="modal-header">
       <div style="display:flex;align-items:center;gap:10px">
         <i class="bi bi-ui-checks" style="font-size:20px;color:var(--primary,#4f98a3)"></i>
-        <h4>Registro Masivo de Ventas</h4>
+        <h4 id="modal-dia-title">Registro Masivo de Ventas</h4>
       </div>
       <button class="btn-icon" onclick="closeDia()"><i class="bi bi-x-lg"></i></button>
     </div>
@@ -218,6 +252,13 @@
           <select id="dia-canal" style="width:100%;height:100%;border:none;background:rgba(255,255,255,0.05);color:var(--text);border-radius:6px;padding:0 8px;font-size:14px;outline:none">
             <option value="mercado">Sobre Ruedas</option>
             <option value="otro">Venta General (Fuera)</option>
+          </select>
+        </div>
+        <div class="dia-metodo-wrap" style="flex:0.5;min-width:130px;">
+          <select id="dia-metodopago" style="width:100%;height:100%;border:none;background:rgba(255,255,255,0.05);color:var(--text);border-radius:6px;padding:0 8px;font-size:14px;outline:none">
+            <option value="efectivo">Efectivo 💵</option>
+            <option value="transferencia">Transferencia 🏦</option>
+            <option value="tarjeta">Tarjeta 💳</option>
           </select>
         </div>
         <div class="dia-lugar-wrap" style="flex:0.5;min-width:140px;">
@@ -241,6 +282,7 @@
               <th class="td-precio">Precio *</th>
               <th class="td-total">Total</th>
               <th class="td-cliente">Cliente</th>
+              <th class="td-metodo">Método</th>
               <th class="td-estado">Estado</th>
               <th class="td-notas">Nota</th>
               <th class="td-rm"></th>
@@ -282,15 +324,10 @@ window.onPeriodoChange = () => {
    onChange(perfumeObj | null)
 ──────────────────────────────────────────────────────────── */
 window.buildPerfumePicker = function(wrap, perfumes, onChange) {
-  // Limpiar
   wrap.innerHTML = '';
-
-  // Estado
   let selectedId = null;
   let focusIdx = -1;
   let filtered = [];
-
-  // Markup
   wrap.innerHTML = `
     <div class="perf-wrap">
       <input type="text" class="perf-input" placeholder="— Perfume —" readonly>
@@ -303,7 +340,6 @@ window.buildPerfumePicker = function(wrap, perfumes, onChange) {
       </div>
     </div>
   `;
-
   const trigger  = wrap.querySelector('.perf-input');
   const dropdown = wrap.querySelector('.perf-dropdown');
   const searchIn = wrap.querySelector('.perf-search-box input');
@@ -318,13 +354,8 @@ window.buildPerfumePicker = function(wrap, perfumes, onChange) {
 
   function renderList(q) {
     q = (q || '').trim().toLowerCase();
-    filtered = q
-      ? perfumes.filter(p =>
-          (p.nombre||'').toLowerCase().includes(q) ||
-          (p.marca||'').toLowerCase().includes(q))
-      : [...perfumes];
+    filtered = q ? perfumes.filter(p => (p.nombre||'').toLowerCase().includes(q) || (p.marca||'').toLowerCase().includes(q)) : [...perfumes];
     focusIdx = -1;
-
     if (!filtered.length) {
       list.innerHTML = `<div class="perf-empty">Sin resultados</div>`;
       return;
@@ -335,70 +366,69 @@ window.buildPerfumePicker = function(wrap, perfumes, onChange) {
         <span class="perf-brand">${highlight(p.marca || '', q)}</span>
       </div>
     `).join('');
-
     list.querySelectorAll('.perf-option').forEach(el => {
-      el.addEventListener('mousedown', e => {
-        e.preventDefault();
-        select(filtered[+el.dataset.idx]);
-      });
+      el.addEventListener('mousedown', e => { e.preventDefault(); select(filtered[+el.dataset.idx]); });
     });
   }
 
   function select(p) {
     selectedId = p ? p.id : null;
-    trigger.value = p ? `${p.nombre}${p.marca ? ' · ' + p.marca : ''}` : '';
+    let cleanName = p ? p.nombre.replace(/<[^>]+>/g, '') : '';
+    trigger.value = p ? `${cleanName}${p.marca ? ' · ' + p.marca : ''}` : '';
     close();
     onChange(p || null);
   }
 
-  function open() {
-    dropdown.classList.add('open');
-    arrow.classList.replace('bi-chevron-down','bi-chevron-up');
-    searchIn.value = '';
-    renderList('');
-    setTimeout(() => searchIn.focus(), 30);
-  }
-
-  function close() {
-    dropdown.classList.remove('open');
-    arrow.classList.replace('bi-chevron-up','bi-chevron-down');
-  }
+  function open() { dropdown.classList.add('open'); arrow.classList.replace('bi-chevron-down','bi-chevron-up'); searchIn.value = ''; renderList(''); setTimeout(() => searchIn.focus(), 30); }
+  function close() { dropdown.classList.remove('open'); arrow.classList.replace('bi-chevron-up','bi-chevron-down'); }
 
   function moveFocus(dir) {
     const opts = list.querySelectorAll('.perf-option');
     if (!opts.length) return;
     opts[focusIdx]?.classList.remove('focused');
     focusIdx = Math.max(0, Math.min(opts.length - 1, focusIdx + dir));
-    const el = opts[focusIdx];
-    el.classList.add('focused');
-    el.scrollIntoView({ block: 'nearest' });
+    opts[focusIdx]?.classList.add('focused');
+    opts[focusIdx]?.scrollIntoView({ block: 'nearest' });
   }
 
   trigger.addEventListener('click', () => dropdown.classList.contains('open') ? close() : open());
-
   searchIn.addEventListener('input', () => renderList(searchIn.value));
-
   searchIn.addEventListener('keydown', e => {
     if (e.key === 'ArrowDown') { e.preventDefault(); moveFocus(1); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); moveFocus(-1); }
-    else if (e.key === 'Enter') {
-      e.preventDefault();
-      const f = list.querySelector('.perf-option.focused');
-      if (f) f.dispatchEvent(new MouseEvent('mousedown'));
-    } else if (e.key === 'Escape') close();
+    else if (e.key === 'Enter') { e.preventDefault(); const f = list.querySelector('.perf-option.focused'); if (f) f.dispatchEvent(new MouseEvent('mousedown')); }
+    else if (e.key === 'Escape') close();
   });
-
-  // Cerrar al hacer click fuera
-  document.addEventListener('mousedown', e => {
-    if (!wrap.contains(e.target)) close();
-  });
-
-  // API pública: reset
+  document.addEventListener('mousedown', e => { if (!wrap.contains(e.target)) close(); });
   wrap._perfReset = () => select(null);
   wrap._perfGetId = () => selectedId;
   wrap._perfSetId = (id) => select(perfumes.find(p => p.id === id) || null);
 };
 </script>
-<script type="module" src="../assets/js/ventas.js?v=1.9"></script>
+
+<!-- MODAL SELECCIONAR DIA PARA EDITAR -->
+<div class="modal-overlay" id="modal-select-dia">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-header">
+      <h4>Editar Registro del Día</h4>
+      <button class="btn-icon" onclick="document.getElementById('modal-select-dia').classList.remove('open')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Selecciona el Día a Editar</label>
+        <select class="form-control" id="s-dia-editar"></select>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:10px;">
+        Podrás añadir ventas faltantes, corregir errores o eliminar registros guardados ese día.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('modal-select-dia').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" onclick="loadDiaSeleccionado()"><i class="bi bi-pencil-square"></i> Cargar Día</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="../assets/js/ventas.js?v=2.1"></script>
 </body>
 </html>
