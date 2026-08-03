@@ -40,6 +40,11 @@ async function loadData() {
       const key = name.trim().toLowerCase();
       if (!key) return null;
       
+      // Ignorar nombres genéricos generados por el Punto de Venta
+      if (/^cliente\s*\d*$/i.test(key) || key === 'cliente (sin nombre)') {
+        return null;
+      }
+      
       if (!grupos[key]) {
         grupos[key] = {
           nombreOriginal: name.trim(),
