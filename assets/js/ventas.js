@@ -279,8 +279,14 @@ window.getLoteRemaining = (perfId, loteId) => {
   ventas.forEach(v => {
     if (v.estado === 'cancelada') return; // ignore canceled!
     if (v.perfumeId === perfId && v.loteId === loteId) {
-       if (['2','3','5','10'].includes(v.talla)) totalMl += parseInt(v.talla) * (+v.cantidad||1);
-       if (v.talla === 'Resto') hasResto = true;
+       if (v.talla === 'Resto') {
+         hasResto = true;
+       } else if (v.talla !== 'Completo') {
+         const ml = parseInt(v.talla);
+         if (!isNaN(ml)) {
+           totalMl += ml * (+v.cantidad || 1);
+         }
+       }
     } else if (v.paqueteItems) {
        const sub = v.paqueteItems.find(i => i.id === perfId);
        if (sub && sub.loteId === loteId) {
@@ -306,10 +312,20 @@ window.getSmartLoteId = (p, saleDate) => {
   const dSale = new Date(saleDate);
   if (isNaN(dSale.getTime())) return p.loteActivo || p.lotes[0].id;
 
-  const sorted = [...p.lotes].sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
+  const parseLocalDate = (dateStr) => {
+    if (!dateStr) return 0;
+    if (typeof dateStr === 'number') return dateStr;
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return new Date(parts[0], parts[1]-1, parts[2]).getTime();
+    }
+    return new Date(dateStr).getTime();
+  };
+
+  const sorted = [...p.lotes].sort((a,b) => parseLocalDate(a.fecha) - parseLocalDate(b.fecha));
   let best = sorted[0];
   for (let l of sorted) {
-    if (new Date(l.fecha) <= dSale) {
+    if (parseLocalDate(l.fecha) <= dSale.getTime()) {
       best = l;
     }
   }
@@ -1532,7 +1548,8 @@ function tallaItems(perfumeId) {
       return Object.entries(p.precios).filter(([,v])=>+v>0)
         .map(([k,v]) => ({ value: k, label: `${k}ml — $${v}`, precio: +v }));
     }
-    return [{ value: '1 ud', label: `1 ud — $${p.precio}`, precio: p.precio }];
+    const pr = p.precio || 0;
+    return [{ value: '1 ud', label: `1 ud — $${pr}`, precio: pr }];
   }
   
   const items = Object.entries(p.precios||{}).filter(([,v])=>+v>0)
@@ -1850,8 +1867,13 @@ window.batchRefreshTotal = (rid) => {
   const row = batchRows.find(r => r.rid === rid);
   if (!row) return;
   const t = document.getElementById(`brow-total-${rid}`);
-  if (t) t.textContent = row.precio && row.cantidad
-    ? '$' + ((+row.precio)*(+row.cantidad||1)).toLocaleString('es-MX') : '—';
+  if (t) {
+    if (row.precio !== '' && row.precio !== undefined && row.precio !== null && row.cantidad) {
+      t.textContent = '$' + ((+row.precio)*(+row.cantidad||1)).toLocaleString('es-MX');
+    } else {
+      t.textContent = '—';
+    }
+  }
   updateBatchResumen();
 };
 

@@ -174,7 +174,7 @@ function injectCanastaUI() {
     const names = JSON.parse(localStorage.getItem('posClientNames')||'{}');
     const currentName = names[cid] || `Cliente ${cid}`;
     const newName = prompt('Nombre del cliente:', currentName);
-    if (newName !== null) {
+    if (newName !== null && newName.trim() !== '') {
       names[cid] = newName.trim();
       localStorage.setItem('posClientNames', JSON.stringify(names));
       window.renderPosCart();
@@ -218,6 +218,7 @@ function injectCanastaUI() {
     });
     if(res.isConfirmed) {
       localStorage.setItem('posClientId', '1');
+      localStorage.removeItem('posClientNames');
       window.savePosCart([]);
     }
   };

@@ -95,8 +95,20 @@ async function loadAll() {
   ts.forEach(d => tiposData.push({ id: d.id, ...d.data() }));
   tiposData.sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre));
 
+  const now = Date.now();
+  const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
+
   perfumes = []; 
-  ps.forEach(d => perfumes.push({ id: d.id, ...d.data() }));
+  ps.forEach(d => {
+    let data = d.data();
+    if (data.novedad && (data.novedadActivadaEn || data.creadoEn)) {
+      if (now - (data.novedadActivadaEn || data.creadoEn) > THREE_DAYS) {
+        data.novedad = false;
+      }
+    }
+    perfumes.push({ id: d.id, ...data });
+  });
+  
   accSnap.forEach(d => perfumes.push({ 
     id: d.id, 
     isAccesorio: true, 
@@ -881,7 +893,10 @@ window.edit = (id) => {
     document.getElementById('p-img-url').value = p.imagen;
     previewUrl();
   } else {
+    document.getElementById('p-img-url').value = '';
+    if (document.getElementById('p-img-file')) document.getElementById('p-img-file').value = '';
     document.getElementById('preview-wrap').style.display = 'none';
+    document.getElementById('preview-img').src = '';
   }
   document.getElementById('modal-title').textContent = 'Editar Perfume';
   document.getElementById('modal').classList.add('open');
@@ -932,7 +947,7 @@ No incluyas markdown ni explicaciones, solo el JSON puro.
 }
 `;
             
-            const reqUrl = "https://api.groq.com/openai/v1/chat/completions";
+            const reqUrl = "https://api.openai.com/v1/chat/completions";
             const res3 = await fetch(reqUrl, {
                 method: "POST",
                 headers: {
@@ -940,7 +955,7 @@ No incluyas markdown ni explicaciones, solo el JSON puro.
                     "Authorization": `Bearer ${geminiKey}`
                 },
                 body: JSON.stringify({
-                    model: "llama-3.3-70b-versatile",
+                    model: "gpt-4o",
                     messages: [{ role: "user", content: promptText }],
                     temperature: 0.1,
                     response_format: { type: "json_object" }
@@ -1068,6 +1083,21 @@ window.save = async () => {
       novedad: document.getElementById('p-novedad').checked,
       lotes: window.currentLotes, loteActivo: window.activeLoteId, estadoStock
     };
+    
+    // Auto-desmarcar novedad después de 3 días
+    if (data.novedad) {
+      if (id) {
+        const existingP = perfumes.find(x => x.id === id);
+        if (existingP && existingP.novedad) {
+          data.novedadActivadaEn = existingP.novedadActivadaEn || existingP.creadoEn || Date.now();
+        } else {
+          data.novedadActivadaEn = Date.now();
+        }
+      } else {
+        data.novedadActivadaEn = Date.now();
+      }
+    }
+
     if (id) {
       await updateDoc(doc(db, 'perfumes', id), data);
     } else {
@@ -1305,16 +1335,16 @@ Elige la mejor opción de estas listas exactas (responde con el texto exacto, o 
 - Tipo: [${getOpts('p-tipo')}]
 - Género: [Caballero, Dama, Unisex]
 
-Sugiéreme precios en MXN competitivos y exactos para decants. Como guía (ajusta según la marca y tipo):
-- Diseñador: 2ml: 70-90, 3ml: 90-130, 5ml: 140-190, 10ml: 240-330
-- Nicho: 2ml: 140-200, 3ml: 190-280, 5ml: 300-450, 10ml: 550-850
-- Árabe: 2ml: 40-60, 3ml: 60-80, 5ml: 90-130, 10ml: 160-220
+Sugiéreme precios en MXN competitivos y exactos para decants. IMPORTANTE: LOS PRECIOS DEBEN SER UN SOLO NÚMERO ENTERO, NO RANGOS (ej. 85, no '70-90'). Como guía (ajusta según la marca y tipo):
+- Diseñador: 2ml: 80, 3ml: 110, 5ml: 165, 10ml: 285
+- Nicho: 2ml: 170, 3ml: 235, 5ml: 375, 10ml: 700
+- Árabe: 2ml: 50, 3ml: 70, 5ml: 110, 10ml: 190
 Para la descripción ("desc"), redacta una reseña detallada, poética y persuasiva (de 3 a 4 oraciones). Habla de su apertura, desarrollo, fijación y ocasiones de uso, usando un tono de marketing elegante.
 
 Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown ni \`\`\`) con esta estructura exacta:
 {"marca":"","familia":"","categoria":"","tipo":"","genero":"","salida":"","corazon":"","fondo":"","desc":"Descripción detallada y poética","px2":0,"px3":0,"px5":0,"px10":0}`;
                     
-                    const groqUrl = `https://api.groq.com/openai/v1/chat/completions`;
+                    const groqUrl = `https://api.openai.com/v1/chat/completions`;
                     const groqRes = await fetch(groqUrl, {
                         method: 'POST',
                         headers: { 
@@ -1322,7 +1352,7 @@ Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown ni \`\`\`) 
                             'Authorization': `Bearer ${geminiKey}`
                         },
                         body: JSON.stringify({
-                            model: "llama-3.3-70b-versatile",
+                            model: "gpt-4o",
                             messages: [{ role: "user", content: promptText }],
                             temperature: 0.2
                         })
@@ -1388,20 +1418,20 @@ Si lo reconoces, elige la mejor opción de estas listas exactas para clasificarl
 - Tipo: [${getOpts('p-tipo')}]
 - Género: [Caballero, Dama, Unisex]
 
-Sugiéreme precios en MXN competitivos y exactos para decants. Como guía (ajusta según la marca y tipo):
-- Diseñador (ej. Versace): 2ml: 70-90, 3ml: 90-130, 5ml: 140-190, 10ml: 240-330
-- Nicho (ej. Creed): 2ml: 140-200, 3ml: 190-280, 5ml: 300-450, 10ml: 550-850
-- Árabe (ej. Lattafa): 2ml: 40-60, 3ml: 60-80, 5ml: 90-130, 10ml: 160-220
+Sugiéreme precios en MXN competitivos y exactos para decants. IMPORTANTE: LOS PRECIOS DEBEN SER UN SOLO NÚMERO ENTERO, NO RANGOS (ej. 85, no '70-90'). Como guía (ajusta según la marca y tipo):
+- Diseñador (ej. Versace): 2ml: 80, 3ml: 110, 5ml: 165, 10ml: 285
+- Nicho (ej. Creed): 2ml: 170, 3ml: 235, 5ml: 375, 10ml: 700
+- Árabe (ej. Lattafa): 2ml: 50, 3ml: 70, 5ml: 110, 10ml: 190
 Para la descripción ("desc"), redacta una reseña detallada, poética y persuasiva (de 3 a 4 oraciones). Habla de su apertura, desarrollo, fijación y ocasiones de uso, usando un tono de marketing elegante.
 
 Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown) con esta estructura exacta:
 {"title":"Nombre del perfume","marca":"","familia":"","categoria":"","tipo":"","genero":"","salida":"","corazon":"","fondo":"","desc":"Descripción detallada y poética","px2":0,"px3":0,"px5":0,"px10":0}`;
 
-                const groqUrl = `https://api.groq.com/openai/v1/chat/completions`;
+                const groqUrl = `https://api.openai.com/v1/chat/completions`;
                 const groqRes = await fetch(groqUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${geminiKey}` },
-                    body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{ role: "user", content: promptText }], temperature: 0.2, response_format: { type: "json_object" } })
+                    body: JSON.stringify({ model: "gpt-4o", messages: [{ role: "user", content: promptText }], temperature: 0.2, response_format: { type: "json_object" } })
                 });
                 
                 const data = await groqRes.json();

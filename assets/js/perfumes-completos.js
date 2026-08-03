@@ -223,7 +223,7 @@ No incluyas markdown ni explicaciones, solo el JSON puro.
 }
 `;
             
-            const reqUrl = "https://api.groq.com/openai/v1/chat/completions";
+            const reqUrl = "https://api.openai.com/v1/chat/completions";
             const res3 = await fetch(reqUrl, {
                 method: "POST",
                 headers: {
@@ -231,7 +231,7 @@ No incluyas markdown ni explicaciones, solo el JSON puro.
                     "Authorization": `Bearer ${geminiKey}`
                 },
                 body: JSON.stringify({
-                    model: "llama-3.3-70b-versatile",
+                    model: "gpt-4o",
                     messages: [{ role: "user", content: promptText }],
                     temperature: 0.1,
                     response_format: { type: "json_object" }
@@ -487,7 +487,7 @@ Para la descripción ("desc"), redacta una reseña detallada, poética y persuas
 Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown ni \`\`\`) con esta estructura exacta:
 {"concentracion":"","genero":"","salida":"","corazon":"","fondo":"","ocasion":"","longevidad":"","proyeccion":"","desc":"Descripción detallada y poética","px30":0,"px50":0,"px75":0,"px100":0,"px150":0,"px200":0}`;
                     
-                    const groqUrl = `https://api.groq.com/openai/v1/chat/completions`;
+                    const groqUrl = `https://api.openai.com/v1/chat/completions`;
                     const groqRes = await fetch(groqUrl, {
                         method: 'POST',
                         headers: { 
@@ -495,7 +495,7 @@ Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown ni \`\`\`) 
                             'Authorization': `Bearer ${geminiKey}`
                         },
                         body: JSON.stringify({
-                            model: "llama-3.3-70b-versatile",
+                            model: "gpt-4o",
                             messages: [{ role: "user", content: promptText }],
                             temperature: 0.2
                         })
@@ -567,12 +567,12 @@ Para la descripción ("desc"), redacta una reseña detallada, poética y persuas
 Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown) con esta estructura exacta:
 {"title":"Nombre del perfume","marca":"","concentracion":"","genero":"","salida":"","corazon":"","fondo":"","ocasion":"","longevidad":"","proyeccion":"","desc":"Descripción detallada y poética","px30":0,"px50":0,"px75":0,"px100":0,"px150":0,"px200":0}`;
 
-                const groqUrl = `https://api.groq.com/openai/v1/chat/completions`;
+                const groqUrl = `https://api.openai.com/v1/chat/completions`;
                 const groqRes = await fetch(groqUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${geminiKey}` },
                     body: JSON.stringify({ 
-                        model: "llama-3.3-70b-versatile", 
+                        model: "gpt-4o", 
                         messages: [{ role: "user", content: promptText }], 
                         temperature: 0.2,
                         response_format: { type: "json_object" }

@@ -72,7 +72,7 @@ window.testKey = async () => {
   btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Probando...';
   
   try {
-    const url = `https://api.groq.com/openai/v1/chat/completions`;
+    const url = `https://api.openai.com/v1/chat/completions`;
     const res = await fetch(url, {
         method: 'POST',
         headers: { 
@@ -80,7 +80,7 @@ window.testKey = async () => {
             'Authorization': `Bearer ${key}`
         },
         body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "gpt-4o",
             messages: [{ role: "user", content: "Di 'Hola'" }]
         })
     });

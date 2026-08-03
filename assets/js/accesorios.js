@@ -1,7 +1,26 @@
 import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, auth, onAuthStateChanged } from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
+import { imgThumb } from './cloudinary.js';
+
+const CLOUDINARY_CLOUD  = 'dxo761td7';
+const CLOUDINARY_PRESET = 'FITOSCENTS-DECANTS';
+const CLOUDINARY_URL    = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`;
+
+async function uploadToCloudinary(file) {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('upload_preset', CLOUDINARY_PRESET);
+  form.append('folder', 'fitoscents/accesorios');
+  const res = await fetch(CLOUDINARY_URL, { method: 'POST', body: form });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || 'Error al subir imagen');
+  }
+  return (await res.json()).secure_url;
+}
 
 let accesorios = [];
+let imgMode = 'url';
 
 document.addEventListener('DOMContentLoaded', () => {
   renderSidebar('accesorios');
@@ -69,6 +88,7 @@ function renderTable() {
 
     return `
     <tr>
+      <td>${acc.imagen ? `<img class="td-img" src="${imgThumb(acc.imagen)}" alt="" loading="lazy">` : '<div class="td-img-placeholder"><i class="bi bi-image"></i></div>'}</td>
       <td style="font-weight:500;">${acc.nombre}</td>
       <td style="color:var(--text-muted)">$${acc.costo || 0}</td>
       <td style="font-weight:600;color:var(--accent)">${precioStr}</td>
@@ -97,11 +117,43 @@ window.openModal = () => {
     if (el) el.value = '';
   });
   document.getElementById('modal-title').textContent = 'Nuevo Accesorio';
+  
+  document.getElementById('a-img-url').value = '';
+  if (document.getElementById('a-img-file')) document.getElementById('a-img-file').value = '';
+  document.getElementById('preview-wrap').style.display = 'none';
+  document.getElementById('preview-img').src = '';
+  setMode('url');
+  
   document.getElementById('modal').classList.add('open');
 };
 
 window.closeModal = () => {
   document.getElementById('modal').classList.remove('open');
+};
+
+window.setMode = (m) => {
+  imgMode = m;
+  document.getElementById('sec-url').style.display  = m === 'url'  ? 'block' : 'none';
+  document.getElementById('sec-file').style.display = m === 'file' ? 'block' : 'none';
+  document.getElementById('btn-url').style.borderColor  = m === 'url'  ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('btn-file').style.borderColor = m === 'file' ? 'var(--accent)' : 'var(--border)';
+};
+
+window.previewUrl = () => {
+  const u = document.getElementById('a-img-url').value;
+  document.getElementById('preview-img').src = u;
+  document.getElementById('preview-wrap').style.display = u ? 'block' : 'none';
+};
+
+window.previewFile = () => {
+  const f = document.getElementById('a-img-file').files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = e => {
+    document.getElementById('preview-img').src = e.target.result;
+    document.getElementById('preview-wrap').style.display = 'block';
+  };
+  r.readAsDataURL(f);
 };
 
 window.editAccesorio = (id) => {
@@ -121,6 +173,18 @@ window.editAccesorio = (id) => {
   });
   
   document.getElementById('modal-title').textContent = 'Editar Accesorio';
+  
+  if (acc.imagen) {
+    setMode('url');
+    document.getElementById('a-img-url').value = acc.imagen;
+    window.previewUrl();
+  } else {
+    document.getElementById('a-img-url').value = '';
+    if (document.getElementById('a-img-file')) document.getElementById('a-img-file').value = '';
+    document.getElementById('preview-wrap').style.display = 'none';
+    document.getElementById('preview-img').src = '';
+  }
+  
   document.getElementById('modal').classList.add('open');
 };
 
@@ -148,7 +212,20 @@ window.save = async () => {
   btn.innerHTML = '<i class="bi bi-hourglass-split"></i>...';
   
   try {
-    const data = { nombre, costo, precio, stock, activo, precios };
+    let imagen = '';
+    if (imgMode === 'url') {
+      imagen = document.getElementById('a-img-url').value.trim();
+    } else {
+      const file = document.getElementById('a-img-file').files[0];
+      if (file) {
+        imagen = await uploadToCloudinary(file);
+      }
+    }
+    
+    // Si editamos y no pusimos imagen nueva, mantemos la vieja (si no borramos la URL).
+    // Pero si la url es vacia, se sobreescribirá y se borrará (lo cual es esperado para limpiar imagen).
+    
+    const data = { nombre, costo, precio, stock, activo, precios, imagen };
     
     if (id) {
       data.actualizadoEn = Date.now();

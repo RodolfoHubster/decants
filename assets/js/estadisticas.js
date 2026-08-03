@@ -114,14 +114,20 @@ function renderKPIs() {
     const precio = +v.precio || 0;
     
     let orderKey = '';
-    if (v.cliente && v.cliente.trim() !== '') {
+    if (v.cartClientId) {
       const d = new Date(v.creadoEn || 0);
       const dateStr = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      orderKey = v.cliente.trim().toLowerCase() + '_' + dateStr;
+      orderKey = `${v.cliente || 'Anon'}_${dateStr}_cart${v.cartClientId}`;
     } else {
       orderKey = (v.creadoEn || Math.random()).toString();
     }
     ventasUnicas.add(orderKey);
+    
+    const getLote = (p, lId) => {
+      if (!p || !p.lotes) return null;
+      return p.lotes.find(l => l.id === lId) || p.lotes[0];
+    };
+
     if (v.talla === 'Completo') {
       const p = perfumes.find(x => x.id === v.perfumeId);
       if (p) costoTotalInversion += (+p.costoBotella || 0) * cant;
@@ -142,9 +148,10 @@ function renderKPIs() {
         v.paqueteItems.forEach(item => {
           const p = perfumes.find(x => x.id === item.id);
           if (p) {
+            const l = getLote(p, item.loteId);
             let costoMl = 0;
-            if (p.lotes && p.lotes.length > 0) {
-              costoMl = (+p.lotes[0].costo || 0) / (+p.lotes[0].tamano || 1);
+            if (l) {
+              costoMl = (+l.costo || 0) / (+l.tamano || 1);
             } else if (p.costoBotella && p.tamanoBotella) {
               costoMl = (+p.costoBotella) / (+p.tamanoBotella);
             }
@@ -162,9 +169,10 @@ function renderKPIs() {
         
         const p = perfumes.find(x => x.id === v.perfumeId);
         if (p) {
+          const l = getLote(p, v.loteId);
           let costoMl = 0;
-          if (p.lotes && p.lotes.length > 0) {
-            costoMl = (+p.lotes[0].costo || 0) / (+p.lotes[0].tamano || 1);
+          if (l) {
+            costoMl = (+l.costo || 0) / (+l.tamano || 1);
           } else if (p.costoBotella && p.tamanoBotella) {
             costoMl = (+p.costoBotella) / (+p.tamanoBotella);
           }
@@ -172,11 +180,12 @@ function renderKPIs() {
         }
       } else if (v.talla === 'Resto') {
         decants += cant;
-        costoTotalInversion += (costoInsumoUnitario * cant);
+        // No suma costoInsumoUnitario para Resto
         const p = perfumes.find(x => x.id === v.perfumeId);
         if (p) {
+          const l = getLote(p, v.loteId);
           let costoResto = 0;
-          if (p.lotes && p.lotes.length > 0) costoResto = +p.lotes[0].costo || 0;
+          if (l) costoResto = +l.costo || 0;
           else costoResto = +p.costoBotella || 0;
           costoTotalInversion += (costoResto * cant);
         }
