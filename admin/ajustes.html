@@ -90,33 +90,27 @@
 <div class="app-shell">
 <div id="sidebar-wrap"></div>
 <div class="main-content">
-<header>
-  <div class="hinner">
-    <a href="./dashboard.html" class="back-btn">
-      <i class="bi bi-arrow-left"></i>
-      <span>Dashboard</span>
-    </a>
-    <div>
-      <div class="page-title"><i class="bi bi-gear-fill"></i> Ajustes</div>
-      <div class="page-sub">Configuración avanzada de Inteligencia Artificial</div>
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
+      <span class="topbar-title">Ajustes</span>
     </div>
   </div>
-</header>
 
-<main class="main">
-  <div class="card">
-    <div class="card-title"><i class="bi bi-robot"></i> Groq API (LLaMA 3)</div>
-    <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">
-      Configura tu llave de API (API Key) de Groq para habilitar el autocompletado mágico al escanear códigos de barras. La llave se guardará de forma <strong>100% segura en el almacenamiento local de tu dispositivo</strong>.
-    </p>
+  <div class="page-body">
+    <div class="card">
+      <div class="card-title"><i class="bi bi-robot"></i> OpenAI API (GPT-4o)</div>
+      <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">
+        Configura tu llave de API (API Key) de OpenAI para habilitar el autocompletado mágico y análisis. La llave se guardará de forma <strong>100% segura en el almacenamiento local de tu dispositivo</strong>.
+      </p>
     
     <div class="form-group" style="margin-top: 15px;">
-      <label>Groq API Key</label>
+      <label>OpenAI API Key</label>
       <div style="display: flex; gap: 10px;">
-        <input type="password" id="gemini-key" class="form-control" placeholder="gsk_..." autocomplete="off" style="padding-right: 40px;">
+        <input type="password" id="gemini-key" class="form-control" placeholder="sk-..." autocomplete="off" style="padding-right: 40px;">
         <button class="btn btn-outline" id="btn-toggle-view" onclick="toggleView()" title="Mostrar/Ocultar"><i class="bi bi-eye"></i></button>
       </div>
-      <span class="hint">Obtén tu API Key gratis en <a href="https://console.groq.com" target="_blank" style="color:var(--accent)">console.groq.com</a></span>
+      <span class="hint">Obtén tu API Key en <a href="https://platform.openai.com/api-keys" target="_blank" style="color:var(--accent)">platform.openai.com</a></span>
     </div>
     
     <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
@@ -126,8 +120,10 @@
     </div>
   </div>
 
+    </div>
+  </div>
   <div id="toast-container"></div>
-</main>
+</div>
 </div>
 </div>
 
