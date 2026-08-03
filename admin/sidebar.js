@@ -169,6 +169,17 @@ function injectCanastaUI() {
     localStorage.setItem('posClientId', cid);
     window.renderPosCart();
   };
+  
+  window.renamePosClient = (cid) => {
+    const names = JSON.parse(localStorage.getItem('posClientNames')||'{}');
+    const currentName = names[cid] || `Cliente ${cid}`;
+    const newName = prompt('Nombre del cliente:', currentName);
+    if (newName !== null) {
+      names[cid] = newName.trim();
+      localStorage.setItem('posClientNames', JSON.stringify(names));
+      window.renderPosCart();
+    }
+  };
 
   window.addToPosCart = (item) => {
     const cart = window.getPosCart();
@@ -260,15 +271,18 @@ function injectCanastaUI() {
       groups[currentCid] = { total: 0, count: 0, itemsHtml: `<div style="font-size:12px;color:var(--text-faint);font-style:italic;text-align:center;padding:10px 0;">Agrega perfumes para este cliente...</div>` };
     }
     
+    const names = JSON.parse(localStorage.getItem('posClientNames')||'{}');
+    
     // Renderizar grupos
     Object.keys(groups).sort((a,b)=>a-b).forEach(cid => {
       const g = groups[cid];
       const isActive = parseInt(cid) === currentCid;
+      const clientName = names[cid] || `Cliente ${cid}`;
       
       container.innerHTML += `
         <div style="margin-bottom:16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:6px; border-radius:8px; cursor:${isActive ? 'default' : 'pointer'}; background:${isActive ? 'rgba(201,168,76,0.1)' : 'transparent'}; transition:all 0.2s;" ${!isActive ? `onclick="setActivePosClient(${cid})"` : ''} title="${!isActive ? 'Click para agregar a este cliente' : ''}">
-            <div style="font-size:14px;font-weight:700;color:var(--text-primary);">👤 Cliente ${cid} ${isActive ? '<span class="badge badge-gold" style="font-size:10px;margin-left:6px;border-radius:4px;padding:2px 6px;">Actual</span>' : ''} <span style="font-size:12px;color:var(--text-muted);font-weight:normal;margin-left:4px;">(${g.count} art.)</span></div>
+            <div style="font-size:14px;font-weight:700;color:var(--text-primary); cursor:pointer;" onclick="event.stopPropagation(); window.renamePosClient(${cid})" title="Click para renombrar">👤 ${clientName} <i class="bi bi-pencil-fill" style="font-size:10px;color:var(--text-muted);margin-left:4px;"></i> ${isActive ? '<span class="badge badge-gold" style="font-size:10px;margin-left:6px;border-radius:4px;padding:2px 6px;">Actual</span>' : ''} <span style="font-size:12px;color:var(--text-muted);font-weight:normal;margin-left:4px;">(${g.count} art.)</span></div>
             <div style="font-size:14px;font-weight:700;color:var(--gold);">$${g.total}</div>
           </div>
           ${g.itemsHtml}

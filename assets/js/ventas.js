@@ -1,4 +1,4 @@
-import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, writeBatch, getDoc, auth, onAuthStateChanged }
+import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, writeBatch, getDoc, auth, onAuthStateChanged, serverTimestamp }
   from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
@@ -46,7 +46,11 @@ async function loadAll() {
   window.accesoriosData.sort((a,b) => a.nombre.localeCompare(b.nombre));
 
   ventas = []; vs.forEach(d => ventas.push({ id: d.id, ...d.data() }));
-  ventas.sort((a,b) => (b.creadoEn||0) - (a.creadoEn||0));
+  ventas.sort((a,b) => {
+    let tA = a.creadoEn ? (typeof a.creadoEn.toMillis === 'function' ? a.creadoEn.toMillis() : a.creadoEn) : 0;
+    let tB = b.creadoEn ? (typeof b.creadoEn.toMillis === 'function' ? b.creadoEn.toMillis() : b.creadoEn) : 0;
+    return tB - tA;
+  });
 
   const comboData = [
     ...window.accesoriosData.map(acc => ({ id: acc.id, nombre: '<i class="bi bi-bag-plus" style="margin-right:4px;"></i> ' + acc.nombre, marca: 'Accesorio', isAccesorio: true })),
@@ -81,6 +85,11 @@ async function loadAll() {
     if(cart.length > 0) {
       document.getElementById('batch-tbody').innerHTML = '';
       batchRows = [];
+      let lastCid = -1;
+      
+      // Sort cart to group by client
+      cart.sort((a,b) => (a.cartClientId || 1) - (b.cartClientId || 1));
+      
       cart.forEach((item) => {
         let isPaquete = false;
         if (window.paquetesData && window.paquetesData.find(x => x.id === item.id)) {
@@ -97,13 +106,44 @@ async function loadAll() {
         
         let notaBase = `Venta: ${item.nombre} de ${item.ml}ml a $${item.precio}${hhmm}`;
 
+        const cid = item.cartClientId || 1;
+        const names = JSON.parse(localStorage.getItem('posClientNames')||'{}');
+        const clientName = names[cid] || `Cliente ${cid}`;
+        
+        if (cid !== lastCid) {
+          const sepTr = document.createElement('tr');
+          sepTr.className = 'client-separator';
+          sepTr.innerHTML = `
+            <td colspan="8" style="background:var(--bg-card2); padding:0; border-bottom:1px solid var(--border);">
+              <button type="button" onclick="addBatchRowForClient('${clientName}', this)" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 12px; color:var(--gold); font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                <span><i class="bi bi-person-fill"></i> ${clientName}</span>
+                <span style="font-size:12px; color:var(--text-muted); font-weight:normal;"><i class="bi bi-plus-circle"></i> Agregar a este ticket</span>
+              </button>
+            </td>`;
+          document.getElementById('batch-tbody').appendChild(sepTr);
+          lastCid = cid;
+        }
+        
+        let isReforzada = false;
+        let basePrecio = 0;
+        const itemsList = tallaItems(item.id);
+        const found = itemsList.find(i => i.value === finalTalla);
+        if (found && found.precio) {
+          basePrecio = found.precio;
+          if (+item.precio > found.precio) {
+            isReforzada = true;
+          }
+        }
+        
         const rid = ++batchRowCounter;
         const row = { 
           rid, perfumeId: item.id, talla: finalTalla, 
           cantidad: item.cant || 1, precio: item.precio, 
-          cliente: '', estado: 'pagada', notas: notaBase,
+          cliente: clientName, estado: 'pagada', notas: notaBase,
           costoCompleto: item.costoCompleto,
-          creadoEnOffset: item.cartClientId || 0
+          creadoEnOffset: item.cartClientId || 0,
+          reforzada: isReforzada,
+          basePrecio: basePrecio
         };
         if (item.paqueteItems) {
            row.paqueteItemsStorefront = item.paqueteItems;
@@ -122,6 +162,18 @@ async function loadAll() {
           if(tallaWrap && tallaWrap._setItems) {
             tallaWrap._setItems(tallaItems(item.id));
             tallaWrap._setValue(finalTalla); // esto disparará onChange y batchRefreshTotal
+            
+            // Restore checkbox state visually
+            const refChk = tr.querySelector('td:nth-child(2) input[type="checkbox"]');
+            if (refChk && row.reforzada) {
+              refChk.checked = true;
+              // Re-assign row.reforzada since _setValue might have reset it
+              const r = batchRows.find(x => x.rid === rid);
+              if (r) {
+                r.reforzada = true;
+                r.basePrecio = row.basePrecio;
+              }
+            }
           }
           
           const estadoWrap = tr.querySelector('td:nth-child(7) div');
@@ -246,6 +298,24 @@ window.getLoteRemaining = (perfId, loteId) => {
   return { cap, sold: totalMl, rem: Math.max(0, cap - totalMl), hasResto };
 };
 
+window.getSmartLoteId = (p, saleDate) => {
+  if (!p) return 'lote-1';
+  if (!p.lotes || p.lotes.length === 0) return p.loteActivo || 'lote-1';
+  if (!saleDate) return p.loteActivo || p.lotes[0].id;
+  
+  const dSale = new Date(saleDate);
+  if (isNaN(dSale.getTime())) return p.loteActivo || p.lotes[0].id;
+
+  const sorted = [...p.lotes].sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
+  let best = sorted[0];
+  for (let l of sorted) {
+    if (new Date(l.fecha) <= dSale) {
+      best = l;
+    }
+  }
+  return best.id;
+};
+
 window.updateTallaOptions = (perfId, loteId, isPaquete) => {
   const tallaSel = document.getElementById('v-talla');
   let p = perfumes.find(x => x.id === perfId);
@@ -357,7 +427,7 @@ window.onPerfumeChange = () => {
   if (loteGroup && loteSel) {
     if (p.lotes && p.lotes.length > 0) {
       loteSel.innerHTML = p.lotes.map((l, i) => `<option value="${l.id}">Botella #${i+1} (${new Date(l.fecha).toLocaleDateString('es-MX')})</option>`).join('');
-      loteSel.value = p.loteActivo || p.lotes[0].id;
+      loteSel.value = window.getSmartLoteId(p, Date.now());
       actLoteId = loteSel.value;
       loteGroup.style.display = 'block';
     } else {
@@ -455,7 +525,10 @@ window.renderTable = () => {
   const canalLabel = { mercado: 'Sobre ruedas', online: 'Online/WA', otro: 'Otro' };
   const canalClass = { mercado: 'mercado', online: 'online', otro: 'otro' };
   tb.innerHTML = pageItems.map(v => {
-    const fecha = v.creadoEn ? new Date(v.creadoEn).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    let fechaDate = v.creadoEn;
+    if (fechaDate && typeof fechaDate.toDate === 'function') fechaDate = fechaDate.toDate();
+    else if (fechaDate) fechaDate = new Date(fechaDate);
+    const fecha = fechaDate ? fechaDate.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—';
     const total = ((+v.precio||0)*(+v.cantidad||1)).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
     const canal = v.canal || 'online';
     const metodo = v.metodoPago || 'efectivo';
@@ -524,7 +597,9 @@ window.renderJornadas = (fil) => {
   // Agrupar por día (usando inicio del día local del creadoEn)
   const grupos = {};
   mercadoVentas.forEach(v => {
-    const d = new Date(v.creadoEn || 0);
+    let dVal = v.creadoEn || 0;
+    if (dVal && typeof dVal.toDate === 'function') dVal = dVal.toDate();
+    const d = new Date(dVal);
     const dateKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     if (!grupos[dateKey]) grupos[dateKey] = { ventas: [], lugar: '', nota: '', ts: v.creadoEn };
     grupos[dateKey].ventas.push(v);
@@ -538,7 +613,11 @@ window.renderJornadas = (fil) => {
     }
   });
 
-  let arrGrupos = Object.entries(grupos).sort((a, b) => b[1].ts - a[1].ts);
+  let arrGrupos = Object.entries(grupos).sort((a, b) => {
+    let tA = a[1].ts ? (typeof a[1].ts.toMillis === 'function' ? a[1].ts.toMillis() : a[1].ts) : 0;
+    let tB = b[1].ts ? (typeof b[1].ts.toMillis === 'function' ? b[1].ts.toMillis() : b[1].ts) : 0;
+    return tB - tA;
+  });
   
   if (jorSearchQuery) {
     const q = jorSearchQuery.toLowerCase();
@@ -736,7 +815,10 @@ window.exportCSV = () => {
   if (!fil.length) { toast('No hay ventas para exportar', 'error'); return; }
   const headers = ['Fecha','Perfume','Marca','Talla (ml)','Cantidad','Precio Unit.','Total','Cliente','Canal','Estado','Notas'];
   const rows = fil.map(v => {
-    const fecha = v.creadoEn ? new Date(v.creadoEn).toLocaleDateString('es-MX') : '';
+    let dValExport = v.creadoEn;
+    if (dValExport && typeof dValExport.toDate === 'function') dValExport = dValExport.toDate();
+    else if (dValExport) dValExport = new Date(dValExport);
+    const fecha = dValExport ? dValExport.toLocaleDateString('es-MX') : '';
     const total = (+v.precio||0)*(+v.cantidad||1);
     return [
       fecha, v.perfumeNombre||'', v.perfumeMarca||'', v.talla||'',
@@ -876,7 +958,7 @@ window.editVenta = (id) => {
     if (loteGroup && loteSel && !isPaquete) {
       if (p.lotes && p.lotes.length > 0) {
         loteSel.innerHTML = p.lotes.map((l, i) => `<option value="${l.id}">Botella #${i+1} (${new Date(l.fecha).toLocaleDateString('es-MX')})</option>`).join('');
-        loteSel.value = v.loteId || p.loteActivo || p.lotes[0].id;
+        loteSel.value = v.loteId || window.getSmartLoteId(p, v.creadoEn ? (v.creadoEn.toMillis ? v.creadoEn.toMillis() : v.creadoEn) : null);
         loteGroup.style.display = 'block';
       } else {
         loteGroup.style.display = 'none';
@@ -960,7 +1042,7 @@ window.save = async () => {
           return {
             id: subPerf ? subPerf.id : (cid || ''),
             nombre: c.value || '',
-            loteId: subPerf ? (subPerf.loteActivo || (subPerf.lotes && subPerf.lotes.length > 0 ? subPerf.lotes[0].id : 'lote-1')) : 'lote-1'
+            loteId: window.getSmartLoteId(subPerf, Date.now())
           };
         });
       } else {
@@ -972,7 +1054,7 @@ window.save = async () => {
           return {
             id: subPerf ? subPerf.id : (iid || ''),
             nombre: i.nombre || '',
-            loteId: subPerf ? (subPerf.loteActivo || (subPerf.lotes && subPerf.lotes.length > 0 ? subPerf.lotes[0].id : 'lote-1')) : 'lote-1'
+            loteId: window.getSmartLoteId(subPerf, Date.now())
           };
         });
       }
@@ -988,6 +1070,8 @@ window.save = async () => {
     talla, precio, cantidad, estado, canal, metodoPago,
     cliente: document.getElementById('v-cliente').value.trim(),
     notas:   document.getElementById('v-notas').value.trim(),
+    reforzada: document.getElementById('v-reforzada')?.checked || false,
+    basePrecio: parseFloat(document.getElementById('v-precio').dataset.base || document.getElementById('v-precio').value)
   };
   
   if (costo !== null && costo >= 0) {
@@ -1655,9 +1739,44 @@ function updateBatchResumen() {
 
 window.addBatchRow = () => {
   const rid = ++batchRowCounter;
-  const row = { rid, perfumeId:'', talla:'', cantidad:1, precio:'', cliente:'', estado:'pagada', notas:'' };
+  let lastClient = '';
+  if (batchRows.length > 0) {
+    lastClient = batchRows[batchRows.length - 1].cliente || '';
+  }
+  const row = { rid, perfumeId:'', talla:'', cantidad:1, precio:'', cliente:lastClient, estado:'pagada', notas:'' };
   batchRows.push(row);
   const tbody = document.getElementById('batch-tbody');
+  tbody.appendChild(buildBatchRowEl(row));
+  updateBatchResumen();
+  tbody.lastElementChild?.scrollIntoView({ behavior:'smooth', block:'nearest' });
+};
+
+window.addBatchClientSeparator = () => {
+  const tbody = document.getElementById('batch-tbody');
+  let maxNum = 0;
+  batchRows.forEach(r => {
+    const c = r.cliente;
+    if (c && c.toLowerCase().startsWith('cliente ')) {
+      const num = parseInt(c.replace(/[^0-9]/g, ''));
+      if (!isNaN(num) && num > maxNum) maxNum = num;
+    }
+  });
+  const newName = `Cliente ${maxNum + 1}`;
+  
+  const sepTr = document.createElement('tr');
+  sepTr.className = 'client-separator';
+  sepTr.innerHTML = `
+    <td colspan="8" style="background:var(--bg-card2); padding:0; border-bottom:1px solid var(--border);">
+      <button type="button" onclick="addBatchRowForClient('${newName}', this)" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 12px; color:var(--gold); font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+        <span><i class="bi bi-person-fill"></i> ${newName}</span>
+        <span style="font-size:12px; color:var(--text-muted); font-weight:normal;"><i class="bi bi-plus-circle"></i> Agregar a este ticket</span>
+      </button>
+    </td>`;
+  tbody.appendChild(sepTr);
+  
+  const rid = ++batchRowCounter;
+  const row = { rid, perfumeId:'', talla:'', cantidad:1, precio:'', cliente:newName, estado:'pagada', notas:'' };
+  batchRows.push(row);
   tbody.appendChild(buildBatchRowEl(row));
   updateBatchResumen();
   tbody.lastElementChild?.scrollIntoView({ behavior:'smooth', block:'nearest' });
@@ -1677,7 +1796,48 @@ window.removeBatchRow = (rid) => {
     d._destroy?.();
   });
   row?.remove();
+  cleanupSeparators();
   updateBatchResumen();
+};
+
+function cleanupSeparators() {
+  const tbody = document.getElementById('batch-tbody');
+  if (!tbody) return;
+  const trs = Array.from(tbody.children);
+  for (let i = 0; i < trs.length; i++) {
+    const tr = trs[i];
+    if (tr.classList.contains('client-separator')) {
+      let hasData = false;
+      for (let j = i + 1; j < trs.length; j++) {
+        if (trs[j].classList.contains('client-separator')) break;
+        if (trs[j].hasAttribute('data-rid')) {
+          hasData = true; break;
+        }
+      }
+      if (!hasData) {
+        tr.remove();
+      }
+    }
+  }
+}
+
+window.addBatchRowForClient = (clientName, btn) => {
+  const rid = ++batchRowCounter;
+  const row = { rid, perfumeId:'', talla:'', cantidad:1, precio:'', cliente:clientName, estado:'pagada', notas:'' };
+  batchRows.push(row);
+  
+  const sepTr = btn.closest('tr');
+  let insertAfter = sepTr;
+  let sibling = sepTr.nextElementSibling;
+  while (sibling && !sibling.classList.contains('client-separator')) {
+    insertAfter = sibling;
+    sibling = sibling.nextElementSibling;
+  }
+  
+  const newTr = buildBatchRowEl(row);
+  insertAfter.after(newTr);
+  updateBatchResumen();
+  newTr.scrollIntoView({ behavior:'smooth', block:'nearest' });
 };
 
 window.batchSet = (rid, field, value) => {
@@ -1780,7 +1940,7 @@ window.saveDia = async () => {
             return {
               id: subPerf ? subPerf.id : (cid || ''),
               nombre: item.nombre || '',
-              loteId: subPerf ? (subPerf.loteActivo || (subPerf.lotes && subPerf.lotes.length > 0 ? subPerf.lotes[0].id : 'lote-1')) : 'lote-1'
+              loteId: window.getSmartLoteId(subPerf, r.creadoEn || (fechaTs + (r.creadoEnOffset || 0)))
             };
           });
         }
@@ -1804,7 +1964,9 @@ window.saveDia = async () => {
         metodoPago: metodoVal,
         lugar: lugarStr,
         creadoEn: r.creadoEn || (fechaTs + (r.creadoEnOffset || 0)),
-        loteId: r.loteId || (p ? (p.loteActivo || 'lote-1') : 'lote-1')
+        loteId: r.loteId || window.getSmartLoteId(p, r.creadoEn || (fechaTs + (r.creadoEnOffset || 0))),
+        reforzada: r.reforzada || false,
+        basePrecio: r.basePrecio || 0
       };
       let ref;
       if (r.docId) {
@@ -2058,6 +2220,9 @@ window.editarGrupoDia = (fechaStr) => {
     if (allSameClient) document.getElementById('dia-cliente-global').value = first.cliente || '';
   }
   
+  vdia.sort((a,b) => (a.cliente || '').localeCompare(b.cliente || ''));
+  let lastClient = null;
+  
   vdia.forEach(v => {
     const rid = ++batchRowCounter;
     // For packages, try to reconstruct the package name if it matches, else it will just use custom/other.
@@ -2069,15 +2234,43 @@ window.editarGrupoDia = (fechaStr) => {
        pName = pName.split(' [')[0];
     }
     
-    // Si no tiene perfumeId, era "Otro (Manual)"
     const pId = v.perfumeId || 'custom';
+    
+    const cName = v.cliente || 'Cliente (Sin Nombre)';
+    if (cName !== lastClient) {
+       const sepTr = document.createElement('tr');
+       sepTr.className = 'client-separator';
+       sepTr.innerHTML = `
+         <td colspan="8" style="background:var(--bg-card2); padding:0; border-bottom:1px solid var(--border);">
+           <button type="button" onclick="addBatchRowForClient('${cName}', this)" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 12px; color:var(--gold); font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+             <span><i class="bi bi-person-fill"></i> ${cName}</span>
+             <span style="font-size:12px; color:var(--text-muted); font-weight:normal;"><i class="bi bi-plus-circle"></i> Agregar a este ticket</span>
+           </button>
+         </td>`;
+       document.getElementById('batch-tbody').appendChild(sepTr);
+       lastClient = cName;
+    }
+    
+    let isReforzada = v.reforzada || false;
+    let basePrecio = v.basePrecio || 0;
+    if (!v.hasOwnProperty('reforzada')) {
+      const items = tallaItems(pId);
+      const found = items.find(i => i.value === v.talla);
+      if (found && found.precio) {
+        basePrecio = found.precio;
+        if (+v.precio > found.precio) {
+          isReforzada = true;
+        }
+      }
+    }
     
     const row = { 
       rid, docId: v.id, perfumeId: pId, talla: v.talla, 
       cantidad: v.cantidad || 1, precio: v.precio, 
       cliente: v.cliente || '', estado: v.estado || 'pagada', 
       notas: v.notas || '', creadoEn: v.creadoEn,
-      loteId: v.loteId
+      loteId: v.loteId, reforzada: isReforzada,
+      basePrecio: basePrecio
     };
     
     batchRows.push(row);
@@ -2095,6 +2288,18 @@ window.editarGrupoDia = (fechaStr) => {
       if(tallaWrap && tallaWrap._setItems) {
         tallaWrap._setItems(tallaItems(pId));
         tallaWrap._setValue(row.talla);
+        
+        // Restore checkbox state visually
+        const refChk = tr.querySelector('td:nth-child(2) input[type="checkbox"]');
+        if (refChk && row.reforzada) {
+          refChk.checked = true;
+          // Re-assign row.reforzada since _setValue might have reset it
+          const r = batchRows.find(x => x.rid === rid);
+          if (r) {
+            r.reforzada = true;
+            r.basePrecio = row.basePrecio;
+          }
+        }
       }
       
       const estadoWrap = tr.querySelector('td:nth-child(7) div');
