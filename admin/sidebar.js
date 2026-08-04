@@ -242,10 +242,14 @@ function injectCanastaUI() {
     // Agrupar por cartClientId
     const groups = {};
     cart.forEach((item, idx) => {
-      total += Number(item.precio) * Number(item.cant);
+      // Auto-reparar carrito corrupto
+      item.cant = Number(item.cant) || 1;
+      item.precio = Number(item.precio) || 0;
+      
+      total += item.precio * item.cant;
       const cid = item.cartClientId || 1;
       if (!groups[cid]) groups[cid] = { total: 0, count: 0, itemsHtml: '' };
-      groups[cid].total += Number(item.precio) * Number(item.cant);
+      groups[cid].total += item.precio * item.cant;
       groups[cid].count += item.cant;
       
       groups[cid].itemsHtml += `
@@ -253,7 +257,7 @@ function injectCanastaUI() {
           <img src="${item.imagen || '../assets/img/placeholder.png'}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;background:var(--bg-card2);flex-shrink:0;">
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;color:var(--text-primary);line-height:1.2">${item.nombre}</div>
-            <div style="font-size:12px;color:var(--text-muted);">${item.ml}ml — <span style="font-weight:700;color:var(--text-primary);">$${item.precio}</span></div>
+            <div style="font-size:12px;color:var(--text-muted);">${(item.ml === 'Resto' || item.ml === 'Completo') ? item.ml : item.ml + 'ml'} — <span style="font-weight:700;color:var(--text-primary);">$${item.precio}</span></div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <button class="btn-icon" style="color:#ef4444;border:1px solid var(--border);border-radius:6px;background:none;width:30px;height:30px;display:flex;justify-content:center;align-items:center;" onclick="removeFromPosCart(${idx})"><i class="bi bi-trash" style="font-size:14px;"></i></button>

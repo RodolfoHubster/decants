@@ -43,9 +43,10 @@ window.addToPosCart = (item) => {
   // Only merge if same perfume+ml AND same client
   const extItem = cart.find(x => x.id === item.id && x.ml === item.ml && (x.cartClientId || 1) === currentClientId);
   if (extItem) {
-    extItem.cant += 1;
+    extItem.cant = (extItem.cant || 0) + 1;
     extItem.addedAt = Date.now();
   } else {
+    item.cant = item.cant || 1;
     item.addedAt = Date.now();
     cart.push(item);
   }
@@ -548,6 +549,7 @@ window.askCustomPriceAndAddToCart = async (id, talla) => {
       const val = document.getElementById('swal-custom-price').value;
       if (!val || isNaN(val) || Number(val) < 0) {
         Swal.showValidationMessage('Debes ingresar un precio válido');
+        return false;
       }
       return val;
     }
@@ -594,8 +596,9 @@ window.askCustomPriceAndAddToCart = async (id, talla) => {
         nombre: p.nombre,
         marca: p.marca || '',
         imagen: p.imagen || '',
-        talla: talla,
+        ml: talla,
         precio: Number(precioStr),
+        cant: 1,
         isPaquete: false,
         isReforzada: false
       };
