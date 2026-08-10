@@ -1138,7 +1138,7 @@ window.save = async () => {
       } else {
         if (['2','3','5','10'].includes(data.talla)) {
           if (window.checkLoteOverflow) window.checkLoteOverflow(data.perfumeId, data.loteId, parseInt(data.talla) * (+data.cantidad||1));
-        } else if (data.talla === 'Resto' || data.talla === 'Completo') {
+        } else if (data.talla === 'Resto') {
           try {
             await updateDoc(doc(db, 'perfumes', data.perfumeId), { estadoStock: 'agotado' });
             if(window.toast) toast(`Perfume marcado como agotado automáticamente`, 'info');
@@ -1712,6 +1712,10 @@ function buildBatchRowEl(row) {
     const r = batchRows.find(x => x.rid === rid);
     if (!r) return;
     r.perfumeId = p ? p.id : '';
+    if (p && p.id === 'custom') {
+      r.perfumeNombre = p.nombre;
+      r.perfumeMarca = p.marca;
+    }
     r.talla = ''; r.precio = '';
     inPrecio.value = '';
     tdTotal.textContent = '—';
@@ -1972,14 +1976,27 @@ window.saveDia = async () => {
         finalNotas = finalNotas ? (finalNotas + ' | ' + notaGlobal) : notaGlobal;
       }
       
+      let finalCliente = (r.cliente || globalCliente).trim();
+      let clienteId = '';
+      if (finalCliente) {
+        if (/^cliente\s*\d*$/i.test(finalCliente) || finalCliente.toLowerCase() === 'cliente (sin nombre)') {
+          const numMatch = finalCliente.match(/\d+/);
+          const num = numMatch ? numMatch[0].padStart(3, '0') : '000';
+          clienteId = `SR-${fechaStr}-${num}`;
+        } else {
+          clienteId = `NAMED-${finalCliente.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        }
+      }
+      
       const dataObj = {
         perfumeId: r.perfumeId,
-        perfumeNombre: p ? p.nombre : '',
-        perfumeMarca: p ? p.marca : '',
+        perfumeNombre: p ? p.nombre : (r.perfumeNombre || ''),
+        perfumeMarca: p ? p.marca : (r.perfumeMarca || ''),
         talla: r.talla,
         cantidad: +r.cantidad || 1,
         precio: +r.precio || 0,
-        cliente: r.cliente || globalCliente,
+        cliente: finalCliente,
+        clienteId: clienteId,
         estado: r.estado,
         notas: finalNotas,
         canal: canalVal,
@@ -2036,7 +2053,7 @@ window.saveDia = async () => {
           } else {
             if (['2','3','5','10'].includes(dataObj.talla)) {
               if (window.checkLoteOverflow) window.checkLoteOverflow(dataObj.perfumeId, dataObj.loteId, parseInt(dataObj.talla) * (+dataObj.cantidad||1));
-            } else if (dataObj.talla === 'Resto' || dataObj.talla === 'Completo') {
+            } else if (dataObj.talla === 'Resto') {
               try {
                 updateDoc(doc(db, 'perfumes', dataObj.perfumeId), { estadoStock: 'agotado' }).then(() => {
                   if(window.toast) toast(`Perfume marcado como agotado automáticamente`, 'info');

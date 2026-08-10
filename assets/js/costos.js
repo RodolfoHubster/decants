@@ -46,6 +46,7 @@ async function loadCostosGenerales() {
       document.getElementById('c-bolsa').value = data.bolsa || '';
       document.getElementById('c-reforzada-venta').value = data.reforzadaVenta || '';
       document.getElementById('c-reforzada-costo').value = data.reforzadaCosto || '';
+      document.getElementById('c-disable-2ml').checked = !!data.disable2ml;
       calcTotalInsumos();
     }
   } catch(e) {
@@ -65,6 +66,7 @@ window.guardarCostosGenerales = async () => {
       bolsa: +document.getElementById('c-bolsa').value || 0,
       reforzadaVenta: +document.getElementById('c-reforzada-venta').value || 0,
       reforzadaCosto: +document.getElementById('c-reforzada-costo').value || 0,
+      disable2ml: document.getElementById('c-disable-2ml').checked,
       actualizadoEn: Date.now()
     };
     

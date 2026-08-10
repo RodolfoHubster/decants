@@ -47,6 +47,15 @@ service cloud.firestore {
       allow read, write: if isAuth();
     }
 
+    match /config/{id} {
+      allow read: if true;
+      allow write: if isAuth();
+    }
+
+    match /insumos/{id} {
+      allow read, write: if isAuth();
+    }
+
     match /{document=**} { allow read, write: if false; }
   }
 }

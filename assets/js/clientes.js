@@ -35,19 +35,27 @@ async function loadData() {
     // Agrupar por nombre normalizado
     const grupos = {};
 
-    const addGroup = (name) => {
-      if (!name) return null;
-      const key = name.trim().toLowerCase();
-      if (!key) return null;
+    const addGroup = (docData) => {
+      let key = docData.clienteId;
+      let name = docData.cliente || '';
       
-      // Ignorar nombres genéricos generados por el Punto de Venta
-      if (/^cliente\s*\d*$/i.test(key) || key === 'cliente (sin nombre)') {
-        return null;
+      // Fallback for old data without clienteId
+      if (!key) {
+        if (!name) return null;
+        let cName = name.trim().toLowerCase();
+        if (!cName) return null;
+        // Ignorar nombres genéricos sin ID
+        if (/^cliente\s*\d*$/i.test(cName) || cName === 'cliente (sin nombre)') {
+          return null;
+        }
+        key = `NAMED-${cName.replace(/[^a-z0-9]/g, '')}`;
       }
       
       if (!grupos[key]) {
         grupos[key] = {
-          nombreOriginal: name.trim(),
+          id: key,
+          nombreOriginal: name.trim() || 'Cliente Sin Nombre',
+          tipo: key.startsWith('SR-') ? 'temporal' : 'personalizado',
           ventas: [],
           encargos: []
         };
@@ -56,12 +64,12 @@ async function loadData() {
     };
 
     ventas.forEach(v => {
-      const g = addGroup(v.cliente);
+      const g = addGroup(v);
       if (g) g.ventas.push(v);
     });
 
     encargos.forEach(e => {
-      const g = addGroup(e.cliente);
+      const g = addGroup(e);
       if (g) g.encargos.push(e);
     });
 
@@ -169,8 +177,7 @@ window.renderClientes = () => {
     return;
   }
   
-  container.innerHTML = filtered.map((c, idx) => {
-    // Generate timeline combining ventas and encargos
+  const renderClientCard = (c, idx) => {
     let timeline = [];
     
     c.ventas.forEach(v => {
@@ -234,14 +241,17 @@ window.renderClientes = () => {
       statsHtml.push(`<div class="client-stat"><i class="bi bi-box-seam"></i> ${c.pendingEncargos} encargo(s)</div>`);
     }
     
+    // Si es SR, mostrar ID
+    const nameLabel = c.tipo === 'temporal' ? `${c.nombreOriginal} <span style="font-size:11px;color:var(--text-muted);font-weight:normal;margin-left:8px;">(${c.id})</span>` : c.nombreOriginal;
+
     return `
       <div class="client-card ${c.isBanned ? 'banned' : ''}">
-        <div class="client-header" onclick="toggleClient(${idx})">
+        <div class="client-header" onclick="toggleClient('${idx}')">
           <div style="display:flex;flex-direction:column;gap:4px;">
             <h3 class="client-name">
-              <i class="bi bi-person-circle"></i> ${c.nombreOriginal} 
-              <button class="btn-edit-client" onclick="event.stopPropagation(); renameClient('${c.nombreOriginal.replace(/'/g, "\\'")}')" title="Renombrar cliente"><i class="bi bi-pencil"></i></button>
-              <button class="btn-ban-client" onclick="event.stopPropagation(); toggleBan('${c.nombreOriginal.replace(/'/g, "\\'")}')" title="${c.isBanned ? 'Desbloquear cliente' : 'Añadir a Lista Negra'}"><i class="bi bi-slash-circle"></i></button>
+              <i class="bi bi-person-circle"></i> ${nameLabel} 
+              ${c.tipo === 'personalizado' ? `<button class="btn-edit-client" onclick="event.stopPropagation(); renameClient('${c.nombreOriginal.replace(/'/g, "\\'")}')" title="Renombrar cliente"><i class="bi bi-pencil"></i></button>` : ''}
+              ${c.tipo === 'personalizado' ? `<button class="btn-ban-client" onclick="event.stopPropagation(); toggleBan('${c.nombreOriginal.replace(/'/g, "\\'")}')" title="${c.isBanned ? 'Desbloquear cliente' : 'Añadir a Lista Negra'}"><i class="bi bi-slash-circle"></i></button>` : ''}
               ${c.isBanned ? '<span class="badge-banned"><i class="bi bi-exclamation-triangle-fill"></i> LISTA NEGRA</span>' : ''}
             </h3>
             <div class="client-summary">
@@ -258,7 +268,29 @@ window.renderClientes = () => {
         </div>
       </div>
     `;
-  }).join('');
+  };
+
+  const namedClients = filtered.filter(c => c.tipo === 'personalizado');
+  const srClients = filtered.filter(c => c.tipo === 'temporal');
+
+  // sort SR clients by descending ID (which encodes the date)
+  srClients.sort((a,b) => b.id.localeCompare(a.id));
+
+  let html = '';
+  if (namedClients.length > 0) {
+    html += '<h2 style="color:var(--gold); margin-top:10px; margin-bottom:15px; font-size:16px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; text-transform:uppercase; letter-spacing:1px;"><i class="bi bi-person-badge"></i> Clientes Personalizados</h2>';
+    html += '<div style="display:flex; flex-direction:column; gap:16px;">';
+    html += namedClients.map((c, i) => renderClientCard(c, 'n'+i)).join('');
+    html += '</div>';
+  }
+  if (srClients.length > 0) {
+    html += '<h2 style="color:var(--gold); margin-top:30px; margin-bottom:15px; font-size:16px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; text-transform:uppercase; letter-spacing:1px;"><i class="bi bi-shop"></i> Clientes Sobre Ruedas</h2>';
+    html += '<div style="display:flex; flex-direction:column; gap:16px;">';
+    html += srClients.map((c, i) => renderClientCard(c, 's'+i)).join('');
+    html += '</div>';
+  }
+
+  container.innerHTML = html;
 };
 
 loadData();
@@ -283,11 +315,19 @@ window.renameClient = async (oldName) => {
       if(!cData) return;
       
       cData.ventas.forEach(v => {
-        batch.update(doc(db, 'ventas', v.id), { cliente: newName.trim() });
+        let newClienteId = `NAMED-${newName.trim().toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        if (/^cliente\s*\d*$/i.test(newName.trim()) || newName.trim().toLowerCase() === 'cliente (sin nombre)') {
+           const numMatch = newName.match(/\d+/);
+           const num = numMatch ? numMatch[0].padStart(3, '0') : '000';
+           const fStr = (v.creadoEn && v.creadoEn > 0) ? new Date(v.creadoEn).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
+           newClienteId = `SR-${fStr}-${num}`;
+        }
+        batch.update(doc(db, 'ventas', v.id), { cliente: newName.trim(), clienteId: newClienteId });
       });
       
       cData.encargos.forEach(e => {
-        batch.update(doc(db, 'ordenes_completos', e.id), { cliente: newName.trim() });
+        let newClienteId = `NAMED-${newName.trim().toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        batch.update(doc(db, 'ordenes_completos', e.id), { cliente: newName.trim(), clienteId: newClienteId });
       });
       
       await batch.commit();

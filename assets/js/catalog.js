@@ -1,4 +1,4 @@
-import { db, auth, collection, getDocs, query, where, onAuthStateChanged, doc, updateDoc, increment }
+import { db, auth, collection, getDocs, query, where, onAuthStateChanged, doc, updateDoc, increment, getDoc }
   from './firebase-config.js';
 import { addItem, decrementItem, removeItem, clearCart as pureCleart,
          calcTotal, totalUnits, buildWhatsAppURL, getItemQty, MAX_QTY,
@@ -127,12 +127,19 @@ function showSkeletons() {
 async function load() {
   showSkeletons();
 
-  const [perfSnap, famSnap, paqSnap, accSnap] = await Promise.all([
+  const [perfSnap, famSnap, paqSnap, accSnap, confSnap] = await Promise.all([
     getDocs(query(collection(db, 'perfumes'), where('activo', '==', true))),
     getDocs(collection(db, 'familias_olfativas')),
     getDocs(query(collection(db, 'paquetes'), where('activo', '==', true))),
-    getDocs(query(collection(db, 'accesorios'), where('activo', '==', true)))
+    getDocs(query(collection(db, 'accesorios'), where('activo', '==', true))),
+    getDoc(doc(db, 'config', 'costosOperativos')).catch(() => null)
   ]);
+  
+  if (confSnap && confSnap.exists()) {
+    window.disable2ml = !!confSnap.data().disable2ml;
+  } else {
+    window.disable2ml = false;
+  }
 
   all = [];
   perfSnap.forEach(d => all.push({ id: d.id, ...d.data() }));
@@ -388,6 +395,7 @@ function cardHTML(p) {
       ${src
         ? `<img src="${src}" alt="${p.nombre}" loading="lazy" width="400" height="400" decoding="async">`
         : `<div class="card-no-img"><i class="bi ${p.tipo === 'paquete' ? 'bi-box2-heart' : (p.tipo === 'accesorio' ? 'bi-bag' : 'bi-droplet')}"></i></div>`}
+      ${p.estadoStock === 'agotado' ? `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:5;pointer-events:none;"><div style="background:#ef4444;color:white;padding:4px 12px;border-radius:20px;font-weight:bold;font-size:12px;letter-spacing:1px;box-shadow:0 2px 10px rgba(239,68,68,0.3);">AGOTADO</div></div>` : ''}
       ${units > 0 ? `<div class="card-in-cart"><i class="bi bi-bag-check-fill"></i>${units > 1 ? ` <span>${units}</span>` : ''}</div>` : ''}
     </div>
     <div class="card-body">
@@ -440,6 +448,13 @@ window.renderGrid = () => {
   });
 
   filtered.sort((a, b) => {
+    // 1. Agotados siempre al final
+    const aAgotado = (a.estadoStock === 'agotado');
+    const bAgotado = (b.estadoStock === 'agotado');
+    if (aAgotado !== bAgotado) {
+      return aAgotado ? 1 : -1;
+    }
+
     if (sort === 'relevancia')  return (b.clicks || 0) - (a.clicks || 0);
     if (sort === 'recientes')   return (b.creadoEn || 0) - (a.creadoEn || 0);
     if (sort === 'antiguos')    return (a.creadoEn || 0) - (b.creadoEn || 0);
@@ -650,6 +665,7 @@ window.openModal = (id, pushHash = true) => {
     sizesLabel.style.display = sizes.length <= 1 ? 'none' : 'block';
   }
 
+  const isAgotado = (p.estadoStock === 'agotado');
   let pillsHTML = '';
   if (p.tipo === 'paquete') {
     pillsHTML = sizes.length
@@ -657,12 +673,25 @@ window.openModal = (id, pushHash = true) => {
           const sv = calcSavings(p, k);
           const savingHtml = sv.saving > 0 ? `<div class="pill-saving" style="font-size:11px;color:#000;background:var(--gold);padding:2px 6px;border-radius:4px;font-weight:700;">Ahorras $${sv.saving}</div>` : '';
           const crossHtml = sv.original > 0 ? `<del style="opacity:0.6;font-size:0.85em;margin-right:4px;">$${sv.original}</del>` : '';
-          return `<button class="mpill ${i===0?'sel':''}" data-size="Paquete ${k}" data-price="${v}" onclick="selPill(this)" style="display:flex; align-items:center; gap:8px;">${crossHtml}$${v} MXN (${k}ml)${savingHtml}</button>`;
+          return `<button class="mpill ${!isAgotado && i===0?'sel':''}" data-size="Paquete ${k}" data-price="${v}" ${isAgotado ? 'disabled style="display:flex; align-items:center; gap:8px; text-decoration:line-through; opacity:0.5; cursor:not-allowed;"' : 'onclick="selPill(this)" style="display:flex; align-items:center; gap:8px;"'}>${crossHtml}$${v} MXN (${k}ml)${savingHtml}</button>`;
         }).join('')
       : '<span style="font-size:13px;color:#555">Sin presentaciones disponibles.</span>';
   } else {
+    let firstAvailableFound = false;
     pillsHTML = sizes.length
-      ? sizes.map(([k, v], i) => `<button class="mpill ${i===0?'sel':''}" data-size="${k}" data-price="${v}" onclick="selPill(this)">${k}ml — $${v}</button>`).join('')
+      ? sizes.map(([k, v], i) => {
+          const isSizeAgotado = isAgotado || (window.disable2ml && k === '2');
+          let label = `${k}ml — $${v}`;
+          if (window.disable2ml && k === '2' && !isAgotado) label += ' (Agotado)';
+          
+          let selCls = '';
+          if (!isSizeAgotado && !firstAvailableFound) {
+            selCls = 'sel';
+            firstAvailableFound = true;
+          }
+          
+          return `<button class="mpill ${selCls}" data-size="${k}" data-price="${v}" ${isSizeAgotado ? 'disabled style="text-decoration:line-through; opacity:0.5; cursor:not-allowed;"' : 'onclick="selPill(this)"'}>${label}</button>`;
+        }).join('')
       : '<span style="font-size:13px;color:#555">Sin presentaciones disponibles.</span>';
   }
   const pillsEl = document.getElementById('modal-pills');
@@ -717,7 +746,20 @@ function syncModalCartBtn() {
   if (!modalData) return;
   const sel     = document.querySelector('.mpill.sel');
   const wrapper = document.getElementById('modal-cart-wrapper');
+  const orSpan  = document.querySelector('.modal-or');
+  const waBtn   = document.getElementById('modal-btn');
   if (!wrapper) return;
+  
+  if (modalData.estadoStock === 'agotado') {
+    const waUrl = `https://wa.me/526648162623?text=${encodeURIComponent('Hola, me interesa saber si tendrán disponibilidad pronto de "' + modalData.nombre + (modalData.marca ? ' · ' + modalData.marca : '') + '"')}`;
+    wrapper.innerHTML = `<a href="${waUrl}" target="_blank" class="btn-add-cart" style="background:#25D366; color:#fff; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px;"><i class="bi bi-whatsapp"></i> Preguntar disponibilidad</a>`;
+    if (orSpan) orSpan.style.display = 'none';
+    if (waBtn) waBtn.style.display = 'none';
+    return;
+  } else {
+    if (orSpan) orSpan.style.display = 'flex';
+    if (waBtn) waBtn.style.display = 'block';
+  }
   
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable) {
     if (window.customPackageSelections.length < (modalData.maxSeleccion || 3)) {
