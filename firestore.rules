@@ -28,7 +28,9 @@ service cloud.firestore {
             'talla', 'cantidad', 'precio',
             'estado', 'canal', 'creadoEn'
         ])
-        && request.resource.data.canal    in ['mercado', 'online', 'otro']
+        // 'consignacion' lo escribe consignaciones.js al registrar la venta
+        // de un decant dejado en un punto externo.
+        && request.resource.data.canal    in ['mercado', 'online', 'otro', 'consignacion']
         && request.resource.data.cantidad  > 0
         && request.resource.data.precio   >= 0;
     }

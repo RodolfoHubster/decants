@@ -143,6 +143,8 @@ select option{background:var(--bg-card2) !important;color:var(--text-primary) !i
 
 /* ── Tables ─────────────────────────────────────────────────────────────────── */
 .table-wrap{overflow-x:auto;border-radius:var(--radius-md)}
+/* Scroll horizontal fluido en táctil, sin disparar el "volver atrás" del navegador */
+.table-wrap,.table-card{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
 table{width:100%;border-collapse:collapse}
 thead th{padding:11px 16px;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);border-bottom:1px solid var(--border);background:var(--bg-card2);white-space:nowrap}
 tbody tr{border-bottom:1px solid var(--border);transition:background var(--transition)}
@@ -157,6 +159,7 @@ tbody td{padding:12px 16px;font-size:13.5px;vertical-align:middle}
 .badge-success{background:rgba(92,184,92,.12);color:var(--success);border:1px solid rgba(92,184,92,.3)}
 .badge-info{background:rgba(91,192,222,.12);color:var(--info);border:1px solid rgba(91,192,222,.3)}
 .badge-danger{background:rgba(224,92,92,.12);color:var(--danger);border:1px solid rgba(224,92,92,.3)}
+.badge-warning{background:rgba(245,158,11,.12);color:#f59e0b;border:1px solid rgba(245,158,11,.3)}
 .badge-muted{background:rgba(255,255,255,.06);color:var(--text-muted);border:1px solid var(--border)}
 
 /* ── Modals ─────────────────────────────────────────────────────────────────── */
@@ -188,6 +191,13 @@ body.modal-open { overflow: hidden; }
   .filter-bar .search-input-wrap { flex: 1 1 100%; min-width: 100%; }
   .filter-bar select.form-control { flex: 1 1 calc(50% - 4px); max-width: none !important; }
   .filter-bar button { flex: 1 1 100%; }
+}
+
+/* Con inputs a 16px (obligado para que iOS no haga zoom), etiquetas como
+   "Todas las Novedades" necesitan ~226px: en dos columnas se cortaban.
+   Por debajo de 560px los filtros van a una sola columna. */
+@media (max-width: 560px) {
+  .filter-bar select.form-control { flex: 1 1 100%; min-width: 100%; }
 }
 
 /* ── Empty state ────────────────────────────────────────────────────────────── */
@@ -238,10 +248,95 @@ body.modal-open { overflow: hidden; }
   .form-row{grid-template-columns:1fr}
   .precios-grid{grid-template-columns:1fr 1fr}
   .page-body{padding:16px}
-  .topbar{padding:10px 16px}
   .stats-grid{grid-template-columns:1fr 1fr}
   .icon-btn-mobile > span:not(.badge) { display: none; }
   .icon-btn-mobile { padding: 6px 10px !important; }
+
+  /* ── Topbar: las acciones bajan a su propia fila ──────────────────────────
+     Antes se salían de la pantalla y quedaban inalcanzables, porque la barra
+     no envolvía y .main-content recorta el desbordamiento horizontal. */
+  .topbar{
+    padding:10px 14px;
+    flex-wrap:wrap;
+    row-gap:10px;
+  }
+  .topbar > div{min-width:0}
+  /* Las acciones envuelven en varias líneas en vez de scrollear: con scroll,
+     el botón principal ("Nuevo Perfume", "Nueva Venta") quedaba fuera de vista
+     y parecía que no existía. */
+  .topbar > div:last-child:not(:only-child){
+    flex:1 1 100%;
+    justify-content:flex-start;
+    flex-wrap:wrap;
+    row-gap:8px;
+  }
+  .topbar-title{font-size:15px}
+
+  /* ── Inputs a 16px: por debajo de eso iOS Safari hace zoom al enfocar ───── */
+  .form-control,
+  .page-size-select,
+  .topbar select,
+  input,select,textarea{font-size:16px !important}
+
+  /* ── Áreas táctiles ───────────────────────────────────────────────────── */
+  #menu-btn,.btn-icon{
+    min-width:44px;min-height:44px;
+    align-items:center;justify-content:center;
+  }
+  .btn{min-height:40px}
+
+  /* ── Tablas más compactas para que quepan más columnas ─────────────────── */
+  thead th{padding:10px 12px;font-size:11px}
+  tbody td{padding:10px 12px;font-size:13px}
+  /* Tarjetas contenedoras de tablas/gráficas: menos aire en pantallas chicas.
+     Se cualifica con .main-content porque algunas páginas definen .table-card
+     en un <style> propio que, por orden de documento, ganaría al global. */
+  .main-content .table-card,
+  .main-content .chart-card{padding:14px}
+
+  /* ── Modales como hoja inferior ───────────────────────────────────────── */
+  .modal-overlay{padding:0;align-items:flex-end}
+  .modal-box{
+    width:100%;max-width:100%;max-height:92dvh;
+    border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  /* Como hoja inferior, todos los modales van a ancho completo. Hace falta
+     !important porque compiten dos fuentes que ganarían por cascada:
+     los `style="max-width:360px"` inline del HTML, y los CSS por página
+     (ej. ventas.css `.modal-xl{width:97vw}`) que se cargan después de este. */
+  .modal-overlay .modal-box{width:100% !important;max-width:100% !important}
+  /* El contenido ancho (tablas) ya scrollea en su propio wrapper: el modal
+     nunca debe scrollear en horizontal por su cuenta. */
+  .modal-box,.modal-body{overflow-x:hidden}
+  .modal-header,.modal-footer{position:sticky;background:var(--bg-card);z-index:2}
+  .modal-header{top:0}
+  .modal-footer{bottom:0;flex-direction:column-reverse}
+  .modal-footer .btn{width:100%;justify-content:center}
+  /* Respetar el área segura de teléfonos con gesto/notch */
+  .modal-footer{padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+
+  /* ── Toasts a ancho completo, sin desbordar ───────────────────────────── */
+  .toast-container{left:12px;right:12px;bottom:12px}
+  .toast{min-width:0;max-width:none;width:100%}
+
+  /* ── Filas flex escritas con estilos inline ──────────────────────────────
+     Muchas secciones arman filas (título + controles, pestañas, botoneras)
+     con `style="display:flex"` sin flex-wrap, y en móvil lo que iba a la
+     derecha quedaba recortado y sin forma de alcanzarlo. flex-wrap no altera
+     nada mientras el contenido quepa: solo actúa cuando se desbordaría.
+     row-gap únicamente separa las líneas que llegan a partirse. */
+  .page-body div[style*="display:flex"],
+  .page-body div[style*="display: flex"]{flex-wrap:wrap;row-gap:10px}
+}
+
+/* ── Teléfonos angostos ─────────────────────────────────────────────────────── */
+@media(max-width:420px){
+  .page-body{padding:12px}
+  .stats-grid{grid-template-columns:1fr}
+  .stat-card .stat-value{font-size:22px}
+  .card-body{padding:16px}
+  .card-header{padding:12px 16px}
+  .modal-body{padding:18px}
 }
 
 /* ── POS Drawer (Canasta) ─────────────────────────────────────────────────── */

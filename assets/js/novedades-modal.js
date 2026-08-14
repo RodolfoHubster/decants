@@ -440,10 +440,10 @@ export async function initNovedadesModal() {
     initCarousel(novedades);
 
     // Cierre
-    function closeModal() {
+    const closeModal = () => {
       overlay.classList.remove('open');
       document.body.style.overflow = '';
-    }
+    };
     document.getElementById('nov-close-btn').addEventListener('click', closeModal);
     document.getElementById('nov-btn-close-all').addEventListener('click', closeModal);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });

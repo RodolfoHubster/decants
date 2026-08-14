@@ -288,7 +288,9 @@ window.registrarVenta = async (loteId, itemIdx) => {
       canal: 'consignacion',
       cliente: lote.lugar,
       estado: 'pagada',
-      metodo: 'efectivo'
+      // El resto del sistema lee `metodoPago`; con `metodo` este dato se
+      // perdía en el historial y en las estadísticas.
+      metodoPago: 'efectivo'
     };
     await addDoc(collection(db, 'ventas'), ventaData);
     

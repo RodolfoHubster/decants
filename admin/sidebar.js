@@ -3,50 +3,108 @@ import { auth, signOut } from '../assets/js/firebase-config.js';
 export function renderSidebar(active) {
   const wrap = document.getElementById('sidebar-wrap');
   if (!wrap) return;
+
+  // Helper: detect if any child in a group is active
+  const groupOpen = (...keys) => keys.includes(active) ? 'open' : '';
+  const savedGroups = JSON.parse(localStorage.getItem('sidebarGroups') || '{}');
+  const isOpen = (gid, ...keys) => {
+    if (keys.includes(active)) return 'open';
+    return savedGroups[gid] ? 'open' : '';
+  };
+
   wrap.innerHTML = `
+  <style>
+    .sb-group-toggle {
+      display:flex; align-items:center; gap:10px; padding:10px 20px;
+      font-size:12px; font-weight:600; color:var(--text-muted);
+      text-transform:uppercase; letter-spacing:.06em;
+      cursor:pointer; user-select:none; transition:color .2s;
+    }
+    .sb-group-toggle:hover { color:var(--text-primary); }
+    .sb-group-toggle i.chevron {
+      margin-left:auto; font-size:10px; transition:transform .25s ease;
+    }
+    .sb-group-toggle.open i.chevron { transform:rotate(180deg); }
+    .sb-group-children {
+      max-height:0; overflow:hidden; transition:max-height .3s ease;
+    }
+    .sb-group-children.open { max-height:400px; }
+    .sb-group-children li a {
+      padding-left:36px !important; font-size:13px !important;
+    }
+  </style>
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <div class="logo-mark">FS</div>
       <span>Fitoscents</span>
     </div>
     <ul class="sidebar-nav">
-      <li><a href="./dashboard.html"  class="${active==='dashboard'  ?'active':''}" ><i class="bi bi-grid"></i> Dashboard</a></li>
+      <li><a href="./dashboard.html" class="${active==='dashboard'?'active':''}"><i class="bi bi-grid"></i> Dashboard</a></li>
       
       <li class="sidebar-divider"></li>
-      <li class="sidebar-section-label"><i class="bi bi-box-seam"></i> Catálogo y Productos</li>
-      <li><a href="./perfumes.html"   class="${active==='perfumes'   ?'active':''}" ><i class="bi bi-droplet"></i> Perfumes</a></li>
-      <li><a href="./paquetes.html"   class="${active==='paquetes'   ?'active':''}" ><i class="bi bi-box2-heart"></i> Paquetes (Combos)</a></li>
-      <li><a href="./accesorios.html" class="${active==='accesorios' ?'active':''}" ><i class="bi bi-bag-plus"></i> Accesorios Extras</a></li>
-      <li><a href="./marcas.html"     class="${active==='marcas'     ?'active':''}" ><i class="bi bi-bookmark"></i> Marcas</a></li>
-      <li><a href="./categorias.html" class="${active==='categorias' ?'active':''}" ><i class="bi bi-tag"></i> Categorias</a></li>
-      <li><a href="./notas.html"      class="${active==='notas'      ?'active':''}" ><i class="bi bi-flower1"></i> Notas Olfativas</a></li>
-      
+
+      <!-- ── CATÁLOGO ── -->
+      <li><a href="./perfumes.html" class="${active==='perfumes'?'active':''}"><i class="bi bi-droplet"></i> Perfumes</a></li>
+      <li><a href="./paquetes.html" class="${active==='paquetes'?'active':''}"><i class="bi bi-box2-heart"></i> Paquetes</a></li>
+      <li><a href="./accesorios.html" class="${active==='accesorios'?'active':''}"><i class="bi bi-bag-plus"></i> Accesorios</a></li>
+
+      <li>
+        <div class="sb-group-toggle ${isOpen('catalogo','marcas','categorias','notas')}" data-group="catalogo" onclick="toggleSbGroup(this)">
+          <i class="bi bi-collection"></i> Taxonomías
+          <i class="bi bi-chevron-down chevron"></i>
+        </div>
+        <ul class="sb-group-children ${isOpen('catalogo','marcas','categorias','notas')}">
+          <li><a href="./marcas.html"     class="${active==='marcas'?'active':''}"><i class="bi bi-bookmark"></i> Marcas</a></li>
+          <li><a href="./categorias.html" class="${active==='categorias'?'active':''}"><i class="bi bi-tag"></i> Categorías</a></li>
+          <li><a href="./notas.html"      class="${active==='notas'?'active':''}"><i class="bi bi-flower1"></i> Notas Olfativas</a></li>
+        </ul>
+      </li>
+
       <li class="sidebar-divider"></li>
-      <li class="sidebar-section-label"><i class="bi bi-cash-stack"></i> Ventas y Clientes</li>
-      <li><a href="./clientes.html"   class="${active==='clientes'   ?'active':''}" ><i class="bi bi-people"></i> Directorio de Clientes</a></li>
-      <li><a href="./ventas.html"     class="${active==='ventas'     ?'active':''}" ><i class="bi bi-shop"></i> Punto de Venta</a></li>
-      <li><a href="./pedidos.html"    class="${active==='pedidos'    ?'active':''}" ><i class="bi bi-bag"></i> Pedidos Web</a></li>
-      <li><a href="./consignaciones.html" class="${active==='consignaciones' ?'active':''}" ><i class="bi bi-geo-alt"></i> Puntos Externos</a></li>
-      
+
+      <!-- ── VENTAS ── -->
+      <li><a href="./ventas.html"     class="${active==='ventas'?'active':''}"><i class="bi bi-shop"></i> Punto de Venta</a></li>
+      <li><a href="./clientes.html"   class="${active==='clientes'?'active':''}"><i class="bi bi-people"></i> Clientes</a></li>
+      <li><a href="./pedidos.html"    class="${active==='pedidos'?'active':''}"><i class="bi bi-bag"></i> Pedidos Web</a></li>
+      <li><a href="./consignaciones.html" class="${active==='consignaciones'?'active':''}"><i class="bi bi-geo-alt"></i> Puntos Externos</a></li>
+
+      <li>
+        <div class="sb-group-toggle ${isOpen('botellas','perfumes-completos','encargos')}" data-group="botellas" onclick="toggleSbGroup(this)">
+          <i class="bi bi-star-fill"></i> Botellas Completas
+          <i class="bi bi-chevron-down chevron"></i>
+        </div>
+        <ul class="sb-group-children ${isOpen('botellas','perfumes-completos','encargos')}">
+          <li><a href="./perfumes-completos.html" class="${active==='perfumes-completos'?'active':''}"><i class="bi bi-bag-heart"></i> Catálogo Completos</a></li>
+          <li><a href="./encargos.html"           class="${active==='encargos'?'active':''}"><i class="bi bi-clock-history"></i> Encargos</a></li>
+        </ul>
+      </li>
+
       <li class="sidebar-divider"></li>
-      <li class="sidebar-section-label"><i class="bi bi-graph-up-arrow"></i> Inteligencia de Negocio</li>
-      <li><a href="./estadisticas.html" class="${active==='estadisticas' ?'active':''}" ><i class="bi bi-bar-chart-line"></i> Estadísticas</a></li>
-      <li><a href="./costos.html"       class="${active==='costos'       ?'active':''}" ><i class="bi bi-calculator"></i> Costos e Insumos</a></li>
-      
+
+      <!-- ── NEGOCIO ── -->
+      <li><a href="./estadisticas.html" class="${active==='estadisticas'?'active':''}"><i class="bi bi-bar-chart-line"></i> Estadísticas</a></li>
+      <li><a href="./costos.html"       class="${active==='costos'?'active':''}"><i class="bi bi-calculator"></i> Costos</a></li>
+
       <li class="sidebar-divider"></li>
-      <li class="sidebar-section-label"><i class="bi bi-star-fill"></i> Botellas Completas</li>
-      <li><a href="./perfumes-completos.html" class="${active==='perfumes-completos' ?'active':''}" ><i class="bi bi-bag-heart"></i> Catálogo Completos</a></li>
-      <li><a href="./encargos.html"           class="${active==='encargos'           ?'active':''}" ><i class="bi bi-clock-history"></i> Encargos</a></li>
-      
-      <li class="sidebar-divider"></li>
-      <li class="sidebar-section-label"><i class="bi bi-gear-fill"></i> Ajustes</li>
-      <li><a href="./ajustes.html"    class="${active==='ajustes'    ?'active':''}" ><i class="bi bi-gear-fill"></i> Inteligencia Artificial</a></li>
-      <li><a href="./novedades.html"  class="${active==='novedades'  ?'active':''}" ><i class="bi bi-stars"></i> Novedades</a></li>
+
+      <!-- ── AJUSTES ── -->
+      <li>
+        <div class="sb-group-toggle ${isOpen('ajustes_grp','ajustes','novedades','anuncios')}" data-group="ajustes_grp" onclick="toggleSbGroup(this)">
+          <i class="bi bi-gear-fill"></i> Ajustes
+          <i class="bi bi-chevron-down chevron"></i>
+        </div>
+        <ul class="sb-group-children ${isOpen('ajustes_grp','ajustes','novedades','anuncios')}">
+          <li><a href="./ajustes.html"   class="${active==='ajustes'?'active':''}"><i class="bi bi-cpu"></i> Inteligencia Artificial</a></li>
+          <li><a href="./novedades.html" class="${active==='novedades'?'active':''}"><i class="bi bi-stars"></i> Novedades</a></li>
+          <li><a href="./anuncios.html"  class="${active==='anuncios'?'active':''}"><i class="bi bi-megaphone"></i> Anuncios</a></li>
+        </ul>
+      </li>
+
       <li class="sidebar-divider"></li>
       <li>
         <label style="display:flex;align-items:center;gap:12px;padding:12px 20px;color:var(--text-muted);cursor:pointer;font-size:13.5px;transition:all 0.2s;">
           <i class="bi bi-wifi-off"></i>
-          <span style="flex:1;">Modo Ahorro (Sin Imágenes)</span>
+          <span style="flex:1;">Modo Ahorro</span>
           <input type="checkbox" id="data-saver-toggle" onchange="window.toggleDataSaver(this)" style="width:18px;height:18px;accent-color:var(--accent);">
         </label>
       </li>
@@ -62,7 +120,64 @@ export function renderSidebar(active) {
     await signOut(auth);
     window.location.replace('../index.html');
   });
+
+  restaurarScroll();
 }
+
+/** Dónde se quedó el scroll del menú, para esta pestaña. */
+const SCROLL_KEY = 'sidebarScroll';
+
+/**
+ * Devuelve el menú a la altura en la que estaba.
+ *
+ * El panel son páginas separadas, así que el menú se construye de cero en
+ * cada navegación y volvía siempre arriba: para llegar a las secciones del
+ * final había que desplazarlo otra vez en cada salto.
+ */
+function restaurarScroll() {
+  const sb = document.getElementById('sidebar');
+  if (!sb) return;
+
+  const guardado = +sessionStorage.getItem(SCROLL_KEY) || 0;
+  if (guardado > 0) {
+    // El navegador recorta solo si el contenido encoge.
+    sb.scrollTop = guardado;
+  } else {
+    // Primera visita de la pestaña: al menos asegurar que la sección
+    // en la que se está sea visible sin buscarla.
+    const activo = sb.querySelector('a.active');
+    if (activo && activo.offsetTop > sb.clientHeight - 60) {
+      sb.scrollTop = activo.offsetTop - sb.clientHeight / 2;
+    }
+  }
+
+  const guardar = () => sessionStorage.setItem(SCROLL_KEY, String(Math.round(sb.scrollTop)));
+
+  // Acelerador por tiempo en vez de requestAnimationFrame: éste no corre en
+  // pestañas de fondo y dejaba la última posición sin guardar si se pulsaba
+  // un enlace justo después de desplazar.
+  let ultimo = 0;
+  sb.addEventListener('scroll', () => {
+    const ahora = Date.now();
+    if (ahora - ultimo < 120) return;
+    ultimo = ahora;
+    guardar();
+  }, { passive: true });
+
+  // Red de seguridad: al abandonar la página se guarda la posición exacta.
+  window.addEventListener('pagehide', guardar);
+}
+
+window.toggleSbGroup = (el) => {
+  el.classList.toggle('open');
+  const children = el.nextElementSibling;
+  if (children) children.classList.toggle('open');
+  // Remember state
+  const gid = el.dataset.group;
+  const saved = JSON.parse(localStorage.getItem('sidebarGroups') || '{}');
+  saved[gid] = el.classList.contains('open');
+  localStorage.setItem('sidebarGroups', JSON.stringify(saved));
+};
 
 window.toggleSidebar = () => {
   const sb = document.getElementById('sidebar');

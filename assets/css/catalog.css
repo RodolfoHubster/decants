@@ -604,7 +604,7 @@ header {
   color: var(--faint); font-size: 72px;
 }
 
-.modal-content { padding: 24px 28px 28px; }
+.modal-content { padding: 22px 22px 0; }
 .modal-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
 .modal-nombre { font-size: 24px; font-weight: 700; line-height: 1.2; }
 
@@ -621,30 +621,51 @@ header {
 .btn-close:hover { background: rgba(255,255,255,.14); color: #e8e6e1; }
 
 .modal-marca { font-size: 12.5px; color: #c9a84c; font-weight: 600; margin-bottom: 10px; }
-.modal-desc { font-size: 15px; color: #aaa; margin-bottom: 24px; line-height: 1.6; }
+
+/* La descripción era el bloque más alto de la ficha y empujaba la compra
+   fuera de pantalla: se muestra recortada y se despliega a voluntad. */
+.modal-desc { font-size: 14.5px; color: #aaa; margin-bottom: 6px; line-height: 1.6; }
+.modal-desc.clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.modal-desc-more {
+  background: none; border: none; padding: 0;
+  color: #c9a84c; font-size: 12.5px; font-weight: 600;
+  cursor: pointer; margin-bottom: 18px;
+}
+.modal-desc-more:hover { text-decoration: underline; }
+.modal-desc-more[hidden] { display: none; }
+
 .modal-sizes-label { font-size: 11px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 10px; }
 
 .modal-pills {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 .modal-pills.flash { animation: flash-pills .5s ease; }
 @keyframes flash-pills { 0%,100%{opacity:1} 50%{opacity:.3} }
 
 .mpill {
-  padding: 8px 16px;
+  padding: 7px 11px;
   border-radius: 99px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   border: 1px solid rgba(255,255,255,.12);
   background: rgba(255,255,255,.05);
   color: #bbb;
   cursor: pointer;
   transition: all .15s;
+  line-height: 1.25;
 }
 .mpill:hover, .mpill.sel { background: #c9a84c; border-color: #c9a84c; color: #000; }
+/* Ahorro frente a comprar varias tallas chicas. Nunca precio por ml:
+   eso invita a compararlo con la botella completa. */
+.mpill .pill-ahorro { display: block; font-size: 10px; font-weight: 700; opacity: .85; }
 
 .modal-or, .modal-btn-divider {
   display: flex; align-items: center; gap: 10px;
@@ -656,31 +677,43 @@ header {
   content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.07);
 }
 
+/* Barra de acción pegada al fondo del modal: comprar sin tener que
+   desplazarse por toda la descripción. */
+.modal-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  margin: 0 -22px;
+  padding: 13px 22px calc(14px + env(safe-area-inset-bottom));
+  background: var(--card);
+  border-top: 1px solid rgba(255,255,255,.07);
+}
+
 .btn-add-cart {
   width: 100%;
   display: flex; align-items: center; justify-content: center;
-  gap: 9px; padding: 13px 14px;
-  background: rgba(201,168,76,.1);
-  color: #c9a84c;
-  border: 1.5px solid rgba(201,168,76,.45);
+  gap: 9px; padding: 14px;
+  background: #c9a84c;
+  color: #14120e;
+  border: none;
   border-radius: 12px;
-  font-size: 15px; font-weight: 600;
-  transition: background .15s, border-color .15s;
-  margin-bottom: 10px;
+  font-size: 15px; font-weight: 700;
+  transition: background .15s;
 }
-.btn-add-cart:hover { background: rgba(201,168,76,.18); border-color: rgba(201,168,76,.7); }
-.btn-add-cart:disabled { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); color: #444; cursor: not-allowed; }
+.btn-add-cart:hover { background: #e0b95a; }
+.btn-add-cart:disabled { background: rgba(255,255,255,.06); color: #555; cursor: not-allowed; }
 
+/* Secundario: presente pero sin competir con la compra */
 .btn-wa-modal {
   width: 100%;
   display: flex; align-items: center; justify-content: center;
-  gap: 9px; padding: 14px;
-  background: #25D366; color: #fff;
-  border: none; border-radius: 12px;
-  font-size: 15px; font-weight: 600;
-  transition: background .15s;
+  gap: 8px; padding: 9px 10px 2px;
+  background: none; color: #25D366;
+  border: none;
+  font-size: 13px; font-weight: 600;
+  transition: color .15s;
 }
-.btn-wa-modal:hover { background: #1db954; }
+.btn-wa-modal:hover { color: #4ae585; text-decoration: underline; }
 
 /* ============================================
    CART DRAWER

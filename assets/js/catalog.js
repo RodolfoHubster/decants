@@ -6,6 +6,9 @@ import { addItem, decrementItem, removeItem, clearCart as pureCleart,
   from './cart.js';
 import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug } from './slug.js';
 import { imgCard, imgModal, imgCart, imgOg } from './cloudinary.js';
+import { heroStats, pickShowcase, construirColecciones, barajar } from './hero.js';
+import { resolverItemsPaquete, contarDisponibles, paqueteArmable } from './stock.js';
+import { ahorroPorTalla } from './precios.js';
 
 // ── Tipos fijos (chips del panel — mapean al campo `categoria` del perfume) ─
 const TIPOS_PERMITIDOS = [
@@ -109,6 +112,143 @@ function resetMetaTags() {
   });
 }
 
+// ── Hero ────────────────────────────────────────────────────
+function renderHero() {
+  const stats = heroStats(all);
+  const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setTxt('hstat-perfumes', stats.perfumes);
+  setTxt('hstat-marcas', stats.marcas);
+  setTxt('hstat-desde', stats.desde ? `$${stats.desde}` : '—');
+
+  const visual = document.getElementById('hero-visual');
+  if (!visual) return;
+
+  // El orden de las colecciones se baraja en cada visita: quien vuelve no
+  // se encuentra siempre el mismo escaparate.
+  const colecciones = barajar(construirColecciones(all, 3));
+
+  // Lista plana: se avanza perfume por perfume y la etiqueta va indicando
+  // a qué colección pertenece el que se está viendo.
+  let lista = colecciones.flatMap(c => c.items.map(p => ({ perfume: p, coleccion: c.label })));
+
+  if (!lista.length) {
+    // Sin colecciones completas, al menos mostrar algo del catálogo.
+    lista = pickShowcase(all, 5).map(p => ({ perfume: p, coleccion: 'Del catálogo' }));
+  }
+  if (!lista.length) return;
+
+  visual.hidden = false;
+  iniciarCarrusel(lista);
+}
+
+/**
+ * Recorta la descripción a 4 líneas y ofrece desplegarla.
+ *
+ * El botón solo aparece si el texto realmente se corta: en fichas cortas
+ * no tiene sentido y estorba.
+ */
+function prepararDescripcion(descEl) {
+  const btn = document.getElementById('modal-desc-more');
+  if (!btn) return;
+
+  descEl.classList.add('clamp');
+  btn.textContent = 'Ver más';
+
+  // Medición síncrona: leer scrollHeight ya fuerza el cálculo del layout.
+  // Con requestAnimationFrame el botón no llegaba a aparecer si el cuadro
+  // aún no había pintado un fotograma.
+  btn.hidden = descEl.scrollHeight <= descEl.clientHeight + 2;
+
+  btn.onclick = () => {
+    const recortada = descEl.classList.toggle('clamp');
+    btn.textContent = recortada ? 'Ver más' : 'Ver menos';
+  };
+}
+
+/** Cuánto tarda la barra en llenarse antes de pasar al siguiente perfume. */
+const AVANCE_MS = 4500;
+
+/**
+ * Escaparate de una foto a la vez.
+ *
+ * La barra inferior se llena durante AVANCE_MS y al completarse pasa al
+ * siguiente perfume. Se detiene con el cursor encima o con la pestaña en
+ * segundo plano, y queda quieta para quien pidió menos movimiento.
+ */
+function iniciarCarrusel(lista) {
+  const shot   = document.getElementById('hero-shot');
+  const img    = document.getElementById('hero-shot-img');
+  const marca  = document.getElementById('hero-shot-marca');
+  const nombre = document.getElementById('hero-shot-nombre');
+  const chip   = document.getElementById('hero-col-label');
+  const fill   = document.getElementById('hero-progress-fill');
+  if (!shot || !img) return;
+
+  // La barra de avance se muestra siempre: es un indicador de progreso, no
+  // un adorno en movimiento. `prefers-reduced-motion` solo quita el fundido
+  // de entrada de la foto (en el CSS), y el avance se puede pausar con el
+  // cursor o el dedo, que es lo que pide la norma de accesibilidad.
+  const rota = lista.length > 1;
+  let idx = 0, timer = null, actual = null;
+
+  const llenarBarra = () => {
+    if (!fill) return;
+    // Volver a cero sin transición, para que no se vea retroceder.
+    fill.style.transition = 'none';
+    fill.style.width = '0%';
+    void fill.offsetWidth;                      // fuerza el reflow
+    if (!rota) return;
+    fill.style.transition = `width ${AVANCE_MS}ms linear`;
+    fill.style.width = '100%';
+  };
+
+  const pintar = (i) => {
+    idx = (i + lista.length) % lista.length;
+    actual = lista[idx].perfume;
+
+    // Reiniciar el fundido de entrada de la foto.
+    img.style.animation = 'none';
+    void img.offsetWidth;
+    img.style.animation = '';
+
+    img.src = imgCard(actual.imagen);
+    img.alt = `${actual.marca || ''} ${actual.nombre || ''}`.trim();
+    marca.textContent  = actual.marca || '';
+    nombre.textContent = actual.nombre || '';
+    chip.textContent   = lista[idx].coleccion;
+    llenarBarra();
+  };
+
+  const parar = () => {
+    clearTimeout(timer); timer = null;
+    if (!fill) return;
+    // Congelar la barra donde va, en vez de dar un salto.
+    const ancho = fill.getBoundingClientRect().width;
+    const total = fill.parentElement.getBoundingClientRect().width || 1;
+    fill.style.transition = 'none';
+    fill.style.width = `${(ancho / total) * 100}%`;
+  };
+
+  const arrancar = () => {
+    if (!rota || timer || document.hidden) return;
+    llenarBarra();
+    timer = setTimeout(() => { timer = null; pintar(idx + 1); arrancar(); }, AVANCE_MS);
+  };
+
+  // Tocar o hacer clic abre la ficha del perfume que se está viendo.
+  shot.addEventListener('click', () => { if (actual) openModal(actual.id); });
+
+  shot.addEventListener('mouseenter', parar);
+  shot.addEventListener('mouseleave', arrancar);
+  shot.addEventListener('focus', parar);
+  shot.addEventListener('blur', arrancar);
+  // No gastar ciclos ni datos con la pestaña en segundo plano.
+  document.addEventListener('visibilitychange', () => document.hidden ? parar() : arrancar());
+
+  pintar(0);
+  arrancar();
+}
+
 // ── Skeletons ───────────────────────────────────────────────
 function showSkeletons() {
   const g = document.getElementById('grid');
@@ -200,6 +340,7 @@ async function load() {
   
   updateFilterBtnBadge();
 
+  renderHero();
   renderGrid();
   if (cart.length) {
     const mins = cartExpiresInMinutes();
@@ -352,9 +493,9 @@ function calcSavings(paquete, size) {
   const requiredCount = paquete.esPersonalizable ? (paquete.maxSeleccion || 3) : paquete.items.length;
   if (itemPrices.length < requiredCount) return { saving: 0, original: 0 };
   
-  // Sort descending to show best possible saving from the pool
-  itemPrices.sort((a,b) => b - a);
-  let totalIndiv = itemPrices.slice(0, requiredCount).reduce((a,b) => a + b, 0);
+  // Use average price of the pool to show realistic savings instead of maximum possible
+  const avgItemPrice = itemPrices.reduce((a,b) => a + b, 0) / itemPrices.length;
+  let totalIndiv = Math.round(avgItemPrice * requiredCount);
 
   return {
     saving: totalIndiv > pkgPrice ? totalIndiv - pkgPrice : 0,
@@ -606,29 +747,42 @@ window.openModal = (id, pushHash = true) => {
     : `<div class="modal-img-placeholder"><i class="bi ${p.tipo === 'paquete' ? 'bi-box2-heart' : (p.tipo === 'accesorio' ? 'bi-bag' : 'bi-droplet')}"></i></div>`;
   document.getElementById('modal-nombre').textContent = p.nombre;
   document.getElementById('modal-marca').textContent  = p.marca || '';
-  document.getElementById('modal-desc').textContent   = p.descripcion || 'Sin descripción disponible.';
+  const descEl = document.getElementById('modal-desc');
+  descEl.textContent = p.descripcion || 'Sin descripción disponible.';
+  prepararDescripcion(descEl);
 
   window.customPackageSelections = [];
 
   const pqItemsEl = document.getElementById('modal-paquete-items');
   if (p.tipo === 'paquete' && p.items && p.items.length) {
+    // Los items del paquete son una copia vieja: hay que preguntarle al
+    // catálogo vivo cuáles siguen disponibles antes de ofrecerlos.
+    const itemsPq = resolverItemsPaquete(p.items, all);
     if (p.esPersonalizable) {
+      const maxSel = p.maxSeleccion || 3;
+      const disponibles = contarDisponibles(itemsPq);
+      const armable = paqueteArmable(itemsPq, maxSel);
       pqItemsEl.innerHTML = `
         <div style="margin-top:10px; margin-bottom:8px; font-size:11px; font-weight:600; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:flex; justify-content:space-between;">
-          <span>Arma tu paquete (Elige ${p.maxSeleccion || 3}):</span>
-          <span id="custom-pkg-count">0 / ${p.maxSeleccion || 3}</span>
+          <span>Arma tu paquete (Elige ${maxSel}):</span>
+          <span id="custom-pkg-count">0 / ${maxSel}</span>
         </div>
+        ${!armable ? `
+        <div style="margin-bottom:8px; padding:8px 12px; border-radius:8px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.35); color:#fca5a5; font-size:12px; line-height:1.4;">
+          <i class="bi bi-exclamation-triangle-fill"></i> Por ahora solo hay ${disponibles} de ${maxSel} perfumes disponibles en este paquete. Escríbenos por WhatsApp y te decimos cuándo vuelve.
+        </div>` : ''}
         <div style="display:flex; flex-direction:column; gap:6px;">
-          ${p.items.map(i => `
-            <label class="custom-pkg-label" style="cursor:pointer; display:flex; align-items:center; gap:12px; background:var(--bg-card2); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); transition:background 0.2s;">
-              <input type="checkbox" class="custom-pkg-chk" value="${i.id}" data-name="${i.nombre}" onchange="toggleCustomPkgItem(this, ${p.maxSeleccion || 3})" style="width:18px;height:18px;accent-color:var(--gold);">
-              <div style="width:40px; height:40px; border-radius:6px; overflow:hidden; background:var(--bg-card); flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.2);" onclick="event.preventDefault(); window.showZoom('${i.imagen || ''}')">
+          ${itemsPq.map(i => `
+            <label class="custom-pkg-label" style="cursor:${i.agotado ? 'not-allowed' : 'pointer'}; display:flex; align-items:center; gap:12px; background:var(--bg-card2); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); transition:background 0.2s;${i.agotado ? ' opacity:0.45;' : ''}">
+              <input type="checkbox" class="custom-pkg-chk" value="${i.id}" data-name="${i.nombre}"${i.agotado ? ' data-agotado="1" disabled' : ''} onchange="toggleCustomPkgItem(this, ${maxSel})" style="width:18px;height:18px;accent-color:var(--gold);${i.agotado ? 'cursor:not-allowed;' : ''}">
+              <div style="width:40px; height:40px; border-radius:6px; overflow:hidden; background:var(--bg-card); flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.2);${i.agotado ? ' filter:grayscale(1);' : ''}" onclick="event.preventDefault(); window.showZoom('${i.imagen || ''}')">
                 ${i.imagen ? `<img src="${imgCart(i.imagen)}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="bi bi-droplet" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:16px;"></i>'}
               </div>
               <div style="flex:1;">
-                <div style="font-weight:600; font-size:13.5px; color:var(--text); line-height:1.2;">${i.nombre}</div>
+                <div style="font-weight:600; font-size:13.5px; color:var(--text); line-height:1.2;${i.agotado ? ' text-decoration:line-through;' : ''}">${i.nombre}</div>
                 <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${i.marca || ''}</div>
               </div>
+              ${i.agotado ? `<span style="flex-shrink:0; background:#ef4444; color:#fff; padding:2px 8px; border-radius:20px; font-size:9px; font-weight:700; letter-spacing:0.5px;">AGOTADO</span>` : ''}
             </label>
           `).join('')}
         </div>
@@ -637,16 +791,18 @@ window.openModal = (id, pushHash = true) => {
       pqItemsEl.innerHTML = `
         <div style="margin-top:10px; margin-bottom:8px; font-size:11px; font-weight:600; color:var(--gold); text-transform:uppercase; letter-spacing:1px;">Perfumes incluidos en el paquete:</div>
         <div style="display:flex; flex-direction:column; gap:6px;">
-          ${p.items.map(i => `
-            <div onclick="window.showZoom('${i.imagen || ''}')" title="Ver imagen" style="cursor:pointer; display:flex; align-items:center; gap:12px; background:var(--bg-card2); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); transition:background 0.2s, transform 0.1s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.transform='scale(1.01)';" onmouseout="this.style.background='var(--bg-card2)'; this.style.transform='scale(1)';">
-              <div style="width:40px; height:40px; border-radius:6px; overflow:hidden; background:var(--bg-card); flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+          ${itemsPq.map(i => `
+            <div onclick="window.showZoom('${i.imagen || ''}')" title="Ver imagen" style="cursor:pointer; display:flex; align-items:center; gap:12px; background:var(--bg-card2); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); transition:background 0.2s, transform 0.1s;${i.agotado ? ' opacity:0.45;' : ''}" onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.transform='scale(1.01)';" onmouseout="this.style.background='var(--bg-card2)'; this.style.transform='scale(1)';">
+              <div style="width:40px; height:40px; border-radius:6px; overflow:hidden; background:var(--bg-card); flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.2);${i.agotado ? ' filter:grayscale(1);' : ''}">
                 ${i.imagen ? `<img src="${imgCart(i.imagen)}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="bi bi-droplet" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:16px;"></i>'}
               </div>
               <div style="flex:1;">
-                <div style="font-weight:600; font-size:13.5px; color:var(--text); line-height:1.2;">${i.nombre}</div>
+                <div style="font-weight:600; font-size:13.5px; color:var(--text); line-height:1.2;${i.agotado ? ' text-decoration:line-through;' : ''}">${i.nombre}</div>
                 <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${i.marca || ''}</div>
               </div>
-              <i class="bi bi-zoom-in" style="color:var(--text-faint); font-size:16px;"></i>
+              ${i.agotado
+                ? `<span style="flex-shrink:0; background:#ef4444; color:#fff; padding:2px 8px; border-radius:20px; font-size:9px; font-weight:700; letter-spacing:0.5px;">AGOTADO</span>`
+                : `<i class="bi bi-zoom-in" style="color:var(--text-faint); font-size:16px;"></i>`}
             </div>
           `).join('')}
         </div>
@@ -681,9 +837,15 @@ window.openModal = (id, pushHash = true) => {
     pillsHTML = sizes.length
       ? sizes.map(([k, v], i) => {
           const isSizeAgotado = isAgotado || (window.disable2ml && k === '2');
+          // Nunca se muestra el precio por ml: invita a compararlo con la
+          // botella completa (que sale a un tercio) y ahí el decant siempre
+          // pierde. El empujón a la talla grande se da en positivo, con el
+          // ahorro frente a comprar varias chicas.
+          const ahorro = ahorroPorTalla(sizes, k, v);
           let label = `${k}ml — $${v}`;
           if (window.disable2ml && k === '2' && !isAgotado) label += ' (Agotado)';
-          
+          else if (ahorro > 0) label += `<span class="pill-ahorro">Ahorras $${ahorro}</span>`;
+
           let selCls = '';
           if (!isSizeAgotado && !firstAvailableFound) {
             selCls = 'sel';
@@ -728,9 +890,12 @@ window.toggleCustomPkgItem = (chk, maxSel) => {
   
   const maxReached = window.customPackageSelections.length >= maxSel;
   document.querySelectorAll('.custom-pkg-chk').forEach(el => {
-    if (!el.checked) el.disabled = maxReached;
+    // Los agotados quedan bloqueados siempre: al bajar del máximo se
+    // reactivaba todo, y volvían a poder elegirse.
+    const agotado = el.dataset.agotado === '1';
+    if (!el.checked) el.disabled = maxReached || agotado;
     const lbl = el.closest('label');
-    if (lbl) lbl.style.opacity = (maxReached && !el.checked) ? '0.5' : '1';
+    if (lbl && !agotado) lbl.style.opacity = (maxReached && !el.checked) ? '0.5' : '1';
   });
   
   document.querySelectorAll('.mpill').forEach(el => {
@@ -897,6 +1062,14 @@ window.addToCart = () => {
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable) {
     if (window.customPackageSelections.length < (modalData.maxSeleccion || 3)) {
       showToast(`Selecciona ${modalData.maxSeleccion || 3} perfumes primero`, 'warning');
+      return;
+    }
+    // Última verificación contra el stock vivo: la selección pudo quedarse
+    // vieja si el modal llevaba rato abierto.
+    const agotados = resolverItemsPaquete(window.customPackageSelections, all).filter(i => i.agotado);
+    if (agotados.length) {
+      showToast(`${agotados[0].nombre} se agotó, elige otro`, 'warning');
+      openModal(modalData.id);
       return;
     }
   }

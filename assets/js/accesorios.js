@@ -72,7 +72,7 @@ function renderTable() {
   tb.innerHTML = accesorios.map(acc => {
     const estadoBadge = acc.activo !== false 
       ? '<span class="badge badge-success">Activo</span>' 
-      : '<span class="badge badge-warning" style="color:#000">Oculto</span>';
+      : '<span class="badge badge-warning"><i class="bi bi-eye-slash"></i> Oculto</span>';
       
     const stockBadge = (acc.stock <= 0) 
       ? '<span class="badge badge-danger">Agotado</span>' 

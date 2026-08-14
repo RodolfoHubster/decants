@@ -1,5 +1,7 @@
 import { db, collection, getDocs, doc, getDoc, updateDoc, auth, onAuthStateChanged } from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
+import { ventasDeLote, esResto } from './lotes.js';
+import { esClienteTemporal, claveCliente } from './clientes-util.js';
 
 let ventas = [];
 let ventasFiltradas = [];
@@ -184,10 +186,20 @@ function renderKPIs() {
         const p = perfumes.find(x => x.id === v.perfumeId);
         if (p) {
           const l = getLote(p, v.loteId);
-          let costoResto = 0;
-          if (l) costoResto = +l.costo || 0;
-          else costoResto = +p.costoBotella || 0;
-          costoTotalInversion += (costoResto * cant);
+          const costoBotella = l ? +l.costo || 0 : +p.costoBotella || 0;
+          const tamanoBotella = l ? +l.tamano || 1 : +p.tamanoBotella || 1;
+          const costoMl = costoBotella / tamanoBotella;
+          
+          // Calculate ML of Resto by finding all sales of this lote in `ventas`
+          let mlVendidosTotales = 0;
+          ventas.forEach(v2 => {
+            if (v2.perfumeId === v.perfumeId && v2.loteId === v.loteId && v2.talla !== 'Resto' && v2.talla !== 'Completo' && v2.talla !== 'Otro') {
+              let t = parseFloat(v2.talla.replace('Paquete ', ''));
+              if (!isNaN(t) && t > 0) mlVendidosTotales += t * (+v2.cantidad || 1);
+            }
+          });
+          const restoMl = Math.max(0, tamanoBotella - mlVendidosTotales);
+          costoTotalInversion += (costoMl * restoMl * cant);
         }
       }
     }
@@ -385,40 +397,47 @@ function renderCharts() {
 function renderTopClientes() {
   const cData = {};
   ventasFiltradas.forEach(v => {
-    const name = v.cliente ? v.cliente.trim() : 'Mostrador / Anónimo';
-    if (!cData[name]) cData[name] = { count: 0, ingresos: 0, items: [] };
-    cData[name].count++;
-    cData[name].ingresos += (+v.precio || 0) * (+v.cantidad || 1);
+    // Los clientes de Sobre Ruedas son de paso: se registran como "Cliente 8",
+    // "Cliente 12"… y esa numeración se reinicia cada jornada. Agruparlos por
+    // nombre fusionaba a personas distintas en un "mejor cliente" inexistente.
+    if (esClienteTemporal(v)) return;
+
+    const key = claveCliente(v);
+    if (!key) return;
+
+    if (!cData[key]) cData[key] = { nombre: (v.cliente || '').trim(), count: 0, ingresos: 0, items: [] };
+    const cant = +v.cantidad || 1;
+    cData[key].count += cant;
+    cData[key].ingresos += (+v.precio || 0) * cant;
     let itemName = v.perfumeNombre || '';
     if (itemName) {
       if (v.talla) itemName += ` ${v.talla}${v.talla.includes('ml') || v.talla === 'Completo' || v.talla === 'Resto' || v.talla === 'Otro' ? '' : 'ml'}`;
       if (+v.cantidad > 1) itemName += ` (x${v.cantidad})`;
-      cData[name].items.push(itemName);
+      cData[key].items.push(itemName);
     }
   });
-  
+
   const top = Object.entries(cData)
-    .filter(x => x[0] !== 'Mostrador / Anónimo' && x[0] !== '')
     .sort((a,b) => b[1].ingresos - a[1].ingresos)
     .slice(0, 5);
-    
+
   const container = document.getElementById('top-clientes-list');
   if (!container) return;
   
   if (top.length === 0) {
-    container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-faint)">Sin datos en este periodo</div>';
+    container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-faint)">Sin clientes registrados en este periodo</div>';
     return;
   }
-  
+
   container.innerHTML = top.map((x, i) => {
     // Unique list of up to 5 items to show
     const uniqueItems = [...new Set(x[1].items)];
     const itemsStr = uniqueItems.slice(0, 4).join(', ') + (uniqueItems.length > 4 ? ', ...' : '');
-    
+
     return `
     <div class="list-item">
       <div>
-        <div class="list-item-title">#${i+1} ${x[0]}</div>
+        <div class="list-item-title">#${i+1} ${x[1].nombre}</div>
         <div class="list-item-sub" style="margin-bottom:2px;">${x[1].count} artículo${x[1].count > 1 ? 's' : ''}</div>
         ${itemsStr ? `<div style="font-size:10px; color:var(--text-faint); max-width: 250px; white-space: normal;">🛒 ${itemsStr}</div>` : ''}
       </div>
@@ -594,9 +613,13 @@ function renderProfitability() {
     }
     if (lotes.length === 0) return; 
     
-    const hist = ventasFiltradas.filter(v => v.perfumeId === p.id);
+    const hist = ventas.filter(v => 
+      (v.perfumeId === p.id || (!v.perfumeId && (v.perfumeNombre||'').trim().toLowerCase() === p.nombre.trim().toLowerCase())) 
+      && v.estado !== 'cancelada'
+    );
     
-    ventasFiltradas.forEach(v => {
+    ventas.forEach(v => {
+      if (v.estado === 'cancelada') return;
       if (v.paqueteItems && Array.isArray(v.paqueteItems)) {
         const subItem = v.paqueteItems.find(i => i.id === p.id);
         if (subItem) {
@@ -618,12 +641,9 @@ function renderProfitability() {
     let sumCostoBotella = 0;
     let sumCostoInsumos = 0;
     let loteResults = [];
-    
+
     lotes.forEach((l, idx) => {
-      // Filtrar historial específico para este lote
-      // Si la venta no tiene loteId, asumimos que es del lote-1 (o el primero de la lista)
-      const isFirst = idx === 0;
-      const loteHist = hist.filter(v => v.loteId === l.id || (isFirst && !v.loteId));
+      const loteHist = ventasDeLote(hist, lotes, l.id);
       
       let totalMlVendidosVentas = 0;
       let totalDecantsVendidos = 0;
@@ -632,11 +652,12 @@ function renderProfitability() {
       const distribucion = { '2':0, '3':0, '5':0, '10':0 };
       
       loteHist.forEach(v => {
-        if (v.talla === 'Resto') {
+        const tLower = (v.talla || '').trim().toLowerCase();
+        if (esResto(v.talla)) {
           const c = +v.cantidad || 1;
           ingresoReal += (+v.precio || 0) * c;
           restoVendido = true;
-        } else if (v.talla !== 'Completo' && v.talla !== 'Otro') {
+        } else if (tLower !== 'completo' && tLower !== 'otro') {
           const t = parseFloat(v.talla);
           if (!isNaN(t) && t > 0) {
             const c = +v.cantidad || 1;
@@ -708,14 +729,17 @@ function renderProfitability() {
       });
     });
     
+    const activeLoteId = p.loteActivo || lotes[lotes.length - 1].id;
+    const activeLoteData = loteResults.find(x => x.id === activeLoteId) || loteResults[loteResults.length - 1];
+    
     results.push({
       pid: p.id,
       nombre: p.nombre,
       marca: p.marca || '',
-      sumGanancia,
-      sumIngreso,
-      sumCostoBotella,
-      sumCostoInsumos,
+      sumGanancia: activeLoteData.gananciaReal,
+      sumIngreso: activeLoteData.ingresoReal,
+      sumCostoBotella: activeLoteData.costoInversionReal,
+      sumCostoInsumos: activeLoteData.gananciaNetaFinal,
       lotes: loteResults
     });
   });
@@ -802,7 +826,7 @@ function renderProfitability() {
             <strong>${r.nombre}</strong> <span style="font-size:11px;color:var(--text-faint)">${r.marca}</span>
           </div>
         </td>
-        <td><span style="font-size:12px;color:var(--text-muted)">${r.lotes.length} botella(s)</span></td>
+        <td><span style="font-size:12px;color:var(--text-muted)">${r.lotes.length > 1 ? `Botella Activa (+${r.lotes.length - 1})` : 'Botella Activa'}</span></td>
         <td class="text-right">${r.sumCostoBotella.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}</td>
         <td class="text-right" style="color:var(--text-faint)">${r.sumIngreso.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}</td>
         <td class="text-right">

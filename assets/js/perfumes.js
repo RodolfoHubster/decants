@@ -260,10 +260,10 @@ window.renderTable = () => {
       
       let estadoBadge = '';
       if (p.archivado === true) estadoBadge = '<span class="badge badge-danger" style="margin-left:6px">Archivado</span>';
-      else if (p.activo === false) estadoBadge = '<span class="badge badge-warning" style="margin-left:6px;color:#000">Oculto</span>';
+      else if (p.activo === false) estadoBadge = '<span class="badge badge-warning" style="margin-left:6px"><i class="bi bi-eye-slash"></i> Oculto</span>';
       
       let stockBadge = '';
-      if (p.estadoStock === 'por_acabarse') stockBadge = '<span class="badge badge-warning" style="margin-left:6px;color:#000"><i class="bi bi-circle-fill" style="font-size:10px;margin-right:2px"></i> Por acabarse</span>';
+      if (p.estadoStock === 'por_acabarse') stockBadge = '<span class="badge badge-warning" style="margin-left:6px"><i class="bi bi-circle-fill" style="font-size:10px;margin-right:2px"></i> Por acabarse</span>';
       else if (p.estadoStock === 'agotado') stockBadge = '<span class="badge badge-danger" style="margin-left:6px"><i class="bi bi-circle-fill" style="font-size:10px;margin-right:2px"></i> Agotado</span>';
 
       const novedadBadge = p.novedad
@@ -1216,7 +1216,7 @@ window.openPackageSelectionModal = (p, onComplete, selectedMl = null) => {
   }).join('');
 
   overlay.innerHTML = `
-    <div class="modal-box" style="max-width:400px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px">
+    <div class="modal-box" style="max-width:400px">
       <div class="modal-header">
         <h3 style="margin:0;font-size:16px;color:var(--gold)"><i class="bi bi-box-seam"></i> ${p.nombre}</h3>
         <button class="btn-icon close-pkg-modal"><i class="bi bi-x-lg"></i></button>

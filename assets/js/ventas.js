@@ -895,6 +895,8 @@ window.editVenta = (id) => {
   document.getElementById('v-estado').value = v.estado || 'pagada';
   document.getElementById('v-canal').value = v.canal || 'online';
   document.getElementById('v-metodopago').value = v.metodoPago || 'efectivo';
+  const refChk = document.getElementById('v-reforzada');
+  if (refChk) refChk.checked = v.reforzada || false;
   const perfSel = document.getElementById('v-perfume');
   const customInp = document.getElementById('v-perfume-custom');
   
@@ -995,6 +997,18 @@ window.editVenta = (id) => {
   }
   
   tallaSel.value = v.talla || '';
+  
+  const refWrap = document.getElementById('v-reforzada-wrap');
+  if (refWrap) {
+    if (v.talla === '5' || v.talla === '10') {
+      refWrap.style.display = 'flex';
+      const refLbl = document.getElementById('v-reforzada-lbl');
+      if (refLbl) refLbl.textContent = '+$' + (window.costoReforzada || 15);
+    } else {
+      refWrap.style.display = 'none';
+    }
+  }
+
   document.getElementById('modal-title').textContent = 'Editar Venta';
   document.getElementById('btn-save').innerHTML = '<i class="bi bi-check2"></i> Actualizar Venta';
   document.getElementById('modal').classList.add('open');
@@ -1087,7 +1101,9 @@ window.save = async () => {
     cliente: document.getElementById('v-cliente').value.trim(),
     notas:   document.getElementById('v-notas').value.trim(),
     reforzada: document.getElementById('v-reforzada')?.checked || false,
-    basePrecio: parseFloat(document.getElementById('v-precio').dataset.base || document.getElementById('v-precio').value)
+    basePrecio: (document.getElementById('v-reforzada')?.checked || false)
+                ? parseFloat(document.getElementById('v-precio').value) - (window.costoReforzada || 15)
+                : parseFloat(document.getElementById('v-precio').value)
   };
   
   if (costo !== null && costo >= 0) {
@@ -2109,7 +2125,7 @@ window.openPackageSelectionModal = (p, onComplete, selectedMl = null) => {
   }).join('');
 
   overlay.innerHTML = `
-    <div class="modal-box" style="max-width:400px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px">
+    <div class="modal-box" style="max-width:400px">
       <div class="modal-header">
         <h3 style="margin:0;font-size:16px;color:var(--gold)">📦 ${p.nombre}</h3>
         <button class="btn-icon close-pkg-modal"><i class="bi bi-x-lg"></i></button>
@@ -2163,8 +2179,11 @@ window.checkLoteOverflow = (perfId, loteId, mlToSell) => {
   let hasResto = false;
   ventas.forEach(v => {
     if (v.perfumeId === perfId && v.loteId === loteId) {
-       if (['2','3','5','10'].includes(v.talla)) totalMl += parseInt(v.talla) * (+v.cantidad||1);
        if (v.talla === 'Resto') hasResto = true;
+       else if (v.talla !== 'Completo' && v.talla !== 'Otro') {
+         const t = parseFloat(v.talla);
+         if (!isNaN(t) && t > 0) totalMl += t * (+v.cantidad||1);
+       }
     } else if (v.paqueteItems) {
        const sub = v.paqueteItems.find(i => i.id === perfId);
        if (sub && sub.loteId === loteId) {

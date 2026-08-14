@@ -1,6 +1,7 @@
 import { db, collection, getDocs, doc, updateDoc, writeBatch, getDoc, setDoc } from './firebase-config.js';
 import { toast } from './toast.js';
 import { renderSidebar } from '../../admin/sidebar.js';
+import { claveCliente } from './clientes-util.js';
 import '../../admin/auth-guard.js';
 
 renderSidebar('clientes');
@@ -39,16 +40,10 @@ async function loadData() {
       let key = docData.clienteId;
       let name = docData.cliente || '';
       
-      // Fallback for old data without clienteId
+      // Fallback for old data without clienteId — ignora nombres genéricos
       if (!key) {
-        if (!name) return null;
-        let cName = name.trim().toLowerCase();
-        if (!cName) return null;
-        // Ignorar nombres genéricos sin ID
-        if (/^cliente\s*\d*$/i.test(cName) || cName === 'cliente (sin nombre)') {
-          return null;
-        }
-        key = `NAMED-${cName.replace(/[^a-z0-9]/g, '')}`;
+        key = claveCliente(docData);
+        if (!key) return null;
       }
       
       if (!grupos[key]) {

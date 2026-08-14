@@ -141,7 +141,7 @@ function renderTable() {
         ${p.precios ? Object.entries(p.precios).filter(([,v]) => v > 0).map(([k,v]) => `<div style="font-size:13px"><span style="font-weight:600;width:35px;display:inline-block">${k} ml</span> <span style="color:var(--accent);font-weight:600">$${v} MXN</span></div>`).join('') : `<div style="font-size:13px"><span style="font-weight:600;width:35px;display:inline-block">${p.ml} ml</span> <span style="color:var(--accent);font-weight:600">$${p.precio} MXN</span></div>`}
         <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">${p.items?.length || 0} fragancias permitidas</div>
       </td>
-      <td>${packageIsAgotado ? '<span class="badge badge-danger">Agotado</span>' : (p.activo === false ? '<span class="badge" style="background:#555">Oculto</span>' : '<span class="badge badge-gold">Activo</span>')}</td>
+      <td>${packageIsAgotado ? '<span class="badge badge-danger">Agotado</span>' : (p.activo === false ? '<span class="badge badge-warning"><i class="bi bi-eye-slash"></i> Oculto</span>' : '<span class="badge badge-gold">Activo</span>')}</td>
       <td>
         <button class="btn-icon" onclick="edit('${p.id}')"><i class="bi bi-pencil"></i></button>
         <button class="btn-icon" onclick="toggleV('${p.id}', ${p.activo!==false})" style="color:${p.activo!==false?'var(--text-muted)':'#22c55e'}"><i class="bi ${p.activo!==false?'bi-eye-slash':'bi-eye'}"></i></button>
