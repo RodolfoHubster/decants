@@ -557,6 +557,28 @@ header {
 .empty-state i { font-size: 52px; display: block; margin-bottom: 14px; }
 .empty-state h3 { font-size: 17px; color: #666; margin-bottom: 6px; }
 
+/* Fallo de carga: sin esto los esqueletos giraban indefinidamente y el
+   visitante no tenía forma de saber que algo salió mal. */
+.cat-error {
+  grid-column: 1/-1; text-align: center;
+  padding: 60px 20px; color: var(--muted);
+  display: flex; flex-direction: column; align-items: center;
+}
+.cat-error > i { font-size: 44px; color: var(--gold); opacity: .75; margin-bottom: 16px; }
+.cat-error h3 { font-size: 17px; color: var(--text); margin-bottom: 8px; }
+.cat-error p { font-size: 14px; max-width: 42ch; line-height: 1.6; margin-bottom: 22px; }
+.cat-error-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.cat-error-retry, .cat-error-wa {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 20px; border-radius: 12px;
+  font-size: 14px; font-weight: 600; font-family: inherit;
+  cursor: pointer; text-decoration: none;
+}
+.cat-error-retry { background: var(--gold); color: #14120e; border: none; }
+.cat-error-retry:hover { background: var(--gold-h); }
+.cat-error-wa { background: rgba(37,211,102,.12); color: #25D366; border: 1px solid rgba(37,211,102,.35); }
+.cat-error-wa:hover { background: rgba(37,211,102,.2); }
+
 /* ============================================
    MODAL
    ============================================ */

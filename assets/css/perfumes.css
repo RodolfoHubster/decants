@@ -61,3 +61,55 @@ td.col-clicks {
         min-width: 120px;
     }
 }
+/* ── Edición de precios en la tabla ──────────────────────────────────────────
+   La pastilla de precio es un botón: al pulsarla se cambia por un campo, se
+   escribe y Enter guarda y salta al siguiente precio de la misma fila. */
+.precio-edit {
+  cursor: pointer;
+  border: 1px solid var(--accent-border);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.precio-edit:hover {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+.precio-edit:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Confirmación breve tras guardar */
+.precio-edit.precio-guardado {
+  background: rgba(92,184,92,.18);
+  border-color: rgba(92,184,92,.55);
+  color: var(--success);
+}
+
+.precio-editor {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--bg-card2);
+  border: 1px solid var(--accent);
+  vertical-align: middle;
+}
+.precio-editor.guardando { opacity: .55; }
+.precio-input-ml { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+.precio-input {
+  width: 62px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0;
+  /* Ocultar las flechitas del campo numérico: estorban en un espacio así */
+  -moz-appearance: textfield;
+}
+.precio-input::-webkit-outer-spin-button,
+.precio-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }

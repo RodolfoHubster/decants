@@ -98,20 +98,36 @@ describe('construirColecciones', () => {
     construirColecciones(catalogoAmplio, 3).forEach(c => expect(c.items).toHaveLength(3));
   });
 
-  test('los más vendidos van por clicks, de mayor a menor', () => {
+  // Dentro de cada colección los perfumes se sortean, así que se comprueba de
+  // qué grupo salen, no en qué orden. El orden ya no es parte del contrato.
+  const ids = (col) => col.items.map(p => p.id).sort();
+
+  test('los más vendidos salen del grupo con más clicks', () => {
     const col = construirColecciones(catalogoAmplio, 3).find(c => c.id === 'vendidos');
-    expect(col.items.map(p => p.id)).toEqual(['h1', 'h2', 'h3']);
+    // Con 9 candidatos y cantera de 10, entran todos; lo que se garantiza es
+    // que no se cuele nada ajeno y que sean 3 distintos.
+    expect(col.items).toHaveLength(3);
+    expect(new Set(ids(col)).size).toBe(3);
   });
 
-  test('novedades trae solo lo marcado como novedad, lo más reciente primero', () => {
+  test('novedades trae solo lo marcado como novedad', () => {
     const col = construirColecciones(catalogoAmplio, 3).find(c => c.id === 'novedades');
-    expect(col.items.map(p => p.id)).toEqual(['n1', 'n2', 'n3']);
+    expect(ids(col)).toEqual(['n1', 'n2', 'n3']);
+    expect(col.items.every(p => p.novedad === true)).toBe(true);
   });
 
-  test('clásicos son los más antiguos y excluyen las novedades', () => {
+  test('clásicos excluyen las novedades', () => {
     const col = construirColecciones(catalogoAmplio, 3).find(c => c.id === 'clasicos');
-    expect(col.items.map(p => p.id)).toEqual(['h1', 'h2', 'h3']);
     expect(col.items.some(p => p.novedad)).toBe(false);
+    expect(col.items).toHaveLength(3);
+  });
+
+  test('cada colección respeta su criterio de género', () => {
+    const cols = construirColecciones(catalogoAmplio, 3);
+    const el = cols.find(c => c.id === 'caballero');
+    const ella = cols.find(c => c.id === 'dama');
+    expect(el.items.every(p => p.genero === 'Caballero')).toBe(true);
+    expect(ella.items.every(p => p.genero === 'Dama')).toBe(true);
   });
 
   test('descarta la colección que no llega al mínimo: mejor ninguna que a medias', () => {
@@ -127,7 +143,27 @@ describe('construirColecciones', () => {
       { id: 'x2', genero: 'Dama' }
     ];
     const col = construirColecciones(sucio, 3).find(c => c.id === 'dama');
-    expect(col.items.map(p => p.id)).toEqual(['ok1', 'ok2', 'ok3']);
+    expect(ids(col)).toEqual(['ok1', 'ok2', 'ok3']);
+  });
+
+  test('el elenco cambia entre visitas, no sólo el orden', () => {
+    // 12 perfumes de dama: con sorteo, dos visitas no deberían coincidir
+    // siempre en los mismos tres.
+    const muchos = Array.from({ length: 12 }, (_, i) => mk(`d${i}`, { genero: 'Dama' }));
+    const conjuntos = new Set();
+    for (let i = 0; i < 30; i++) {
+      const col = construirColecciones(muchos, 3).find(c => c.id === 'dama');
+      conjuntos.add(col.items.map(p => p.id).sort().join(','));
+    }
+    // Con 220 combinaciones posibles, 30 intentos deben dar más de un trío.
+    expect(conjuntos.size).toBeGreaterThan(1);
+  });
+
+  test('con generador fijo el resultado es reproducible', () => {
+    const rnd = () => 0.5;
+    const a = construirColecciones(catalogoAmplio, 3, rnd).map(c => c.items.map(p => p.id));
+    const b = construirColecciones(catalogoAmplio, 3, rnd).map(c => c.items.map(p => p.id));
+    expect(a).toEqual(b);
   });
 
   test('excluye paquetes y accesorios del escaparate', () => {

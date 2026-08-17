@@ -9,6 +9,8 @@ import { imgCard, imgModal, imgCart, imgOg } from './cloudinary.js';
 import { heroStats, pickShowcase, construirColecciones, barajar } from './hero.js';
 import { resolverItemsPaquete, contarDisponibles, paqueteArmable } from './stock.js';
 import { ahorroPorTalla } from './precios.js';
+import { leerCache, guardarCache, borrarCache } from './catalogo-cache.js';
+import { precargarImagen } from './imagenes.js';
 
 // ── Tipos fijos (chips del panel — mapean al campo `categoria` del perfume) ─
 const TIPOS_PERMITIDOS = [
@@ -102,12 +104,19 @@ function setMetaTags({ title, description, image, url }) {
   nm('description',    description);
 }
 
+/** Logo de marca, en absoluto: las vistas previas de WhatsApp y redes no
+ *  resuelven rutas relativas. */
+const LOGO_URL = window.location.origin +
+  window.location.pathname.replace(/[^/]*$/, '') + 'assets/img/LogoOficial2.jpeg';
+
 function resetMetaTags() {
   document.title = 'Fitoscents · Decants';
   setMetaTags({
     title:       'Fitoscents · Decants',
     description: 'Decants 100% originales de perfumes de diseñador desde 2ml. Tijuana, B.C.',
-    image:       '',
+    // Sin esto, compartir el catálogo por WhatsApp mostraba una vista previa
+    // sin imagen. El enlace del catálogo es justo el que más se reenvía.
+    image:       LOGO_URL,
     url:         window.location.origin + window.location.pathname
   });
 }
@@ -128,12 +137,14 @@ function renderHero() {
   const colecciones = barajar(construirColecciones(all, 3));
 
   // Lista plana: se avanza perfume por perfume y la etiqueta va indicando
-  // a qué colección pertenece el que se está viendo.
-  let lista = colecciones.flatMap(c => c.items.map(p => ({ perfume: p, coleccion: c.label })));
+  // a qué colección pertenece el que se está viendo. Se toma el primero de
+  // cada colección antes de repetir, para que los 7 no salgan todos del
+  // mismo grupo.
+  let lista = intercalar(colecciones).slice(0, MAX_ESCAPARATE);
 
   if (!lista.length) {
     // Sin colecciones completas, al menos mostrar algo del catálogo.
-    lista = pickShowcase(all, 5).map(p => ({ perfume: p, coleccion: 'Del catálogo' }));
+    lista = pickShowcase(all, MAX_ESCAPARATE).map(p => ({ perfume: p, coleccion: 'Del catálogo' }));
   }
   if (!lista.length) return;
 
@@ -165,45 +176,120 @@ function prepararDescripcion(descEl) {
   };
 }
 
-/** Cuánto tarda la barra en llenarse antes de pasar al siguiente perfume. */
+/** Cuánto tarda un segmento en llenarse antes de pasar al siguiente perfume. */
 const AVANCE_MS = 4500;
+
+/** Cuántos perfumes entran al escaparate. Más segmentos se vuelven ilegibles. */
+const MAX_ESCAPARATE = 7;
+
+/** Píxeles de arrastre a partir de los cuales cuenta como deslizamiento. */
+const UMBRAL_DESLIZ = 40;
+
+/**
+ * Toma un perfume de cada colección por turnos, en vez de agotar la primera.
+ *
+ * Sin esto, los 7 del escaparate saldrían casi todos del mismo grupo y la
+ * etiqueta ("Para él", "Los clásicos") apenas cambiaría.
+ */
+function intercalar(colecciones) {
+  const salida = [];
+  const maxLargo = Math.max(0, ...colecciones.map(c => c.items.length));
+  for (let vuelta = 0; vuelta < maxLargo; vuelta++) {
+    for (const col of colecciones) {
+      const p = col.items[vuelta];
+      if (p) salida.push({ perfume: p, coleccion: col.label });
+    }
+  }
+  return salida;
+}
 
 /**
  * Escaparate de una foto a la vez.
  *
- * La barra inferior se llena durante AVANCE_MS y al completarse pasa al
- * siguiente perfume. Se detiene con el cursor encima o con la pestaña en
- * segundo plano, y queda quieta para quien pidió menos movimiento.
+ * Se avanza solo (cada segmento se llena en AVANCE_MS), deslizando el dedo,
+ * con las flechas o tocando un segmento. Se detiene con el cursor encima,
+ * mientras se arrastra y con la pestaña en segundo plano.
  */
 function iniciarCarrusel(lista) {
+  const frame  = document.getElementById('hero-frame');
   const shot   = document.getElementById('hero-shot');
   const img    = document.getElementById('hero-shot-img');
   const marca  = document.getElementById('hero-shot-marca');
   const nombre = document.getElementById('hero-shot-nombre');
   const chip   = document.getElementById('hero-col-label');
-  const fill   = document.getElementById('hero-progress-fill');
+  const segsEl = document.getElementById('hero-segs');
+  const prev   = document.getElementById('hero-prev');
+  const next   = document.getElementById('hero-next');
   if (!shot || !img) return;
 
-  // La barra de avance se muestra siempre: es un indicador de progreso, no
-  // un adorno en movimiento. `prefers-reduced-motion` solo quita el fundido
-  // de entrada de la foto (en el CSS), y el avance se puede pausar con el
-  // cursor o el dedo, que es lo que pide la norma de accesibilidad.
+  // El avance se muestra siempre: es un indicador de progreso, no un adorno
+  // en movimiento. `prefers-reduced-motion` sólo quita el fundido de la foto
+  // (en el CSS), y se puede pausar con el cursor o el dedo, que es lo que
+  // pide la norma de accesibilidad.
   const rota = lista.length > 1;
   let idx = 0, timer = null, actual = null;
 
-  const llenarBarra = () => {
-    if (!fill) return;
-    // Volver a cero sin transición, para que no se vea retroceder.
-    fill.style.transition = 'none';
-    fill.style.width = '0%';
-    void fill.offsetWidth;                      // fuerza el reflow
-    if (!rota) return;
-    fill.style.transition = `width ${AVANCE_MS}ms linear`;
-    fill.style.width = '100%';
+  // ── Segmentos ────────────────────────────────────────────────────────
+  const rellenos = [];
+  if (segsEl) {
+    segsEl.textContent = '';
+    segsEl.hidden = !rota;
+    lista.forEach((item, n) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'hero-seg';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-label', `${item.perfume.nombre || 'Perfume'} (${n + 1} de ${lista.length})`);
+      const f = document.createElement('i');
+      f.className = 'hero-seg-fill';
+      b.appendChild(f);
+      b.addEventListener('click', () => { parar(); pintar(n).then(arrancar); });
+      segsEl.appendChild(b);
+      rellenos.push(f);
+    });
+  }
+
+  /** Deja llenos los ya vistos, vacíos los pendientes y anima el actual. */
+  const pintarSegmentos = (animar = true) => {
+    rellenos.forEach((f, n) => {
+      f.style.transition = 'none';
+      f.style.width = n < idx ? '100%' : '0%';
+    });
+    const actualEl = rellenos[idx];
+    if (!actualEl) return;
+    void actualEl.offsetWidth;                 // fuerza el reflow
+    if (!animar || !rota) { actualEl.style.width = '100%'; return; }
+    actualEl.style.transition = `width ${AVANCE_MS}ms linear`;
+    actualEl.style.width = '100%';
   };
 
-  const pintar = (i) => {
-    idx = (i + lista.length) % lista.length;
+  const congelarSegmento = () => {
+    const f = rellenos[idx];
+    if (!f) return;
+    const ancho = f.getBoundingClientRect().width;
+    const total = f.parentElement.getBoundingClientRect().width || 1;
+    f.style.transition = 'none';
+    f.style.width = `${(ancho / total) * 100}%`;
+  };
+
+  // ── Precarga ─────────────────────────────────────────────────────────
+  const urlDe = (n) => imgCard(lista[(n + lista.length) % lista.length].perfume.imagen);
+
+  // ── Pintado ──────────────────────────────────────────────────────────
+  // Cada llamada lleva su número: si el usuario desliza mientras una imagen
+  // aún baja, la que llegue tarde se descarta en vez de pisar a la nueva.
+  let generacion = 0;
+
+  const pintar = async (i) => {
+    const mia = ++generacion;
+    const destino = (i + lista.length) % lista.length;
+    const url = urlDe(destino);
+
+    // Esperar a la foto para cambiar imagen y texto a la vez.
+    await precargarImagen(url);
+    if (mia !== generacion) return;              // llegó tarde: ya hay otra
+
+    idx = destino;
     actual = lista[idx].perfume;
 
     // Reiniciar el fundido de entrada de la foto.
@@ -211,42 +297,104 @@ function iniciarCarrusel(lista) {
     void img.offsetWidth;
     img.style.animation = '';
 
-    img.src = imgCard(actual.imagen);
+    img.src = url;
     img.alt = `${actual.marca || ''} ${actual.nombre || ''}`.trim();
     marca.textContent  = actual.marca || '';
     nombre.textContent = actual.nombre || '';
     chip.textContent   = lista[idx].coleccion;
-    llenarBarra();
+
+    rellenos.forEach((f, n) => f.parentElement.setAttribute('aria-selected', String(n === idx)));
+    pintarSegmentos();
+
+    // Dejar lista la siguiente para que el salto sea instantáneo.
+    precargarImagen(urlDe(idx + 1));
   };
 
-  const parar = () => {
-    clearTimeout(timer); timer = null;
-    if (!fill) return;
-    // Congelar la barra donde va, en vez de dar un salto.
-    const ancho = fill.getBoundingClientRect().width;
-    const total = fill.parentElement.getBoundingClientRect().width || 1;
-    fill.style.transition = 'none';
-    fill.style.width = `${(ancho / total) * 100}%`;
-  };
+  const parar = () => { clearTimeout(timer); timer = null; congelarSegmento(); };
 
   const arrancar = () => {
     if (!rota || timer || document.hidden) return;
-    llenarBarra();
-    timer = setTimeout(() => { timer = null; pintar(idx + 1); arrancar(); }, AVANCE_MS);
+    pintarSegmentos();
+    timer = setTimeout(async () => {
+      timer = null;
+      await pintar(idx + 1);
+      arrancar();
+    }, AVANCE_MS);
   };
 
-  // Tocar o hacer clic abre la ficha del perfume que se está viendo.
-  shot.addEventListener('click', () => { if (actual) openModal(actual.id); });
+  const irA = (delta) => { parar(); pintar(idx + delta).then(arrancar); };
 
-  shot.addEventListener('mouseenter', parar);
-  shot.addEventListener('mouseleave', arrancar);
-  shot.addEventListener('focus', parar);
-  shot.addEventListener('blur', arrancar);
+  // ── Flechas ──────────────────────────────────────────────────────────
+  if (prev) prev.addEventListener('click', (e) => { e.stopPropagation(); irA(-1); });
+  if (next) next.addEventListener('click', (e) => { e.stopPropagation(); irA(1); });
+
+  // ── Deslizamiento ────────────────────────────────────────────────────
+  // Se distingue arrastrar de tocar: si el dedo recorrió más de UMBRAL_DESLIZ
+  // se cambia de perfume y se anula el clic, para no abrir la ficha sin querer.
+  let inicioX = 0, inicioY = 0, arrastrando = false, huboDesliz = false;
+
+  const alEmpezar = (x, y) => { inicioX = x; inicioY = y; arrastrando = true; huboDesliz = false; parar(); };
+
+  const alMover = (x, y, ev) => {
+    if (!arrastrando) return;
+    const dx = x - inicioX, dy = y - inicioY;
+    // Sólo se toma como deslizamiento si el gesto es más horizontal que
+    // vertical; si no, se deja pasar el scroll de la página.
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+      huboDesliz = true;
+      if (ev && ev.cancelable) ev.preventDefault();
+    }
+  };
+
+  const alTerminar = (x) => {
+    if (!arrastrando) return;
+    arrastrando = false;
+    const dx = x - inicioX;
+    if (Math.abs(dx) > UMBRAL_DESLIZ) irA(dx < 0 ? 1 : -1);
+    else { huboDesliz = false; arrancar(); }
+  };
+
+  if (frame) {
+    frame.addEventListener('touchstart', (e) => {
+      const t = e.touches[0]; alEmpezar(t.clientX, t.clientY);
+    }, { passive: true });
+
+    frame.addEventListener('touchmove', (e) => {
+      const t = e.touches[0]; alMover(t.clientX, t.clientY, e);
+    }, { passive: false });
+
+    frame.addEventListener('touchend', (e) => {
+      const t = e.changedTouches[0]; alTerminar(t.clientX);
+    }, { passive: true });
+
+    frame.addEventListener('touchcancel', () => { arrastrando = false; arrancar(); }, { passive: true });
+  }
+
+  // ── Abrir la ficha ───────────────────────────────────────────────────
+  shot.addEventListener('click', () => {
+    if (huboDesliz) { huboDesliz = false; return; }   // fue un deslizamiento
+    if (actual) openModal(actual.id);
+  });
+
+  // ── Pausas ───────────────────────────────────────────────────────────
+  if (frame) {
+    frame.addEventListener('mouseenter', parar);
+    frame.addEventListener('mouseleave', arrancar);
+    frame.addEventListener('focusin', parar);
+    frame.addEventListener('focusout', arrancar);
+  }
   // No gastar ciclos ni datos con la pestaña en segundo plano.
   document.addEventListener('visibilitychange', () => document.hidden ? parar() : arrancar());
 
-  pintar(0);
-  arrancar();
+  // Flechas del teclado, cuando el escaparate tiene el foco.
+  if (frame) {
+    frame.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); irA(-1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); irA(1); }
+    });
+  }
+
+  pintar(0).then(arrancar);
 }
 
 // ── Skeletons ───────────────────────────────────────────────
@@ -264,9 +412,9 @@ function showSkeletons() {
 }
 
 // ── Load data ───────────────────────────────────────────────
-async function load() {
-  showSkeletons();
 
+/** Trae el catálogo de Firestore. Son las 112 lecturas que la caché evita. */
+async function traerDeFirestore() {
   const [perfSnap, famSnap, paqSnap, accSnap, confSnap] = await Promise.all([
     getDocs(query(collection(db, 'perfumes'), where('activo', '==', true))),
     getDocs(collection(db, 'familias_olfativas')),
@@ -274,29 +422,68 @@ async function load() {
     getDocs(query(collection(db, 'accesorios'), where('activo', '==', true))),
     getDoc(doc(db, 'config', 'costosOperativos')).catch(() => null)
   ]);
-  
-  if (confSnap && confSnap.exists()) {
-    window.disable2ml = !!confSnap.data().disable2ml;
-  } else {
-    window.disable2ml = false;
-  }
 
-  all = [];
-  perfSnap.forEach(d => all.push({ id: d.id, ...d.data() }));
-  paqSnap.forEach(d => all.push({ id: d.id, tipo: 'paquete', ...d.data() }));
-  accSnap.forEach(d => all.push({ id: d.id, tipo: 'accesorio', marca: 'Accesorios', isAccesorio: true, ...d.data() }));
+  const disable2ml = !!(confSnap && confSnap.exists() && confSnap.data().disable2ml);
 
-  // Tipos: los 3 fijos — se usan para filtrar por p.categoria
-  const tiposData = TIPOS_PERMITIDOS;
+  const items = [];
+  perfSnap.forEach(d => items.push({ id: d.id, ...d.data() }));
+  paqSnap.forEach(d => items.push({ id: d.id, tipo: 'paquete', ...d.data() }));
+  accSnap.forEach(d => items.push({ id: d.id, tipo: 'accesorio', marca: 'Accesorios', isAccesorio: true, ...d.data() }));
 
-  // Familias: solo las que tienen al menos 1 perfume activo
-  const famUsadas = new Set(all.map(p => p.familia).filter(Boolean));
+  // Familias: sólo las que tienen al menos 1 perfume activo
+  const famUsadas = new Set(items.map(p => p.familia).filter(Boolean));
   let famData = [];
   famSnap.forEach(d => famData.push({ id: d.id, ...d.data() }));
   famData.sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre));
   famData = famData.filter(f => famUsadas.has(f.nombre));
 
-  buildFilterPanelDynamic(tiposData, famData);
+  return { all: items, disable2ml, famData };
+}
+
+/** Pantalla de error con reintento: antes los esqueletos giraban sin fin. */
+function mostrarErrorCarga(err) {
+  console.error('No se pudo cargar el catálogo:', err);
+  const g = document.getElementById('grid');
+  if (!g) return;
+  g.innerHTML = `
+    <div class="cat-error">
+      <i class="bi bi-wifi-off"></i>
+      <h3>No pudimos cargar el catálogo</h3>
+      <p>Revisa tu conexión e inténtalo de nuevo. Si sigue igual, escríbenos por WhatsApp y te atendemos directo.</p>
+      <div class="cat-error-btns">
+        <button type="button" class="cat-error-retry" onclick="window.recargarCatalogo()">
+          <i class="bi bi-arrow-clockwise"></i> Reintentar
+        </button>
+        <a class="cat-error-wa" href="https://wa.me/526648162623" target="_blank" rel="noopener">
+          <i class="bi bi-whatsapp"></i> WhatsApp
+        </a>
+      </div>
+    </div>`;
+}
+
+/** Reintento desde la pantalla de error: descarta lo guardado y vuelve a pedir. */
+window.recargarCatalogo = () => { borrarCache(); load(); };
+
+async function load() {
+  showSkeletons();
+
+  // Si la visita ya trajo el catálogo hace poco, se reusa: 0 lecturas.
+  let datos = leerCache();
+  if (!datos) {
+    try {
+      datos = await traerDeFirestore();
+      guardarCache(datos);
+    } catch (err) {
+      mostrarErrorCarga(err);
+      return;
+    }
+  }
+
+  all = datos.all;
+  window.disable2ml = datos.disable2ml;
+
+  // Tipos: los 3 fijos — se usan para filtrar por p.categoria
+  buildFilterPanelDynamic(TIPOS_PERMITIDOS, datos.famData);
 
   const params = new URLSearchParams(window.location.search);
   

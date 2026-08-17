@@ -67,3 +67,5 @@
     border-radius: var(--radius-sm);
     border: 1px solid rgba(224, 92, 92, 0.25);
 }
+/* El logo ocupa todo el círculo (antes era el texto "FS" sobre dorado). */
+.logo-mark img,.sidebar-logo .logo-mark img{width:100%;height:100%;object-fit:cover;border-radius:50%}

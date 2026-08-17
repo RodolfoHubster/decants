@@ -2,14 +2,29 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" type="image/jpeg" href="./assets/img/LogoOficial2.jpeg">
+  <link rel="apple-touch-icon" href="./assets/img/LogoOficial2.jpeg">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>Fitoscents · Decants</title>
+
+  <!-- Vista previa al compartir el enlace. Va en el HTML y no por JavaScript:
+       WhatsApp y las redes leen la página sin ejecutar scripts, así que unas
+       etiquetas puestas desde el código nunca las verían.
+       Si cambia el dominio, hay que actualizar estas dos URL absolutas. -->
+  <meta property="og:type"        content="website">
+  <meta property="og:title"       content="Fito Scents · Decants de perfumes originales">
+  <meta property="og:description" content="Decants 100% originales de perfumes de diseñador y árabes desde 2ml. Prueba antes de invertir en el frasco completo. Tijuana, B.C.">
+  <meta property="og:image"       content="https://rodolfohubster.github.io/decants/assets/img/LogoOficial2.jpeg">
+  <meta property="og:url"         content="https://rodolfohubster.github.io/decants/">
+  <meta name="twitter:card"       content="summary_large_image">
+  <meta name="description"        content="Decants 100% originales de perfumes de diseñador y árabes desde 2ml. Tijuana, B.C.">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css"/>
-  <link rel="stylesheet" href="./assets/css/catalog.css?v=4.4">
+  <link rel="stylesheet" href="./assets/css/catalog.css?v=4.6">
   <style>
     /* ══════════════════════════════════════════════════
        TOKENS — paleta Fitoscents (unificada con faq.html)
@@ -118,6 +133,10 @@
       font-weight:700; font-size:12px; color:#000;
       letter-spacing:.03em; flex-shrink:0;
     }
+    /* El logo ocupa todo el círculo; su propio fondo oscuro hace de base,
+       así que ya no hace falta el dorado que se usaba tras las letras "FS". */
+    .logo-mark img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+
     .logo-text .name  { font-size:15px; font-weight:600; color:var(--text); line-height:1.1; }
     .logo-text .sub   { font-size:10px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; }
 
@@ -361,13 +380,49 @@
       display:block; font-size:13px; font-weight:600; color:var(--text);
     }
 
-    /* Barra de avance */
-    .hero-progress {
-      height:3px; margin-top:12px; border-radius:99px;
-      background:rgba(255,255,255,.12); overflow:hidden;
+    /* Marco: contiene la foto y las flechas */
+    .hero-frame { position:relative; }
+
+    /* Flechas: discretas, se afirman al pasar el cursor o al tocar */
+    .hero-nav {
+      position:absolute; top:50%; transform:translateY(-50%);
+      width:38px; height:38px; border-radius:50%; z-index:3;
+      display:flex; align-items:center; justify-content:center;
+      background:rgba(8,7,5,.45); color:var(--text);
+      border:1px solid rgba(255,255,255,.14);
+      -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+      font-size:15px; cursor:pointer; opacity:.35;
+      transition:opacity .2s, background .2s, border-color .2s;
     }
-    .hero-progress[hidden] { display:none; }
-    .hero-progress-fill {
+    .hero-nav-prev { left:8px; }
+    .hero-nav-next { right:8px; }
+    .hero-nav:hover { opacity:1; background:rgba(8,7,5,.75); border-color:var(--gold-b); }
+    .hero-nav:focus-visible { opacity:1; outline:2px solid var(--gold); outline-offset:2px; }
+    /* En escritorio se insinúan sólo al acercarse a la tarjeta */
+    @media(hover:hover) {
+      .hero-nav { opacity:0; }
+      .hero-frame:hover .hero-nav,
+      .hero-frame:focus-within .hero-nav { opacity:.55; }
+      .hero-frame:hover .hero-nav:hover { opacity:1; }
+    }
+
+    /* Segmentos: uno por perfume. El actual se llena, los vistos quedan llenos. */
+    .hero-segs {
+      display:flex; gap:4px; margin-top:12px;
+    }
+    .hero-segs[hidden] { display:none; }
+    .hero-seg {
+      flex:1; height:3px; padding:0; border:none;
+      border-radius:99px; background:rgba(255,255,255,.14);
+      cursor:pointer; overflow:hidden;
+      /* El área táctil real es mayor que la línea visible */
+      position:relative;
+    }
+    .hero-seg::after {
+      content:''; position:absolute; left:0; right:0; top:-9px; bottom:-9px;
+    }
+    .hero-seg:focus-visible { outline:2px solid var(--gold); outline-offset:3px; }
+    .hero-seg-fill {
       display:block; height:100%; width:0;
       border-radius:99px; background:var(--gold);
     }
@@ -829,7 +884,7 @@
 <header>
   <div class="header-inner">
     <div class="logo">
-      <div class="logo-mark">FS</div>
+      <div class="logo-mark"><img src="./assets/img/LogoOficial2.jpeg" alt="Fito Scents"></div>
       <div class="logo-text">
         <div class="name">Fitoscents</div>
         <div class="sub">Decants</div>
@@ -920,17 +975,24 @@
     </div>
 
     <div class="hero-visual" id="hero-visual" hidden>
-      <button class="hero-shot" id="hero-shot" type="button" aria-label="Ver perfume destacado">
-        <span class="hero-col-chip" id="hero-col-label"></span>
-        <img id="hero-shot-img" alt="" decoding="async">
-        <span class="hero-shot-tag">
-          <span class="hero-shot-marca" id="hero-shot-marca"></span>
-          <span class="hero-shot-nombre" id="hero-shot-nombre"></span>
-        </span>
-      </button>
-      <div class="hero-progress" id="hero-progress">
-        <i class="hero-progress-fill" id="hero-progress-fill"></i>
+      <div class="hero-frame" id="hero-frame">
+        <button class="hero-shot" id="hero-shot" type="button" aria-label="Ver perfume destacado">
+          <span class="hero-col-chip" id="hero-col-label"></span>
+          <img id="hero-shot-img" alt="" decoding="async">
+          <span class="hero-shot-tag">
+            <span class="hero-shot-marca" id="hero-shot-marca"></span>
+            <span class="hero-shot-nombre" id="hero-shot-nombre"></span>
+          </span>
+        </button>
+        <button class="hero-nav hero-nav-prev" id="hero-prev" type="button" aria-label="Perfume anterior">
+          <i class="bi bi-chevron-left"></i>
+        </button>
+        <button class="hero-nav hero-nav-next" id="hero-next" type="button" aria-label="Perfume siguiente">
+          <i class="bi bi-chevron-right"></i>
+        </button>
       </div>
+      <!-- Un segmento por perfume: marca en cuál vas y se llena con el avance -->
+      <div class="hero-segs" id="hero-segs" role="tablist" aria-label="Perfumes destacados"></div>
     </div>
 
   </div>
@@ -1176,7 +1238,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
 
-<script type="module" src="./assets/js/catalog.js?v=2.21"></script>
+<script type="module" src="./assets/js/catalog.js?v=2.27"></script>
 <script type="module">
 import { initNovedadesModal } from './assets/js/novedades-modal.js';
 import { initTour } from './assets/js/tour.js';

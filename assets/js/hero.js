@@ -49,8 +49,9 @@ const num = v => Number(v) || 0;
 /**
  * Colecciones que puede mostrar el carrusel del hero.
  *
- * Cada una define cómo se eligen sus perfumes. El orden de `items` importa:
- * el primero es el que se muestra grande y con el nombre encima.
+ * `elegir` devuelve los candidatos ya ordenados por su criterio. `cantera`
+ * dice de cuántos de esos primeros se sortea: sin ese sorteo salían siempre
+ * los mismos perfumes y el escaparate parecía congelado.
  */
 const DEFINICIONES = [
   {
@@ -58,23 +59,30 @@ const DEFINICIONES = [
     label: 'Los más vendidos',
     // El catálogo público no puede leer `ventas` (requiere sesión), así que
     // la popularidad se mide con las visitas a la ficha, que sí se registran.
-    elegir: ps => [...ps].sort((a, b) => num(b.clicks) - num(a.clicks))
+    elegir: ps => [...ps].sort((a, b) => num(b.clicks) - num(a.clicks)),
+    // Se sortea entre los diez más vistos: siguen siendo los más vendidos,
+    // pero no siempre aparece el mismo trío.
+    cantera: 10
   },
   {
     id: 'novedades',
     label: 'Recién llegados',
     elegir: ps => ps.filter(p => p.novedad === true)
-                    .sort((a, b) => num(b.novedadActivadaEn) - num(a.novedadActivadaEn))
+                    .sort((a, b) => num(b.novedadActivadaEn) - num(a.novedadActivadaEn)),
+    cantera: 10
   },
   {
     id: 'caballero',
     label: 'Para él',
-    elegir: ps => ps.filter(p => (p.genero || '').toLowerCase() === 'caballero')
+    // Sin orden con significado: se sortea entre todos los de caballero.
+    elegir: ps => ps.filter(p => (p.genero || '').toLowerCase() === 'caballero'),
+    cantera: Infinity
   },
   {
     id: 'dama',
     label: 'Para ella',
-    elegir: ps => ps.filter(p => (p.genero || '').toLowerCase() === 'dama')
+    elegir: ps => ps.filter(p => (p.genero || '').toLowerCase() === 'dama'),
+    cantera: Infinity
   },
   {
     id: 'clasicos',
@@ -82,25 +90,32 @@ const DEFINICIONES = [
     // Los de siempre: los más antiguos del catálogo, sin contar lo recién
     // llegado, que ya tiene su propia colección.
     elegir: ps => ps.filter(p => p.novedad !== true)
-                    .sort((a, b) => num(a.creadoEn) - num(b.creadoEn))
+                    .sort((a, b) => num(a.creadoEn) - num(b.creadoEn)),
+    cantera: 12
   }
 ];
 
 /**
  * Arma las colecciones con contenido suficiente para mostrarse.
  *
- * Una colección con menos de `porColeccion` perfumes se descarta: el collage
- * necesita tres imágenes y con huecos se ve roto.
+ * Dentro de cada colección los perfumes se sortean, no se toman siempre los
+ * primeros: así el escaparate cambia de elenco entre visitas y no sólo de
+ * orden. Una colección con menos de `porColeccion` perfumes se descarta,
+ * porque con huecos se ve rota.
  *
  * @param {Array<object>} items  Catálogo cargado.
  * @param {number} porColeccion  Cuántos perfumes muestra cada colección.
+ * @param {function():number} rnd  Generador aleatorio, inyectable en pruebas.
  * @returns {Array<{id:string, label:string, items:Array<object>}>}
  */
-export function construirColecciones(items, porColeccion = 3) {
+export function construirColecciones(items, porColeccion = 3, rnd = Math.random) {
   const base = (Array.isArray(items) ? items : []).filter(mostrable);
 
   return DEFINICIONES
-    .map(def => ({ id: def.id, label: def.label, items: def.elegir(base).slice(0, porColeccion) }))
+    .map(def => {
+      const candidatos = def.elegir(base).slice(0, def.cantera);
+      return { id: def.id, label: def.label, items: barajar(candidatos, rnd).slice(0, porColeccion) };
+    })
     .filter(col => col.items.length >= porColeccion);
 }
 

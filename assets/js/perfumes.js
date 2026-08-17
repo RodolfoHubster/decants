@@ -3,7 +3,8 @@ import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onAuthState
 import { renderSidebar } from '../../admin/sidebar.js';
 import { auth } from './firebase-config.js';
 import '../../admin/auth-guard.js';
-import { imgThumb } from './cloudinary.js';
+import { imgThumb, imgCard } from './cloudinary.js';
+import { precargarImagen } from './imagenes.js';
 import { buildSelectOptions } from './filtros-config.js';
 import { toast } from './toast.js';
 
@@ -254,9 +255,14 @@ window.renderTable = () => {
     tb.innerHTML = pageItems.map(p => {
       const pr = p.precios || {};
       const sinPrecio = !Object.values(pr).some(v => +v > 0);
+      // Precios editables en el sitio: tocar la pastilla la vuelve un campo.
+      // Antes había que abrir el modal completo para cambiar una cifra.
       const tags = Object.entries(pr)
         .filter(([, v]) => +v > 0)
-        .map(([k, v]) => `<span class="badge badge-gold">${k}ml $${v}</span>`).join(' ');
+        .map(([k, v]) =>
+          `<button type="button" class="badge badge-gold precio-edit"
+                   data-id="${p.id}" data-ml="${k}" data-valor="${v}"
+                   title="Clic para editar">${k}ml $${v}</button>`).join(' ');
       
       let estadoBadge = '';
       if (p.archivado === true) estadoBadge = '<span class="badge badge-danger" style="margin-left:6px">Archivado</span>';
@@ -295,6 +301,7 @@ window.renderTable = () => {
       </tr>`;
     }).join('');
 
+    activarEdicionPrecios(tb);
     renderPagination(fil.length, start + 1, end, totalPages);
 
     // ── Renderizar Grid POS ──
@@ -397,6 +404,112 @@ window.calcSavingsAdmin = (paquete, size) => {
   };
 };
 
+/**
+ * Edición de precios en la propia tabla.
+ *
+ * Cambiar una cifra obligaba a abrir el modal completo, corregir y guardar,
+ * repitiéndolo perfume por perfume. Aquí la pastilla se convierte en campo:
+ * se escribe, Enter guarda y salta al siguiente precio de la fila.
+ *
+ * Sólo se envía a Firestore la talla tocada (`precios.5`), no el documento
+ * entero, así dos pestañas abiertas no se pisan los demás campos.
+ */
+function activarEdicionPrecios(contenedor) {
+  contenedor.querySelectorAll('.precio-edit').forEach(pastilla => {
+    pastilla.addEventListener('click', () => abrirEditorPrecio(pastilla));
+  });
+}
+
+/** Pastillas de precio de la misma fila, en orden de aparición. */
+function preciosDeLaFila(pastilla) {
+  const fila = pastilla.closest('tr');
+  return fila ? [...fila.querySelectorAll('.precio-edit')] : [pastilla];
+}
+
+function abrirEditorPrecio(pastilla) {
+  if (pastilla.dataset.editando === '1') return;
+  pastilla.dataset.editando = '1';
+
+  const { id, ml } = pastilla.dataset;
+  const valorPrevio = +pastilla.dataset.valor || 0;
+  const hermanas = preciosDeLaFila(pastilla);
+  const posicion = hermanas.indexOf(pastilla);
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.className = 'precio-input';
+  input.value = valorPrevio;
+  input.min = '0';
+  input.step = '10';
+  input.setAttribute('aria-label', `Precio de ${ml} ml`);
+
+  const etiqueta = document.createElement('span');
+  etiqueta.className = 'precio-input-ml';
+  etiqueta.textContent = `${ml}ml $`;
+
+  const caja = document.createElement('span');
+  caja.className = 'precio-editor';
+  caja.append(etiqueta, input);
+
+  pastilla.replaceWith(caja);
+  input.focus();
+  input.select();
+
+  let cerrado = false;
+
+  /** Devuelve la pastilla a su sitio, con el valor que corresponda. */
+  const restaurar = (valor) => {
+    if (cerrado) return;
+    cerrado = true;
+    pastilla.dataset.valor = valor;
+    pastilla.dataset.editando = '';
+    pastilla.textContent = `${ml}ml $${valor}`;
+    caja.replaceWith(pastilla);
+  };
+
+  const guardar = async (irA = 0) => {
+    const nuevo = Math.max(0, Math.round(+input.value || 0));
+    if (nuevo === valorPrevio) {          // sin cambios: ni tocar la red
+      restaurar(valorPrevio);
+      if (irA) saltarA(hermanas, posicion + irA);
+      return;
+    }
+
+    caja.classList.add('guardando');
+    try {
+      // Ruta puntual: sólo esta talla.
+      await updateDoc(doc(db, 'perfumes', id), { [`precios.${ml}`]: nuevo });
+
+      // Mantener en memoria lo mismo que quedó en la base.
+      const p = perfumes.find(x => x.id === id);
+      if (p) { p.precios = p.precios || {}; p.precios[ml] = nuevo; }
+
+      restaurar(nuevo);
+      pastilla.classList.add('precio-guardado');
+      setTimeout(() => pastilla.classList.remove('precio-guardado'), 900);
+      toast(`${ml}ml actualizado a $${nuevo}`, 'success');
+    } catch (e) {
+      console.error('No se pudo guardar el precio:', e);
+      restaurar(valorPrevio);            // dejarlo como estaba
+      toast('No se pudo guardar el precio', 'error');
+    }
+    if (irA) saltarA(hermanas, posicion + irA);
+  };
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter')  { e.preventDefault(); guardar(1); }
+    if (e.key === 'Tab')    { e.preventDefault(); guardar(e.shiftKey ? -1 : 1); }
+    if (e.key === 'Escape') { e.preventDefault(); restaurar(valorPrevio); }
+  });
+  input.addEventListener('blur', () => guardar(0));
+}
+
+/** Abre el editor de la pastilla vecina, si existe. */
+function saltarA(hermanas, indice) {
+  const destino = hermanas[indice];
+  if (destino && destino.isConnected) abrirEditorPrecio(destino);
+}
+
 window.openPosItemModal = (id) => {
   currentPosId = id;
   let p = perfumes.find(x => x.id === id);
@@ -408,13 +521,25 @@ window.openPosItemModal = (id) => {
   if(!p) return;
   const imgEl = document.getElementById('pos-m-img');
   const ds = localStorage.getItem('adminDataSaver') === '1';
-  if (ds) {
+  if (ds || !p.imagen) {
     imgEl.style.display = 'none';
-  } else if(p.imagen) {
-    imgEl.src = p.imagen;
-    imgEl.style.display = 'block';
   } else {
-    imgEl.style.display = 'none';
+    // Antes se asignaba `p.imagen`, la original sin transformar: en un hueco
+    // de 400×220 se bajaban fotos de hasta 1600px, y mientras tanto seguía
+    // viéndose el perfume anterior con el nombre del nuevo. Se pide el
+    // tamaño del catálogo (ya generado en Cloudinary, así que no crea un
+    // derivado nuevo) y se espera a que esté lista antes de mostrarla.
+    const url = imgCard(p.imagen);
+    imgEl.style.display = 'block';
+    if (imgEl.src !== url) {
+      imgEl.style.visibility = 'hidden';
+      precargarImagen(url).then(() => {
+        // Si mientras bajaba se abrió otro perfume, no pisar el nuevo.
+        if (currentPosId !== id) return;
+        imgEl.src = url;
+        imgEl.style.visibility = '';
+      });
+    }
   }
   document.getElementById('pos-m-nombre').textContent = p.nombre;
   document.getElementById('pos-m-marca').textContent = isPaquete ? 'Combos Fitoscents' : (p.marca || 'Sin marca');

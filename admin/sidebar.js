@@ -1,4 +1,7 @@
 import { auth, signOut } from '../assets/js/firebase-config.js';
+// Punto de entrada común del panel: todas las vistas cargan este módulo,
+// así el agrupado de filtros en móvil llega a todas sin tocar cada página.
+import { initFiltrosAdmin } from '../assets/js/admin-filtros.js';
 
 export function renderSidebar(active) {
   const wrap = document.getElementById('sidebar-wrap');
@@ -35,7 +38,7 @@ export function renderSidebar(active) {
   </style>
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <div class="logo-mark">FS</div>
+      <div class="logo-mark"><img src="../assets/img/LogoOficial2.jpeg" alt="Fito Scents"></div>
       <span>Fitoscents</span>
     </div>
     <ul class="sidebar-nav">
@@ -122,6 +125,9 @@ export function renderSidebar(active) {
   });
 
   restaurarScroll();
+
+  // La barra de filtros ya está en el HTML cuando corre esto.
+  initFiltrosAdmin();
 }
 
 /** Dónde se quedó el scroll del menú, para esta pestaña. */

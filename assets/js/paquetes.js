@@ -186,26 +186,46 @@ window.previewFile = () => {
   r.readAsDataURL(f);
 };
 
-window.openModal = () => {
+/**
+ * Deja el formulario en blanco.
+ *
+ * Lo usan tanto "Nuevo" como "Editar": antes sólo limpiaba el alta, y al
+ * editar sobrevivían restos del paquete anterior —el texto del buscador de
+ * perfumes y, peor, el archivo de imagen ya elegido, que podía terminar
+ * subiéndose al paquete equivocado—.
+ */
+function limpiarFormulario() {
   document.getElementById('p-id').value = '';
   document.getElementById('p-nombre').value = '';
   ['3','5','10'].forEach(k => document.getElementById('px'+k).value = '');
   document.getElementById('p-cat').value = '';
   document.getElementById('p-desc').value = '';
   document.getElementById('p-activo').checked = true;
-  
+
   document.getElementById('p-personalizable').checked = false;
   document.getElementById('p-max-sel').value = '';
   window.togglePersonalizable();
-  
+
   paqueteItems = [];
   renderPaqueteItems();
-  
+
+  // Imagen: modo, URL y archivo. Si el archivo no se limpia, al guardar otro
+  // paquete se sube la foto que quedó seleccionada la vez anterior.
   setMode('url');
   document.getElementById('p-img-url').value = '';
   document.getElementById('p-img-file').value = '';
+  document.getElementById('preview-img').src = '';
   document.getElementById('preview-wrap').style.display = 'none';
-  
+
+  // Buscador de perfumes y su lista de sugerencias.
+  const buscador = document.getElementById('search-perfume');
+  if (buscador) buscador.value = '';
+  const sug = document.getElementById('sugerencias-box');
+  if (sug) sug.style.display = 'none';
+}
+
+window.openModal = () => {
+  limpiarFormulario();
   document.getElementById('modal-title').textContent = 'Nuevo Paquete';
   document.getElementById('modal').classList.add('open');
 };
@@ -218,10 +238,13 @@ window.closeModal = () => {
 window.edit = (id) => {
   const p = paquetes.find(x => x.id === id);
   if (!p) return;
+
+  // Partir de cero antes de cargar: así no queda nada del paquete anterior.
+  limpiarFormulario();
+
   document.getElementById('p-id').value = p.id;
   document.getElementById('p-nombre').value = p.nombre;
-  ['3','5','10'].forEach(k => document.getElementById('px'+k).value = '');
-  
+
   if (p.precios) {
     ['3','5','10'].forEach(k => { document.getElementById('px'+k).value = p.precios[k] || ''; });
   } else if (p.ml && p.precio) {
@@ -271,10 +294,20 @@ searchInput.addEventListener('input', () => {
     return;
   }
   
-  const matches = perfumes.filter(p => p.activo !== false && matchSearch(q, p.nombre + ' ' + (p.marca || ''))).slice(0, 10);
-  
+  // Los que ya están en el paquete no se ofrecen: sólo estorbaban, porque
+  // al elegirlos lo único que pasaba era un aviso de "ya está agregado".
+  const yaEnPaquete = new Set(paqueteItems.map(i => i.id));
+  const coincidencias = perfumes.filter(p =>
+    p.activo !== false && matchSearch(q, p.nombre + ' ' + (p.marca || '')));
+  // Se recorta a 10 después de descartar, para no perder resultados válidos.
+  const matches = coincidencias.filter(p => !yaEnPaquete.has(p.id)).slice(0, 10);
+
   if (matches.length === 0) {
-    sugList.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-faint);font-size:13px;">No se encontraron perfumes</div>';
+    // Distinguir "no hay" de "ya los tienes todos" evita que parezca un error.
+    const mensaje = coincidencias.length
+      ? 'Ya agregaste todos los que coinciden'
+      : 'No se encontraron perfumes';
+    sugList.innerHTML = `<div style="padding:10px;text-align:center;color:var(--text-faint);font-size:13px;">${mensaje}</div>`;
   } else {
     sugList.innerHTML = matches.map(p => `
       <div class="sug-item" onclick="addPerfumeToPaquete('${p.id}')">

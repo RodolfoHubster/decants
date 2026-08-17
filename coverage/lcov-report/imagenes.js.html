@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for precios.js</title>
+    <title>Code coverage report for imagenes.js</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="prettify.css" />
     <link rel="stylesheet" href="base.css" />
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="index.html">All files</a> precios.js</h1>
+        <h1><a href="index.html">All files</a> imagenes.js</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">91.66% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>14/14</span>
+                <span class='fraction'>11/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>13/13</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">80% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/1</span>
+                <span class='fraction'>4/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">87.5% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>9/9</span>
+                <span class='fraction'>7/8</span>
             </div>
         
             
@@ -98,12 +98,7 @@
 <a name='L33'></a><a href='#L33'>33</a>
 <a name='L34'></a><a href='#L34'>34</a>
 <a name='L35'></a><a href='#L35'>35</a>
-<a name='L36'></a><a href='#L36'>36</a>
-<a name='L37'></a><a href='#L37'>37</a>
-<a name='L38'></a><a href='#L38'>38</a>
-<a name='L39'></a><a href='#L39'>39</a>
-<a name='L40'></a><a href='#L40'>40</a>
-<a name='L41'></a><a href='#L41'>41</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L36'></a><a href='#L36'>36</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -125,63 +120,53 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">20x</span>
-<span class="cline-any cline-yes">20x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
- * precios.js — Cómo se presentan los precios de las tallas.
+ * imagenes.js — Cambiar una foto sin que se vea la anterior.
  *
- * Regla de negocio: **nunca se muestra el precio por mililitro**. FitoScents
- * vende el mismo perfume en decant y en botella completa, y la botella sale
- * a un tercio por ml (Hawas for Him: $7/ml en 100ml contra $23/ml en 3ml).
- * Publicar la tarifa por ml le entrega al cliente el número exacto para
- * concluir que el decant es caro, y puede comprobarlo en el mismo sitio.
+ * Asignar `img.src` no reemplaza la imagen al instante: el navegador sigue
+ * mostrando la anterior hasta terminar de bajar la nueva. Si al mismo tiempo
+ * se actualiza el texto, durante unos segundos se ve un perfume con el
+ * nombre de otro.
  *
- * El empujón hacia la talla grande se da en positivo: cuánto se ahorra
- * frente a comprar varias chicas.
+ * La solución es esperar a que la foto esté lista y recién entonces cambiar
+ * imagen y texto a la vez.
  *
- * Módulo puro y sin dependencias: lo importan el catálogo y los tests.
+ * Módulo puro: la fábrica de imágenes se inyecta para poder probarlo.
  */
 &nbsp;
 /**
- * Cuánto se ahorra al llevar una talla en vez de varias más chicas.
+ * Descarga una imagen y avisa cuando puede mostrarse.
  *
- * Solo compara contra tallas que caben un número exacto de veces (10ml
- * frente a dos de 5ml), para que la cuenta sea verificable. Se queda con el
- * mayor ahorro encontrado.
- *
- * @param {Array&lt;[string|number, string|number]&gt;} sizes  Pares [ml, precio].
- * @param {string|number} talla   Talla evaluada, en ml.
- * @param {string|number} precio  Precio de esa talla.
- * @returns {number} Ahorro en pesos, redondeado; 0 si no hay comparación.
+ * @param {string} url
+ * @param {function():HTMLImageElement} crearImagen  Inyectable en pruebas.
+ * @returns {Promise&lt;boolean&gt;} true si cargó; false si falló o no había URL.
+ *   Nunca rechaza: una foto rota no debe romper la pantalla.
  */
-export function ahorroPorTalla(sizes, talla, precio) {
-  const ml = +talla, px = +precio;
-  if (!(ml &gt; 0) || !(px &gt; 0)) return 0;
+export function precargarImagen(url, crearImagen = <span class="fstat-no" title="function not covered" >()</span> =&gt; <span class="cstat-no" title="statement not covered" >new Image())</span> {
+  return new Promise(resolver =&gt; {
+    if (!url) return resolver(false);
 &nbsp;
-  let mejor = 0;
-  for (const [k, v] of (sizes || [])) {
-    const kMl = +k, kPx = +v;
-    if (!(kMl &gt; 0) || !(kPx &gt; 0) || kMl &gt;= ml) continue;
-    if (ml % kMl !== 0) continue;                 // solo múltiplos exactos
-    mejor = Math.max(mejor, Math.round((ml / kMl) * kPx - px));
-  }
-  return mejor;
+    const im = crearImagen();
+    im.onload  = () =&gt; resolver(true);
+    im.onerror = () =&gt; resolver(false);
+    im.src = url;
+&nbsp;
+    // Si ya estaba en caché, `complete` es true sin esperar al evento.
+    if (im.complete) resolver(true);
+  });
 }
 &nbsp;</pre></td></tr></table></pre>
 
