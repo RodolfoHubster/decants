@@ -7,8 +7,6 @@ export function renderSidebar(active) {
   const wrap = document.getElementById('sidebar-wrap');
   if (!wrap) return;
 
-  // Helper: detect if any child in a group is active
-  const groupOpen = (...keys) => keys.includes(active) ? 'open' : '';
   const savedGroups = JSON.parse(localStorage.getItem('sidebarGroups') || '{}');
   const isOpen = (gid, ...keys) => {
     if (keys.includes(active)) return 'open';

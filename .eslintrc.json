@@ -11,6 +11,10 @@
     "ecmaVersion": "latest",
     "sourceType": "module"
   },
+  "globals": {
+    "Swal": "readonly",
+    "Chart": "readonly"
+  },
   "rules": {
     "no-unused-vars": "warn",
     "no-undef": "warn",

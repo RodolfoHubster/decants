@@ -34,7 +34,8 @@ let tiposData    = [];
 // ── Definir addToPosCart para la vista POS Rápido ──
 window.addToPosCart = (item) => {
   let cart = [];
-  try { cart = JSON.parse(localStorage.getItem('posCart') || '[]'); } catch(e){}
+  try { cart = JSON.parse(localStorage.getItem('posCart') || '[]'); }
+  catch(e){ /* canasta corrupta en localStorage: se arranca vacía */ }
   
   // Reset client counter if cart was empty
   if (cart.length === 0) localStorage.setItem('posClientId', '1');
@@ -131,7 +132,7 @@ async function loadAll() {
     marcas.map(m => `<option>${m.nombre}</option>`).join('');
 
   initFiltrosSelects();
-  renderTable();
+  window.renderTable();
 }
 
 window.loadMarcas = () => {
@@ -148,7 +149,7 @@ window.switchTab = (tab) => {
   document.getElementById('tab-main').style.borderColor = tab === 'main' ? 'var(--gold)' : 'var(--border)';
   document.getElementById('tab-archived').style.background = tab === 'archived' ? 'var(--bg-card)' : 'transparent';
   document.getElementById('tab-archived').style.borderColor = tab === 'archived' ? 'var(--gold)' : 'var(--border)';
-  renderTable();
+  window.renderTable();
 };
 
 import { matchSearch } from './search-engine.js';
@@ -158,7 +159,7 @@ const pageSize = 100;
 
 window.changePage = (dir) => {
   currentPage += dir;
-  renderTable();
+  window.renderTable();
 };
 
 window.renderPagination = (totalItems, start, end, totalPages) => {
@@ -248,7 +249,7 @@ window.renderTable = () => {
 
     if (!fil.length) {
       tb.innerHTML = '<tr><td colspan="10"><div class="empty-state"><i class="bi bi-search"></i><h3>No hay resultados</h3><p>Prueba buscando otra cosa.</p></div></td></tr>';
-      renderPagination(0, 0, 0, 1);
+      window.renderPagination(0, 0, 0, 1);
       return;
     }
 
@@ -302,7 +303,7 @@ window.renderTable = () => {
     }).join('');
 
     activarEdicionPrecios(tb);
-    renderPagination(fil.length, start + 1, end, totalPages);
+    window.renderPagination(fil.length, start + 1, end, totalPages);
 
     // ── Renderizar Grid POS ──
     const posGrid = document.getElementById('pos-grid');
@@ -354,12 +355,12 @@ window.sortBy = (col) => {
     tableSortDir = 'asc';
   }
   document.getElementById('f-orden').value = '';
-  renderTable();
+  window.renderTable();
 };
 
 window.sortByDropdown = () => {
   tableSortCol = null;
-  renderTable();
+  window.renderTable();
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -455,19 +456,30 @@ function abrirEditorPrecio(pastilla) {
   input.focus();
   input.select();
 
-  let cerrado = false;
+  // Una sola resolución por edición, reclamada ANTES de escribir en la base.
+  // Guardar con Enter quita el input del DOM y eso dispara `blur`, que volvía
+  // a llamar a `guardar`: dos escrituras seguidas donde la segunda llevaba el
+  // valor viejo del campo y podía resucitarlo por encima de la primera.
+  let resuelto = false;
 
   /** Devuelve la pastilla a su sitio, con el valor que corresponda. */
   const restaurar = (valor) => {
-    if (cerrado) return;
-    cerrado = true;
     pastilla.dataset.valor = valor;
     pastilla.dataset.editando = '';
     pastilla.textContent = `${ml}ml $${valor}`;
-    caja.replaceWith(pastilla);
+    if (caja.isConnected) caja.replaceWith(pastilla);
+  };
+
+  const cancelar = () => {
+    if (resuelto) return;
+    resuelto = true;
+    restaurar(valorPrevio);
   };
 
   const guardar = async (irA = 0) => {
+    if (resuelto) return;
+    resuelto = true;                      // se reclama antes del await
+
     const nuevo = Math.max(0, Math.round(+input.value || 0));
     if (nuevo === valorPrevio) {          // sin cambios: ni tocar la red
       restaurar(valorPrevio);
@@ -499,7 +511,7 @@ function abrirEditorPrecio(pastilla) {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter')  { e.preventDefault(); guardar(1); }
     if (e.key === 'Tab')    { e.preventDefault(); guardar(e.shiftKey ? -1 : 1); }
-    if (e.key === 'Escape') { e.preventDefault(); restaurar(valorPrevio); }
+    if (e.key === 'Escape') { e.preventDefault(); cancelar(); }
   });
   input.addEventListener('blur', () => guardar(0));
 }
@@ -619,13 +631,13 @@ window.copyPosPrices = () => {
   
   if (isPaquete) {
     const pr = p.precios || {};
-    const available = Object.entries(pr).filter(([k,v]) => v > 0).sort((a,b)=>a[0]-b[0]);
+    const available = Object.entries(pr).filter(([, v]) => v > 0).sort((a,b)=>a[0]-b[0]);
     available.forEach(([ml, price]) => {
       text += `Paquete ${ml}ml — $${price} MXN\n`;
     });
   } else {
     const pr = p.precios || {};
-    const available = Object.entries(pr).filter(([k,v]) => v > 0).sort((a,b)=>a[0]-b[0]);
+    const available = Object.entries(pr).filter(([, v]) => v > 0).sort((a,b)=>a[0]-b[0]);
     available.forEach(([ml, price]) => {
       text += `${ml}ml — $${price} MXN\n`;
     });
@@ -682,7 +694,6 @@ window.askCustomPriceAndAddToCart = async (id, talla) => {
 
   if (result.isConfirmed) {
     const precioStr = result.value;
-    let extraNotas = '';
     let costo = null;
     if (talla === 'Completo') {
       const resCosto = await Swal.fire({
@@ -906,35 +917,50 @@ window.addLoteUI = () => {
   window.renderLotesUI();
 };
 
-window.openModal = () => {
+/**
+ * Deja el formulario de perfume en blanco.
+ *
+ * Lo usan "Nuevo" y "Editar". Antes sólo limpiaba el alta: al editar se
+ * arrastraban restos del perfume anterior, sobre todo el archivo de imagen
+ * ya seleccionado, que seguía cargado y podía subirse al perfume equivocado.
+ */
+function limpiarFormularioPerfume() {
   document.getElementById('p-id').value = '';
   document.getElementById('p-nombre').value = '';
+  document.getElementById('p-desc').value = '';
+  document.getElementById('p-barcode').value = '';
+  ['2','3','5','10'].forEach(k => { document.getElementById('px' + k).value = ''; });
+
+  document.getElementById('p-novedad').checked = false;
+  document.getElementById('p-estado').value = 'visible';
+  document.getElementById('p-stock').value = 'normal';
+
+  // Imagen: modo, dirección, archivo y vista previa. Si el archivo no se
+  // limpia, reaparece en la siguiente edición aunque el perfume tenga otra foto.
+  window.setMode('url');
+  document.getElementById('p-img-url').value = '';
+  const archivo = document.getElementById('p-img-file');
+  if (archivo) archivo.value = '';
+  document.getElementById('preview-img').src = '';
+  document.getElementById('preview-wrap').style.display = 'none';
+
+  window.currentLotes = [];
+  window.activeLoteId = null;
+}
+
+window.openModal = () => {
+  limpiarFormularioPerfume();
+
   document.getElementById('p-genero').value = 'Caballero';
   document.getElementById('p-cat').value = 'Diseñador';
   document.getElementById('p-familia').innerHTML = buildSelectOptions(familiasData, '', 'Sin especificar');
   document.getElementById('p-tipo').innerHTML = buildSelectOptions(tiposData, '', 'Sin especificar');
-  loadMarcas();
+  window.loadMarcas();
   setTimeout(() => { document.getElementById('p-marca').value = ''; }, 80);
-  document.getElementById('p-desc').value = '';
-  document.getElementById('p-barcode').value = '';
-  
-  ['2','3','5','10'].forEach(k => { document.getElementById('px' + k).value = ''; });
-  
-  document.getElementById('p-estado').value = 'visible';
-  document.getElementById('p-stock').value = 'normal';
-  
-  window.currentLotes = [];
-  window.activeLoteId = null;
+
   window.renderLotesUI();
-  
-  document.getElementById('p-novedad').checked = false;
-  document.getElementById('p-img-url').value = '';
-  if (document.getElementById('p-img-file')) document.getElementById('p-img-file').value = '';
-  document.getElementById('preview-wrap').style.display = 'none';
-  document.getElementById('preview-img').src = '';
-  
+
   document.getElementById('modal-title').textContent = 'Nuevo Perfume';
-  setMode('url');
   document.getElementById('modal').classList.add('open');
 };
 
@@ -982,13 +1008,17 @@ window.edit = (id) => {
     toast('Este es un accesorio. Ve a la pestaña de "Accesorios" para editarlo.', 'warning');
     return;
   }
+
+  // Partir de cero: así no queda nada del perfume abierto antes.
+  limpiarFormularioPerfume();
+
   document.getElementById('p-id').value     = p.id;
   document.getElementById('p-nombre').value = p.nombre;
   document.getElementById('p-genero').value = p.genero || '';
   document.getElementById('p-cat').value    = p.categoria || '';
   document.getElementById('p-familia').innerHTML = buildSelectOptions(familiasData, p.familia || '', 'Sin especificar');
   document.getElementById('p-tipo').innerHTML    = buildSelectOptions(tiposData,    p.tipo    || '', 'Sin especificar');
-  loadMarcas();
+  window.loadMarcas();
   setTimeout(() => { document.getElementById('p-marca').value = p.marca || ''; }, 80);
   document.getElementById('p-desc').value    = p.descripcion || '';
   document.getElementById('p-barcode').value = p.barcode || '';
@@ -1016,19 +1046,114 @@ window.edit = (id) => {
   window.renderLotesUI();
 
   document.getElementById('p-novedad').checked = p.novedad === true;
+  // El formulario ya viene limpio; sólo hay que poner la imagen si la tiene.
   if (p.imagen) {
-    setMode('url');
     document.getElementById('p-img-url').value = p.imagen;
-    previewUrl();
-  } else {
-    document.getElementById('p-img-url').value = '';
-    if (document.getElementById('p-img-file')) document.getElementById('p-img-file').value = '';
-    document.getElementById('preview-wrap').style.display = 'none';
-    document.getElementById('preview-img').src = '';
+    window.previewUrl();
   }
   document.getElementById('modal-title').textContent = 'Editar Perfume';
   document.getElementById('modal').classList.add('open');
 };
+
+/**
+ * Consulta a la IA para rellenar la ficha de un perfume.
+ *
+ * Se pide con BÚSQUEDA WEB porque la API, a diferencia de ChatGPT, no navega:
+ * responde de memoria y con lanzamientos recientes o casas árabes poco
+ * documentadas inventaba las notas. La búsqueda se limita a bases de datos de
+ * perfumería para que no cite listados de tiendas con datos erróneos.
+ *
+ * Si la búsqueda no está disponible en la cuenta, se cae a la llamada normal
+ * de siempre: es preferible un perfil aproximado a un botón que no responde.
+ *
+ * @param {string} promptText  Instrucciones y esquema del JSON esperado.
+ * @param {string} apiKey      Clave de OpenAI guardada en Ajustes.
+ * @returns {Promise<string>}  El JSON en texto, tal como lo devolvió el modelo.
+ */
+/**
+ * Normaliza para comparar: sin acentos, sin mayúsculas y sin espacios sobrantes.
+ * Los catálogos guardan "Arabe" y el modelo responde "Árabe"; sin esto no casan.
+ */
+function sinAcentos(texto) {
+  return (texto || '').toString().trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+/**
+ * Vuelca los precios sugeridos por la IA en el formulario.
+ *
+ * Al EDITAR, un campo de precio vacío significa que ese tamaño no se vende
+ * (por ejemplo, un perfume que solo va en 3/5/10 ml). Rellenarlo le añadía al
+ * perfume una talla que nunca tuvo, y al guardar quedaba como precio real:
+ * de ahí que apareciera un 2 ml donde no debía. Por eso solo se sugieren
+ * precios al dar de alta un perfume nuevo.
+ */
+function aplicarPreciosIA(aiJson) {
+  const esNuevo = !document.getElementById('p-id').value;
+  if (!esNuevo) return;
+  ['2', '3', '5', '10'].forEach(k => {
+    const el = document.getElementById('px' + k);
+    const sugerido = aiJson['px' + k];
+    if (el && !el.value && sugerido) el.value = sugerido;
+  });
+}
+
+async function consultarIA(promptText, apiKey) {
+  // Dominios donde de verdad están documentadas las fragancias. Si algún
+  // perfume no aparece, el modelo debe responder confianza "baja" en vez de
+  // inventar. Se pueden añadir más aquí.
+  const SITIOS = ['fragrantica.com', 'fragrantica.mx', 'parfumo.com', 'basenotes.com'];
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-5.6',
+        input: promptText,
+        tools: [{ type: 'web_search', filters: { allowed_domains: SITIOS } }]
+      })
+    });
+
+    if (!res.ok) throw new Error(`búsqueda web no disponible (${res.status})`);
+
+    const data = await res.json();
+
+    // Con búsqueda web la respuesta trae dos partes: la llamada de búsqueda
+    // y el mensaje. Hay que localizar el mensaje, no leer output[0] a ciegas.
+    const mensaje = (data.output || []).find(o => o.type === 'message');
+    const texto = mensaje?.content?.find(c => typeof c.text === 'string')?.text;
+    if (!texto) throw new Error('respuesta sin texto');
+
+    return texto;
+
+  } catch (e) {
+    // Respaldo: la llamada de siempre, sin internet.
+    console.warn('Sin búsqueda web, se usa la consulta normal:', e.message);
+    toast('Sin búsqueda web: los datos pueden ser imprecisos', 'info');
+
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: promptText }],
+        temperature: 0.1,
+        response_format: { type: 'json_object' }
+      })
+    });
+
+    if (!res.ok) throw new Error(`OpenAI respondió ${res.status} ${res.statusText}`);
+    const data = await res.json();
+    return data.choices[0].message.content;
+  }
+}
 
     document.getElementById('btn-ia-name')?.addEventListener('click', async () => {
         const prodTitle = document.getElementById('p-nombre').value.trim();
@@ -1054,20 +1179,35 @@ window.edit = (id) => {
                 return el ? Array.from(el.options).map(o => o.text).join(', ') : '';
             };
             
+            // El prompt pide datos concretos de la fragancia, no prosa. Antes
+            // pedía una descripción "poética" y, peor, forzaba `brand` a ser
+            // una "marca diseñadora" aunque la categoría fuera Árabe: de ahí
+            // que un perfume árabe acabara con marca de diseñador.
             const promptText = `
-Eres un experto sommelier de perfumes. 
-Se te ha dado este nombre de perfume: "${prodTitle}".
-Completa el siguiente JSON estrictamente y devuélvelo en formato JSON válido. 
-No incluyas markdown ni explicaciones, solo el JSON puro.
+Eres un perfumista documentando fichas de producto. Sé preciso y sobrio.
+Perfume: "${prodTitle}".
+
+Devuelve SOLO un JSON válido, sin markdown ni explicaciones.
+
+REGLAS IMPORTANTES:
+- "category" y "brand" deben ser coherentes entre sí. Si la casa es árabe
+  (Lattafa, Armaf, Rasasi, Afnan, Al Haramain, Ard Al Zaafaran...), entonces
+  category = "Árabe" y brand debe ser esa casa árabe. Nunca mezcles una casa
+  árabe con category "Diseñador" ni al revés.
+- "type" es la CONCENTRACIÓN, no la categoría. Elige exactamente una de la
+  lista dada. No pongas ahí "Diseñador" ni "Árabe".
+- Si no conoces el perfume con seguridad, NO inventes: pon confianza "baja"
+  y deja en blanco lo que no sepas. Es preferible un campo vacío a un dato falso.
 
 {
   "title": "Nombre exacto y completo del perfume",
-  "brand": "Marca diseñadora (ej. Carolina Herrera)",
-  "category": "Una de estas: ${getOpts('p-cat') || 'Cítrico, Amaderado, Floral, Dulce'}",
+  "brand": "Casa que lo fabrica, coherente con category",
+  "category": "Exactamente una de: ${getOpts('p-cat') || 'Diseñador, Árabe, Nicho'}",
   "gender": "Caballero, Dama o Unisex",
-  "family": "Familia Olfativa exacta",
-  "type": "Diseñador, Nicho, Árabe o Indie",
-  "desc": "Descripción detallada y poética (2-3 párrafos)",
+  "family": "Familia olfativa, exactamente una de: ${getOpts('p-familia') || 'Cítrica, Floral, Amaderada, Oriental'}",
+  "type": "Concentración, exactamente una de: ${getOpts('p-tipo') || 'Eau de Toilette, Eau de Parfum, Parfum, Extrait de Parfum'}",
+  "confianza": "alta, media o baja segun lo seguro que estes de este perfume en concreto",
+  "desc": "Ficha en texto plano con saltos de linea reales, en este formato exacto y sin encabezados extra:\\n\\n<Una sola frase que defina la personalidad del perfume y a quien le queda: para que ocasion y que proyecta>\\n\\nSalida: <3-4 notas, lo que se huele en los primeros minutos>\\nCorazon: <3-4 notas, el cuerpo del aroma>\\nFondo: <3-4 notas, lo que permanece en piel y ropa>\\n\\nDuracion: <Baja (2-4 h) | Moderada (4-6 h) | Alta (mas de 8 h)> · Estela: <discreta | moderada | fuerte>\\nIdeal para: <Dia | Noche | Dia y noche> · <Clima calido | Clima frio | Todo el año>",
   "px2": "Precio competitivo MXN 2ml: 80-120 diseñador, 180-280 nicho, 50-90 árabe",
   "px3": "Precio competitivo MXN 3ml: 120-170 diseñador, 250-380 nicho, 70-110 árabe",
   "px5": "Precio competitivo MXN 5ml: 180-260 diseñador, 400-600 nicho, 110-170 árabe",
@@ -1075,25 +1215,8 @@ No incluyas markdown ni explicaciones, solo el JSON puro.
 }
 `;
             
-            const reqUrl = "https://api.openai.com/v1/chat/completions";
-            const res3 = await fetch(reqUrl, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${geminiKey}`
-                },
-                body: JSON.stringify({
-                    model: "gpt-4o",
-                    messages: [{ role: "user", content: promptText }],
-                    temperature: 0.1,
-                    response_format: { type: "json_object" }
-                })
-            });
-            
-            if (!res3.ok) throw new Error("Groq API falló: " + res3.statusText);
-            const aiData = await res3.json();
-            let aiText = aiData.choices[0].message.content;
-            
+            let aiText = await consultarIA(promptText, geminiKey);
+
             const match = aiText.match(/\{[\s\S]*\}/);
             if (match) aiText = match[0];
             
@@ -1102,10 +1225,32 @@ No incluyas markdown ni explicaciones, solo el JSON puro.
                 aiJson = JSON.parse(aiText);
             } catch (err) {
                 // Fallback: replace unescaped control characters
+                // eslint-disable-next-line no-control-regex -- los caracteres de control son justo lo que se quiere limpiar
                 aiText = aiText.replace(/[\u0000-\u001F]+/g, " ");
                 aiJson = JSON.parse(aiText);
             }
             
+            // La categoría va PRIMERO: el desplegable de marcas se filtra por
+            // ella. Antes se asignaba la marca antes que la categoría y sin
+            // repoblar la lista, así que se elegía de las marcas de la
+            // categoría anterior: se veía "Árabe" con una marca de diseñador.
+            if (aiJson.category) {
+                const catSelect = document.getElementById('p-cat');
+                if (catSelect) {
+                    // Comparación tolerante: la categoría está guardada como
+                    // "Arabe" sin acento, y el modelo suele responder "Árabe".
+                    // Con igualdad estricta no coincidía y la categoría se
+                    // quedaba sin poner, que es de donde venía todo el enredo.
+                    const objetivo = sinAcentos(aiJson.category);
+                    for (let opt of catSelect.options) {
+                        if (opt.value && sinAcentos(opt.text) === objetivo) { catSelect.value = opt.value; break; }
+                    }
+                    // Asignar .value por código no dispara `change`, así que
+                    // hay que repoblar las marcas a mano.
+                    window.loadMarcas();
+                }
+            }
+
             if (aiJson.brand) {
                 const marcaSelect = document.getElementById('p-marca');
                 if (marcaSelect) {
@@ -1114,14 +1259,13 @@ No incluyas markdown ni explicaciones, solo el JSON puro.
                     for (let opt of marcaSelect.options) {
                         if (opt.value && opt.text.toLowerCase().includes(brandClean)) { bestMatch = opt.value; break; }
                     }
-                    if (bestMatch) marcaSelect.value = bestMatch;
-                }
-            }
-            if (aiJson.category) {
-                const catSelect = document.getElementById('p-cat');
-                if (catSelect) {
-                    for (let opt of catSelect.options) {
-                        if (opt.text === aiJson.category) { catSelect.value = opt.value; break; }
+                    if (bestMatch) {
+                        marcaSelect.value = bestMatch;
+                    } else {
+                        // La marca no existe en esta categoría: mejor dejarlo
+                        // vacío y avisar que conserve una marca incoherente.
+                        marcaSelect.value = '';
+                        toast(`Da de alta la marca "${aiJson.brand}" en ${aiJson.category || 'esa categoría'}`, 'info');
                     }
                 }
             }
@@ -1147,12 +1291,19 @@ No incluyas markdown ni explicaciones, solo el JSON puro.
                 }
             }
             if (aiJson.desc && !document.getElementById('p-desc').value) document.getElementById('p-desc').value = aiJson.desc;
-            if (aiJson.px2 && !document.getElementById('px2').value) document.getElementById('px2').value = aiJson.px2;
-            if (aiJson.px3 && !document.getElementById('px3').value) document.getElementById('px3').value = aiJson.px3;
-            if (aiJson.px5 && !document.getElementById('px5').value) document.getElementById('px5').value = aiJson.px5;
-            if (aiJson.px10 && !document.getElementById('px10').value) document.getElementById('px10').value = aiJson.px10;
-            
-            toast('¡Perfil IA completado con éxito!', 'success');
+            aplicarPreciosIA(aiJson);
+
+            // El modelo no navega por internet: responde de memoria. Para
+            // fragancias nuevas o poco conocidas puede fallar, así que se
+            // avisa en vez de dar todo por bueno.
+            const confianza = String(aiJson.confianza || '').toLowerCase();
+            if (confianza === 'baja') {
+                toast('La IA no conoce bien este perfume: revisa notas, familia y concentración', 'error');
+            } else if (confianza === 'media') {
+                toast('Perfil generado, pero conviene verificar las notas', 'info');
+            } else {
+                toast('¡Perfil IA completado con éxito!', 'success');
+            }
         } catch (e) {
             console.error('Gemini error:', e);
             toast('Error al consultar la Inteligencia Artificial: ' + e.message, 'error');
@@ -1232,7 +1383,7 @@ window.save = async () => {
       await addDoc(collection(db, 'perfumes'), { ...data, clicks: 0, creadoEn: Date.now() });
     }
     toast(id ? 'Perfume actualizado' : 'Perfume creado', 'success');
-    closeModal();
+    window.closeModal();
     loadAll();
   } catch (e) {
     console.error(e);
@@ -1400,7 +1551,8 @@ document.addEventListener('DOMContentLoaded', () => {
           let res = await fetch(`https://world.openbeautyfacts.org/api/v0/product/${code}.json`);
           let data = null;
           if (res.ok) {
-              try { data = await res.json(); } catch(e) {}
+              try { data = await res.json(); }
+              catch(e) { /* respuesta no-JSON: se maneja abajo con `data` vacío */ }
           }
           
           let prodTitle = '';
@@ -1511,10 +1663,7 @@ Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown ni \`\`\`) 
                         if (aiJson.tipo) document.getElementById('p-tipo').value = aiJson.tipo;
                         if (aiJson.genero) document.getElementById('p-genero').value = aiJson.genero;
                         
-                        if (aiJson.px2 && !document.getElementById('px2').value) document.getElementById('px2').value = aiJson.px2;
-                        if (aiJson.px3 && !document.getElementById('px3').value) document.getElementById('px3').value = aiJson.px3;
-                        if (aiJson.px5 && !document.getElementById('px5').value) document.getElementById('px5').value = aiJson.px5;
-                        if (aiJson.px10 && !document.getElementById('px10').value) document.getElementById('px10').value = aiJson.px10;
+                        aplicarPreciosIA(aiJson);
                         
                         toast('¡Perfil IA completado con éxito!', 'success');
                 } catch (e) {
@@ -1572,6 +1721,7 @@ Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown) con esta e
                     try {
                         aiJson = JSON.parse(aiText);
                     } catch (err) {
+                        // eslint-disable-next-line no-control-regex -- los caracteres de control son justo lo que se quiere limpiar
                         aiText = aiText.replace(/[\u0000-\u001F]+/g, " ");
                         aiJson = JSON.parse(aiText);
                     }
@@ -1606,10 +1756,7 @@ Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown) con esta e
                     if (aiJson.tipo) document.getElementById('p-tipo').value = aiJson.tipo;
                     if (aiJson.genero) document.getElementById('p-genero').value = aiJson.genero;
                     
-                    if (aiJson.px2) document.getElementById('px2').value = aiJson.px2;
-                    if (aiJson.px3) document.getElementById('px3').value = aiJson.px3;
-                    if (aiJson.px5) document.getElementById('px5').value = aiJson.px5;
-                    if (aiJson.px10) document.getElementById('px10').value = aiJson.px10;
+                    aplicarPreciosIA(aiJson);
                     
                     toast('✨ ¡Perfume identificado mágicamente por la IA!', 'success');
                 }

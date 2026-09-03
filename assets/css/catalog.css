@@ -646,7 +646,9 @@ header {
 
 /* La descripción era el bloque más alto de la ficha y empujaba la compra
    fuera de pantalla: se muestra recortada y se despliega a voluntad. */
-.modal-desc { font-size: 14.5px; color: #aaa; margin-bottom: 6px; line-height: 1.6; }
+/* pre-line conserva los saltos de línea de la ficha (salida / corazón /
+   fondo, duración, uso) sin que un solo salto rompa el párrafo suelto. */
+.modal-desc { font-size: 14.5px; color: #aaa; margin-bottom: 6px; line-height: 1.6; white-space: pre-line; }
 .modal-desc.clamp {
   display: -webkit-box;
   -webkit-line-clamp: 4;

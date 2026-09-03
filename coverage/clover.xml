@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1786953871680" clover="3.2.0">
-  <project timestamp="1786953871681" name="All files">
+<coverage generated="1788296305247" clover="3.2.0">
+  <project timestamp="1788296305248" name="All files">
     <metrics statements="136" coveredstatements="114" conditionals="148" coveredconditionals="119" methods="72" coveredmethods="66" elements="356" coveredelements="299" complexity="0" loc="136" ncloc="136" packages="1" files="8" classes="8"/>
     <file name="cart.js" path="C:\xampp\htdocs\FitoScentsWEB\decants\assets\js\cart.js">
       <metrics statements="46" coveredstatements="25" conditionals="38" coveredconditionals="22" methods="24" coveredmethods="19"/>
