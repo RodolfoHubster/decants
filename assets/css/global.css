@@ -188,9 +188,12 @@ body.modal-open { overflow: hidden; }
 
 @media (max-width: 768px) {
   .filter-bar { gap: 8px; }
-  .filter-bar .search-input-wrap { flex: 1 1 100%; min-width: 100%; }
+  /* Buscador y botones en el mismo renglón: antes cada botón tomaba una fila
+     completa y la página empezaba con tres renglones de controles. */
+  .filter-bar .search-input-wrap { flex: 1 1 150px; min-width: 0; }
   .filter-bar select.form-control { flex: 1 1 calc(50% - 4px); max-width: none !important; }
-  .filter-bar button { flex: 1 1 100%; }
+  .filter-bar button { flex: 0 0 auto; min-height: 44px; }
+  .filter-bar .fbtn-filtros { padding: 0 14px; }
 }
 
 /* Con inputs a 16px (obligado para que iOS no haga zoom), etiquetas como
@@ -351,10 +354,17 @@ body.filtros-open { overflow: hidden; }
      el botón principal ("Nuevo Perfume", "Nueva Venta") quedaba fuera de vista
      y parecía que no existía. */
   .topbar > div:last-child:not(:only-child){
-    flex:1 1 100%;
-    justify-content:flex-start;
+    margin-left:auto;
+    justify-content:flex-end;
     flex-wrap:wrap;
     row-gap:8px;
+  }
+  /* Solo bajan a su propia fila cuando son muchas; con una o dos caben junto
+     al título y no vale la pena gastar un renglón. */
+  .topbar > div:last-child:not(:only-child):has(> :nth-child(3)){
+    flex:1 1 100%;
+    justify-content:flex-start;
+    margin-left:0;
   }
   .topbar-title{font-size:15px}
 
@@ -482,3 +492,11 @@ body.filtros-open { overflow: hidden; }
 
 /* El logo ocupa todo el círculo (antes era el texto "FS" sobre dorado). */
 .logo-mark img,.sidebar-logo .logo-mark img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+
+/* Etiquetas de sección del menú lateral */
+.sb-label{
+  padding:16px 20px 6px;
+  font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-faint); list-style:none;
+}
+.sidebar-nav > .sb-label:first-child{ padding-top:8px; }

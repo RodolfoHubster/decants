@@ -8,4 +8,13 @@
   --shadow-card:0 2px 16px rgba(0,0,0,.45);
   --transition:160ms cubic-bezier(.16,1,.3,1);
   --font-body:'Poppins',sans-serif;
+  --warning:#e0a23c;
+
+  /* Alias: varias pantallas usaban estos nombres sin que existieran, y esos
+     elementos salían sin fondo ni color. Apuntan a los tokens reales. */
+  --surface:var(--bg-card);
+  --text:var(--text-primary);
+  --gold:var(--accent);
+  --primary:var(--accent);
+  --primary-bg:var(--accent-soft);
 }
