@@ -56,3 +56,45 @@ export function claveCliente(venta) {
   if (esNombreGenerico(nombre)) return null;
   return `NAMED-${nombre.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 }
+
+/**
+ * Clientes con nombre que ya han comprado, agrupados por su clave (así "Juan
+ * Pérez" y "juan perez" cuentan como uno). Excluye a los "Cliente N" de paso y
+ * las ventas canceladas. Ordenado por compra más reciente.
+ *
+ * Una "compra" es un día distinto: cinco decants en el mismo ticket cuentan
+ * como una visita, que es lo que importa para saber si alguien regresa.
+ */
+// Quita acentos convirtiéndolos (é → e), no borrándolos: claveCliente() borra
+// la letra entera y "Pérez" acaba como "prez", distinto de "Perez".
+const normNombre = t => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .toLowerCase().replace(/[^a-z0-9]/g, '');
+
+export function indiceClientes(ventas) {
+  const por = new Map();
+  (ventas || []).forEach(v => {
+    // Las ventas de puntos externos llevan el nombre del lugar, no de una persona.
+    if (!v || v.estado === 'cancelada' || v.canal === 'consignacion' || esClienteTemporal(v)) return;
+    const nombre = (v.cliente || '').trim();
+    const clave = normNombre(nombre);
+    if (!clave) return;
+    const t = typeof v.creadoEn === 'number' ? v.creadoEn
+      : (v.creadoEn && typeof v.creadoEn.seconds === 'number') ? v.creadoEn.seconds * 1000 : 0;
+    const dia = t ? new Date(t).toDateString() : '';
+    const g = por.get(clave) || { clave, nombre, dias: new Set(), total: 0, ultima: 0, ultimoPerfume: '' };
+    if (dia) g.dias.add(dia);
+    g.total += (Number(v.precio) || 0) * (Number(v.cantidad) || 1);
+    if (t >= g.ultima) { g.ultima = t; g.nombre = nombre; g.ultimoPerfume = v.perfumeNombre || ''; }
+    por.set(clave, g);
+  });
+  return [...por.values()]
+    .map(({ dias, ...g }) => ({ ...g, compras: dias.size || 1 }))
+    .sort((a, b) => b.ultima - a.ultima);
+}
+
+/** Busca en el índice a alguien por nombre, ignorando mayúsculas y acentos. */
+export function buscarCliente(indice, nombre) {
+  const n = normNombre(nombre);
+  if (!n) return null;
+  return (indice || []).find(c => normNombre(c.nombre) === n) || null;
+}

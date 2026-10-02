@@ -13,6 +13,57 @@
   <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@4/dark.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
 
+  <style>
+    /* Historial como tarjetas en el teléfono: 9 columnas no caben */
+    @media (max-width:640px){
+      .ventas-tabla thead{display:none}
+      .ventas-tabla,.ventas-tabla tbody{display:block}
+      .ventas-tabla tbody tr{display:grid;grid-template-columns:auto 1fr auto;
+        grid-template-areas:"per per pre" "tal cli est" "fec can acc";gap:4px 10px;align-items:center;
+        padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin:0 10px 8px;background:var(--bg-card2)}
+      .ventas-tabla tbody td{border:none!important;padding:0!important;min-width:0;font-size:12.5px}
+      .ventas-tabla tbody td:nth-child(1){grid-area:fec;color:var(--text-muted);font-size:11.5px;white-space:nowrap}
+      .ventas-tabla tbody td:nth-child(2){grid-area:per;font-size:14px}
+      .ventas-tabla tbody td:nth-child(3){grid-area:tal}
+      .ventas-tabla tbody td:nth-child(4){grid-area:pre;font-weight:700;font-size:15px;text-align:right}
+      .ventas-tabla tbody td:nth-child(5){grid-area:cli;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .ventas-tabla tbody td:nth-child(6){grid-area:can}
+      .ventas-tabla tbody td:nth-child(7){display:none}
+      .ventas-tabla tbody td:nth-child(8){grid-area:est;text-align:right}
+      .ventas-tabla tbody td:nth-child(9){grid-area:acc;text-align:right}
+      .ventas-tabla tbody td[colspan]{grid-column:1/-1;grid-area:auto}
+      .ventas-tabla tbody tr td br{display:none}
+    }
+  </style>
+  <style>
+    /* Cada cliente es un ticket: nombre editable, método de pago y sus perfumes */
+    #batch-tbody tr.client-separator td {
+      background: var(--bg-card2) !important; padding: 10px !important;
+      border-top: 2px solid var(--accent-border) !important;
+    }
+    #batch-tbody tr.client-separator:first-child td { border-top: none !important; }
+    .ticket-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ticket-head > i { color: var(--accent); font-size: 16px; }
+    .ticket-nombre {
+      flex: 1 1 200px; min-width: 150px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 10px; color: var(--text-primary); font: inherit; font-size: 14px; font-weight: 600;
+    }
+    .ticket-nombre:focus { outline: none; border-color: var(--accent); }
+    .ticket-nombre.falta { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(224,92,92,.15); }
+    .ticket-metodo {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px; color: var(--text-primary); font: inherit; font-size: 13px;
+    }
+    .ticket-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: transparent; border: 1px dashed var(--accent-border); color: var(--accent);
+      border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 12.5px; cursor: pointer;
+    }
+    .ticket-btn:hover { background: var(--accent-soft); }
+    .ticket-quitar { border-color: transparent; color: var(--text-muted); }
+    .ticket-quitar:hover { color: var(--danger); background: rgba(224,92,92,.08); }
+  </style>
 </head>
 <body>
 <div class="app-shell">
@@ -26,8 +77,8 @@
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-outline btn-sm icon-btn-mobile" onclick="openEditarDia()" title="Editar Día"><i class="bi bi-pencil-square"></i> <span>Editar Día</span></button>
         <button class="btn btn-outline btn-sm icon-btn-mobile" onclick="exportCSV()" title="Exportar CSV"><i class="bi bi-download"></i> <span>Exportar</span></button>
-        <button class="btn btn-outline btn-sm icon-btn-mobile" style="border-color:var(--warning,#d97706);color:var(--warning,#d97706)" onclick="openDia()" title="Registro del Día"><i class="bi bi-truck"></i> <span>Registro del Día</span></button>
-        <button class="btn btn-primary icon-btn-mobile" onclick="openModal()" title="Nueva Venta"><i class="bi bi-plus-lg"></i> <span>Nueva Venta</span></button>
+        
+        <button class="btn btn-primary btn-sm" onclick="openDia()" title="Registrar ventas"><i class="bi bi-plus-lg"></i> <span>Registrar ventas</span></button>
       </div>
     </div>
     <div class="page-body">
@@ -59,6 +110,7 @@
           <option value="mercado">Sobre ruedas</option>
           <option value="online">Online / WhatsApp</option>
           <option value="otro">Otro</option>
+          <option value="consignacion">Punto externo</option>
         </select>
         <select class="form-control" style="max-width:160px" id="f-periodo" onchange="onPeriodoChange()">
           <option value="">Todo el tiempo</option>
@@ -71,7 +123,7 @@
       <div class="card">
         <div class="card-header"><h5>Historial de Ventas</h5><span class="badge badge-muted" id="count-label">0 ventas</span></div>
         <div class="table-wrap">
-          <table>
+          <table class="ventas-tabla">
             <thead><tr><th>Fecha</th><th>Perfume</th><th>Talla</th><th>Precio</th><th>Cliente</th><th>Canal</th><th>Método</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody id="tbody"></tbody>
           </table>
@@ -129,10 +181,6 @@
     <div class="modal-header"><h4 id="modal-title">Nueva Venta</h4><button class="btn-icon" onclick="closeModal()"><i class="bi bi-x-lg"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="v-id">
-      <div class="form-group" style="margin-bottom:16px;">
-        <label><i class="bi bi-upc-scan"></i> Escáner de Código de Barras</label>
-        <input type="text" class="form-control" id="v-barcode" placeholder="Haz clic aquí y escanea el producto..." style="border: 2px solid var(--accent); background: rgba(201,168,76,0.05); font-weight:600">
-      </div>
       <div class="form-row">
         <div class="form-group">
           <label>Perfume *</label>
@@ -241,8 +289,8 @@
   <div class="modal-box modal-xl">
     <div class="modal-header">
       <div style="display:flex;align-items:center;gap:10px">
-        <i class="bi bi-ui-checks" style="font-size:20px;color:var(--primary,#4f98a3)"></i>
-        <h4 id="modal-dia-title">Registro Masivo de Ventas</h4>
+        <i class="bi bi-ui-checks" style="font-size:20px;color:var(--accent)"></i>
+        <h4 id="modal-dia-title">Registrar ventas</h4>
       </div>
       <button class="btn-icon" onclick="closeDia()"><i class="bi bi-x-lg"></i></button>
     </div>
@@ -250,29 +298,21 @@
       <div class="dia-header">
         <label>Fecha</label>
         <input type="date" id="dia-fecha">
-        <div class="dia-canal-wrap" style="flex:0.5;min-width:130px;">
-          <select id="dia-canal" style="width:100%;height:100%;border:none;background:rgba(255,255,255,0.05);color:var(--text);border-radius:6px;padding:0 8px;font-size:14px;outline:none">
-            <option value="mercado">Sobre Ruedas</option>
-            <option value="otro">Venta General (Fuera)</option>
-          </select>
-        </div>
-        <div class="dia-metodo-wrap" style="flex:0.5;min-width:130px;">
-          <select id="dia-metodopago" style="width:100%;height:100%;border:none;background:rgba(255,255,255,0.05);color:var(--text);border-radius:6px;padding:0 8px;font-size:14px;outline:none">
-            <option value="efectivo">Efectivo 💵</option>
-            <option value="transferencia">Transferencia 🏦</option>
-            <option value="tarjeta">Tarjeta 💳</option>
+        <div class="dia-canal-wrap" style="flex:0.7;min-width:200px;">
+          <select id="dia-canal" onchange="sincronizarModoDia()" style="width:100%;height:100%;border:none;background:rgba(255,255,255,0.05);color:var(--text);border-radius:6px;padding:0 8px;font-size:14px;outline:none">
+            <option value="mercado">Sobre ruedas</option>
+            <option value="online">Pedidos por WhatsApp</option>
+            <option value="otro">Otra venta</option>
           </select>
         </div>
         <div class="dia-lugar-wrap" style="flex:0.5;min-width:140px;">
           <input type="text" id="dia-lugar" placeholder="Lugar (ej. Mercado Centro)">
         </div>
         <div class="dia-notas-wrap">
-          <input type="text" id="dia-cliente-global" placeholder="Cliente de todo el pedido">
-        </div>
-        <div class="dia-notas-wrap">
           <input type="text" id="dia-nota-global" placeholder="Nota del día (opcional)">
         </div>
       </div>
+      <p id="dia-pista" style="margin:0 0 12px;font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;"></p>
 
       <div class="batch-table-wrap">
         <table class="batch-table" id="batch-table">
@@ -283,8 +323,6 @@
               <th class="td-cant">Cant.</th>
               <th class="td-precio">Precio *</th>
               <th class="td-total">Total</th>
-              <th class="td-cliente">Cliente</th>
-              <th class="td-metodo">Método</th>
               <th class="td-estado">Estado</th>
               <th class="td-notas">Nota</th>
               <th class="td-rm"></th>
@@ -296,11 +334,11 @@
 
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
         <div style="display:flex; gap:8px;">
-          <button class="btn-add-row" onclick="addBatchRow()"><i class="bi bi-plus-circle"></i> Agregar renglón</button>
-          <button class="btn-add-row" onclick="addBatchClientSeparator()" style="color: var(--gold); border-color: rgba(201,168,76,0.3); background: rgba(201,168,76,0.1);"><i class="bi bi-person-plus-fill"></i> Nuevo Ticket</button>
+          
+          <button class="btn-add-row" id="btn-nuevo-ticket" onclick="addBatchClientSeparator()" style="color: var(--gold); border-color: rgba(201,168,76,0.3); background: rgba(201,168,76,0.1);"><i class="bi bi-person-plus-fill"></i> Otro cliente</button>
         </div>
         <div class="batch-resumen">
-          <span id="batch-count">0 ventas</span> · Total: <strong id="batch-total">$0</strong>
+          <span id="batch-count">0 perfumes</span> · Total: <strong id="batch-total">$0</strong>
         </div>
       </div>
     </div>
@@ -434,6 +472,6 @@ window.buildPerfumePicker = function(wrap, perfumes, onChange) {
   </div>
 </div>
 
-<script type="module" src="../assets/js/ventas.js?v=2.1"></script>
+<script type="module" src="../assets/js/ventas.js?v=2.7"></script>
 </body>
 </html>

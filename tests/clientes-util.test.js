@@ -103,3 +103,51 @@ describe('Top de clientes — el caso reportado', () => {
     expect(agrupar(renombrada)).toEqual({ 'NAMED-jackverona': 6750, 'NAMED-anagarcia': 1000 });
   });
 });
+
+import { indiceClientes, buscarCliente } from '../assets/js/clientes-util.js';
+
+describe('indiceClientes', () => {
+  const D = (d) => new Date(2026, 8, d, 12).getTime();
+  const v = (cliente, dia, extra = {}) => ({ cliente, creadoEn: D(dia), precio: 100, cantidad: 1, perfumeNombre: 'P', ...extra });
+
+  test('agrupa por cliente y cuenta visitas por día, no por pieza', () => {
+    const r = indiceClientes([v('Juan Pérez', 1), v('Juan Pérez', 1), v('juan perez', 5, { perfumeNombre: 'Hawas' })]);
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ compras: 2, total: 300, ultimoPerfume: 'Hawas', nombre: 'juan perez' });
+  });
+
+  test('excluye clientes de paso y canceladas', () => {
+    const r = indiceClientes([
+      v('Cliente 3', 1, { clienteId: 'SR-2026-09-01-003' }),
+      v('Cliente 4', 1),
+      v('Ana', 2, { estado: 'cancelada' }),
+    ]);
+    expect(r).toEqual([]);
+  });
+
+  test('excluye ventas de puntos externos: el nombre es del lugar', () => {
+    expect(indiceClientes([v('Barbería de Verona', 1, { canal: 'consignacion' })])).toEqual([]);
+  });
+
+  test('ordena por compra más reciente', () => {
+    const r = indiceClientes([v('Viejo', 1), v('Nuevo', 20)]);
+    expect(r.map(c => c.nombre)).toEqual(['Nuevo', 'Viejo']);
+  });
+
+  test('acepta Timestamp de Firestore', () => {
+    const r = indiceClientes([{ cliente: 'Ana', creadoEn: { seconds: D(3) / 1000 }, precio: 50 }]);
+    expect(r[0].ultima).toBe(D(3));
+  });
+});
+
+describe('buscarCliente', () => {
+  const idx = [{ nombre: 'José Ángel', compras: 3 }];
+  test('ignora mayúsculas, acentos y espacios', () => {
+    expect(buscarCliente(idx, 'jose angel')).toBe(idx[0]);
+    expect(buscarCliente(idx, 'JOSÉ  ÁNGEL')).toBe(idx[0]);
+  });
+  test('sin coincidencia o vacío devuelve null', () => {
+    expect(buscarCliente(idx, 'otro')).toBeNull();
+    expect(buscarCliente(idx, '')).toBeNull();
+  });
+});

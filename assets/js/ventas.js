@@ -2,12 +2,25 @@ import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, writeBatch,
   from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
+import { indiceClientes } from './clientes-util.js';
+import { modoDeCanal, nombreTicketNuevo, resumenRenglones, validarRegistro } from './registro-dia.js';
 import '../../admin/auth-guard.js';
 import { matchSearch } from './search-engine.js';
 renderSidebar('ventas');
 if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display = 'flex';
 
 let ventas = [], perfumes = [];
+
+// Índice ligero de clientes para que la canasta reconozca a quien ya compró.
+// Se guarda en el teléfono: la canasta no tiene que leer todas las ventas.
+function guardarIndiceClientes(lista) {
+  try {
+    const idx = indiceClientes(lista).slice(0, 400)
+      .map(({ nombre, compras, ultima, ultimoPerfume }) => ({ nombre, compras, ultima, ultimoPerfume }));
+    localStorage.setItem('fitoClientes', JSON.stringify(idx));
+  } catch (e) { /* sin storage: la canasta funciona igual, solo sin sugerencias */ }
+}
+
 let currentPage = 1, pageSize = 10;
 let jorCurrentPage = 1, jorPageSize = 10, jorSearchQuery = '';
 window.costoReforzada = 15; // default
@@ -46,6 +59,7 @@ async function loadAll() {
   window.accesoriosData.sort((a,b) => a.nombre.localeCompare(b.nombre));
 
   ventas = []; vs.forEach(d => ventas.push({ id: d.id, ...d.data() }));
+  guardarIndiceClientes(ventas);
   ventas.sort((a,b) => {
     let tA = a.creadoEn ? (typeof a.creadoEn.toMillis === 'function' ? a.creadoEn.toMillis() : a.creadoEn) : 0;
     let tB = b.creadoEn ? (typeof b.creadoEn.toMillis === 'function' ? b.creadoEn.toMillis() : b.creadoEn) : 0;
@@ -78,14 +92,31 @@ async function loadAll() {
 
   renderTable();
 
+  // El dashboard enlaza aquí con ?openDia=1; antes nadie lo leía y el botón
+  // "Registro del Día" solo abría la página.
+  const qs = new URLSearchParams(window.location.search);
+  // Enlaces desde otras pantallas: ?canal=consignacion&q=Barbería...
+  if (qs.get('canal') || qs.get('q')) {
+    const fc = document.getElementById('f-canal');
+    const fs = document.getElementById('search');
+    if (fc && qs.get('canal')) fc.value = qs.get('canal');
+    if (fs && qs.get('q')) fs.value = qs.get('q');
+    renderTable();
+  }
+  if (qs.get('openDia') === '1' && !qs.has('openS')) {
+    if (window.openDia) window.openDia();
+  }
+  if (qs.get('nueva') === '1' && window.openDia) window.openDia();
+
   // ── Interceptar Creación de Sobre Ruedas desde Canasta ──────────────────────
   if (window.location.search.includes('openS=1')) {
     if(window.openDia) window.openDia();
     const cart = JSON.parse(localStorage.getItem('posCart')||'[]');
     if(cart.length > 0) {
       document.getElementById('batch-tbody').innerHTML = '';
-      batchRows = [];
+      batchRows = []; ticketCounter = 0;
       let lastCid = -1;
+      let tidActual = null;
       
       // Sort cart to group by client
       cart.sort((a,b) => (a.cartClientId || 1) - (b.cartClientId || 1));
@@ -111,16 +142,7 @@ async function loadAll() {
         const clientName = names[cid] || `Cliente ${cid}`;
         
         if (cid !== lastCid) {
-          const sepTr = document.createElement('tr');
-          sepTr.className = 'client-separator';
-          sepTr.innerHTML = `
-            <td colspan="8" style="background:var(--bg-card2); padding:0; border-bottom:1px solid var(--border);">
-              <button type="button" onclick="addBatchRowForClient('${clientName}', this)" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 12px; color:var(--gold); font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                <span><i class="bi bi-person-fill"></i> ${clientName}</span>
-                <span style="font-size:12px; color:var(--text-muted); font-weight:normal;"><i class="bi bi-plus-circle"></i> Agregar a este ticket</span>
-              </button>
-            </td>`;
-          document.getElementById('batch-tbody').appendChild(sepTr);
+          tidActual = crearTicket(clientName);
           lastCid = cid;
         }
         
@@ -139,7 +161,7 @@ async function loadAll() {
         const row = { 
           rid, perfumeId: item.id, talla: finalTalla, 
           cantidad: item.cant || 1, precio: item.precio, 
-          cliente: clientName, estado: 'pagada', notas: notaBase,
+          cliente: clientName, tid: tidActual, metodoPago: 'efectivo', estado: 'pagada', notas: notaBase,
           costoCompleto: item.costoCompleto,
           creadoEnOffset: item.cartClientId || 0,
           reforzada: isReforzada,
@@ -192,6 +214,7 @@ async function loadAll() {
         }, 50);
       });
       updateBatchResumen();
+      window.sincronizarModoDia();  // ya con los renglones: tickets y nombre prellenado
     }
     window.history.replaceState({}, document.title, window.location.pathname);
   }
@@ -538,8 +561,8 @@ window.renderTable = () => {
     if(window.renderJornadas) window.renderJornadas(fil);
     return;
   }
-  const canalLabel = { mercado: 'Sobre ruedas', online: 'Online/WA', otro: 'Otro' };
-  const canalClass = { mercado: 'mercado', online: 'online', otro: 'otro' };
+  const canalLabel = { mercado: 'Sobre ruedas', online: 'Online/WA', otro: 'Otro', consignacion: 'Punto externo' };
+  const canalClass = { mercado: 'mercado', online: 'online', otro: 'otro', consignacion: 'consignacion' };
   tb.innerHTML = pageItems.map(v => {
     let fechaDate = v.creadoEn;
     if (fechaDate && typeof fechaDate.toDate === 'function') fechaDate = fechaDate.toDate();
@@ -853,7 +876,7 @@ window.exportCSV = () => {
 
 // ── Modal individual ──────────────────────────────────────────────────────────
 window.openModal = () => {
-  ['v-id','v-cliente','v-notas','v-barcode'].forEach(id => {
+  ['v-id','v-cliente','v-notas'].forEach(id => {
     if(document.getElementById(id)) document.getElementById(id).value = '';
   });
   document.getElementById('v-precio').value = '';
@@ -873,10 +896,6 @@ window.openModal = () => {
   document.getElementById('btn-save').innerHTML = '<i class="bi bi-check2"></i> Guardar Venta';
   document.getElementById('modal').classList.add('open');
   document.body.classList.add('modal-open');
-  setTimeout(() => {
-    const bc = document.getElementById('v-barcode');
-    if (bc) bc.focus();
-  }, 100);
 };
 window.closeModal = () => {
   document.getElementById('modal').classList.remove('open');
@@ -1451,11 +1470,13 @@ function buildCombobox(container, onSelect) {
   function setActive(i, list) {
     const items = dd.querySelectorAll('li');
     items.forEach((el, idx) => {
-      el.style.background = idx === i ? 'var(--primary,#4f98a3)' : '';
+      // Resaltado con el dorado de la marca; antes caía a un azul de respaldo
+      // porque --primary no existía.
+      el.style.background = idx === i ? 'var(--accent-soft)' : '';
       const spans = el.querySelectorAll('span');
       if (spans.length) {
-        spans[0].style.color = idx === i ? '#fff' : 'var(--text,#e0e0e0)';
-        spans[1].style.color = idx === i ? 'rgba(255,255,255,.7)' : 'var(--text-muted,#888)';
+        spans[0].style.color = idx === i ? 'var(--accent)' : 'var(--text-primary)';
+        spans[1].style.color = 'var(--text-muted)';
       }
     });
     activeIdx = i;
@@ -1685,13 +1706,6 @@ function buildBatchRowEl(row) {
   tr.appendChild(tdTotal);
 
   // ── Celda Cliente ─────────────────────────────────────────────────────────
-  const tdCliente = document.createElement('td');
-  tdCliente.className = 'td-cliente';
-  const inCliente = document.createElement('input');
-  inCliente.type = 'text'; inCliente.value = cliente || ''; inCliente.placeholder = 'Opcional';
-  inCliente.oninput = () => batchSet(rid,'cliente',inCliente.value);
-  tdCliente.appendChild(inCliente);
-  tr.appendChild(tdCliente);
 
   // ── Celda Estado: custom dropdown portal ──────────────────────────────────
   const tdEstado = document.createElement('td');
@@ -1768,55 +1782,101 @@ let batchRows = [];
 let batchRowCounter = 0;
 
 function updateBatchResumen() {
-  const count = batchRows.length;
-  const total = batchRows.reduce((s,r) => s + (+r.precio||0)*(+r.cantidad||1), 0);
-  document.getElementById('batch-count').textContent = count + (count===1?' venta':' ventas');
+  // Antes contaba también los renglones vacíos ("5 ventas" con 4 perfumes).
+  const { ventas: count, clientes, total } = resumenRenglones(batchRows);
+  document.getElementById('batch-count').textContent =
+    `${clientes} ${clientes === 1 ? 'cliente' : 'clientes'} · ${count} ${count === 1 ? 'perfume' : 'perfumes'}`;
   document.getElementById('batch-total').textContent = '$' + total.toLocaleString('es-MX');
 }
 
-window.addBatchRow = () => {
+// ── Tickets: cada cliente es un ticket ──────────────────────────────────────
+let ticketCounter = 0;
+const escTicket = t => String(t ?? '').replace(/[&<>"']/g, c => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const modoActual = () => modoDeCanal(document.getElementById('dia-canal')?.value || 'mercado');
+const placeholderTicket = () => modoActual() === 'ruedas' ? 'Cliente (opcional)' : 'Nombre del cliente *';
+
+/** Agrega el encabezado de un cliente al final de la tabla y devuelve su id. */
+function crearTicket(nombre = '', { metodo = 'efectivo' } = {}) {
+  const tid = 't' + (++ticketCounter);
+  const tr = document.createElement('tr');
+  tr.className = 'client-separator';
+  tr.dataset.tid = tid;
+  const op = (v, t) => `<option value="${v}"${v === metodo ? ' selected' : ''}>${t}</option>`;
+  tr.innerHTML = `
+    <td colspan="8">
+      <div class="ticket-head">
+        <i class="bi bi-person-fill"></i>
+        <input class="ticket-nombre" type="text" value="${escTicket(nombre)}" placeholder="${placeholderTicket()}"
+               oninput="renombrarTicket('${tid}', this.value)">
+        <select class="ticket-metodo" onchange="metodoTicket('${tid}', this.value)" title="Cómo pagó">
+          ${op('efectivo', 'Efectivo')}${op('transferencia', 'Transferencia')}${op('tarjeta', 'Tarjeta')}
+        </select>
+        <button type="button" class="ticket-btn" onclick="agregarLineaATicket('${tid}')"><i class="bi bi-plus-circle"></i> Perfume</button>
+        <button type="button" class="ticket-btn ticket-quitar" onclick="quitarTicket('${tid}')" title="Quitar este cliente"><i class="bi bi-x-lg"></i></button>
+      </div>
+    </td>`;
+  document.getElementById('batch-tbody').appendChild(tr);
+  return tid;
+}
+
+const sepDe = tid => document.querySelector(`#batch-tbody tr.client-separator[data-tid="${tid}"]`);
+
+/** Agrega un perfume al final de un cliente. */
+window.agregarLineaATicket = (tid, { enfocar = true } = {}) => {
+  const sep = sepDe(tid);
+  if (!sep) return;
   const rid = ++batchRowCounter;
-  let lastClient = '';
-  if (batchRows.length > 0) {
-    lastClient = batchRows[batchRows.length - 1].cliente || '';
-  }
-  const row = { rid, perfumeId:'', talla:'', cantidad:1, precio:'', cliente:lastClient, estado:'pagada', notas:'' };
+  const row = {
+    rid, tid, perfumeId: '', talla: '', cantidad: 1, precio: '',
+    cliente: sep.querySelector('.ticket-nombre')?.value.trim() || '',
+    metodoPago: sep.querySelector('.ticket-metodo')?.value || 'efectivo',
+    estado: 'pagada', notas: ''
+  };
   batchRows.push(row);
-  const tbody = document.getElementById('batch-tbody');
-  tbody.appendChild(buildBatchRowEl(row));
+  let despues = sep, sig = sep.nextElementSibling;
+  while (sig && !sig.classList.contains('client-separator')) { despues = sig; sig = sig.nextElementSibling; }
+  const tr = buildBatchRowEl(row);
+  despues.after(tr);
   updateBatchResumen();
-  tbody.lastElementChild?.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  if (enfocar) tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 };
 
-window.addBatchClientSeparator = () => {
-  const tbody = document.getElementById('batch-tbody');
-  let maxNum = 0;
-  batchRows.forEach(r => {
-    const c = r.cliente;
-    if (c && c.toLowerCase().startsWith('cliente ')) {
-      const num = parseInt(c.replace(/[^0-9]/g, ''));
-      if (!isNaN(num) && num > maxNum) maxNum = num;
-    }
-  });
-  const newName = `Cliente ${maxNum + 1}`;
-  
-  const sepTr = document.createElement('tr');
-  sepTr.className = 'client-separator';
-  sepTr.innerHTML = `
-    <td colspan="8" style="background:var(--bg-card2); padding:0; border-bottom:1px solid var(--border);">
-      <button type="button" onclick="addBatchRowForClient('${newName}', this)" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 12px; color:var(--gold); font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-        <span><i class="bi bi-person-fill"></i> ${newName}</span>
-        <span style="font-size:12px; color:var(--text-muted); font-weight:normal;"><i class="bi bi-plus-circle"></i> Agregar a este ticket</span>
-      </button>
-    </td>`;
-  tbody.appendChild(sepTr);
-  
-  const rid = ++batchRowCounter;
-  const row = { rid, perfumeId:'', talla:'', cantidad:1, precio:'', cliente:newName, estado:'pagada', notas:'' };
-  batchRows.push(row);
-  tbody.appendChild(buildBatchRowEl(row));
+window.renombrarTicket = (tid, nombre) => {
+  batchRows.filter(r => r.tid === tid).forEach(r => { r.cliente = nombre.trim(); });
+  sepDe(tid)?.querySelector('.ticket-nombre')?.classList.remove('falta');
+};
+
+window.metodoTicket = (tid, metodo) => {
+  batchRows.filter(r => r.tid === tid).forEach(r => { r.metodoPago = metodo; });
+};
+
+window.quitarTicket = (tid) => {
+  const conPerfume = batchRows.some(r => r.tid === tid && r.perfumeId);
+  if (conPerfume && !confirm('¿Quitar este cliente y sus perfumes?')) return;
+  batchRows.filter(r => r.tid === tid).map(r => r.rid).forEach(rid => window.removeBatchRow(rid));
+  sepDe(tid)?.remove();
+  if (!document.querySelector('#batch-tbody tr.client-separator')) window.addBatchClientSeparator();
   updateBatchResumen();
-  tbody.lastElementChild?.scrollIntoView({ behavior:'smooth', block:'nearest' });
+};
+
+/** "Otro cliente": ticket nuevo con un perfume vacío listo para llenar. */
+window.addBatchClientSeparator = () => {
+  const nombres = [...document.querySelectorAll('#batch-tbody .ticket-nombre')].map(i => i.value);
+  const tid = crearTicket(nombreTicketNuevo(modoActual(), nombres));
+  window.agregarLineaATicket(tid);
+  if (modoActual() !== 'ruedas') sepDe(tid)?.querySelector('.ticket-nombre')?.focus();
+};
+
+/** Compatibilidad: agrega un perfume al último cliente (o crea uno). */
+window.addBatchRow = () => {
+  const seps = document.querySelectorAll('#batch-tbody tr.client-separator');
+  if (!seps.length) return window.addBatchClientSeparator();
+  window.agregarLineaATicket(seps[seps.length - 1].dataset.tid);
+};
+window.addBatchRowForClient = (_nombre, btn) => {
+  const tid = btn?.closest('tr')?.dataset.tid;
+  if (tid) window.agregarLineaATicket(tid); else window.addBatchRow();
 };
 
 window.removeBatchRow = (rid) => {
@@ -1844,6 +1904,7 @@ function cleanupSeparators() {
   for (let i = 0; i < trs.length; i++) {
     const tr = trs[i];
     if (tr.classList.contains('client-separator')) {
+      if (tr.dataset.tid) continue;  // los clientes se quitan con su botón, no solos
       let hasData = false;
       for (let j = i + 1; j < trs.length; j++) {
         if (trs[j].classList.contains('client-separator')) break;
@@ -1857,25 +1918,6 @@ function cleanupSeparators() {
     }
   }
 }
-
-window.addBatchRowForClient = (clientName, btn) => {
-  const rid = ++batchRowCounter;
-  const row = { rid, perfumeId:'', talla:'', cantidad:1, precio:'', cliente:clientName, estado:'pagada', notas:'' };
-  batchRows.push(row);
-  
-  const sepTr = btn.closest('tr');
-  let insertAfter = sepTr;
-  let sibling = sepTr.nextElementSibling;
-  while (sibling && !sibling.classList.contains('client-separator')) {
-    insertAfter = sibling;
-    sibling = sibling.nextElementSibling;
-  }
-  
-  const newTr = buildBatchRowEl(row);
-  insertAfter.after(newTr);
-  updateBatchResumen();
-  newTr.scrollIntoView({ behavior:'smooth', block:'nearest' });
-};
 
 window.batchSet = (rid, field, value) => {
   const row = batchRows.find(r => r.rid === rid);
@@ -1897,20 +1939,48 @@ window.batchRefreshTotal = (rid) => {
   updateBatchResumen();
 };
 
+/**
+ * El modal de registro cubre dos flujos distintos. Esto hace que se vea como
+ * el que corresponde en vez de mostrar todos los campos siempre.
+ *
+ *   mercado → sobre ruedas: varios clientes, salen de la canasta.
+ *   otro    → un pedido de una sola persona (entrega, encargo).
+ */
+window.sincronizarModoDia = () => {
+  const canal = document.getElementById('dia-canal')?.value || 'mercado';
+  const modo = modoDeCanal(canal);
+  try { localStorage.setItem('registroCanal', canal); } catch (e) { /* sin storage */ }
+
+  const inLugar = document.getElementById('dia-lugar');
+  if (inLugar) inLugar.placeholder = modo === 'ruedas' ? 'Lugar (ej. Mercado Centro)' : 'Lugar de entrega (opcional)';
+
+  document.querySelectorAll('#batch-tbody .ticket-nombre').forEach(i => { i.placeholder = placeholderTicket(); });
+
+  const pista = document.getElementById('dia-pista');
+  if (pista) {
+    pista.innerHTML = modo === 'ruedas'
+      ? '<i class="bi bi-people"></i> Cada cliente es un ticket; se numeran solos. Si alguno te dio su nombre, escríbelo para reconocerlo después.'
+      : '<i class="bi bi-person-check"></i> Un ticket por cliente con su nombre y cómo pagó. Usa "Otro cliente" para agregar más.';
+  }
+};
+
 window.openDia = () => {
   // limpiar portales previos
   document.querySelectorAll('#batch-tbody tr').forEach(tr => {
     tr.querySelectorAll('div').forEach(d => { d._destroyCombobox?.(); d._destroy?.(); });
   });
-  const hoy = new Date().toISOString().slice(0,10);
-  document.getElementById('dia-fecha').value = hoy;
+  document.getElementById('dia-fecha').value = new Date().toISOString().slice(0,10);
   document.getElementById('dia-nota-global').value = '';
-  if (document.getElementById('dia-cliente-global')) document.getElementById('dia-cliente-global').value = '';
-  document.getElementById('modal-dia-title').textContent = 'Registro del Día';
-  batchRows = []; batchRowCounter = 0; window.deletedBatchRows = [];
+  document.getElementById('dia-lugar').value = '';
+  let canal = 'mercado';
+  try { canal = localStorage.getItem('registroCanal') || 'mercado'; } catch (e) { /* sin storage */ }
+  document.getElementById('dia-canal').value = canal;
+  document.getElementById('modal-dia-title').textContent = 'Registrar ventas';
+  batchRows = []; batchRowCounter = 0; ticketCounter = 0; window.deletedBatchRows = [];
   document.getElementById('batch-tbody').innerHTML = '';
+  window.sincronizarModoDia();
+  window.addBatchClientSeparator();
   updateBatchResumen();
-  addBatchRow(); addBatchRow(); addBatchRow();
   document.getElementById('modal-dia').classList.add('open');
   document.body.classList.add('modal-open');
 };
@@ -1927,18 +1997,23 @@ window.closeDia = () => {
 window.saveDia = async () => {
   const fechaStr   = document.getElementById('dia-fecha').value;
   const lugarStr   = document.getElementById('dia-lugar').value.trim();
-  const globalCliente = document.getElementById('dia-cliente-global').value.trim();
+  const modo = modoActual();
   const notaGlobal = document.getElementById('dia-nota-global').value.trim();
-  if (!fechaStr) { toast('Pon la fecha del evento', 'error'); return; }
+  if (!fechaStr) { toast('Pon la fecha', 'error'); return; }
+  const falta = validarRegistro(batchRows, modo);
+  if (falta.mensaje) {
+    toast(falta.mensaje, 'error');
+    if (falta.tid) {
+      const inp = sepDe(falta.tid)?.querySelector('.ticket-nombre');
+      inp?.classList.add('falta');
+      inp?.focus();
+    }
+    return;
+  }
   const validas = batchRows.filter(r => r.perfumeId && r.talla && +r.precio > 0);
-  if (!validas.length) { toast('Agrega al menos una venta con perfume, talla y precio', 'error'); return; }
   
   if (window.blacklistCache) {
     const checkName = (name) => name && window.blacklistCache.map(n => n.toLowerCase()).includes(name.trim().toLowerCase());
-    if (checkName(globalCliente)) {
-      Swal.fire({ icon: 'error', title: 'Cliente Bloqueado 🚫', text: `El cliente "${globalCliente}" está en la Lista Negra.` });
-      return;
-    }
     const blockedRow = validas.find(r => checkName(r.cliente));
     if (blockedRow) {
       Swal.fire({ icon: 'error', title: 'Cliente Bloqueado 🚫', text: `El cliente "${blockedRow.cliente}" en una de las ventas está en la Lista Negra.` });
@@ -1952,7 +2027,7 @@ window.saveDia = async () => {
   try {
     const batch = writeBatch(db);
     const canalVal = document.getElementById('dia-canal').value;
-    const metodoVal = document.getElementById('dia-metodopago')?.value || 'efectivo';
+    const metodoVal = 'efectivo';  // respaldo: cada cliente trae su propio método
     validas.forEach(r => {
       let p = perfumes.find(x => x.id === r.perfumeId);
       let isPaquete = false;
@@ -1992,7 +2067,8 @@ window.saveDia = async () => {
         finalNotas = finalNotas ? (finalNotas + ' | ' + notaGlobal) : notaGlobal;
       }
       
-      let finalCliente = (r.cliente || globalCliente).trim();
+      // El cliente y el método de pago vienen del ticket de cada línea.
+      let finalCliente = (r.cliente || '').trim();
       let clienteId = '';
       if (finalCliente) {
         if (/^cliente\s*\d*$/i.test(finalCliente) || finalCliente.toLowerCase() === 'cliente (sin nombre)') {
@@ -2016,7 +2092,7 @@ window.saveDia = async () => {
         estado: r.estado,
         notas: finalNotas,
         canal: canalVal,
-        metodoPago: metodoVal,
+        metodoPago: r.metodoPago || metodoVal,
         lugar: lugarStr,
         creadoEn: r.creadoEn || (fechaTs + (r.creadoEnOffset || 0)),
         loteId: r.loteId || window.getSmartLoteId(p, r.creadoEn || (fechaTs + (r.creadoEnOffset || 0))),
@@ -2084,6 +2160,7 @@ window.saveDia = async () => {
     document.getElementById('modal-dia').classList.remove('open');
     document.body.classList.remove('modal-open');
     localStorage.removeItem('posCart');
+    if (window.resetPosCliente) window.resetPosCliente();
     if(window.renderPosCart) window.renderPosCart();
     loadAll();
   } catch(e) {
@@ -2263,7 +2340,7 @@ window.editarGrupoDia = (fechaStr) => {
   
   document.getElementById('modal-dia-title').textContent = `Editando Día: ${targetDate.toLocaleDateString('es-MX')}`;
   
-  batchRows = []; batchRowCounter = 0; window.deletedBatchRows = [];
+  batchRows = []; batchRowCounter = 0; ticketCounter = 0; window.deletedBatchRows = [];
   document.getElementById('batch-tbody').innerHTML = '';
   
   document.getElementById('dia-fecha').value = fechaStr;
@@ -2271,15 +2348,13 @@ window.editarGrupoDia = (fechaStr) => {
   if (vdia.length > 0) {
     const first = vdia[0];
     document.getElementById('dia-canal').value = first.canal || 'mercado';
-    document.getElementById('dia-metodopago').value = first.metodoPago || 'efectivo';
     document.getElementById('dia-lugar').value = first.lugar || '';
-    // if client is the same across all?
-    const allSameClient = vdia.every(v => v.cliente === first.cliente);
-    if (allSameClient) document.getElementById('dia-cliente-global').value = first.cliente || '';
+  window.sincronizarModoDia();
   }
   
   vdia.sort((a,b) => (a.cliente || '').localeCompare(b.cliente || ''));
   let lastClient = null;
+  let tidActual = null;
   
   vdia.forEach(v => {
     const rid = ++batchRowCounter;
@@ -2296,16 +2371,7 @@ window.editarGrupoDia = (fechaStr) => {
     
     const cName = v.cliente || 'Cliente (Sin Nombre)';
     if (cName !== lastClient) {
-       const sepTr = document.createElement('tr');
-       sepTr.className = 'client-separator';
-       sepTr.innerHTML = `
-         <td colspan="8" style="background:var(--bg-card2); padding:0; border-bottom:1px solid var(--border);">
-           <button type="button" onclick="addBatchRowForClient('${cName}', this)" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 12px; color:var(--gold); font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-             <span><i class="bi bi-person-fill"></i> ${cName}</span>
-             <span style="font-size:12px; color:var(--text-muted); font-weight:normal;"><i class="bi bi-plus-circle"></i> Agregar a este ticket</span>
-           </button>
-         </td>`;
-       document.getElementById('batch-tbody').appendChild(sepTr);
+       tidActual = crearTicket(v.cliente || '', { metodo: v.metodoPago || 'efectivo' });
        lastClient = cName;
     }
     
@@ -2325,7 +2391,7 @@ window.editarGrupoDia = (fechaStr) => {
     const row = { 
       rid, docId: v.id, perfumeId: pId, talla: v.talla, 
       cantidad: v.cantidad || 1, precio: v.precio, 
-      cliente: v.cliente || '', estado: v.estado || 'pagada', 
+      cliente: v.cliente || '', tid: tidActual, metodoPago: v.metodoPago || 'efectivo', estado: v.estado || 'pagada', 
       notas: v.notas || '', creadoEn: v.creadoEn,
       loteId: v.loteId, reforzada: isReforzada,
       basePrecio: basePrecio
@@ -2375,34 +2441,3 @@ window.editarGrupoDia = (fechaStr) => {
   document.body.classList.add('modal-open');
   updateBatchResumen();
 };
-
-// ── Evento Barcode Scanner ───────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  const barcodeInput = document.getElementById('v-barcode');
-  if (barcodeInput) {
-    barcodeInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const code = barcodeInput.value.trim();
-        if (!code) return;
-        
-        // Find perfume by barcode
-        const p = perfumes.find(x => x.barcode === code);
-        if (p) {
-          // Select it in the custom autocomplete
-          const pWrap = document.getElementById('v-perfume-wrap');
-          if (pWrap && pWrap._perfSelect) {
-            pWrap._perfSelect(p.id, p.nombre, p.marca);
-            barcodeInput.value = '';
-            toast(`✔️ ${p.nombre} seleccionado por código`);
-            // focus the save button or price
-            document.getElementById('v-talla').focus();
-          }
-        } else {
-          toast('Código no encontrado: ' + code, 'warning');
-          barcodeInput.select();
-        }
-      }
-    });
-  }
-});

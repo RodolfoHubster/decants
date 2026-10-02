@@ -2,6 +2,9 @@ import { auth, signOut } from '../assets/js/firebase-config.js';
 // Punto de entrada común del panel: todas las vistas cargan este módulo,
 // así el agrupado de filtros en móvil llega a todas sin tocar cada página.
 import { initFiltrosAdmin } from '../assets/js/admin-filtros.js';
+import { siguienteClienteId, nombreCliente } from '../assets/js/pos-cliente.js';
+import { imgCart, imgOPlaceholder } from '../assets/js/cloudinary.js';
+import { buscarCliente } from '../assets/js/clientes-util.js';
 
 export function renderSidebar(active) {
   const wrap = document.getElementById('sidebar-wrap');
@@ -40,63 +43,46 @@ export function renderSidebar(active) {
       <span>Fitoscents</span>
     </div>
     <ul class="sidebar-nav">
-      <li><a href="./dashboard.html" class="${active==='dashboard'?'active':''}"><i class="bi bi-grid"></i> Dashboard</a></li>
-      
-      <li class="sidebar-divider"></li>
-
-      <!-- ── CATÁLOGO ── -->
+      <!-- Ordenado por cómo se trabaja en el día, no por tipo de dato:
+           arriba lo que se usa diario, abajo lo que se configura una vez. -->
+      <li class="sb-label">Día a día</li>
+      <li><a href="./dashboard.html" class="${active==='dashboard'?'active':''}"><i class="bi bi-house-door"></i> Hoy</a></li>
       <li><a href="./perfumes.html" class="${active==='perfumes'?'active':''}"><i class="bi bi-droplet"></i> Perfumes</a></li>
-      <li><a href="./paquetes.html" class="${active==='paquetes'?'active':''}"><i class="bi bi-box2-heart"></i> Paquetes</a></li>
-      <li><a href="./accesorios.html" class="${active==='accesorios'?'active':''}"><i class="bi bi-bag-plus"></i> Accesorios</a></li>
+      <li><a href="./ventas.html"     class="${active==='ventas'?'active':''}"><i class="bi bi-receipt"></i> Ventas</a></li>
+      <li><a href="./encargos.html"   class="${active==='encargos'?'active':''}"><i class="bi bi-kanban"></i> Encargos</a></li>
+      <li><a href="./consignaciones.html" class="${active==='consignaciones'?'active':''}"><i class="bi bi-shop-window"></i> Puntos externos</a></li>
 
+      <li class="sb-label">Negocio</li>
+      <li><a href="./estadisticas.html" class="${active==='estadisticas'?'active':''}"><i class="bi bi-bar-chart-line"></i> Estadísticas</a></li>
+      <li><a href="./costos.html"       class="${active==='costos'?'active':''}"><i class="bi bi-wallet2"></i> Costos</a></li>
+      <li><a href="./clientes.html"     class="${active==='clientes'?'active':''}"><i class="bi bi-people"></i> Clientes</a></li>
+      <li><a href="./pedidos.html"      class="${active==='pedidos'?'active':''}"><i class="bi bi-globe2"></i> Pedidos web</a></li>
+
+      <li class="sb-label">Catálogo</li>
+      <li><a href="./paquetes.html" class="${active==='paquetes'?'active':''}"><i class="bi bi-box2-heart"></i> Paquetes</a></li>
+      <li><a href="./perfumes-completos.html" class="${active==='perfumes-completos'?'active':''}"><i class="bi bi-bag-heart"></i> Botellas completas</a></li>
+      <li><a href="./accesorios.html" class="${active==='accesorios'?'active':''}"><i class="bi bi-bag-plus"></i> Accesorios</a></li>
       <li>
         <div class="sb-group-toggle ${isOpen('catalogo','marcas','categorias','notas')}" data-group="catalogo" onclick="toggleSbGroup(this)">
-          <i class="bi bi-collection"></i> Taxonomías
+          <i class="bi bi-collection"></i> Marcas y notas
           <i class="bi bi-chevron-down chevron"></i>
         </div>
         <ul class="sb-group-children ${isOpen('catalogo','marcas','categorias','notas')}">
           <li><a href="./marcas.html"     class="${active==='marcas'?'active':''}"><i class="bi bi-bookmark"></i> Marcas</a></li>
           <li><a href="./categorias.html" class="${active==='categorias'?'active':''}"><i class="bi bi-tag"></i> Categorías</a></li>
-          <li><a href="./notas.html"      class="${active==='notas'?'active':''}"><i class="bi bi-flower1"></i> Notas Olfativas</a></li>
+          <li><a href="./notas.html"      class="${active==='notas'?'active':''}"><i class="bi bi-flower1"></i> Notas olfativas</a></li>
         </ul>
       </li>
 
       <li class="sidebar-divider"></li>
-
-      <!-- ── VENTAS ── -->
-      <li><a href="./ventas.html"     class="${active==='ventas'?'active':''}"><i class="bi bi-shop"></i> Punto de Venta</a></li>
-      <li><a href="./clientes.html"   class="${active==='clientes'?'active':''}"><i class="bi bi-people"></i> Clientes</a></li>
-      <li><a href="./pedidos.html"    class="${active==='pedidos'?'active':''}"><i class="bi bi-bag"></i> Pedidos Web</a></li>
-      <li><a href="./consignaciones.html" class="${active==='consignaciones'?'active':''}"><i class="bi bi-geo-alt"></i> Puntos Externos</a></li>
-
-      <li>
-        <div class="sb-group-toggle ${isOpen('botellas','perfumes-completos','encargos')}" data-group="botellas" onclick="toggleSbGroup(this)">
-          <i class="bi bi-star-fill"></i> Botellas Completas
-          <i class="bi bi-chevron-down chevron"></i>
-        </div>
-        <ul class="sb-group-children ${isOpen('botellas','perfumes-completos','encargos')}">
-          <li><a href="./perfumes-completos.html" class="${active==='perfumes-completos'?'active':''}"><i class="bi bi-bag-heart"></i> Catálogo Completos</a></li>
-          <li><a href="./encargos.html"           class="${active==='encargos'?'active':''}"><i class="bi bi-clock-history"></i> Encargos</a></li>
-        </ul>
-      </li>
-
-      <li class="sidebar-divider"></li>
-
-      <!-- ── NEGOCIO ── -->
-      <li><a href="./estadisticas.html" class="${active==='estadisticas'?'active':''}"><i class="bi bi-bar-chart-line"></i> Estadísticas</a></li>
-      <li><a href="./costos.html"       class="${active==='costos'?'active':''}"><i class="bi bi-calculator"></i> Costos</a></li>
-
-      <li class="sidebar-divider"></li>
-
-      <!-- ── AJUSTES ── -->
       <li>
         <div class="sb-group-toggle ${isOpen('ajustes_grp','ajustes','novedades','anuncios')}" data-group="ajustes_grp" onclick="toggleSbGroup(this)">
-          <i class="bi bi-gear-fill"></i> Ajustes
+          <i class="bi bi-gear"></i> Ajustes
           <i class="bi bi-chevron-down chevron"></i>
         </div>
         <ul class="sb-group-children ${isOpen('ajustes_grp','ajustes','novedades','anuncios')}">
-          <li><a href="./ajustes.html"   class="${active==='ajustes'?'active':''}"><i class="bi bi-cpu"></i> Inteligencia Artificial</a></li>
-          <li><a href="./novedades.html" class="${active==='novedades'?'active':''}"><i class="bi bi-stars"></i> Novedades</a></li>
+          <li><a href="./ajustes.html"   class="${active==='ajustes'?'active':''}"><i class="bi bi-cpu"></i> Inteligencia artificial</a></li>
+          <li><a href="./novedades.html" class="${active==='novedades'?'active':''}"><i class="bi bi-stars"></i> Aviso de novedades</a></li>
           <li><a href="./anuncios.html"  class="${active==='anuncios'?'active':''}"><i class="bi bi-megaphone"></i> Anuncios</a></li>
         </ul>
       </li>
@@ -248,10 +234,14 @@ function injectCanastaUI() {
 
   const topbar = document.querySelector('.topbar');
   if (topbar) {
-    let actions = topbar.querySelector('div:last-child');
-    if (!actions || actions === topbar.firstElementChild) {
+    // Las acciones deben vivir en UN contenedor. Si la página dejó un botón suelto
+    // (p. ej. "Ver tienda"), la canasta quedaba como tercer hijo y la barra se
+    // partía en dos renglones en el teléfono.
+    let actions = topbar.lastElementChild;
+    if (!actions || actions === topbar.firstElementChild || actions.tagName !== 'DIV') {
       actions = document.createElement('div');
-      actions.style.display = 'flex'; actions.style.gap = '8px';
+      actions.className = 'topbar-actions';
+      [...topbar.children].slice(1).forEach(el => actions.appendChild(el));
       topbar.appendChild(actions);
     }
     const btn = document.createElement('button');
@@ -261,6 +251,13 @@ function injectCanastaUI() {
     actions.prepend(btn);
   }
   
+  // Cerrar un ticket tiene que borrar también los nombres escritos a mano.
+  // Si no, "Cliente 1" sigue llamándose "Juan" al día siguiente.
+  window.resetPosCliente = () => {
+    localStorage.setItem('posClientId', '1');
+    localStorage.removeItem('posClientNames');
+  };
+
   window.getPosCart = () => JSON.parse(localStorage.getItem('posCart')||'[]');
   window.savePosCart = (cart) => { localStorage.setItem('posCart', JSON.stringify(cart)); window.renderPosCart(); };
   
@@ -275,10 +272,8 @@ function injectCanastaUI() {
       return;
     }
     
-    // Jump to max existing client + 1 (not current + 1)
-    const maxCid = cart.reduce((max, item) => Math.max(max, item.cartClientId || 1), 0);
-    const newId = Math.max(maxCid, currentId) + 1;
-    localStorage.setItem('posClientId', newId);
+    const newId = siguienteClienteId(cart, currentId);
+    localStorage.setItem('posClientId', String(newId));
     if(window.toast) window.toast(`Cliente ${newId} listo`, 'success');
     else if(window.showToast) window.showToast(`Cliente ${newId} listo`, 'success');
     window.renderPosCart();
@@ -289,31 +284,80 @@ function injectCanastaUI() {
     window.renderPosCart();
   };
   
-  window.renamePosClient = (cid) => {
+  const leerIndiceClientes = () => {
+    try { return JSON.parse(localStorage.getItem('fitoClientes') || '[]'); } catch (e) { return []; }
+  };
+  const escCli = t => String(t ?? '').replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const textoRecurrente = (c) => {
+    if (!c) return '';
+    const cuando = c.ultima ? new Date(c.ultima).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '';
+    return `⭐ Ya te compró ${c.compras} ${c.compras === 1 ? 'vez' : 'veces'}` +
+      (c.ultimoPerfume ? ` · la última: ${escCli(c.ultimoPerfume)}` : '') + (cuando ? ` (${cuando})` : '');
+  };
+
+  // Al ponerle nombre a alguien: sugiere cómo lo escribiste antes (así no queda
+  // "Juan" una vez y "juan perez" otra) y avisa si ya es cliente recurrente.
+  window.renamePosClient = async (cid) => {
     const names = JSON.parse(localStorage.getItem('posClientNames')||'{}');
     const currentName = names[cid] || `Cliente ${cid}`;
-    const newName = prompt('Nombre del cliente:', currentName);
-    if (newName !== null && newName.trim() !== '') {
-      names[cid] = newName.trim();
+    const guardar = (valor) => {
+      if (valor) names[cid] = valor; else delete names[cid];
       localStorage.setItem('posClientNames', JSON.stringify(names));
       window.renderPosCart();
+    };
+
+    if (!window.Swal) {
+      const n = prompt('Nombre del cliente:', currentName);
+      if (n !== null) guardar(n.trim());
+      return;
     }
+
+    const indice = leerIndiceClientes();
+    const inicial = currentName.toLowerCase().startsWith('cliente ') ? '' : currentName;
+    const res = await Swal.fire({
+      title: 'Nombre del cliente',
+      html: `<input id="swal-cli" class="swal2-input" list="swal-cli-lista" value="${escCli(inicial)}"
+                    placeholder="Ej. Juan Pérez" autocomplete="off" style="margin:8px auto 0;width:85%">
+             <datalist id="swal-cli-lista">${indice.slice(0, 300).map(c => `<option value="${escCli(c.nombre)}">`).join('')}</datalist>
+             <div id="swal-cli-info" style="font-size:13px;margin-top:10px;min-height:20px;color:#c9a84c"></div>`,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#c9a84c',
+      didOpen: () => {
+        const i = document.getElementById('swal-cli');
+        const info = document.getElementById('swal-cli-info');
+        const upd = () => {
+          const c = buscarCliente(indice, i.value);
+          info.innerHTML = c ? textoRecurrente(c) : (i.value.trim() ? '<span style="color:#888">Cliente nuevo</span>' : '');
+        };
+        i.addEventListener('input', upd);
+        upd();
+        i.focus();
+      },
+      preConfirm: () => document.getElementById('swal-cli').value.trim()
+    });
+    if (res.isConfirmed) guardar(res.value);
   };
 
   window.addToPosCart = (item) => {
     const cart = window.getPosCart();
-    if (cart.length === 0) localStorage.setItem('posClientId', '1');
-    item.cartClientId = parseInt(localStorage.getItem('posClientId') || '1');
+    if (cart.length === 0) window.resetPosCliente();
+    const cid = parseInt(localStorage.getItem('posClientId') || '1');
+    item.cartClientId = cid;
     cart.push(item);
     window.savePosCart(cart);
-    if(window.toast) window.toast('Agregado a la canasta', 'success');
-    else if(window.showToast) window.showToast('Agregado a la canasta', 'success');
+    const nombres = JSON.parse(localStorage.getItem('posClientNames')||'{}');
+    const msg = `Agregado a ${nombreCliente(nombres, cid)}`;
+    if(window.toast) window.toast(msg, 'success');
+    else if(window.showToast) window.showToast(msg, 'success');
   };
 
   window.removeFromPosCart = (idx) => {
     const cart = window.getPosCart();
     cart.splice(idx,1);
-    if (cart.length === 0) localStorage.setItem('posClientId', '1');
+    if (cart.length === 0) window.resetPosCliente();
     window.savePosCart(cart);
   };
   
@@ -336,8 +380,7 @@ function injectCanastaUI() {
       confirmButtonColor: '#ef4444'
     });
     if(res.isConfirmed) {
-      localStorage.setItem('posClientId', '1');
-      localStorage.removeItem('posClientNames');
+      window.resetPosCliente();
       window.savePosCart([]);
     }
   };
@@ -373,7 +416,7 @@ function injectCanastaUI() {
       
       groups[cid].itemsHtml += `
         <div style="display:flex;gap:12px;padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;align-items:center;margin-bottom:8px;">
-          <img src="${item.imagen || '../assets/img/placeholder.png'}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;background:var(--bg-card2);flex-shrink:0;">
+          <img src="${imgOPlaceholder(item.imagen, imgCart)}" loading="lazy" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;background:var(--bg-card2);flex-shrink:0;">
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;color:var(--text-primary);line-height:1.2">${item.nombre}</div>
             <div style="font-size:12px;color:var(--text-muted);">${(item.ml === 'Resto' || item.ml === 'Completo') ? item.ml : item.ml + 'ml'} — <span style="font-weight:700;color:var(--text-primary);">$${item.precio}</span></div>
@@ -402,21 +445,27 @@ function injectCanastaUI() {
       const g = groups[cid];
       const isActive = parseInt(cid) === currentCid;
       const clientName = names[cid] || `Cliente ${cid}`;
+      const recurrente = names[cid] ? buscarCliente(leerIndiceClientes(), names[cid]) : null;
       
       container.innerHTML += `
         <div style="margin-bottom:16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:6px; border-radius:8px; cursor:${isActive ? 'default' : 'pointer'}; background:${isActive ? 'rgba(201,168,76,0.1)' : 'transparent'}; transition:all 0.2s;" ${!isActive ? `onclick="setActivePosClient(${cid})"` : ''} title="${!isActive ? 'Click para agregar a este cliente' : ''}">
-            <div style="font-size:14px;font-weight:700;color:var(--text-primary); cursor:pointer;" onclick="event.stopPropagation(); window.renamePosClient(${cid})" title="Click para renombrar">👤 ${clientName} <i class="bi bi-pencil-fill" style="font-size:10px;color:var(--text-muted);margin-left:4px;"></i> ${isActive ? '<span class="badge badge-gold" style="font-size:10px;margin-left:6px;border-radius:4px;padding:2px 6px;">Actual</span>' : ''} <span style="font-size:12px;color:var(--text-muted);font-weight:normal;margin-left:4px;">(${g.count} art.)</span></div>
+            <div style="font-size:14px;font-weight:700;color:var(--text-primary); cursor:pointer;" onclick="event.stopPropagation(); window.renamePosClient(${cid})" title="Click para renombrar">👤 ${clientName} <i class="bi bi-pencil-fill" style="font-size:10px;color:var(--text-muted);margin-left:4px;"></i>${recurrente ? ` <span title="${textoRecurrente(recurrente)}" style="font-size:11px;color:#f5c542;font-weight:600;margin-left:4px">⭐ ${recurrente.compras}</span>` : ''} ${isActive ? '<span class="badge badge-gold" style="font-size:10px;margin-left:6px;border-radius:4px;padding:2px 6px;">Actual</span>' : ''} <span style="font-size:12px;color:var(--text-muted);font-weight:normal;margin-left:4px;">(${g.count} art.)</span></div>
             <div style="font-size:14px;font-weight:700;color:var(--gold);">$${g.total}</div>
           </div>
           ${g.itemsHtml}
+          ${isActive && g.count > 0 ? `
+            <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px;"
+                    onclick="nextPosClient()">
+              <i class="bi bi-check2-circle"></i> Listo &middot; pasar al siguiente cliente
+            </button>` : ''}
         </div>
       `;
     });
 
     container.innerHTML += `
-      <button class="btn btn-outline" style="width:100%;justify-content:center;border-style:dashed;color:var(--text-muted);border-color:var(--border);" onclick="nextPosClient()">
-        <i class="bi bi-person-plus"></i> Siguiente Cliente (Separador)
+      <button class="btn btn-outline btn-sm" style="width:100%;justify-content:center;border-style:dashed;color:var(--text-muted);border-color:var(--border);margin-top:4px;" onclick="nextPosClient()">
+        <i class="bi bi-person-plus"></i> Abrir otro cliente
       </button>
     `;
     

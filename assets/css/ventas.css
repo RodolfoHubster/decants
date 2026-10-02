@@ -54,6 +54,7 @@
 .badge-canal.mercado{ background:rgba(201,168,76,.14); color:var(--accent);  border:1px solid var(--accent-border); }
 .badge-canal.online { background:rgba(91,192,222,.12); color:var(--info);   border:1px solid rgba(91,192,222,.3);  }
 .badge-canal.otro   { background:rgba(255,255,255,.06);color:var(--text-muted);border:1px solid var(--border);      }
+.badge-canal.consignacion { background:rgba(167,139,250,.14); color:#a78bfa; border:1px solid rgba(167,139,250,.3); }
 
 /* ── Pagination bar ──────────────────────────────────────────────────────────── */
 .pagination-bar{
@@ -217,6 +218,7 @@
 .badge-canal.mercado { background:#fef3c7; color:#92400e; }
 .badge-canal.online  { background:#dbeafe; color:#1e40af; }
 .badge-canal.otro    { background:#f3f4f6; color:#374151; }
+.badge-canal.consignacion { background:#ede9fe; color:#5b21b6; }
 
 /* ── Searchable Perfume Dropdown ─────────────────────── */
 .perf-wrap { position:relative; }
