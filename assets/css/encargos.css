@@ -81,3 +81,11 @@
   padding: 2px 6px;
   font-size: 11px;
 }
+
+/* Móvil: los 5 contadores en una fila; antes ocupaban media pantalla antes del tablero */
+@media (max-width:640px){
+  .stats-row{display:grid !important;grid-template-columns:repeat(5,1fr);gap:6px}
+  .stat-mini{min-width:0;padding:8px 4px;align-items:center;text-align:center}
+  .stat-mini .val{font-size:18px}
+  .stat-mini .lbl{font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+}

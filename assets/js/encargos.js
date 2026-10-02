@@ -10,7 +10,8 @@ const COL = 'ordenes_completos';
 let items = [];
 let currentPage = 1;
 let pageSize = 10;
-let currentView = localStorage.getItem('encargos_view') || 'table';
+// El tablero es la vista que se usaba con gusto: es la de entrada si no hay otra elegida.
+let currentView = localStorage.getItem('encargos_view') || 'kanban';
 window.blacklistCache = [];
 
 // ── Cargar ────────────────────────────────────────────────
@@ -26,6 +27,8 @@ async function load() {
   items.sort((a, b) => (b.creadoEn?.seconds || 0) - (a.creadoEn?.seconds || 0));
   updateStats();
   setView(currentView);
+  // Desde el dashboard: "Nuevo encargo" abre el formulario directo.
+  if (new URLSearchParams(location.search).get('nuevo') === '1') window.openModal();
 }
 
 function updateStats() {

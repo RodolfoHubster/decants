@@ -10,6 +10,24 @@
   <link rel="stylesheet" href="../assets/css/variables.css">
   <link rel="stylesheet" href="../assets/css/global.css">
   <link rel="stylesheet" href="../assets/css/pedidos.css">
+  <style>
+    @media (max-width:640px){
+      table[data-tarjetas="pedidos"] thead{display:none}
+      table[data-tarjetas="pedidos"], table[data-tarjetas="pedidos"] tbody{display:block}
+      table[data-tarjetas="pedidos"] tbody tr{display:grid;grid-template-columns:1fr auto;gap:4px 10px;
+        grid-template-areas:"cli tot" "ite est" "fol acc";padding:10px 12px;margin:0 10px 8px;
+        border:1px solid var(--border);border-radius:10px;background:var(--bg-card2)}
+      table[data-tarjetas="pedidos"] td{border:none!important;padding:0!important;font-size:12.5px}
+      table[data-tarjetas="pedidos"] td:nth-child(1){grid-area:fol;color:var(--text-muted);font-size:11.5px}
+      table[data-tarjetas="pedidos"] td:nth-child(2),table[data-tarjetas="pedidos"] td:nth-child(6){display:none}
+      table[data-tarjetas="pedidos"] td:nth-child(3){grid-area:cli}
+      table[data-tarjetas="pedidos"] td:nth-child(4){grid-area:ite;color:var(--text-muted)}
+      table[data-tarjetas="pedidos"] td:nth-child(5){grid-area:tot;text-align:right;font-weight:700}
+      table[data-tarjetas="pedidos"] td:nth-child(7){grid-area:est;text-align:right}
+      table[data-tarjetas="pedidos"] td:nth-child(8){grid-area:acc;text-align:right}
+      table[data-tarjetas="pedidos"] td[colspan]{grid-column:1/-1;grid-area:auto}
+    }
+  </style>
 </head>
 <body>
 <div class="app-shell">
@@ -46,7 +64,7 @@
       <div class="card">
         <div class="card-header"><h5>Listado de Pedidos</h5><span class="badge badge-muted" id="count-label">0 pedidos</span></div>
         <div class="table-wrap">
-          <table>
+          <table data-tarjetas="pedidos">
             <thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Items</th><th>Total</th><th>Guía</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody id="tbody"></tbody>
           </table>

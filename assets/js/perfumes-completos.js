@@ -4,6 +4,7 @@ import {
   collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { toast } from './toast.js';
+import { imgThumb } from './cloudinary.js';
 
 renderSidebar('perfumes-completos');
 
@@ -63,12 +64,12 @@ window.renderTable = function () {
       : `<button class="btn btn-sm btn-outline" style="color:var(--accent)" onclick="toggleActivo('${p.id}', true)" title="Desarchivar (Mostrar)"><i class="bi bi-eye"></i></button>`;
 
     return `<tr>
-      <td><img src="${p.imagen || ''}" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;background:#222" onerror="this.src=''"></td>
+      <td><img src="${p.imagen ? imgThumb(p.imagen) : ''}" loading="lazy" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;background:#222" onerror="this.src=''"></td>
       <td style="font-weight:500">${p.nombre || '—'}</td>
       <td>${p.marca || '—'}</td>
       <td><span class="concentracion-badge">${p.concentracion || '—'}</span></td>
       <td>${p.genero || '—'}</td>
-      <td><span class="stock-badge ${dispClass}">${dispLabel}</span></td>
+      <td><button class="stock-badge ${dispClass} disp-btn" onclick="cambiarDisponibilidad('${p.id}')" title="Toca para cambiar">${dispLabel}</button></td>
       <td style="font-size:12px">${precios}</td>
       <td>
         <div style="display:flex;gap:4px">
@@ -112,7 +113,6 @@ window.openModal = function (id = null) {
   document.getElementById('p-desc').value         = p?.descripcion || '';
   document.getElementById('p-logistica').value    = p?.logistica || '';
   document.getElementById('p-pago').value         = p?.pago || '';
-  document.getElementById('p-barcode').value      = p?.barcode || '';
   document.getElementById('p-img-url').value      = p?.imagen || '';
   document.getElementById('p-activo').checked     = p?.activo !== false;
 
@@ -301,8 +301,9 @@ window.save = async function () {
   const genero = document.getElementById('p-genero').value;
   const disp   = document.getElementById('p-disponibilidad').value;
 
-  if (!nombre || !marca || !conc || !genero || !disp) {
-    alert('Nombre, marca, concentración, género y disponibilidad son obligatorios.');
+  // Solo lo indispensable: lo demás frenaba dar de alta una botella.
+  if (!nombre || !marca) {
+    toast('Pon al menos el nombre y la marca', 'error');
     return;
   }
 
@@ -340,7 +341,6 @@ window.save = async function () {
       descripcion: document.getElementById('p-desc').value.trim(),
       logistica: document.getElementById('p-logistica').value.trim(),
       pago: document.getElementById('p-pago').value.trim(),
-      barcode: document.getElementById('p-barcode').value.trim(),
       imagen,
       precios,
       activo: document.getElementById('p-activo').checked,
@@ -391,6 +391,26 @@ window.setCatalogTab = function (tab) {
   renderTable();
 };
 
+// Un toque: En stock → Agotado → Bajo pedido → En stock. Sin abrir el formulario.
+const SIGUIENTE_DISP = { 'en-stock': 'agotado', 'agotado': 'bajo-pedido', 'bajo-pedido': 'en-stock' };
+const NOMBRE_DISP = { 'en-stock': 'En stock', 'agotado': 'Agotado', 'bajo-pedido': 'Bajo pedido' };
+window.cambiarDisponibilidad = async function (id) {
+  const p = items.find(x => x.id === id);
+  if (!p) return;
+  const antes = p.disponibilidad || 'en-stock';
+  const despues = SIGUIENTE_DISP[antes] || 'en-stock';
+  p.disponibilidad = despues;
+  renderTable();
+  try {
+    await updateDoc(doc(db, COL, id), { disponibilidad: despues, actualizadoEn: serverTimestamp() });
+    toast(`${p.nombre}: ${NOMBRE_DISP[despues]}`, 'success');
+  } catch (err) {
+    p.disponibilidad = antes;
+    renderTable();
+    toast('No se pudo cambiar: ' + err.message, 'error');
+  }
+};
+
 window.toggleActivo = async function (id, activo) {
   try {
     await updateDoc(doc(db, COL, id), { activo, actualizadoEn: serverTimestamp() });
@@ -402,247 +422,5 @@ window.toggleActivo = async function (id, activo) {
     alert('Error: ' + err.message);
   }
 };
-
-// ── Evento Autocompletado por Código de Barras ─────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  const barcodeInput = document.getElementById('p-barcode');
-  if (barcodeInput) {
-    barcodeInput.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const codeRaw = barcodeInput.value.trim();
-        const code = codeRaw.replace(/\D/g, '');
-        if (!code) return;
-        
-        toast('Buscando información del código de barras en BD pública...', 'info');
-        try {
-          let res = await fetch(`https://world.openbeautyfacts.org/api/v0/product/${code}.json`);
-          let data = null;
-          if (res.ok) {
-              try { data = await res.json(); } catch(e) {}
-          }
-          
-          let prodTitle = '';
-          let prodBrand = '';
-          let prodDesc = '';
-          let prodImg = '';
-          
-          if (data && data.status === 1 && data.product) {
-            const prod = data.product;
-            prodTitle = prod.product_name || prod.product_name_es || prod.product_name_en || prod.product_name_fr || '';
-            prodBrand = prod.brands || '';
-            prodDesc = prod.categories || '';
-            prodImg = prod.image_url || prod.image_front_url || '';
-          }
-          
-          if (prodTitle) {
-            if (!document.getElementById('p-nombre').value) document.getElementById('p-nombre').value = prodTitle;
-            
-            // Fuzzy match en el dropdown de Marca
-            if (prodBrand) {
-              const marcaSelect = document.getElementById('p-marca');
-              if (marcaSelect && !marcaSelect.value) {
-                const brandClean = prodBrand.split(',')[0].trim().toLowerCase();
-                let bestMatch = '';
-                for (let opt of marcaSelect.options) {
-                  if (opt.value && opt.text.toLowerCase().includes(brandClean)) { bestMatch = opt.value; break; }
-                }
-                // Si no hay match exacto, busca al revés
-                if (!bestMatch) {
-                  for (let opt of marcaSelect.options) {
-                    if (opt.value && brandClean.includes(opt.text.toLowerCase().split(' ')[0])) { bestMatch = opt.value; break; }
-                  }
-                }
-                if (bestMatch) marcaSelect.value = bestMatch;
-              }
-            }
-            
-            if (prodDesc && !document.getElementById('p-desc').value) document.getElementById('p-desc').value = prodDesc;
-            if (prodImg && !document.getElementById('p-img-url').value) {
-                document.getElementById('p-img-url').value = prodImg;
-                if (window.previewUrl) window.previewUrl();
-            }
-            
-            // Integración Gemini IA
-            const geminiKey = localStorage.getItem('gemini_api_key');
-            if (geminiKey && prodTitle) {
-                toast('Generando perfil olfativo con Inteligencia Artificial...', 'info');
-                try {
-                    const getOpts = id => {
-                        const el = document.getElementById(id);
-                        return el ? Array.from(el.options).map(o => o.value).filter(v => v).join(', ') : '';
-                    };
-                    
-                    const pBrand = prodBrand ? prodBrand.split(',')[0] : '';
-                    const promptText = `Eres un experto perfumista. Para el perfume "${prodTitle}"${pBrand ? ` de la marca "${pBrand}"` : ''}:
-Genera su perfil olfativo y elige las mejores opciones de estas listas:
-- Concentración: [${getOpts('p-concentracion')}]
-- Género: [${getOpts('p-genero')}]
-- Longevidad: [${getOpts('p-longevidad')}]
-- Proyección: [${getOpts('p-proyeccion')}]
-
-Sugiéreme precios de venta en MXN para presentaciones comerciales regulares completas (30ml, 50ml, 75ml, 100ml, 150ml, 200ml) basándote en su valor de retail en México.
-Para la descripción ("desc"), redacta una reseña detallada, poética y persuasiva (de 3 a 4 oraciones). Habla de su apertura, desarrollo, fijación y ocasiones de uso, usando un tono de marketing elegante.
-
-Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown ni \`\`\`) con esta estructura exacta:
-{"concentracion":"","genero":"","salida":"","corazon":"","fondo":"","ocasion":"","longevidad":"","proyeccion":"","desc":"Descripción detallada y poética","px30":0,"px50":0,"px75":0,"px100":0,"px150":0,"px200":0}`;
-                    
-                    const groqUrl = `https://api.openai.com/v1/chat/completions`;
-                    const groqRes = await fetch(groqUrl, {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${geminiKey}`
-                        },
-                        body: JSON.stringify({
-                            model: "gpt-4o",
-                            messages: [{ role: "user", content: promptText }],
-                            temperature: 0.2
-                        })
-                    });
-                    
-                    const data = await groqRes.json();
-                    
-                    if (data.error) {
-                        console.error("Error IA:", data.error.message);
-                        return;
-                    }
-                    
-                    let aiText = data.choices[0].message.content;
-                    const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-                    if (jsonMatch) { aiText = jsonMatch[0]; }
-                    
-                    const aiJson = JSON.parse(aiText);
-                        
-                        if (aiJson.salida) document.getElementById('p-salida').value = aiJson.salida;
-                        if (aiJson.corazon) document.getElementById('p-corazon').value = aiJson.corazon;
-                        if (aiJson.fondo) document.getElementById('p-fondo').value = aiJson.fondo;
-                        if (aiJson.ocasion) document.getElementById('p-ocasion').value = aiJson.ocasion;
-                        if (aiJson.desc) document.getElementById('p-desc').value = aiJson.desc;
-                        
-                        if (aiJson.concentracion) document.getElementById('p-concentracion').value = aiJson.concentracion;
-                        if (aiJson.genero) document.getElementById('p-genero').value = aiJson.genero;
-                        if (aiJson.longevidad) document.getElementById('p-longevidad').value = aiJson.longevidad;
-                        if (aiJson.proyeccion) document.getElementById('p-proyeccion').value = aiJson.proyeccion;
-                        
-                        if (aiJson.px30 && !document.getElementById('px30').value) document.getElementById('px30').value = aiJson.px30;
-                        if (aiJson.px50 && !document.getElementById('px50').value) document.getElementById('px50').value = aiJson.px50;
-                        if (aiJson.px75 && !document.getElementById('px75').value) document.getElementById('px75').value = aiJson.px75;
-                        if (aiJson.px100 && !document.getElementById('px100').value) document.getElementById('px100').value = aiJson.px100;
-                        if (aiJson.px150 && !document.getElementById('px150').value) document.getElementById('px150').value = aiJson.px150;
-                        if (aiJson.px200 && !document.getElementById('px200').value) document.getElementById('px200').value = aiJson.px200;
-                        
-                        toast('¡Perfil IA completado con éxito!', 'success');
-                } catch (e) {
-                    console.error('Gemini error:', e);
-                    toast('¡Datos básicos completados! (Ocurrió un error con la IA: ' + e.message + ')', 'warning');
-                }
-            } else {
-                toast('¡Información encontrada en BD y autocompletada!', 'success');
-            }
-          } else {
-            const geminiKey = localStorage.getItem('gemini_api_key');
-            if (!geminiKey) {
-                toast('El código no se encontró en la BD pública (Configura tu API Key en Ajustes para usar IA).', 'warning');
-                return;
-            }
-            toast('No encontrado en BD pública. Consultando a la Inteligencia Artificial...', 'info');
-            
-            try {
-                const getOpts = id => {
-                    const el = document.getElementById(id);
-                    return el ? Array.from(el.options).map(o => o.value).filter(v => v).join(', ') : '';
-                };
-                const promptText = `El usuario escaneó el código de barras "${code}" de un perfume.
-Identifica el nombre exacto del perfume y su marca. Si el código no te suena para nada a un perfume conocido, responde el JSON con "title": "NO_ENCONTRADO".
-Si lo reconoces, elige la mejor opción de estas listas exactas para clasificarlo:
-- Marca: [${getOpts('p-marca')}]
-- Ocasión de uso: [${getOpts('p-ocasion')}]
-- Longevidad: [${getOpts('p-longevidad')}]
-- Proyección: [${getOpts('p-proyeccion')}]
-
-Sugiéreme precios de venta en MXN competitivos para presentaciones completas (30ml, 50ml, 75ml, 100ml, 150ml, 200ml) basándote en su valor de retail en México (ej. 100ml de diseñador ~2500, nicho ~5000). Pon 0 en los tamaños que no apliquen.
-Para la descripción ("desc"), redacta una reseña detallada, poética y persuasiva (de 3 a 4 oraciones). Habla de su apertura, desarrollo, fijación y ocasiones de uso, usando un tono de marketing elegante.
-
-Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown) con esta estructura exacta:
-{"title":"Nombre del perfume","marca":"","concentracion":"","genero":"","salida":"","corazon":"","fondo":"","ocasion":"","longevidad":"","proyeccion":"","desc":"Descripción detallada y poética","px30":0,"px50":0,"px75":0,"px100":0,"px150":0,"px200":0}`;
-
-                const groqUrl = `https://api.openai.com/v1/chat/completions`;
-                const groqRes = await fetch(groqUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${geminiKey}` },
-                    body: JSON.stringify({ 
-                        model: "gpt-4o", 
-                        messages: [{ role: "user", content: promptText }], 
-                        temperature: 0.2,
-                        response_format: { type: "json_object" }
-                    })
-                });
-                
-                const data = await groqRes.json();
-                if (data.choices && data.choices.length > 0) {
-                    let aiText = data.choices[0].message.content;
-                    const match = aiText.match(/\{[\s\S]*\}/);
-                    if (match) aiText = match[0];
-                    
-                    let aiJson;
-                    try {
-                        aiJson = JSON.parse(aiText);
-                    } catch (err) {
-                        aiText = aiText.replace(/[\u0000-\u001F]+/g, " ");
-                        aiJson = JSON.parse(aiText);
-                    }
-                    
-                    if (aiJson.title === "NO_ENCONTRADO") {
-                        toast('Barcode no reconocido. Escribe el nombre a mano y usa el botón de IA.', 'warning');
-                        return;
-                    }
-                    
-                    document.getElementById('p-nombre').value = aiJson.title || '';
-                    
-                    if (aiJson.marca) {
-                        const brandClean = aiJson.marca.trim().toLowerCase();
-                        const marcaSelect = document.getElementById('p-marca');
-                        let bestMatch = '';
-                        for (let opt of marcaSelect.options) {
-                            if (opt.value && opt.text.toLowerCase().includes(brandClean)) { bestMatch = opt.value; break; }
-                        }
-                        if (bestMatch) marcaSelect.value = bestMatch;
-                        else document.getElementById('p-marca').value = aiJson.marca;
-                    }
-                    
-                    if (aiJson.salida) document.getElementById('p-salida').value = aiJson.salida;
-                    if (aiJson.corazon) document.getElementById('p-corazon').value = aiJson.corazon;
-                    if (aiJson.fondo) document.getElementById('p-fondo').value = aiJson.fondo;
-                    if (aiJson.ocasion) document.getElementById('p-ocasion').value = aiJson.ocasion;
-                    if (aiJson.desc) document.getElementById('p-desc').value = aiJson.desc;
-                    
-                    if (aiJson.concentracion) document.getElementById('p-concentracion').value = aiJson.concentracion;
-                    if (aiJson.genero) document.getElementById('p-genero').value = aiJson.genero;
-                    if (aiJson.longevidad) document.getElementById('p-longevidad').value = aiJson.longevidad;
-                    if (aiJson.proyeccion) document.getElementById('p-proyeccion').value = aiJson.proyeccion;
-                    
-                    if (aiJson.px30) document.getElementById('px30').value = aiJson.px30;
-                    if (aiJson.px50) document.getElementById('px50').value = aiJson.px50;
-                    if (aiJson.px75) document.getElementById('px75').value = aiJson.px75;
-                    if (aiJson.px100) document.getElementById('px100').value = aiJson.px100;
-                    if (aiJson.px150) document.getElementById('px150').value = aiJson.px150;
-                    if (aiJson.px200) document.getElementById('px200').value = aiJson.px200;
-                    
-                    toast('¡Perfume identificado mágicamente por la IA!', 'success');
-                }
-            } catch (e) {
-                console.error('Groq fallback error:', e);
-                toast('Error al intentar identificar con IA: ' + e.message, 'error');
-            }
-          }
-        } catch (err) {
-          console.error(err);
-          toast('Hubo un error de conexión al buscar el código.', 'error');
-        }
-      }
-    });
-  }
-});
 
 load();

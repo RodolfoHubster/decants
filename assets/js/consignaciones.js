@@ -94,6 +94,7 @@ function renderLotes() {
           <div>
             <h3 class="cons-title">${c.lugar}</h3>
             <div class="cons-date"><i class="bi bi-calendar3"></i> ${dateStr} • ${totalVendidos}/${totalDejados} vendidos</div>
+            ${totalVendidos ? `<a href="ventas.html?canal=consignacion&q=${encodeURIComponent(c.lugar || '')}" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:12.5px;color:var(--accent);text-decoration:none"><i class="bi bi-receipt"></i> Ver lo que se vendió</a>` : ''}
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
             <div class="cons-status ${isClosed ? 'status-closed' : 'status-open'}">${c.estado}</div>

@@ -57,6 +57,18 @@
     .client-card.banned .btn-ban-client { color: #ef4444; }
     
     .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    /* Las tarjetas no tenían estilo y salían como texto suelto */
+    .kpi-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+    .kpi-label { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+    .kpi-label i { color: var(--accent); }
+    .kpi-value { font-size: 26px; font-weight: 700; color: var(--text-primary); line-height: 1; }
+    @media (max-width: 640px) {
+      .kpi-row { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+      .kpi-card { padding: 10px; gap: 4px; }
+      .kpi-label { font-size: 10.5px; }
+      .kpi-label i { display: none; }
+      .kpi-value { font-size: 20px; }
+    }
   </style>
 </head>
 <body>

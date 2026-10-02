@@ -84,71 +84,60 @@ function renderTable() {
   if (countLabel) countLabel.textContent = `${f.length} paquete${f.length !== 1 ? 's' : ''}`;
 
   if (!f.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-faint)">No se encontraron paquetes con estos filtros</td></tr>';
+    tbody.innerHTML = '<div class="pkg-vacio">No se encontraron paquetes con estos filtros</div>';
     return;
   }
 
-  tbody.innerHTML = f.map(p => {
-    let bundleInfo = '';
-    let bundleBtn = '';
-    let packageIsAgotado = false;
-    let itemsAgotados = 0;
+  const esc = t => String(t ?? '').replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-    if (p.items && p.items.length > 0) {
-      const itemsHtml = p.items.map(i => {
-        let isAgotado = false;
-        let subPerf = perfumes.find(x => x.id === i.id || x.nombre === i.nombre);
-        if (subPerf && subPerf.estadoStock === 'agotado') {
-          isAgotado = true;
-          itemsAgotados++;
-        }
-        return `
-        <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
-          <span style="color:var(--text-primary); font-size:12px;">↳ ${i.nombre} <span style="color:var(--text-muted); font-size:11px;">(${i.marca||''})</span>
-          ${isAgotado ? '<span class="badge badge-danger" style="margin-left:4px;font-size:9px;padding:2px 4px">Agotado</span>' : ''}
-          </span>
-        </div>
-      `}).join('');
-      
-      bundleInfo = `<div id="sub-pkg-${p.id}" style="display:none; margin-top:8px; padding:8px 12px; background:var(--bg-card2); border-radius:6px; border:1px solid rgba(255,255,255,0.05);">${itemsHtml}</div>`;
-      bundleBtn = `<button class="btn-icon" onclick="const e = document.getElementById('sub-pkg-${p.id}'); e.style.display = e.style.display === 'none' ? 'block' : 'none';" title="Ver fragancias" style="margin-left:8px; background:rgba(201,168,76,0.1); color:var(--gold); width:24px; height:24px; border-radius:50%; font-size:10px;"><i class="bi bi-chevron-down"></i></button>`;
-      
-      if (p.esPersonalizable) {
-        if ((p.items.length - itemsAgotados) < (p.maxSeleccion || 3)) {
-          packageIsAgotado = true;
-        }
-      } else {
-        if (itemsAgotados > 0) packageIsAgotado = true;
-      }
-    }
-    
+  tbody.innerHTML = f.map(p => {
+    const items = p.items || [];
+    const marcados = items.map(i => {
+      const sub = perfumes.find(x => x.id === i.id || x.nombre === i.nombre);
+      return { ...i, agotado: !!(sub && sub.estadoStock === 'agotado') };
+    });
+    const nAgotados = marcados.filter(i => i.agotado).length;
+    const disponibles = items.length - nAgotados;
+    const agotado = items.length > 0 && (p.esPersonalizable
+      ? disponibles < (p.maxSeleccion || 3)
+      : nAgotados > 0);
+
+    const precios = p.precios
+      ? Object.entries(p.precios).filter(([, v]) => v > 0).sort(([a], [b]) => +a - +b)
+      : (p.ml ? [[p.ml, p.precio]] : []);
+
+    const tipo = p.esPersonalizable
+      ? `Elige ${p.maxSeleccion || 3} de ${items.length}`
+      : `${items.length} ${items.length === 1 ? 'fragancia' : 'fragancias'} fijas`;
+
+    const estado = agotado
+      ? '<span class="badge badge-danger" style="align-self:flex-start">No se puede armar</span>'
+      : (p.activo === false ? '<span class="badge badge-warning" style="align-self:flex-start"><i class="bi bi-eye-slash"></i> Oculto</span>' : '');
+
     return `
-    <tr style="${p.activo === false ? 'opacity:0.5' : ''}">
-      <td>
-        <div style="width:40px;height:40px;border-radius:6px;background:var(--bg-card2);overflow:hidden;flex-shrink:0;">
-          ${p.imagen ? `<img src="${imgThumb(p.imagen)}" style="width:100%;height:100%;object-fit:cover">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-faint)"><i class="bi bi-box2-heart"></i></div>'}
+    <article class="pkg ${p.activo === false ? 'pkg-off' : ''}">
+      <div class="pkg-top">
+        <div class="pkg-img">${p.imagen ? `<img src="${imgThumb(p.imagen)}" alt="" loading="lazy">` : '<i class="bi bi-box2-heart"></i>'}</div>
+        <div class="pkg-info">
+          <strong>${esc(p.nombre)}</strong>
+          <span class="pkg-sub">${tipo}</span>
+          ${estado}
         </div>
-      </td>
-      <td>
-        <div style="display:flex; align-items:center;">
-          <strong style="font-weight:600">${p.nombre}</strong>
-          ${bundleBtn}
+        <div class="pkg-acc">
+          <button class="btn-icon" onclick="edit('${p.id}')" title="Editar"><i class="bi bi-pencil"></i></button>
+          <button class="btn-icon" onclick="toggleV('${p.id}', ${p.activo !== false})" title="${p.activo !== false ? 'Ocultar' : 'Mostrar'}" style="color:${p.activo !== false ? 'var(--text-muted)' : '#22c55e'}"><i class="bi ${p.activo !== false ? 'bi-eye-slash' : 'bi-eye'}"></i></button>
+          <button class="btn-icon" onclick="del('${p.id}', '${esc(p.nombre).replace(/'/g, '&#39;')}')" title="Eliminar" style="color:#ef4444"><i class="bi bi-trash"></i></button>
         </div>
-        ${bundleInfo}
-      </td>
-      <td style="font-size:12px;color:var(--text-muted);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.descripcion || '-'}</td>
-      <td>
-        ${p.precios ? Object.entries(p.precios).filter(([,v]) => v > 0).map(([k,v]) => `<div style="font-size:13px"><span style="font-weight:600;width:35px;display:inline-block">${k} ml</span> <span style="color:var(--accent);font-weight:600">$${v} MXN</span></div>`).join('') : `<div style="font-size:13px"><span style="font-weight:600;width:35px;display:inline-block">${p.ml} ml</span> <span style="color:var(--accent);font-weight:600">$${p.precio} MXN</span></div>`}
-        <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">${p.items?.length || 0} fragancias permitidas</div>
-      </td>
-      <td>${packageIsAgotado ? '<span class="badge badge-danger">Agotado</span>' : (p.activo === false ? '<span class="badge badge-warning"><i class="bi bi-eye-slash"></i> Oculto</span>' : '<span class="badge badge-gold">Activo</span>')}</td>
-      <td>
-        <button class="btn-icon" onclick="edit('${p.id}')"><i class="bi bi-pencil"></i></button>
-        <button class="btn-icon" onclick="toggleV('${p.id}', ${p.activo!==false})" style="color:${p.activo!==false?'var(--text-muted)':'#22c55e'}"><i class="bi ${p.activo!==false?'bi-eye-slash':'bi-eye'}"></i></button>
-        <button class="btn-icon" onclick="del('${p.id}', '${p.nombre}')" style="color:#ef4444"><i class="bi bi-trash"></i></button>
-      </td>
-    </tr>
-  `}).join('');
+      </div>
+      ${precios.length ? `<div class="pkg-precios">${precios.map(([ml, v]) => `<span class="pkg-precio">${ml} ml<b>$${v}</b></span>`).join('')}</div>` : ''}
+      ${items.length ? `
+      <details class="pkg-items">
+        <summary><i class="bi bi-chevron-down"></i> Ver fragancias${nAgotados ? ` · <span style="color:#ef4444">${nAgotados} agotada${nAgotados > 1 ? 's' : ''}</span>` : ''}</summary>
+        <ul>${marcados.map(i => `<li class="${i.agotado ? 'ago' : ''}">${esc(i.nombre)}</li>`).join('')}</ul>
+      </details>` : ''}
+    </article>`;
+  }).join('');
 }
 
 window.setMode = (m) => {
