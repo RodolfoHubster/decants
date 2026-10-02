@@ -11,8 +11,15 @@ import { resolverItemsPaquete, contarDisponibles, paqueteArmable } from './stock
 import { ahorroPorTalla } from './precios.js';
 import { leerCache, guardarCache, borrarCache } from './catalogo-cache.js';
 import { precargarImagen } from './imagenes.js';
+import { parsearFicha } from './ficha.js';
 
 // ── Tipos fijos (chips del panel — mapean al campo `categoria` del perfume) ─
+// Ícono de cada familia olfativa (viene de Firestore, campo `emoji`).
+let iconosFamilia = {};
+
+const escFicha = t => String(t ?? '').replace(/[&<>"']/g, c => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 const TIPOS_PERMITIDOS = [
   { nombre: 'Diseñador', emoji: '<i class="bi bi-person-badge"></i>' },
   { nombre: 'Árabe',     emoji: '<i class="bi bi-moon-stars"></i>' },
@@ -228,6 +235,29 @@ function iniciarCarrusel(lista) {
   // pide la norma de accesibilidad.
   const rota = lista.length > 1;
   let idx = 0, timer = null, actual = null;
+  // Se consulta en cada cambio: si la persona activa "reducir movimiento" con la
+  // página abierta, se respeta sin recargar.
+  const sinMovimiento = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const tag = shot.querySelector('.hero-shot-tag');
+  let arrastreDx = 0;   // cuánto se arrastró la foto con el dedo antes de soltar
+
+  /**
+   * Cambio tipo página: la foto que estaba sale hacia un lado mientras la nueva
+   * entra por el otro. La que sale es una copia, así la real queda libre para
+   * recibir la nueva imagen sin esperar a que termine la animación.
+   */
+  const deslizarSalida = (dir) => {
+    if (sinMovimiento() || !img.getAttribute('src')) return;
+    const fantasma = img.cloneNode(false);
+    fantasma.removeAttribute('id');
+    fantasma.className = 'hero-fantasma';
+    fantasma.style.setProperty('--desde', `${arrastreDx}px`);
+    fantasma.style.animation = `${dir > 0 ? 'hero-sale-izq' : 'hero-sale-der'} .5s var(--ease) both`;
+    img.insertAdjacentElement('afterend', fantasma);
+    const quitar = () => fantasma.remove();
+    fantasma.addEventListener('animationend', quitar, { once: true });
+    setTimeout(quitar, 900);   // por si animationend no llega (pestaña oculta)
+  };
 
   // ── Segmentos ────────────────────────────────────────────────────────
   const rellenos = [];
@@ -243,7 +273,7 @@ function iniciarCarrusel(lista) {
       const f = document.createElement('i');
       f.className = 'hero-seg-fill';
       b.appendChild(f);
-      b.addEventListener('click', () => { parar(); pintar(n).then(arrancar); });
+      b.addEventListener('click', () => { parar(); pintar(n, n > idx ? 1 : n < idx ? -1 : 0).then(arrancar); });
       segsEl.appendChild(b);
       rellenos.push(f);
     });
@@ -280,7 +310,7 @@ function iniciarCarrusel(lista) {
   // aún baja, la que llegue tarde se descarta en vez de pisar a la nueva.
   let generacion = 0;
 
-  const pintar = async (i) => {
+  const pintar = async (i, dir = 0) => {
     const mia = ++generacion;
     const destino = (i + lista.length) % lista.length;
     const url = urlDe(destino);
@@ -292,10 +322,25 @@ function iniciarCarrusel(lista) {
     idx = destino;
     actual = lista[idx].perfume;
 
-    // Reiniciar el fundido de entrada de la foto.
+    if (dir) deslizarSalida(dir);
+
+    // Reiniciar la animación de entrada: deslizándose si fue un cambio, con el
+    // fundido de siempre si es la primera foto.
     img.style.animation = 'none';
+    img.style.transition = 'none';
+    img.style.transform = '';
     void img.offsetWidth;
-    img.style.animation = '';
+    // Con "reducir movimiento" no hay deslizamiento, pero tampoco salto seco:
+    // un fundido corto.
+    img.style.animation = !dir ? ''
+      : sinMovimiento() ? 'hero-fundido .3s ease both'
+      : `${dir > 0 ? 'hero-entra-der' : 'hero-entra-izq'} .5s var(--ease) both`;
+    arrastreDx = 0;
+    if (tag && !sinMovimiento()) {
+      tag.style.animation = 'none';
+      void tag.offsetWidth;
+      tag.style.animation = 'hero-tag-in .5s var(--ease) both';
+    }
 
     img.src = url;
     img.alt = `${actual.marca || ''} ${actual.nombre || ''}`.trim();
@@ -317,12 +362,12 @@ function iniciarCarrusel(lista) {
     pintarSegmentos();
     timer = setTimeout(async () => {
       timer = null;
-      await pintar(idx + 1);
+      await pintar(idx + 1, 1);
       arrancar();
     }, AVANCE_MS);
   };
 
-  const irA = (delta) => { parar(); pintar(idx + delta).then(arrancar); };
+  const irA = (delta) => { parar(); pintar(idx + delta, Math.sign(delta)).then(arrancar); };
 
   // ── Flechas ──────────────────────────────────────────────────────────
   if (prev) prev.addEventListener('click', (e) => { e.stopPropagation(); irA(-1); });
@@ -333,7 +378,11 @@ function iniciarCarrusel(lista) {
   // se cambia de perfume y se anula el clic, para no abrir la ficha sin querer.
   let inicioX = 0, inicioY = 0, arrastrando = false, huboDesliz = false;
 
-  const alEmpezar = (x, y) => { inicioX = x; inicioY = y; arrastrando = true; huboDesliz = false; parar(); };
+  const alEmpezar = (x, y) => {
+    inicioX = x; inicioY = y; arrastrando = true; huboDesliz = false; parar();
+    // La animación de entrada fija el transform; hay que soltarla para arrastrar.
+    img.style.animation = 'none';
+  };
 
   const alMover = (x, y, ev) => {
     if (!arrastrando) return;
@@ -343,6 +392,11 @@ function iniciarCarrusel(lista) {
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
       huboDesliz = true;
       if (ev && ev.cancelable) ev.preventDefault();
+      if (!sinMovimiento()) {
+        arrastreDx = dx;
+        img.style.transition = 'none';
+        img.style.transform = `translateX(${dx}px)`;
+      }
     }
   };
 
@@ -351,7 +405,14 @@ function iniciarCarrusel(lista) {
     arrastrando = false;
     const dx = x - inicioX;
     if (Math.abs(dx) > UMBRAL_DESLIZ) irA(dx < 0 ? 1 : -1);
-    else { huboDesliz = false; arrancar(); }
+    else {
+      // No alcanzó: la foto regresa a su lugar.
+      img.style.transition = 'transform .25s var(--ease)';
+      img.style.transform = '';
+      arrastreDx = 0;
+      huboDesliz = false;
+      arrancar();
+    }
   };
 
   if (frame) {
@@ -367,7 +428,12 @@ function iniciarCarrusel(lista) {
       const t = e.changedTouches[0]; alTerminar(t.clientX);
     }, { passive: true });
 
-    frame.addEventListener('touchcancel', () => { arrastrando = false; arrancar(); }, { passive: true });
+    frame.addEventListener('touchcancel', () => {
+      arrastrando = false;
+      img.style.transform = '';
+      arrastreDx = 0;
+      arrancar();
+    }, { passive: true });
   }
 
   // ── Abrir la ficha ───────────────────────────────────────────────────
@@ -443,6 +509,7 @@ async function traerDeFirestore() {
 /** Pantalla de error con reintento: antes los esqueletos giraban sin fin. */
 function mostrarErrorCarga(err) {
   console.error('No se pudo cargar el catálogo:', err);
+  if (document.querySelector('#modal .modal-box.cargando')) doCloseModal();
   const g = document.getElementById('grid');
   if (!g) return;
   g.innerHTML = `
@@ -481,6 +548,7 @@ async function load() {
 
   all = datos.all;
   window.disable2ml = datos.disable2ml;
+  iconosFamilia = Object.fromEntries((datos.famData || []).map(f => [f.nombre, f.emoji || '']));
 
   // Tipos: los 3 fijos — se usan para filtrar por p.categoria
   buildFilterPanelDynamic(TIPOS_PERMITIDOS, datos.famData);
@@ -539,6 +607,7 @@ async function load() {
   if (slug) {
     const p = findBySlug(all, slug);
     if (p) openModal(p.id, false);
+    else if (document.getElementById('modal').classList.contains('open')) doCloseModal();
     else window.location.hash = '';
   }
 }
@@ -935,7 +1004,10 @@ window.openModal = (id, pushHash = true) => {
   document.getElementById('modal-nombre').textContent = p.nombre;
   document.getElementById('modal-marca').textContent  = p.marca || '';
   const descEl = document.getElementById('modal-desc');
-  descEl.textContent = p.descripcion || 'Sin descripción disponible.';
+  const ficha = parsearFicha(p.descripcion);
+  descEl.textContent = ficha.estructurada ? ficha.frase : (p.descripcion || 'Sin descripción disponible.');
+  pintarEtiquetas(p);
+  pintarFicha(ficha);
   prepararDescripcion(descEl);
 
   window.customPackageSelections = [];
@@ -1056,9 +1128,63 @@ window.openModal = (id, pushHash = true) => {
   }
 
   syncModalCartBtn();
+  // Cada perfume empieza desde arriba: si no, se heredaba el scroll del
+  // anterior. En el teléfono se desplaza la hoja; en escritorio, la columna.
+  document.querySelectorAll('#modal .modal-box, #modal .modal-content').forEach(el => { el.scrollTop = 0; });
+  document.querySelector('#modal .modal-box')?.classList.remove('cargando');
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow = 'hidden';
 };
+
+/** Categoría, concentración, familia y género como etiquetas con ícono. */
+function pintarEtiquetas(p) {
+  const el = document.getElementById('modal-tags');
+  if (!el) return;
+  if (p.tipo === 'paquete' || p.tipo === 'accesorio') { el.innerHTML = ''; return; }
+  const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const cat = TIPOS_PERMITIDOS.find(t => norm(t.nombre) === norm(p.categoria));
+  const genero = { caballero: 'bi-gender-male', dama: 'bi-gender-female', unisex: 'bi-gender-ambiguous' }[norm(p.genero)];
+  const tag = (icono, texto, extra = '') => `<span class="mtag ${extra}">${icono}${escFicha(texto)}</span>`;
+  el.innerHTML = [
+    cat ? tag(cat.emoji, cat.nombre, 'mtag-cat') : '',
+    p.tipo ? tag('<i class="bi bi-droplet-half"></i>', p.tipo) : '',
+    p.familia ? tag(iconosFamilia[p.familia] || '<i class="bi bi-flower1"></i>', p.familia) : '',
+    genero ? tag(`<i class="bi ${genero}"></i>`, p.genero) : '',
+  ].join('');
+}
+
+/** La pirámide olfativa, la duración, la estela y cuándo usarlo. */
+function pintarFicha(f) {
+  const el = document.getElementById('modal-ficha');
+  if (!el) return;
+  if (!f.estructurada) { el.hidden = true; el.innerHTML = ''; return; }
+
+  const notas = arr => `<div class="notas">${arr.map(n => `<span class="nota">${escFicha(n)}</span>`).join('')}</div>`;
+  const piso = (n, titulo, ayuda, arr) => arr.length
+    ? `<div class="piso piso-${n}"><div class="piso-tit">${titulo}<small>${ayuda}</small></div>${notas(arr)}</div>` : '';
+  const piramide = f.notas.length
+    ? `<div class="piso piso-3"><div class="piso-tit">Notas</div>${notas(f.notas)}</div>`
+    : piso(1, 'Salida', 'los primeros minutos', f.salida)
+      + piso(2, 'Corazón', 'el alma del perfume', f.corazon)
+      + piso(3, 'Fondo', 'lo que se queda en la piel', f.fondo);
+
+  const barras = n => `<div class="barras">${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</div>`;
+  const mayus = t => t.charAt(0).toUpperCase() + t.slice(1);
+  const medidores = (f.duracion || f.estela) ? `<div class="medidores">
+      ${f.duracion ? `<div class="medidor"><span>Duración</span><b>${escFicha(f.duracion)}</b>${barras(f.duracionNivel)}</div>` : ''}
+      ${f.estela ? `<div class="medidor"><span>Estela</span><b>${escFicha(mayus(f.estela))}</b>${barras(f.estelaNivel)}</div>` : ''}
+    </div>` : '';
+
+  const iconoClima = c => /fr[ií]o/i.test(c) ? 'bi-snow' : /c[aá]lido/i.test(c) ? 'bi-thermometer-sun' : 'bi-calendar-heart';
+  const uso = (f.momento.length || f.clima) ? `<div class="uso">
+      ${f.momento.map(m => `<span class="mtag"><i class="bi ${m === 'Noche' ? 'bi-moon-stars' : 'bi-sun'}"></i>${m}</span>`).join('')}
+      ${f.clima ? `<span class="mtag"><i class="bi ${iconoClima(f.clima)}"></i>${escFicha(f.clima)}</span>` : ''}
+    </div>` : '';
+
+  el.innerHTML = `<div class="ficha-tit"><i class="bi bi-triangle"></i> Pirámide olfativa</div>
+    <div class="piramide">${piramide}</div>${medidores}${uso}`;
+  el.hidden = false;
+}
 
 window.toggleCustomPkgItem = (chk, maxSel) => {
   if (chk.checked) {
@@ -1445,3 +1571,18 @@ function showToast(msg) {
 }
 
 load();
+
+// ── Link compartido: la ficha aparece de inmediato ─────────────────────
+// Antes se veía primero la página de inicio y, cuando terminaba de cargar el
+// catálogo, saltaba al perfume. Ahora se abre la ficha con un esqueleto y se
+// llena en cuanto llegan los datos (o se cierra si el perfume ya no existe).
+(function abrirFichaDeLink() {
+  if (!getSlugFromHash() || modalData) return;
+  const ov = document.getElementById('modal');
+  const box = ov && ov.querySelector('.modal-box');
+  if (!box) return;
+  box.classList.add('cargando');
+  document.getElementById('modal-img').innerHTML = '';
+  ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+})();

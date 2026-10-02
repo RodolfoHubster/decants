@@ -582,43 +582,55 @@ header {
 /* ============================================
    MODAL
    ============================================ */
+/* Teléfono: hoja que sube desde abajo y ocupa casi toda la pantalla.
+   Escritorio (>=860px): dos columnas, foto a la izquierda. */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.75);
-  backdrop-filter: blur(6px);
+  background: rgba(0,0,0,.72);
+  backdrop-filter: blur(8px);
   z-index: 500;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  padding: 16px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity .2s;
+  transition: opacity .25s;
 }
 .modal-overlay.open { opacity: 1; pointer-events: all; }
 
 .modal-box {
+  position: relative;
   background: var(--bg);
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-bottom: none;
+  border-radius: 24px 24px 0 0;
   width: 100%;
-  max-width: 640px;
-  max-height: 92vh;
+  max-height: 94vh;
+  max-height: 94dvh;
   overflow-y: auto;
-  transform: translateY(16px);
-  transition: transform .22s;
+  overscroll-behavior: contain;
+  transform: translateY(100%);
+  transition: transform .38s cubic-bezier(.2,.8,.2,1);
 }
-.modal-overlay.open .modal-box { transform: translateY(0); }
+.modal-overlay.open .modal-box { transform: none; }
 
+.modal-media { position: relative; }
+
+/* Cuadrada y con la foto completa: object-fit contain sobre un fondo cálido,
+   así el frasco nunca queda recortado aunque la foto no sea cuadrada. */
 .modal-img {
   width: 100%;
-  aspect-ratio: 16/9;
+  aspect-ratio: 1 / 1;
+  max-height: 50vh;
   overflow: hidden;
-  background: var(--card2);
-  border-radius: 16px 16px 0 0;
+  background: radial-gradient(circle at 50% 38%, #2b2620 0%, #17140f 72%);
+  border-radius: 24px 24px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.modal-img img { width: 100%; height: 100%; object-fit: cover; }
+.modal-img img { width: 100%; height: 100%; object-fit: contain; display: block; }
 
 .modal-img-placeholder {
   width: 100%; height: 100%;
@@ -626,9 +638,141 @@ header {
   color: var(--faint); font-size: 72px;
 }
 
-.modal-content { padding: 22px 22px 0; }
-.modal-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
-.modal-nombre { font-size: 24px; font-weight: 700; line-height: 1.2; }
+.modal-x {
+  position: absolute;
+  top: 14px; right: 14px;
+  z-index: 4;
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(28,28,28,.72);
+  border: 1px solid rgba(255,255,255,.16);
+  color: #e6e3dc;
+  font-size: 17px;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0,0,0,.35);
+  transition: background .15s, transform .15s;
+}
+.modal-x:hover { background: rgba(60,60,60,.85); color: #fff; }
+.modal-x:active { transform: scale(.94); }
+
+.modal-content { padding: 18px 20px 0; }
+
+.modal-marca {
+  font-size: 11.5px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: #c9a84c; margin-bottom: 4px;
+}
+.modal-nombre {
+  font-size: 25px; font-weight: 700; line-height: 1.15;
+  margin: 0 0 12px; color: var(--text);
+}
+
+.modal-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.modal-tags:empty { display: none; }
+.mtag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px; border-radius: 99px;
+  font-size: 12px; font-weight: 600;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  color: #d6d0c4;
+}
+.mtag i { color: #c9a84c; font-size: 13px; }
+.mtag-cat { background: #c9a84c; border-color: #c9a84c; color: #14120e; }
+.mtag-cat i { color: #14120e; }
+
+/* ── Pirámide olfativa ─────────────────────────── */
+.modal-ficha { display: flex; flex-direction: column; gap: 12px; margin: 4px 0 20px; }
+.modal-ficha[hidden] { display: none; }
+.ficha-tit {
+  font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: #8a8478; display: flex; align-items: center; gap: 6px;
+}
+.ficha-tit i { color: #c9a84c; }
+.piramide { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.piso {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.035);
+  border: 1px solid rgba(255,255,255,.07);
+}
+.piso-1 { width: 80%; background: rgba(201,168,76,.07); }
+.piso-2 { width: 90%; background: rgba(201,168,76,.05); }
+.piso-3 { width: 100%; background: rgba(201,168,76,.035); }
+.piso-tit {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: #c9a84c; margin-bottom: 7px;
+}
+.piso-tit small { margin-left: auto; color: #6f6a60; font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 11px; }
+.notas { display: flex; flex-wrap: wrap; gap: 5px; }
+.nota {
+  font-size: 12.5px; padding: 3px 10px; border-radius: 99px;
+  background: rgba(255,255,255,.06); color: #ece6d8;
+}
+
+.medidores { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.medidor {
+  padding: 10px 12px; border-radius: 12px;
+  background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.07);
+}
+.medidor span {
+  display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: #8a8478;
+}
+.medidor b { display: block; margin-top: 2px; font-size: 13px; font-weight: 600; color: #ece6d8; }
+.barras { display: flex; gap: 4px; margin-top: 8px; }
+.barras i { flex: 1; height: 5px; border-radius: 99px; background: rgba(255,255,255,.09); }
+.barras i.on { background: #c9a84c; }
+
+.uso { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── Cargando (link compartido): la ficha aparece al instante ── */
+.modal-skeleton { display: none; }
+.modal-box.cargando .modal-skeleton { display: flex; flex-direction: column; gap: 10px; padding: 4px 0 24px; }
+.modal-skeleton i {
+  display: block; height: 14px; border-radius: 8px;
+  background: linear-gradient(90deg, #1d1a15 0%, #2a261f 50%, #1d1a15 100%);
+  background-size: 200% 100%;
+  animation: ficha-brillo 1.2s linear infinite;
+}
+.modal-skeleton i:nth-child(1) { width: 35%; }
+.modal-skeleton i:nth-child(2) { width: 80%; height: 24px; }
+.modal-skeleton i:nth-child(3) { width: 60%; }
+.modal-box.cargando .modal-img {
+  background: linear-gradient(90deg, #1d1a15 0%, #2a261f 50%, #1d1a15 100%);
+  background-size: 200% 100%;
+  animation: ficha-brillo 1.2s linear infinite;
+}
+.modal-box.cargando .modal-content > :not(.modal-skeleton) { display: none !important; }
+@keyframes ficha-brillo { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+@media (min-width: 860px) {
+  .modal-overlay { align-items: center; padding: 24px; }
+  .modal-box {
+    max-width: 980px;
+    height: min(88vh, 720px);
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-radius: 24px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    transform: translateY(24px) scale(.98);
+  }
+  .modal-overlay.open .modal-box { transform: none; }
+  .modal-img { height: 100%; max-height: none; aspect-ratio: auto; border-radius: 24px 0 0 24px; }
+  .modal-content { overflow-y: auto; padding: 28px 28px 0; }
+  .modal-nombre { font-size: 30px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-box { transition: none; }
+  .modal-skeleton i, .modal-box.cargando .modal-img { animation: none; }
+}
 
 .btn-close {
   width: 32px; height: 32px;
@@ -642,7 +786,6 @@ header {
 }
 .btn-close:hover { background: rgba(255,255,255,.14); color: #e8e6e1; }
 
-.modal-marca { font-size: 12.5px; color: #c9a84c; font-weight: 600; margin-bottom: 10px; }
 
 /* La descripción era el bloque más alto de la ficha y empujaba la compra
    fuera de pantalla: se muestra recortada y se despliega a voluntad. */
@@ -707,8 +850,8 @@ header {
   position: sticky;
   bottom: 0;
   z-index: 3;
-  margin: 0 -22px;
-  padding: 13px 22px calc(14px + env(safe-area-inset-bottom));
+  margin: 0 -20px;
+  padding: 13px 20px calc(14px + env(safe-area-inset-bottom));
   background: var(--card);
   border-top: 1px solid rgba(255,255,255,.07);
 }
@@ -1515,4 +1658,8 @@ footer p { font-size: 13px; color: var(--muted); }
   border-color: rgba(201,168,76,.3);
   color: #c9a84c;
   background: rgba(201,168,76,.12);
+}
+
+@media (min-width: 860px) {
+  #modal .modal-actions { margin: 0 -28px; padding-left: 28px; padding-right: 28px; }
 }

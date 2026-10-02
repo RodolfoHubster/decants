@@ -94,6 +94,18 @@ describe('construirColecciones', () => {
       .toEqual(['caballero', 'clasicos', 'dama', 'novedades', 'vendidos']);
   });
 
+  test('los perfumes con estrella forman "Recomendados" y van primero', () => {
+    const conEstrella = catalogoAmplio.map((p, i) => (i < 3 ? { ...p, destacado: true } : p));
+    const cols = construirColecciones(conEstrella, 3);
+    expect(cols[0].id).toBe('destacados');
+    expect(cols[0].items.map(p => p.id).sort()).toEqual(['h1', 'h2', 'h3']);
+  });
+
+  test('con menos de tres estrellas "Recomendados" no aparece', () => {
+    const dos = catalogoAmplio.map((p, i) => (i < 2 ? { ...p, destacado: true } : p));
+    expect(construirColecciones(dos, 3).map(c => c.id)).not.toContain('destacados');
+  });
+
   test('cada colección trae exactamente los que se piden', () => {
     construirColecciones(catalogoAmplio, 3).forEach(c => expect(c.items).toHaveLength(3));
   });

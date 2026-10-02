@@ -45,8 +45,20 @@ function transform(url, tx) {
 // ── Presets de transformación (Refactorizados) ──────────────────────────────
 // Check if admin data saver is active (prevents loading heavy images)
 const isDataSaver = () => typeof localStorage !== 'undefined' && localStorage.getItem('adminDataSaver') === '1';
-// Tiny 1x1 transparent gif base64
-const blankPixel = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+// Modo ahorro: un frasco dibujado en SVG, embebido. Cero bytes de red, igual
+// que el píxel transparente de antes, pero se ve intencional y no roto.
+const blankPixel = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+  '<rect width="100" height="100" fill="#1e1e1e"/>' +
+  '<g fill="none" stroke="#c9a84c" stroke-width="3" opacity=".7">' +
+  '<rect x="42" y="18" width="16" height="10" rx="2"/>' +
+  '<path d="M38 28h24v8c8 4 12 10 12 20v18a8 8 0 0 1-8 8H34a8 8 0 0 1-8-8V56c0-10 4-16 12-20z"/>' +
+  '</g></svg>');
+
+/** Imagen o, si no hay, el mismo frasco del modo ahorro. */
+export function imgOPlaceholder(url, fn) {
+  return url ? fn(url) : blankPixel;
+}
 
 /**
  * Imagen para card del catálogo (Reutilizable para tamaños medianos).

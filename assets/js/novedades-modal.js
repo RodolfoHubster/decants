@@ -8,6 +8,7 @@
  */
 import { db, collection, getDocs, query, where, doc, getDoc }
   from './firebase-config.js';
+import { imgCart } from './cloudinary.js';
 
 const LS_PREFIX = 'fitoscents_nov_visto_';
 
@@ -288,7 +289,7 @@ async function buildSlideDOM(nov) {
       card.innerHTML = `
         <div class="nov-pcard-img">
           ${p.imagen
-            ? `<img src="${p.imagen}" alt="${p.nombre}" loading="lazy">`
+            ? `<img src="${imgCart(p.imagen)}" alt="${p.nombre}" loading="lazy">`
             : '<div class="nov-no-img"><i class="bi bi-droplet"></i></div>'}
         </div>
         <div class="nov-pcard-info">

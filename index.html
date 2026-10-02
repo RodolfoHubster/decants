@@ -13,18 +13,18 @@
        Si cambia el dominio, hay que actualizar estas dos URL absolutas. -->
   <meta property="og:type"        content="website">
   <meta property="og:title"       content="Fito Scents · Decants de perfumes originales">
-  <meta property="og:description" content="Decants 100% originales de perfumes de diseñador y árabes desde 2ml. Prueba antes de invertir en el frasco completo. Tijuana, B.C.">
+  <meta property="og:description" content="Decants 100% originales de perfumes de diseñador y árabes desde 2ml. Prueba antes de invertir en el frasco completo. Tijuana y Rosarito, B.C.">
   <meta property="og:image"       content="https://rodolfohubster.github.io/decants/assets/img/LogoOficial2.jpeg">
   <meta property="og:url"         content="https://rodolfohubster.github.io/decants/">
   <meta name="twitter:card"       content="summary_large_image">
-  <meta name="description"        content="Decants 100% originales de perfumes de diseñador y árabes desde 2ml. Tijuana, B.C.">
+  <meta name="description"        content="Decants 100% originales de perfumes de diseñador y árabes desde 2ml. Tijuana y Rosarito, B.C.">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css"/>
-  <link rel="stylesheet" href="./assets/css/catalog.css?v=4.7">
+  <link rel="stylesheet" href="./assets/css/catalog.css?v=4.8">
   <style>
     /* ══════════════════════════════════════════════════
        TOKENS — paleta Fitoscents (unificada con faq.html)
@@ -355,6 +355,19 @@
     }
     @keyframes shot-in { from { opacity:0; transform:scale(1.03); } to { opacity:1; transform:none; } }
 
+    /* Cambio tipo página: la foto que sale se va hacia un lado (empezando desde
+       donde la dejó el dedo) y la nueva entra por el otro. */
+    .hero-fantasma {
+      position:absolute; inset:0; width:100%; height:100%;
+      object-fit:cover; z-index:1; pointer-events:none;
+    }
+    @keyframes hero-sale-izq  { from { transform:translateX(var(--desde,0)); } to { transform:translateX(-105%); } }
+    @keyframes hero-sale-der  { from { transform:translateX(var(--desde,0)); } to { transform:translateX(105%); } }
+    @keyframes hero-entra-der { from { transform:translateX(105%); } to { transform:none; } }
+    @keyframes hero-entra-izq { from { transform:translateX(-105%); } to { transform:none; } }
+    @keyframes hero-tag-in    { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+    @keyframes hero-fundido   { from { opacity:0; } to { opacity:1; } }
+
     /* Etiqueta de la colección, sobre la esquina superior */
     .hero-col-chip {
       position:absolute; top:10px; left:10px; z-index:2;
@@ -429,6 +442,7 @@
 
     @media(prefers-reduced-motion:reduce) {
       .hero-shot img { animation:none; }
+      .hero-fantasma { display:none; }
       .hero-shot:hover { transform:none; }
     }
 
@@ -630,6 +644,11 @@
       color:#e8c96a;
     }
     .fsort-list { display:flex; flex-direction:column; gap:6px; }
+    /* Tipo, familia y marca: fichas con espacio entre sí, como "Ordenar por" */
+    .fcheck-list { display:flex; flex-wrap:wrap; gap:8px; }
+    .fcheck-label i { color:var(--gold); font-size:14px; }
+    .fcheck-label:has(input:checked) i { color:#e8c96a; }
+    .fpanel-body > div + div { padding-top:18px; border-top:1px solid rgba(255,255,255,.06); }
     .fsort-label {
       display:flex; align-items:center; gap:8px;
       padding:8px 10px; border-radius:8px;
@@ -738,9 +757,9 @@
     /* ══ FAB WhatsApp ════════════════════════════════ */
     #wa-fab {
       position:fixed; bottom:24px; left:24px;
-      width:52px; height:52px; border-radius:50%;
-      background:#25D366; border:none;
-      color:#fff; font-size:24px;
+      width:62px; height:62px; border-radius:50%;
+      background:#25D366; border:2px solid rgba(255,255,255,.9);
+      color:#fff; font-size:30px;
       display:flex; align-items:center; justify-content:center;
       box-shadow:0 6px 20px rgba(0,0,0,.45);
       z-index:300; cursor:pointer;
@@ -765,7 +784,7 @@
     #wa-fab:hover::after { opacity:1; }
     @media(max-width:480px) {
       #wa-fab::after { display:none; }
-      #wa-fab { width:46px; height:46px; font-size:21px; bottom:20px; left:16px; }
+      #wa-fab { width:58px; height:58px; font-size:28px; bottom:20px; left:16px; }
     }
     body.cart-open #wa-fab { opacity:0; pointer-events:none; }
 
@@ -965,7 +984,7 @@
         </div>
         <div class="hfeat">
           <div class="hfeat-icon"><i class="bi bi-geo-alt"></i></div>
-          <div class="hfeat-text">Tijuana, B.C.</div>
+          <div class="hfeat-text">Tijuana y<br>Rosarito, B.C.</div>
         </div>
         <div class="hfeat">
           <div class="hfeat-icon"><i class="bi bi-whatsapp"></i></div>
@@ -1009,7 +1028,7 @@
       <input id="q-mobile" style="display:none" oninput="syncMobileSearch()">
     </div>
     <select class="fbar-sort" id="sort" onchange="renderGrid()" aria-label="Ordenar">
-      <option value="relevancia">⭐ Populares</option>
+      <option value="relevancia">Populares</option>
       <option value="recientes">Nuevos</option>
       <option value="antiguos">Antiguos</option>
       <option value="az">A → Z</option>
@@ -1053,7 +1072,7 @@
     <div>
       <div class="fpanel-section-title"><i class="bi bi-sort-down"></i> Ordenar por</div>
       <div class="fsort-list">
-        <label class="fsort-label"><input type="radio" name="fsort" value="relevancia" checked onchange="onPanelSort(this)"><span class="fsort-dot"></span>⭐ Más populares</label>
+        <label class="fsort-label"><input type="radio" name="fsort" value="relevancia" checked onchange="onPanelSort(this)"><span class="fsort-dot"></span>Más populares</label>
         <label class="fsort-label"><input type="radio" name="fsort" value="recientes"   onchange="onPanelSort(this)"><span class="fsort-dot"></span>Agregados recientemente</label>
         <label class="fsort-label"><input type="radio" name="fsort" value="antiguos"    onchange="onPanelSort(this)"><span class="fsort-dot"></span>De antiguo a reciente</label>
         <label class="fsort-label"><input type="radio" name="fsort" value="az"          onchange="onPanelSort(this)"><span class="fsort-dot"></span>Nombre A → Z</label>
@@ -1112,22 +1131,24 @@
 
 <!-- ══ MODAL PERFUME ══ -->
 <div class="modal-overlay" id="modal" onclick="closeModal(event)">
-  <div class="modal-box">
-    <div class="modal-img" id="modal-img">
-      <div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-nombre">
+    <div class="modal-media">
+      <div class="modal-img" id="modal-img">
+        <div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>
+      </div>
+      <!-- Arriba a la derecha y sobre la foto: donde todos buscan la X -->
+      <button class="modal-x" type="button" onclick="doCloseModal()" aria-label="Cerrar">
+        <i class="bi bi-x-lg"></i>
+      </button>
     </div>
     <div class="modal-content">
-      <div class="modal-top">
-        <div class="modal-nombre" id="modal-nombre"></div>
-        <button class="btn-close"
-          onclick="closeModal()"
-          aria-label="Cerrar">
-          <i class="bi bi-x-lg"></i>
-        </button>
-      </div>
+      <div class="modal-skeleton" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="modal-marca" id="modal-marca"></div>
+      <h2 class="modal-nombre" id="modal-nombre"></h2>
+      <div class="modal-tags" id="modal-tags"></div>
       <div class="modal-desc"  id="modal-desc"></div>
       <button class="modal-desc-more" id="modal-desc-more" type="button" hidden>Ver más</button>
+      <div class="modal-ficha" id="modal-ficha" hidden></div>
       <div id="modal-paquete-items" style="display:none"></div>
       <div class="modal-sizes-label">Elige tu presentación</div>
       <div class="modal-pills" id="modal-pills"></div>
@@ -1232,13 +1253,13 @@
     </button>
   </div>
   <div class="footer-copy">
-    <p>© 2026 <a href="https://wa.me/526648162623" target="_blank" rel="noopener">Fitoscents</a> · Tijuana, B.C.</p>
+    <p>© 2026 <a href="https://wa.me/526648162623" target="_blank" rel="noopener">Fitoscents</a> · Tijuana y Rosarito, B.C.</p>
   </div>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
 
-<script type="module" src="./assets/js/catalog.js?v=2.27"></script>
+<script type="module" src="./assets/js/catalog.js?v=2.31"></script>
 <script type="module">
 import { initNovedadesModal } from './assets/js/novedades-modal.js';
 import { initTour } from './assets/js/tour.js';

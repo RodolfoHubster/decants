@@ -55,6 +55,14 @@ const num = v => Number(v) || 0;
  */
 const DEFINICIONES = [
   {
+    id: 'destacados',
+    label: 'Recomendados',
+    // Los que el dueño marca con estrella en el admin. Es la única colección
+    // que él controla a mano; con menos de tres se descarta sola.
+    elegir: ps => ps.filter(p => p.destacado === true),
+    cantera: Infinity
+  },
+  {
     id: 'vendidos',
     label: 'Los más vendidos',
     // El catálogo público no puede leer `ventas` (requiere sesión), así que
