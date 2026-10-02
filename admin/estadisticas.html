@@ -40,6 +40,56 @@
     .list-item:last-child { border-bottom: none; }
     .list-item-title { font-weight: 500; }
     .list-item-sub { color: var(--text-faint); font-size: 11px; }
+
+    /* Periodo como chips: un toque en vez de abrir un select */
+    .periodos { display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; margin-bottom:16px; scrollbar-width:none; }
+    .periodos::-webkit-scrollbar { display:none; }
+    .periodo { flex:0 0 auto; padding:8px 14px; border-radius:99px; border:1px solid var(--border);
+               background:var(--bg-card); color:var(--text-muted); font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+    .periodo.on { background:var(--accent); border-color:var(--accent); color:#111; }
+
+    /* Para decidir */
+    .decidir { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+    .decidir .chart-card h3 { font-size:15px; }
+    .decidir small { display:block; color:var(--text-muted); font-size:12px; margin:-10px 0 10px; font-weight:400; }
+    .dec-item { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; padding:9px 0;
+                border-bottom:1px solid rgba(255,255,255,.05); font-size:13px; }
+    .dec-item:last-child { border-bottom:none; }
+    .dec-item strong { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .dec-item span { color:var(--text-muted); font-size:12px; text-align:right; white-space:nowrap; }
+    .dec-item em { font-style:normal; color:var(--accent); font-weight:700; }
+    .dec-vacio { color:var(--text-faint); font-size:13px; padding:6px 0; }
+
+    .prog-mini { height:4px; background:rgba(255,255,255,.1); border-radius:2px; overflow:hidden; margin-top:6px; max-width:140px; }
+    .prog-mini > span { display:block; height:100%; background:var(--accent); }
+    .tag-agotado { font-size:10px; font-weight:700; color:#ef4444; background:rgba(239,68,68,.12); padding:2px 6px; border-radius:4px; margin-left:6px; }
+
+    @media (max-width: 900px) { .decidir { grid-template-columns:1fr; } }
+
+    @media (max-width: 640px) {
+      .kpi-grid { grid-template-columns:1fr 1fr; gap:10px; }
+      .kpi-card { padding:14px; gap:4px; }
+      .kpi-title { font-size:10.5px; letter-spacing:.3px; }
+      .kpi-value { font-size:20px; }
+      .kpi-card:first-child { grid-column:1 / -1; }
+      .kpi-card:first-child .kpi-value { font-size:30px; }
+      .chart-card, .table-card { padding:14px; }
+
+      /* La tabla de rentabilidad se vuelve tarjetas: 6 columnas no caben */
+      .profit-table thead { display:none; }
+      .profit-table, .profit-table tbody, .profit-table tr, .profit-table td { display:block; width:100%; }
+      .profit-table tr[data-fila="perfume"] { border:1px solid var(--border); border-radius:10px; margin-bottom:8px;
+                                              padding:10px 12px; background:var(--bg-card2); }
+      .profit-table tr[data-fila="perfume"] td { border:none; padding:3px 0; display:flex; justify-content:space-between;
+                                                 align-items:center; text-align:right !important; }
+      .profit-table tr[data-fila="perfume"] td[data-label]::before { content:attr(data-label); color:var(--text-muted);
+                                                                     font-size:12px; text-align:left; }
+      .profit-table tr[data-fila="perfume"] td:first-child { text-align:left !important; padding-bottom:6px; }
+      .profit-table tr[data-fila="lote"] td { border:none; padding:4px 12px; display:flex; justify-content:space-between; }
+      .profit-table tr[data-fila="lote"] td[data-label]::before { content:attr(data-label); color:var(--text-faint); font-size:11px; }
+      .profit-table tr:hover td { background:transparent; }
+      #f-search { width:100% !important; }
+    }
   </style>
 </head>
 <body>
@@ -49,10 +99,10 @@
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:12px">
         <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
-        <span class="topbar-title">Inteligencia de Negocio</span>
+        <span class="topbar-title">Estadísticas</span>
       </div>
       <div style="display:flex; gap:10px; align-items:center">
-        <select id="f-periodo-global" class="form-control" style="width:160px; height:36px; font-size:13px;" onchange="window.loadData()">
+        <select id="f-periodo-global" class="form-control" hidden onchange="window.loadData()">
           <option value="all">Histórico Completo</option>
           <option value="hoy">Hoy</option>
           <option value="7">Últimos 7 días</option>
@@ -60,11 +110,20 @@
           <option value="mes">Este Mes</option>
           <option value="anio">Este Año</option>
         </select>
-        <button id="btn-actualizar-stats" class="btn btn-outline" onclick="loadData()"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
+        <button id="btn-actualizar-stats" class="btn btn-outline btn-sm" onclick="loadData()" title="Actualizar"><i class="bi bi-arrow-clockwise"></i></button>
       </div>
     </div>
     
     <div class="page-body">
+
+      <div class="periodos" id="periodos" role="tablist" aria-label="Periodo">
+        <button class="periodo" data-p="hoy">Hoy</button>
+        <button class="periodo" data-p="7">7 días</button>
+        <button class="periodo on" data-p="30">30 días</button>
+        <button class="periodo" data-p="mes">Este mes</button>
+        <button class="periodo" data-p="anio">Este año</button>
+        <button class="periodo" data-p="all">Todo</button>
+      </div>
       
       <!-- KPIs -->
       <div class="kpi-grid">
@@ -98,6 +157,20 @@
             <span class="kpi-value" id="kpi-decants">0</span>
             <span style="color:var(--text-muted); font-size:14px" id="kpi-ml">0 ml</span>
           </div>
+        </div>
+      </div>
+
+      <!-- Para decidir: las dos preguntas que mueven el negocio -->
+      <div class="decidir">
+        <div class="chart-card">
+          <h3><span><i class="bi bi-cash-stack" style="color:var(--accent)"></i> Lo que más dinero te dejó</span></h3>
+          <small>En el periodo elegido. Esto es lo que vale la pena recomprar.</small>
+          <div id="dec-top"><div class="dec-vacio">Calculando…</div></div>
+        </div>
+        <div class="chart-card">
+          <h3><span><i class="bi bi-hourglass-split" style="color:#e0a23c"></i> En stock pero no se mueve</span></h3>
+          <small>Sin ventas en 30 días. Candidatos a promoción o a paquete.</small>
+          <div id="dec-quietos"><div class="dec-vacio">Calculando…</div></div>
         </div>
       </div>
 
@@ -146,18 +219,21 @@
       <div class="table-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:15px">
           <div>
-            <h3 style="margin:0;font-size:16px;">Proyección de Rentabilidad por Perfume</h3>
-            <div style="font-size:12px;color:var(--text-muted);">Basado en historial de ventas y costos operativos.</div>
+            <h3 style="margin:0;font-size:16px;">Rentabilidad por botella</h3>
+            <div style="font-size:12px;color:var(--text-muted);">Cuánto llevas recuperado de cada botella abierta. Toca una para ver sus lotes.</div>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap">
             <input type="text" id="f-search" class="form-control" placeholder="Buscar perfume..." style="width:180px" oninput="renderTable()">
-            <select id="f-marca" class="form-control" style="width:140px" onchange="renderTable()">
-              <option value="">Todas las marcas</option>
+            <select id="f-vista" class="form-control" style="width:150px" onchange="renderTable()">
+              <option value="stock">En stock</option>
+              <option value="agotados">Agotados</option>
+              <option value="todos">Todo el historial</option>
             </select>
-            <select id="f-sort" class="form-control" style="width:160px" onchange="renderTable()">
-              <option value="margin-desc">Mayor Margen</option>
-              <option value="margin-asc">Menor Margen</option>
-              <option value="revenue-desc">Mayor Ingreso</option>
+            <select id="f-sort" class="form-control" style="width:170px" onchange="renderTable()">
+              <option value="margin-desc">Más ganancia</option>
+              <option value="revenue-desc">Más vendido ($)</option>
+              <option value="progress-desc">Se está acabando</option>
+              <option value="margin-asc">Aún no se paga</option>
             </select>
           </div>
         </div>
@@ -229,6 +305,6 @@
   </div>
 </div>
 
-<script type="module" src="../assets/js/estadisticas.js?v=1.1"></script>
+<script type="module" src="../assets/js/estadisticas.js?v=2.0"></script>
 </body>
 </html>

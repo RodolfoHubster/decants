@@ -2,6 +2,7 @@ import { db, collection, getDocs, doc, getDoc, updateDoc, auth, onAuthStateChang
 import { renderSidebar } from '../../admin/sidebar.js';
 import { ventasDeLote, esResto } from './lotes.js';
 import { esClienteTemporal, claveCliente } from './clientes-util.js';
+import { topVendidos, sinMovimiento, aMs } from './alertas.js';
 
 let ventas = [];
 let ventasFiltradas = [];
@@ -23,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.loadData = async () => {
   const btn = document.getElementById('btn-actualizar-stats');
-  if(btn) btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Cargando...';
+  if(btn) btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
   
   try {
     const [vs, ps, confSnap] = await Promise.all([
@@ -60,7 +61,7 @@ window.loadData = async () => {
   } catch(e) {
     console.error("Error loading stats:", e);
   } finally {
-    if(btn) btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Actualizar';
+    if(btn) btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
   }
 };
 
@@ -82,7 +83,7 @@ function aplicarFiltroFecha() {
   }
   
   if (desde > 0) {
-    ventasFiltradas = ventas.filter(v => (v.creadoEn || 0) >= desde);
+    ventasFiltradas = ventas.filter(v => aMs(v.creadoEn) >= desde);
   } else {
     ventasFiltradas = [...ventas];
   }
@@ -98,6 +99,48 @@ function aplicarFiltroFecha() {
   renderProfitability();
   renderTopClientes();
   renderAlertasInventario();
+  renderDecisiones();
+}
+
+// Cambiar de periodo no necesita volver a leer Firestore: los datos ya están.
+document.addEventListener('click', (e) => {
+  const chip = e.target.closest('.periodo');
+  if (!chip) return;
+  document.querySelectorAll('.periodo').forEach(b => b.classList.toggle('on', b === chip));
+  const sel = document.getElementById('f-periodo-global');
+  if (sel) sel.value = chip.dataset.p;
+  if (ventas.length || perfumes.length) aplicarFiltroFecha();
+});
+
+const mxn = n => (n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
+const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function renderDecisiones() {
+  const top = topVendidos(ventasFiltradas, 0, 6).sort((a, b) => b.total - a.total);
+  const elTop = document.getElementById('dec-top');
+  if (elTop) {
+    elTop.innerHTML = top.length
+      ? top.map(t => `
+          <div class="dec-item">
+            <strong>${escHtml(t.nombre)}</strong>
+            <span>${t.unidades} pzs · <em>${mxn(t.total)}</em></span>
+          </div>`).join('')
+      : '<div class="dec-vacio">Sin ventas en este periodo.</div>';
+  }
+
+  const quietos = sinMovimiento(perfumes, ventas, Date.now(), 30);
+  const elQ = document.getElementById('dec-quietos');
+  if (elQ) {
+    elQ.innerHTML = quietos.length
+      ? quietos.slice(0, 8).map(q => `
+          <div class="dec-item">
+            <strong>${escHtml(q.nombre)}</strong>
+            <span>${q.dias === null ? 'nunca se ha vendido' : `hace ${q.dias} días`}</span>
+          </div>`).join('') +
+        (quietos.length > 8 ? `<div class="dec-vacio">y ${quietos.length - 8} más</div>` : '')
+      : '<div class="dec-vacio">Todo lo que tienes se está moviendo.</div>';
+  }
 }
 
 function renderKPIs() {
@@ -597,7 +640,7 @@ window.renderTable = () => renderProfitability();
 function renderProfitability() {
   const tbody = document.getElementById('profit-tbody');
   const q = (document.getElementById('f-search')?.value || '').toLowerCase();
-  const qMarca = (document.getElementById('f-marca')?.value || '');
+  const vista = document.getElementById('f-vista')?.value || 'stock';
   
   const costoInsumoUnitario = (+costosOp.botella || 0) + (+costosOp.etiqueta || 0) + (+costosOp.bolsa || 0);
   
@@ -605,7 +648,10 @@ function renderProfitability() {
   
   perfumes.forEach(p => {
     if (q && !p.nombre.toLowerCase().includes(q) && !(p.marca||'').toLowerCase().includes(q)) return;
-    if (qMarca && p.marca !== qMarca) return;
+    // Lo agotado y lo archivado ya no se puede vender: no estorba por defecto.
+    const agotado = p.estadoStock === 'agotado' || p.activo === false || p.archivado === true;
+    if (vista === 'stock' && agotado) return;
+    if (vista === 'agotados' && !agotado) return;
     
     const lotes = p.lotes && p.lotes.length > 0 ? p.lotes : [];
     if (lotes.length === 0 && p.costoBotella && p.tamanoBotella) {
@@ -736,6 +782,9 @@ function renderProfitability() {
       pid: p.id,
       nombre: p.nombre,
       marca: p.marca || '',
+      agotado,
+      progreso: activeLoteData.progresoPorcentaje,
+      progresoTexto: activeLoteData.progresoTexto,
       sumGanancia: activeLoteData.gananciaReal,
       sumIngreso: activeLoteData.ingresoReal,
       sumCostoBotella: activeLoteData.costoInversionReal,
@@ -767,7 +816,7 @@ function renderProfitability() {
   });
 
   for (const [nombre, ingreso] of Object.entries(orphans)) {
-    if (ingreso > 0.5) {
+    if (vista === 'todos' && ingreso > 0.5) {
       results.push({
         pid: 'eliminado-' + nombre.replace(/\s+/g, '-'),
         nombre: '🗑️ ' + nombre,
@@ -795,6 +844,7 @@ function renderProfitability() {
     if (sortVal === 'margin-desc') return b.sumGanancia - a.sumGanancia;
     if (sortVal === 'margin-asc') return a.sumGanancia - b.sumGanancia;
     if (sortVal === 'revenue-desc') return b.sumIngreso - a.sumIngreso;
+    if (sortVal === 'progress-desc') return (b.progreso || 0) - (a.progreso || 0);
     return b.sumGanancia - a.sumGanancia;
   });
   
@@ -809,7 +859,8 @@ function renderProfitability() {
   if (pInfo) pInfo.textContent = totalItems === 0 ? 'Mostrando 0 - 0 de 0' : `Mostrando ${start+1} - ${end} de ${totalItems}`;
   
   if (totalItems === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-faint)">No hay resultados.</td></tr>';
+    const msg = vista === 'stock' ? 'No hay botellas en stock con costo registrado.' : 'No hay resultados.';
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-faint)">${msg}</td></tr>`;
     renderStatsPagination(0, 1);
     return;
   }
@@ -819,22 +870,28 @@ function renderProfitability() {
     const hasLotes = r.lotes.length > 0;
     
     let html = `
-      <tr style="cursor:${hasLotes?'pointer':'default'}" onclick="window.toggleLotes('${r.pid}')">
+      <tr data-fila="perfume" style="cursor:${hasLotes?'pointer':'default'}" onclick="window.toggleLotes('${r.pid}')">
         <td>
-          <div style="display:flex;align-items:center;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
             ${hasLotes ? `<i class="bi bi-chevron-right" id="icon-${r.pid}" style="transition:0.2s"></i>` : ''}
-            <strong>${r.nombre}</strong> <span style="font-size:11px;color:var(--text-faint)">${r.marca}</span>
+            <span style="min-width:0">
+              <strong>${r.nombre}</strong>${r.agotado ? '<span class="tag-agotado">AGOTADO</span>' : ''}
+              <span style="display:block;font-size:11px;color:var(--text-faint)">${r.marca}${r.lotes.length > 1 ? ` · ${r.lotes.length} botellas` : ''}</span>
+            </span>
           </div>
         </td>
-        <td><span style="font-size:12px;color:var(--text-muted)">${r.lotes.length > 1 ? `Botella Activa (+${r.lotes.length - 1})` : 'Botella Activa'}</span></td>
-        <td class="text-right">${r.sumCostoBotella.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}</td>
-        <td class="text-right" style="color:var(--text-faint)">${r.sumIngreso.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}</td>
-        <td class="text-right">
+        <td data-label="Usado">
+          ${r.progresoTexto ? `<span style="font-size:12px;color:var(--text-muted)">${r.progresoTexto} · ${r.progreso}%
+            <span class="prog-mini"><span style="width:${r.progreso}%;${r.progreso >= 90 ? 'background:#ef4444' : ''}"></span></span></span>` : '—'}
+        </td>
+        <td class="text-right" data-label="Invertido">${r.sumCostoBotella.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}</td>
+        <td class="text-right" data-label="Vendido" style="color:var(--text-faint)">${r.sumIngreso.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}</td>
+        <td class="text-right" data-label="Ganancia">
           <span class="${isProfit ? 'badge-profit' : 'badge-loss'}">
             ${r.sumGanancia.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}
           </span>
         </td>
-        <td class="text-right" style="color:var(--text-faint)">
+        <td class="text-right" data-label="Al terminarla" style="color:var(--text-faint)">
           ${r.sumCostoInsumos.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}
         </td>
       </tr>
@@ -845,7 +902,7 @@ function renderProfitability() {
         const isLProfit = l.gananciaReal >= 0;
         const colorProgreso = l.progresoPorcentaje >= 100 ? '#ef4444' : 'var(--accent)';
         html += `
-          <tr class="lotes-row-${r.pid}" style="display:none; background:var(--bg-card2)">
+          <tr data-fila="lote" class="lotes-row-${r.pid}" style="display:none; background:var(--bg-card2)">
             <td style="padding-left:35px; border-left:3px solid var(--accent)">↳ ${l.nombre}</td>
             <td>
               <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:flex;align-items:center;gap:8px;">
@@ -881,7 +938,7 @@ window.toggleLotes = (pid) => {
   let isHidden = true;
   rows.forEach(r => {
     if (r.style.display === 'none') {
-      r.style.display = 'table-row';
+      r.style.display = '';  // que decida el CSS: fila en escritorio, bloque en móvil
       isHidden = false;
     } else {
       r.style.display = 'none';
