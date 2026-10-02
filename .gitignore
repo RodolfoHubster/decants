@@ -1,1 +1,7 @@
-node_modules
+node_modules/
+coverage/
+.firebase/
+.claude/settings.local.json
+.claude/worktrees/
+.DS_Store
+Thumbs.db
