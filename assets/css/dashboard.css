@@ -1,68 +1,275 @@
 /* ============================================
-   STATS GRID
+   HOY — dashboard
+   Móvil primero: una columna, lo importante arriba.
    ============================================ */
-   .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
+.hoy {
+  max-width: 980px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.stat-card {
-    position: relative;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    overflow: hidden;
+.hoy-saludo h1 {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+.hoy-saludo p {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  text-transform: capitalize;
 }
 
-.stat-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-faint);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 8px;
+/* ── Dinero ─────────────────────────────────── */
+.hoy-dinero {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
+.hoy-dinero > * { background: var(--bg-card); }
 
-.stat-value {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1;
-    margin-bottom: 4px;
+.dinero-principal {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(201,168,76,.16), transparent 60%),
+    var(--bg-card);
 }
-
-.stat-sub {
-    font-size: 12px;
-    color: var(--text-muted);
+.dinero-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
-
-.stat-icon {
-    position: absolute;
-    right: 16px;
-    top: 16px;
-    font-size: 28px;
-    color: var(--accent);
-    opacity: 0.18;
+.dinero-valor {
+  font-size: 40px;
+  line-height: 1.05;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
 }
+.dinero-sub { font-size: 13px; color: var(--text-muted); }
 
-/* ============================================
-   VENTAS ROW
-   ============================================ */
-.ventas-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 24px;
+.dinero-sec {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
 }
+.dinero-sec > div {
+  background: var(--bg-card);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+.dinero-sec strong {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.dinero-cambio { font-size: 12px; font-weight: 600; }
+.dinero-cambio.sube { color: var(--success); }
+.dinero-cambio.baja { color: var(--danger); }
 
-/* ============================================
-   RESPONSIVE - MOBILE (640px)
-   ============================================ */
+/* ── Acciones ───────────────────────────────── */
+.hoy-acciones {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.accion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 92px;
+  padding: 14px 8px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  transition: transform var(--transition), border-color var(--transition), background var(--transition);
+}
+.accion i { font-size: 24px; color: var(--accent); }
+.accion:hover { border-color: var(--accent-border); background: var(--bg-card2); }
+.accion:active { transform: scale(.97); }
+.accion-vender {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #111;
+}
+.accion-vender i { color: #111; }
+.accion-vender:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+/* ── Bloques ────────────────────────────────── */
+.hoy-bloque {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+}
+.bloque-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.bloque-head h2 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+.bloque-head h2 i { color: var(--accent); }
+.bloque-count {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 99px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.bloque-count:empty { display: none; }
+
+/* ── Pendientes ─────────────────────────────── */
+.pendientes { display: flex; flex-direction: column; gap: 8px; }
+
+.pend {
+  display: grid;
+  grid-template-columns: 40px 1fr 16px;
+  align-items: start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-faint);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--transition), transform var(--transition);
+}
+.pend:hover { border-color: var(--accent-border); }
+.pend:active { transform: scale(.99); }
+.pend-alta  { border-left-color: var(--danger); }
+.pend-media { border-left-color: var(--warning); }
+.pend-baja  { border-left-color: var(--info); }
+
+.pend-ico {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: rgba(255,255,255,.04);
+}
+.pend-alta  .pend-ico { color: var(--danger);  background: rgba(224,92,92,.1); }
+.pend-media .pend-ico { color: var(--warning); background: rgba(224,162,60,.1); }
+.pend-baja  .pend-ico { color: var(--info);    background: rgba(91,192,222,.1); }
+
+.pend-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pend-texto strong { font-size: 14px; color: var(--text-primary); }
+.pend-texto > span { font-size: 12.5px; color: var(--text-muted); line-height: 1.4; }
+.pend-texto ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.pend-texto li {
+  font-size: 11.5px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(255,255,255,.05);
+  color: var(--text-primary);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pend-ir { color: var(--text-faint); align-self: center; }
+
+.pend-vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 24px 12px;
+  color: var(--text-muted);
+}
+.pend-vacio i { font-size: 36px; color: var(--success); }
+.pend-vacio strong { color: var(--text-primary); font-size: 16px; }
+.pend-cargando { color: var(--text-faint); font-size: 13px; padding: 8px 0; list-style: none; }
+
+/* ── Top del mes ────────────────────────────── */
+.top-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.top-lista li { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 12px; }
+.top-pos {
+  width: 28px; height: 28px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+  background: var(--accent-soft); color: var(--accent);
+}
+.top-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.top-info strong {
+  font-size: 13.5px; color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.top-barra { height: 4px; border-radius: 99px; background: rgba(255,255,255,.06); overflow: hidden; }
+.top-barra span { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.top-num { text-align: right; font-weight: 700; font-size: 15px; color: var(--text-primary); line-height: 1.2; }
+.top-num small { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.top-num em { display: block; font-style: normal; font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+/* ── Catálogo ───────────────────────────────── */
+.hoy-catalogo {
+  display: flex; justify-content: center; gap: 10px;
+  font-size: 13px; color: var(--text-faint); padding-bottom: 8px;
+}
+.hoy-catalogo a { color: var(--text-muted); text-decoration: none; }
+.hoy-catalogo a:hover { color: var(--accent); }
+.hoy-catalogo strong { color: var(--text-primary); }
+
+/* ── Móvil ──────────────────────────────────── */
 @media (max-width: 640px) {
-    .ventas-row {
-        grid-template-columns: 1fr;
-    }
+  .hoy { gap: 16px; }
+  .hoy-saludo h1 { font-size: 22px; }
+  .hoy-dinero { grid-template-columns: 1fr; }
+  .dinero-valor { font-size: 36px; }
+  .dinero-sec { grid-template-rows: none; grid-template-columns: 1fr 1fr; }
+  .hoy-acciones { grid-template-columns: repeat(2, 1fr); }
+  .accion { min-height: 80px; flex-direction: row; justify-content: flex-start; padding: 14px; font-size: 14px; }
+  .accion i { font-size: 22px; }
+  .hoy-bloque { padding: 14px; }
+  .hide-sm { display: none; }
 }

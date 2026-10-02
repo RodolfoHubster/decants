@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/jpeg" href="../assets/img/LogoOficial2.jpeg">
-  <link rel="apple-touch-icon" href="../assets/img/LogoOficial2.jpeg"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Fitoscents · Dashboard</title>
+  <link rel="apple-touch-icon" href="../assets/img/LogoOficial2.jpeg">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Fitoscents · Hoy</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="../assets/css/variables.css">
   <link rel="stylesheet" href="../assets/css/global.css">
-  <link rel="stylesheet" href="../assets/css/dashboard.css">
+  <link rel="stylesheet" href="../assets/css/dashboard.css?v=3.0">
 </head>
 <body>
 <div class="app-shell">
@@ -18,66 +19,81 @@
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:12px">
         <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
-        <span class="topbar-title">Dashboard</span>
+        <span class="topbar-title">Hoy</span>
       </div>
-      <a href="../index.html" target="_blank" class="btn btn-outline btn-sm"><i class="bi bi-shop"></i> Ver tienda</a>
+      <a href="../index.html" target="_blank" class="btn btn-outline btn-sm"><i class="bi bi-shop"></i> <span class="hide-sm">Ver tienda</span></a>
     </div>
-    <div class="page-body">
 
-      <!-- Stats catálogo -->
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">Perfumes</div><div class="stat-value" id="s-perf">—</div><div class="stat-sub">en catálogo</div><i class="bi bi-droplet-fill stat-icon"></i></div>
-        <div class="stat-card"><div class="stat-label">Marcas</div><div class="stat-value" id="s-marc">—</div><div class="stat-sub">registradas</div><i class="bi bi-award-fill stat-icon"></i></div>
-        <div class="stat-card"><div class="stat-label">Categorías</div><div class="stat-value" id="s-cat">—</div><div class="stat-sub">activas</div><i class="bi bi-tags-fill stat-icon"></i></div>
-        <div class="stat-card"><div class="stat-label">Visibles</div><div class="stat-value" id="s-vis">—</div><div class="stat-sub">en la tienda</div><i class="bi bi-eye stat-icon"></i></div>
-        <div class="stat-card"><div class="stat-label">Ventas</div><div class="stat-value" id="s-ventas">—</div><div class="stat-sub">registradas</div><i class="bi bi-receipt stat-icon"></i></div>
-        <div class="stat-card"><div class="stat-label">Total ventas</div><div class="stat-value" id="s-total">—</div><div class="stat-sub">MXN cobrado</div><i class="bi bi-cash-coin stat-icon"></i></div>
-        <div class="stat-card"><div class="stat-label">Pedidos nuevos</div><div class="stat-value" id="s-ped">—</div><div class="stat-sub">por atender</div><i class="bi bi-box-seam-fill stat-icon"></i></div>
-        <div class="stat-card"><div class="stat-label">Por cobrar</div><div class="stat-value" id="s-pend">—</div><div class="stat-sub">ventas pendientes</div><i class="bi bi-hourglass-split stat-icon"></i></div>
-        <div class="stat-card" id="card-sin-precio"><div class="stat-label">Sin precio</div><div class="stat-value" id="s-sin-precio">—</div><div class="stat-sub">activos sin precios</div><i class="bi bi-exclamation-triangle-fill stat-icon" style="color:var(--danger)"></i></div>
-      </div>
+    <div class="page-body hoy">
 
-      <!-- Acciones rapidas -->
-      <div class="card">
-        <div class="card-header"><h5>Acciones rápidas</h5></div>
-        <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap">
-          <a href="ventas.html" class="btn btn-primary" style="background-color:var(--success, #22c55e);border-color:var(--success, #22c55e);"><i class="bi bi-cart-plus"></i> Nueva Venta</a>
-          <a href="ventas.html?openDia=1" class="btn btn-primary" style="background-color:var(--warning, #eab308);border-color:var(--warning, #eab308);color:#000;"><i class="bi bi-truck"></i> Registro del Día</a>
-          <a href="perfumes.html" class="btn btn-outline"><i class="bi bi-plus-lg"></i> Nuevo perfume</a>
-          <a href="pedidos.html" class="btn btn-outline"><i class="bi bi-box-seam"></i> Ver pedidos</a>
-          <a href="marcas.html" class="btn btn-outline"><i class="bi bi-award"></i> Agregar marca</a>
-          <a href="categorias.html" class="btn btn-outline"><i class="bi bi-tags"></i> Agregar categoría</a>
-          <a href="../index.html" target="_blank" class="btn btn-outline"><i class="bi bi-shop"></i> Ver tienda pública</a>
+      <header class="hoy-saludo">
+        <h1 id="hoy-saludo">Hola</h1>
+        <p id="hoy-fecha"></p>
+      </header>
+
+      <!-- Dinero: lo primero que importa -->
+      <section class="hoy-dinero" aria-label="Ventas">
+        <div class="dinero-principal">
+          <span class="dinero-label">Vendido hoy</span>
+          <strong class="dinero-valor" id="d-hoy">—</strong>
+          <span class="dinero-sub" id="d-hoy-sub">&nbsp;</span>
         </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px; margin:10px; ">
-        <!-- Top 5 Decants -->
-        <div class="card" style="margin-bottom:0">
-          <div class="card-header"><h5><i class="bi bi-trophy-fill" style="color:#f1c40f"></i> Top 5 Decants</h5></div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>#</th><th>Perfume</th><th style="text-align:right">Unidades / Total</th></tr></thead>
-              <tbody id="top5-decants-body"><tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-faint)">Cargando...</td></tr></tbody>
-            </table>
+        <div class="dinero-sec">
+          <div>
+            <span class="dinero-label">Esta semana</span>
+            <strong id="d-semana">—</strong>
+          </div>
+          <div>
+            <span class="dinero-label">Este mes</span>
+            <strong id="d-mes">—</strong>
+            <span class="dinero-cambio" id="d-cambio"></span>
           </div>
         </div>
+      </section>
 
-        <!-- Top 5 Completos -->
-        <div class="card" style="margin-bottom:0">
-          <div class="card-header"><h5><i class="bi bi-star-fill" style="color:#e67e22"></i> Top 5 Botellas Completas</h5></div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>#</th><th>Perfume</th><th style="text-align:right">Unidades / Total</th></tr></thead>
-              <tbody id="top5-completos-body"><tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-faint)">Cargando...</td></tr></tbody>
-            </table>
-          </div>
+      <!-- Acciones: lo que haces en el día, a un toque -->
+      <nav class="hoy-acciones" aria-label="Acciones rápidas">
+        <a href="perfumes.html?pos=1" class="accion accion-vender">
+          <i class="bi bi-bag-plus-fill"></i><span>Vender</span>
+        </a>
+        <a href="ventas.html?openDia=1" class="accion">
+          <i class="bi bi-receipt"></i><span>Registrar ventas</span>
+        </a>
+        <a href="encargos.html?nuevo=1" class="accion">
+          <i class="bi bi-kanban"></i><span>Nuevo encargo</span>
+        </a>
+        <a href="costos.html" class="accion">
+          <i class="bi bi-wallet2"></i><span>Registrar gasto</span>
+        </a>
+      </nav>
+
+      <!-- Recordatorios -->
+      <section class="hoy-bloque">
+        <div class="bloque-head">
+          <h2><i class="bi bi-bell-fill"></i> Pendientes</h2>
+          <span class="bloque-count" id="pend-count"></span>
         </div>
-      </div>
+        <div id="pendientes" class="pendientes">
+          <div class="pend-cargando">Revisando tu negocio…</div>
+        </div>
+      </section>
+
+      <!-- Lo que se mueve -->
+      <section class="hoy-bloque">
+        <div class="bloque-head">
+          <h2><i class="bi bi-fire"></i> Lo que más se vende este mes</h2>
+        </div>
+        <ol id="top-mes" class="top-lista">
+          <li class="pend-cargando">Cargando…</li>
+        </ol>
+      </section>
+
+      <!-- Catálogo, en una línea -->
+      <section class="hoy-catalogo" id="hoy-catalogo"></section>
 
     </div>
   </div>
 </div>
-<script type="module" src="../assets/js/dashboard.js?v=2.0"></script>
+<script type="module" src="../assets/js/dashboard.js?v=3.1"></script>
 </body>
 </html>
