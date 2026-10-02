@@ -7,6 +7,8 @@ import { imgThumb, imgCard } from './cloudinary.js';
 import { precargarImagen } from './imagenes.js';
 import { buildSelectOptions } from './filtros-config.js';
 import { toast } from './toast.js';
+import { sugiereNuevoCliente, siguienteClienteId, nombreCliente } from './pos-cliente.js';
+import { construirPrompt, parsearRespuesta, emparejarOpcion } from './ia-perfume.js';
 
 const CLOUDINARY_CLOUD  = 'dxo761td7';
 const CLOUDINARY_PRESET = 'FITOSCENTS-DECANTS';
@@ -32,18 +34,60 @@ let perfumes = [], cats = [], marcas = [], imgMode = 'url';
 let familiasData = [];
 let tiposData    = [];
 // ── Definir addToPosCart para la vista POS Rápido ──
-window.addToPosCart = (item) => {
-  let cart = [];
-  try { cart = JSON.parse(localStorage.getItem('posCart') || '[]'); }
-  catch(e){ /* canasta corrupta en localStorage: se arranca vacía */ }
-  
-  // Reset client counter if cart was empty
-  if (cart.length === 0) localStorage.setItem('posClientId', '1');
-  const currentClientId = parseInt(localStorage.getItem('posClientId') || '1');
-  item.cartClientId = currentClientId;
-  
+function leerCanasta() {
+  try { return JSON.parse(localStorage.getItem('posCart') || '[]'); }
+  catch(e){ return []; }  // canasta corrupta en localStorage: se arranca vacía
+}
+
+function leerNombresCliente() {
+  try { return JSON.parse(localStorage.getItem('posClientNames') || '{}'); }
+  catch(e){ return {}; }
+}
+
+/**
+ * Pregunta de quién es el perfume cuando ya pasó un rato desde el último
+ * movimiento. En sobre ruedas se atiende, se arma el decant y se olvida pulsar
+ * "siguiente cliente": sin esto la venta del que llega después cae en el ticket
+ * del anterior.
+ */
+async function resolverClienteDestino(cart) {
+  if (cart.length === 0) {
+    localStorage.setItem('posClientId', '1');
+    return 1;
+  }
+  const actual = parseInt(localStorage.getItem('posClientId') || '1');
+  if (!sugiereNuevoCliente(cart, actual, Date.now())) return actual;
+
+  const nombres    = leerNombresCliente();
+  const nombreAct  = nombreCliente(nombres, actual);
+  const siguiente  = siguienteClienteId(cart, actual);
+
+  const res = await Swal.fire({
+    title: '¿De quién es?',
+    html: `Pasó un rato desde el último decant de <b>${nombreAct}</b>.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Cliente nuevo',
+    cancelButtonText: `Sigue ${nombreAct}`,
+    confirmButtonColor: '#c9a84c',
+    reverseButtons: true,
+    allowOutsideClick: false
+  });
+
+  if (res.isConfirmed) {
+    localStorage.setItem('posClientId', String(siguiente));
+    return siguiente;
+  }
+  return actual;
+}
+
+window.addToPosCart = async (item) => {
+  const cart = leerCanasta();
+  const cid  = await resolverClienteDestino(cart);
+  item.cartClientId = cid;
+
   // Only merge if same perfume+ml AND same client
-  const extItem = cart.find(x => x.id === item.id && x.ml === item.ml && (x.cartClientId || 1) === currentClientId);
+  const extItem = cart.find(x => x.id === item.id && x.ml === item.ml && (x.cartClientId || 1) === cid);
   if (extItem) {
     extItem.cant = (extItem.cant || 0) + 1;
     extItem.addedAt = Date.now();
@@ -54,6 +98,9 @@ window.addToPosCart = (item) => {
   }
   localStorage.setItem('posCart', JSON.stringify(cart));
   if (window.renderPosCart) window.renderPosCart();
+
+  // Decir SIEMPRE a quién se le cargó, para no tener que abrir la canasta.
+  toast(`Agregado a ${nombreCliente(leerNombresCliente(), cid)}`, 'success');
 };
 
 let tableSortCol = null;
@@ -294,6 +341,7 @@ window.renderTable = () => {
         <td class="col-clicks">${clicks}</td>
         <td>${tags || '<span style="color:var(--text-faint)">Sin precios</span>'}${alertaPrecio}</td>
         <td><div style="display:flex;gap:6px">
+          <button class="btn-icon estrella ${p.destacado ? 'on' : ''}" onclick="toggleDestacado('${pid}')" title="${p.destacado ? 'Quitar de Recomendados' : 'Recomendar en la tienda'}"><i class="bi ${p.destacado ? 'bi-star-fill' : 'bi-star'}"></i></button>
           <button class="btn btn-outline btn-sm" onclick="openPosItemModal('${pid}')" title="Añadir a Canasta"><i class="bi bi-cart-plus" style="color:var(--accent)"></i></button>
           <button class="btn btn-outline btn-sm" onclick="copiarLista('${pid}')" title="Copiar lista de precios"><i class="bi bi-clipboard"></i></button>
           <button class="btn-icon" onclick="edit('${pid}')" title="Editar"><i class="bi bi-pencil"></i></button>
@@ -317,7 +365,10 @@ window.renderTable = () => {
       }
       posGrid.innerHTML = posItems.map(p => {
         const imgHTML = (!ds && p.imagen) ? `<img class="pcard-img" src="${imgThumb(p.imagen)}" loading="lazy">` : `<div class="pcard-img" style="display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--text-faint)"><i class="bi bi-droplet"></i></div>`;
+        const estrella = p.isPaquete ? '' :
+          `<button class="pcard-estrella ${p.destacado ? 'on' : ''}" onclick="event.stopPropagation(); toggleDestacado('${p.id}')" title="Recomendar en la tienda"><i class="bi ${p.destacado ? 'bi-star-fill' : 'bi-star'}"></i></button>`;
         return `<div class="pcard" onclick="openPosItemModal('${p.id}')">
+          ${estrella}
           ${imgHTML}
           <div class="pcard-body">
             <div class="pcard-title">${p.isPaquete ? '<i class="bi bi-box-seam"></i> ' + p.nombre : p.nombre}</div>
@@ -365,7 +416,8 @@ window.sortByDropdown = () => {
 
 document.addEventListener('DOMContentLoaded', () => {
   const v = localStorage.getItem('adminPerfumeView');
-  if(v === 'grid' || (window.innerWidth <= 480 && v !== 'table')) {
+  const pidePos = new URLSearchParams(window.location.search).get('pos') === '1';
+  if(pidePos || v === 'grid' || (window.innerWidth <= 480 && v !== 'table')) {
     const tableWrap = document.querySelector('.table-wrap');
     const posGrid = document.getElementById('pos-grid');
     const btn = document.getElementById('btn-toggle-view');
@@ -741,9 +793,8 @@ window.askCustomPriceAndAddToCart = async (id, talla) => {
       if (costo !== null) {
         itemData.costoCompleto = costo;
       }
-      window.addToPosCart(itemData);
       window.closePosModal();
-      if (window.toast) window.toast('Añadido a la canasta', 'success');
+      await window.addToPosCart(itemData);
     }
   }
 };
@@ -787,9 +838,10 @@ window.fastAddToCart = async (id, ml, precio) => {
     }
   }
 
-  const finishAdd = (nombre, pItems = null) => {
+  const finishAdd = async (nombre, pItems = null) => {
     if(window.addToPosCart) {
-      window.addToPosCart({
+      if(window.closePosModal) window.closePosModal();
+      await window.addToPosCart({
         id: p.id,
         nombre: nombre,
         marca: finalMarca,
@@ -800,8 +852,6 @@ window.fastAddToCart = async (id, ml, precio) => {
         loteId: p.loteActivo || null,
         paqueteItems: pItems
       });
-      if(window.showToast) window.showToast('Añadido a la canasta', 'success');
-      if(window.closePosModal) window.closePosModal();
     }
   };
 
@@ -856,6 +906,29 @@ window.promptAddPos = (id) => {
       cant: 1,
       loteId: p.loteActivo || null
     });
+  }
+};
+
+/**
+ * Estrella: el perfume aparece en "Recomendados", la primera colección del
+ * carrusel de inicio. Antes había que buscarlo en una lista larga dentro de
+ * Novedades; ahora es un toque desde donde ya estás.
+ */
+window.toggleDestacado = async (id) => {
+  const p = perfumes.find(x => x.id === id);
+  if (!p) return;
+  const nuevo = !p.destacado;
+  p.destacado = nuevo;
+  window.renderTable();
+  try {
+    await updateDoc(doc(db, 'perfumes', id), { destacado: nuevo });
+    const total = perfumes.filter(x => x.destacado && x.activo !== false && x.archivado !== true).length;
+    const nota = total < 3 ? ` Marca ${3 - total} más para que aparezca la sección.` : '';
+    toast(nuevo ? `⭐ ${p.nombre} recomendado (${total}).${nota}` : `${p.nombre} ya no está en Recomendados.`, 'success');
+  } catch (e) {
+    p.destacado = !nuevo;
+    window.renderTable();
+    toast('No se pudo guardar: ' + e.message, 'error');
   }
 };
 
@@ -928,7 +1001,6 @@ function limpiarFormularioPerfume() {
   document.getElementById('p-id').value = '';
   document.getElementById('p-nombre').value = '';
   document.getElementById('p-desc').value = '';
-  document.getElementById('p-barcode').value = '';
   ['2','3','5','10'].forEach(k => { document.getElementById('px' + k).value = ''; });
 
   document.getElementById('p-novedad').checked = false;
@@ -1021,7 +1093,6 @@ window.edit = (id) => {
   window.loadMarcas();
   setTimeout(() => { document.getElementById('p-marca').value = p.marca || ''; }, 80);
   document.getElementById('p-desc').value    = p.descripcion || '';
-  document.getElementById('p-barcode').value = p.barcode || '';
   const pr = p.precios || {};
   ['2','3','5','10'].forEach(k => { document.getElementById('px' + k).value = pr[k] || ''; });
   
@@ -1070,15 +1141,6 @@ window.edit = (id) => {
  * @param {string} apiKey      Clave de OpenAI guardada en Ajustes.
  * @returns {Promise<string>}  El JSON en texto, tal como lo devolvió el modelo.
  */
-/**
- * Normaliza para comparar: sin acentos, sin mayúsculas y sin espacios sobrantes.
- * Los catálogos guardan "Arabe" y el modelo responde "Árabe"; sin esto no casan.
- */
-function sinAcentos(texto) {
-  return (texto || '').toString().trim().toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '');
-}
-
 /**
  * Vuelca los precios sugeridos por la IA en el formulario.
  *
@@ -1155,6 +1217,79 @@ async function consultarIA(promptText, apiKey) {
   }
 }
 
+
+// ── IA: un solo camino para dar de alta por nombre ─────────────────────────
+// Antes había tres copias; dos seguían con el prompt "poético" y asignaban
+// familia/tipo solo si la IA respondía el texto idéntico.
+
+/** Opciones reales de un select (sin el placeholder vacío). */
+function opcionesDe(id) {
+  const el = document.getElementById(id);
+  return el ? Array.from(el.options).filter(o => o.value).map(o => ({ value: o.value, text: o.text })) : [];
+}
+
+/** Arma el prompt con las listas vivas del catálogo y consulta a la IA. */
+async function pedirPerfilIA({ nombre = '', marcaPista = '' }, apiKey) {
+  const nombres = id => opcionesDe(id).map(o => o.value);
+  const prompt = construirPrompt({
+    nombre, marcaPista,
+    categorias: nombres('p-cat'),
+    familias: nombres('p-familia'),
+    tipos: nombres('p-tipo'),
+  });
+  return parsearRespuesta(await consultarIA(prompt, apiKey));
+}
+
+/**
+ * Vuelca la respuesta en el formulario. La categoría va primero porque el
+ * desplegable de marcas se filtra por ella. Familia, tipo y descripción solo
+ * se llenan si están vacíos, para no pisar lo que ya se capturó.
+ */
+function aplicarRespuestaIA(ai, { forzarNombre = false } = {}) {
+  const $ = id => document.getElementById(id);
+  if (ai.title && (forzarNombre || !$('p-nombre').value)) $('p-nombre').value = ai.title;
+
+  if (ai.category) {
+    const cat = emparejarOpcion(opcionesDe('p-cat'), ai.category);
+    if (cat) {
+      $('p-cat').value = cat;
+      // Asignar .value por código no dispara `change`: hay que repoblar marcas.
+      if (window.loadMarcas) window.loadMarcas();
+    }
+  }
+
+  if (ai.brand) {
+    const marca = emparejarOpcion(opcionesDe('p-marca'), String(ai.brand).split(',')[0]);
+    if (marca) {
+      $('p-marca').value = marca;
+    } else {
+      // Mejor vacío que una marca incoherente con la categoría.
+      $('p-marca').value = '';
+      toast(`Da de alta la marca "${ai.brand}" en ${ai.category || 'esa categoría'}`, 'info');
+    }
+  }
+
+  const genero = emparejarOpcion([{ value: 'Caballero' }, { value: 'Dama' }, { value: 'Unisex' }], ai.gender);
+  if (genero && $('p-genero')) $('p-genero').value = genero;
+
+  [['p-familia', ai.family], ['p-tipo', ai.type]].forEach(([id, valor]) => {
+    const el = $(id);
+    if (!el || el.value || !valor) return;
+    const elegido = emparejarOpcion(opcionesDe(id), valor);
+    if (elegido) el.value = elegido;
+  });
+
+  if (ai.desc && !$('p-desc').value) $('p-desc').value = ai.desc;
+  aplicarPreciosIA(ai);
+}
+
+function avisarConfianza(ai) {
+  const confianza = String(ai.confianza || '').toLowerCase();
+  if (confianza === 'baja') toast('La IA no conoce bien este perfume: revisa notas, familia y concentración', 'error');
+  else if (confianza === 'media') toast('Perfil generado, pero conviene verificar las notas', 'info');
+  else toast('¡Perfil IA completado con éxito!', 'success');
+}
+
     document.getElementById('btn-ia-name')?.addEventListener('click', async () => {
         const prodTitle = document.getElementById('p-nombre').value.trim();
         if (!prodTitle) {
@@ -1174,136 +1309,9 @@ async function consultarIA(promptText, apiKey) {
         toast('Generando perfil olfativo con Inteligencia Artificial...', 'info');
         
         try {
-            const getOpts = id => {
-                const el = document.getElementById(id);
-                return el ? Array.from(el.options).map(o => o.text).join(', ') : '';
-            };
-            
-            // El prompt pide datos concretos de la fragancia, no prosa. Antes
-            // pedía una descripción "poética" y, peor, forzaba `brand` a ser
-            // una "marca diseñadora" aunque la categoría fuera Árabe: de ahí
-            // que un perfume árabe acabara con marca de diseñador.
-            const promptText = `
-Eres un perfumista documentando fichas de producto. Sé preciso y sobrio.
-Perfume: "${prodTitle}".
-
-Devuelve SOLO un JSON válido, sin markdown ni explicaciones.
-
-REGLAS IMPORTANTES:
-- "category" y "brand" deben ser coherentes entre sí. Si la casa es árabe
-  (Lattafa, Armaf, Rasasi, Afnan, Al Haramain, Ard Al Zaafaran...), entonces
-  category = "Árabe" y brand debe ser esa casa árabe. Nunca mezcles una casa
-  árabe con category "Diseñador" ni al revés.
-- "type" es la CONCENTRACIÓN, no la categoría. Elige exactamente una de la
-  lista dada. No pongas ahí "Diseñador" ni "Árabe".
-- Si no conoces el perfume con seguridad, NO inventes: pon confianza "baja"
-  y deja en blanco lo que no sepas. Es preferible un campo vacío a un dato falso.
-
-{
-  "title": "Nombre exacto y completo del perfume",
-  "brand": "Casa que lo fabrica, coherente con category",
-  "category": "Exactamente una de: ${getOpts('p-cat') || 'Diseñador, Árabe, Nicho'}",
-  "gender": "Caballero, Dama o Unisex",
-  "family": "Familia olfativa, exactamente una de: ${getOpts('p-familia') || 'Cítrica, Floral, Amaderada, Oriental'}",
-  "type": "Concentración, exactamente una de: ${getOpts('p-tipo') || 'Eau de Toilette, Eau de Parfum, Parfum, Extrait de Parfum'}",
-  "confianza": "alta, media o baja segun lo seguro que estes de este perfume en concreto",
-  "desc": "Ficha en texto plano con saltos de linea reales, en este formato exacto y sin encabezados extra:\\n\\n<Una sola frase que defina la personalidad del perfume y a quien le queda: para que ocasion y que proyecta>\\n\\nSalida: <3-4 notas, lo que se huele en los primeros minutos>\\nCorazon: <3-4 notas, el cuerpo del aroma>\\nFondo: <3-4 notas, lo que permanece en piel y ropa>\\n\\nDuracion: <Baja (2-4 h) | Moderada (4-6 h) | Alta (mas de 8 h)> · Estela: <discreta | moderada | fuerte>\\nIdeal para: <Dia | Noche | Dia y noche> · <Clima calido | Clima frio | Todo el año>",
-  "px2": "Precio competitivo MXN 2ml: 80-120 diseñador, 180-280 nicho, 50-90 árabe",
-  "px3": "Precio competitivo MXN 3ml: 120-170 diseñador, 250-380 nicho, 70-110 árabe",
-  "px5": "Precio competitivo MXN 5ml: 180-260 diseñador, 400-600 nicho, 110-170 árabe",
-  "px10": "Precio competitivo MXN 10ml: 320-450 diseñador, 750-1200 nicho, 200-300 árabe"
-}
-`;
-            
-            let aiText = await consultarIA(promptText, geminiKey);
-
-            const match = aiText.match(/\{[\s\S]*\}/);
-            if (match) aiText = match[0];
-            
-            let aiJson;
-            try {
-                aiJson = JSON.parse(aiText);
-            } catch (err) {
-                // Fallback: replace unescaped control characters
-                // eslint-disable-next-line no-control-regex -- los caracteres de control son justo lo que se quiere limpiar
-                aiText = aiText.replace(/[\u0000-\u001F]+/g, " ");
-                aiJson = JSON.parse(aiText);
-            }
-            
-            // La categoría va PRIMERO: el desplegable de marcas se filtra por
-            // ella. Antes se asignaba la marca antes que la categoría y sin
-            // repoblar la lista, así que se elegía de las marcas de la
-            // categoría anterior: se veía "Árabe" con una marca de diseñador.
-            if (aiJson.category) {
-                const catSelect = document.getElementById('p-cat');
-                if (catSelect) {
-                    // Comparación tolerante: la categoría está guardada como
-                    // "Arabe" sin acento, y el modelo suele responder "Árabe".
-                    // Con igualdad estricta no coincidía y la categoría se
-                    // quedaba sin poner, que es de donde venía todo el enredo.
-                    const objetivo = sinAcentos(aiJson.category);
-                    for (let opt of catSelect.options) {
-                        if (opt.value && sinAcentos(opt.text) === objetivo) { catSelect.value = opt.value; break; }
-                    }
-                    // Asignar .value por código no dispara `change`, así que
-                    // hay que repoblar las marcas a mano.
-                    window.loadMarcas();
-                }
-            }
-
-            if (aiJson.brand) {
-                const marcaSelect = document.getElementById('p-marca');
-                if (marcaSelect) {
-                    const brandClean = aiJson.brand.split(',')[0].trim().toLowerCase();
-                    let bestMatch = '';
-                    for (let opt of marcaSelect.options) {
-                        if (opt.value && opt.text.toLowerCase().includes(brandClean)) { bestMatch = opt.value; break; }
-                    }
-                    if (bestMatch) {
-                        marcaSelect.value = bestMatch;
-                    } else {
-                        // La marca no existe en esta categoría: mejor dejarlo
-                        // vacío y avisar que conserve una marca incoherente.
-                        marcaSelect.value = '';
-                        toast(`Da de alta la marca "${aiJson.brand}" en ${aiJson.category || 'esa categoría'}`, 'info');
-                    }
-                }
-            }
-            if (aiJson.gender && document.getElementById('p-genero')) document.getElementById('p-genero').value = aiJson.gender;
-            if (aiJson.family) {
-                const famSelect = document.getElementById('p-familia');
-                if (famSelect && !famSelect.value) {
-                    let bestFam = '';
-                    for (let opt of famSelect.options) {
-                        if (opt.value && opt.text.toLowerCase().includes(aiJson.family.toLowerCase())) { bestFam = opt.value; break; }
-                    }
-                    if (bestFam) famSelect.value = bestFam;
-                }
-            }
-            if (aiJson.type) {
-                const typeSelect = document.getElementById('p-tipo');
-                if (typeSelect && !typeSelect.value) {
-                    let bestType = '';
-                    for (let opt of typeSelect.options) {
-                        if (opt.value && opt.text.toLowerCase().includes(aiJson.type.toLowerCase())) { bestType = opt.value; break; }
-                    }
-                    if (bestType) typeSelect.value = bestType;
-                }
-            }
-            if (aiJson.desc && !document.getElementById('p-desc').value) document.getElementById('p-desc').value = aiJson.desc;
-            aplicarPreciosIA(aiJson);
-
-            // El modelo no navega por internet: responde de memoria. Para
-            // fragancias nuevas o poco conocidas puede fallar, así que se
-            // avisa en vez de dar todo por bueno.
-            const confianza = String(aiJson.confianza || '').toLowerCase();
-            if (confianza === 'baja') {
-                toast('La IA no conoce bien este perfume: revisa notas, familia y concentración', 'error');
-            } else if (confianza === 'media') {
-                toast('Perfil generado, pero conviene verificar las notas', 'info');
-            } else {
-                toast('¡Perfil IA completado con éxito!', 'success');
-            }
+            const aiJson = await pedirPerfilIA({ nombre: prodTitle }, geminiKey);
+            aplicarRespuestaIA(aiJson);
+            avisarConfianza(aiJson);
         } catch (e) {
             console.error('Gemini error:', e);
             toast('Error al consultar la Inteligencia Artificial: ' + e.message, 'error');
@@ -1355,7 +1363,6 @@ window.save = async () => {
       familia:     document.getElementById('p-familia').value || '',
       tipo:        document.getElementById('p-tipo').value    || '',
       descripcion: document.getElementById('p-desc').value.trim(),
-      barcode:     document.getElementById('p-barcode').value.trim(),
       imagen, precios, tamanos,
       activo:    (estado === 'visible'),
       archivado: (estado === 'archivado'),
@@ -1534,242 +1541,3 @@ window.openPackageSelectionModal = (p, onComplete, selectedMl = null) => {
     close();
   };
 };
-
-// ── Evento Autocompletado por Código de Barras ─────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  const barcodeInput = document.getElementById('p-barcode');
-  if (barcodeInput) {
-    barcodeInput.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const codeRaw = barcodeInput.value.trim();
-        const code = codeRaw.replace(/\D/g, '');
-        if (!code) return;
-        
-        toast('Buscando información del código de barras en BD pública...', 'info');
-        try {
-          let res = await fetch(`https://world.openbeautyfacts.org/api/v0/product/${code}.json`);
-          let data = null;
-          if (res.ok) {
-              try { data = await res.json(); }
-              catch(e) { /* respuesta no-JSON: se maneja abajo con `data` vacío */ }
-          }
-          
-          let prodTitle = '';
-          let prodBrand = '';
-          let prodDesc = '';
-          let prodImg = '';
-          
-          if (data && data.status === 1 && data.product) {
-            const prod = data.product;
-            prodTitle = prod.product_name || prod.product_name_es || prod.product_name_en || prod.product_name_fr || '';
-            prodBrand = prod.brands || '';
-            prodDesc = prod.categories || '';
-            prodImg = prod.image_url || prod.image_front_url || '';
-          }
-          
-          if (prodTitle) {
-            if (!document.getElementById('p-nombre').value) document.getElementById('p-nombre').value = prodTitle;
-            
-            // Fuzzy match en el dropdown de Marca
-            if (prodBrand) {
-              const marcaSelect = document.getElementById('p-marca');
-              if (marcaSelect && !marcaSelect.value) {
-                const brandClean = prodBrand.split(',')[0].trim().toLowerCase();
-                let bestMatch = '';
-                for (let opt of marcaSelect.options) {
-                  if (opt.value && opt.text.toLowerCase().includes(brandClean)) { bestMatch = opt.value; break; }
-                }
-                // Si no hay match exacto, busca al revés
-                if (!bestMatch) {
-                  for (let opt of marcaSelect.options) {
-                    if (opt.value && brandClean.includes(opt.text.toLowerCase().split(' ')[0])) { bestMatch = opt.value; break; }
-                  }
-                }
-                if (bestMatch) marcaSelect.value = bestMatch;
-              }
-            }
-            
-            if (prodDesc && !document.getElementById('p-desc').value) document.getElementById('p-desc').value = prodDesc;
-            if (prodImg && !document.getElementById('p-img-url').value) {
-                document.getElementById('p-img-url').value = prodImg;
-                if (window.previewUrl) window.previewUrl();
-            }
-            
-            // Integración Gemini IA
-            const geminiKey = localStorage.getItem('gemini_api_key');
-            if (geminiKey && prodTitle) {
-                toast('Generando perfil olfativo con Inteligencia Artificial...', 'info');
-                try {
-                    const getOpts = id => {
-                        const el = document.getElementById(id);
-                        return el ? Array.from(el.options).map(o => o.value).filter(v => v).join(', ') : '';
-                    };
-                    
-                    const pBrand = prodBrand ? prodBrand.split(',')[0] : '';
-                    const promptText = `Eres un experto perfumista. Para el perfume "${prodTitle}"${pBrand ? ` de la marca "${pBrand}"` : ''}:
-Elige la mejor opción de estas listas exactas (responde con el texto exacto, o vacío si no aplica):
-- Marca: [${getOpts('p-marca')}]
-- Familia: [${getOpts('p-familia')}]
-- Categoría: [${getOpts('p-cat')}]
-- Tipo: [${getOpts('p-tipo')}]
-- Género: [Caballero, Dama, Unisex]
-
-Sugiéreme precios en MXN competitivos y exactos para decants. IMPORTANTE: LOS PRECIOS DEBEN SER UN SOLO NÚMERO ENTERO, NO RANGOS (ej. 85, no '70-90'). Como guía (ajusta según la marca y tipo):
-- Diseñador: 2ml: 80, 3ml: 110, 5ml: 165, 10ml: 285
-- Nicho: 2ml: 170, 3ml: 235, 5ml: 375, 10ml: 700
-- Árabe: 2ml: 50, 3ml: 70, 5ml: 110, 10ml: 190
-Para la descripción ("desc"), redacta una reseña detallada, poética y persuasiva (de 3 a 4 oraciones). Habla de su apertura, desarrollo, fijación y ocasiones de uso, usando un tono de marketing elegante.
-
-Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown ni \`\`\`) con esta estructura exacta:
-{"marca":"","familia":"","categoria":"","tipo":"","genero":"","salida":"","corazon":"","fondo":"","desc":"Descripción detallada y poética","px2":0,"px3":0,"px5":0,"px10":0}`;
-                    
-                    const groqUrl = `https://api.openai.com/v1/chat/completions`;
-                    const groqRes = await fetch(groqUrl, {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${geminiKey}`
-                        },
-                        body: JSON.stringify({
-                            model: "gpt-4o",
-                            messages: [{ role: "user", content: promptText }],
-                            temperature: 0.2
-                        })
-                    });
-                    
-                    const data = await groqRes.json();
-                    
-                    if (data.error) {
-                        console.error("Error IA:", data.error.message);
-                        return;
-                    }
-                    
-                    let aiText = data.choices[0].message.content;
-                    const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-                    if (jsonMatch) { aiText = jsonMatch[0]; }
-                    
-                    const aiJson = JSON.parse(aiText);
-                        let finalDesc = aiJson.desc || '';
-                        if (aiJson.salida) finalDesc += `\n\nSalida: ${aiJson.salida}`;
-                        if (aiJson.corazon) finalDesc += `\nCorazón: ${aiJson.corazon}`;
-                        if (aiJson.fondo) finalDesc += `\nFondo: ${aiJson.fondo}`;
-                        finalDesc = finalDesc.trim();
-                        document.getElementById('p-desc').value = finalDesc;
-                        
-                        if (aiJson.marca && !document.getElementById('p-marca').value) document.getElementById('p-marca').value = aiJson.marca;
-                        if (aiJson.familia) document.getElementById('p-familia').value = aiJson.familia;
-                        if (aiJson.categoria) document.getElementById('p-cat').value = aiJson.categoria;
-                        if (aiJson.tipo) document.getElementById('p-tipo').value = aiJson.tipo;
-                        if (aiJson.genero) document.getElementById('p-genero').value = aiJson.genero;
-                        
-                        aplicarPreciosIA(aiJson);
-                        
-                        toast('¡Perfil IA completado con éxito!', 'success');
-                } catch (e) {
-                    console.error('Gemini error:', e);
-                    toast('¡Datos básicos completados! (Ocurrió un error con la IA: ' + e.message + ')', 'warning');
-                }
-            } else {
-                toast('¡Información encontrada en BD y autocompletada!', 'success');
-            }
-          } else {
-            const geminiKey = localStorage.getItem('gemini_api_key');
-            if (!geminiKey) {
-                toast('El código no se encontró en la BD pública (Configura tu API Key en Ajustes para usar IA).', 'warning');
-                return;
-            }
-            toast('No encontrado en BD pública. Consultando a la Inteligencia Artificial...', 'info');
-            
-            try {
-                const getOpts = id => {
-                    const el = document.getElementById(id);
-                    return el ? Array.from(el.options).map(o => o.value).filter(v => v).join(', ') : '';
-                };
-                const promptText = `El usuario escaneó el código de barras "${code}" de un perfume.
-Identifica el nombre exacto del perfume y su marca. Si el código no te suena para nada a un perfume conocido, responde el JSON con "title": "NO_ENCONTRADO".
-Si lo reconoces, elige la mejor opción de estas listas exactas para clasificarlo:
-- Marca: [${getOpts('p-marca')}]
-- Familia: [${getOpts('p-familia')}]
-- Categoría: [${getOpts('p-cat')}]
-- Tipo: [${getOpts('p-tipo')}]
-- Género: [Caballero, Dama, Unisex]
-
-Sugiéreme precios en MXN competitivos y exactos para decants. IMPORTANTE: LOS PRECIOS DEBEN SER UN SOLO NÚMERO ENTERO, NO RANGOS (ej. 85, no '70-90'). Como guía (ajusta según la marca y tipo):
-- Diseñador (ej. Versace): 2ml: 80, 3ml: 110, 5ml: 165, 10ml: 285
-- Nicho (ej. Creed): 2ml: 170, 3ml: 235, 5ml: 375, 10ml: 700
-- Árabe (ej. Lattafa): 2ml: 50, 3ml: 70, 5ml: 110, 10ml: 190
-Para la descripción ("desc"), redacta una reseña detallada, poética y persuasiva (de 3 a 4 oraciones). Habla de su apertura, desarrollo, fijación y ocasiones de uso, usando un tono de marketing elegante.
-
-Responde ÚNICAMENTE con un objeto JSON en texto plano (sin markdown) con esta estructura exacta:
-{"title":"Nombre del perfume","marca":"","familia":"","categoria":"","tipo":"","genero":"","salida":"","corazon":"","fondo":"","desc":"Descripción detallada y poética","px2":0,"px3":0,"px5":0,"px10":0}`;
-
-                const groqUrl = `https://api.openai.com/v1/chat/completions`;
-                const groqRes = await fetch(groqUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${geminiKey}` },
-                    body: JSON.stringify({ model: "gpt-4o", messages: [{ role: "user", content: promptText }], temperature: 0.2, response_format: { type: "json_object" } })
-                });
-                
-                const data = await groqRes.json();
-                if (data.choices && data.choices.length > 0) {
-                    let aiText = data.choices[0].message.content;
-                    const match = aiText.match(/\{[\s\S]*\}/);
-                    if (match) aiText = match[0];
-                    
-                    let aiJson;
-                    try {
-                        aiJson = JSON.parse(aiText);
-                    } catch (err) {
-                        // eslint-disable-next-line no-control-regex -- los caracteres de control son justo lo que se quiere limpiar
-                        aiText = aiText.replace(/[\u0000-\u001F]+/g, " ");
-                        aiJson = JSON.parse(aiText);
-                    }
-                    
-                    if (aiJson.title === "NO_ENCONTRADO") {
-                        toast('Barcode no reconocido. Escribe el nombre a mano y usa el botón de IA.', 'warning');
-                        return;
-                    }
-                    
-                    document.getElementById('p-nombre').value = aiJson.title || '';
-                    
-                    let finalDesc = aiJson.desc || '';
-                    if (aiJson.salida) finalDesc += `\n\nSalida: ${aiJson.salida}`;
-                    if (aiJson.corazon) finalDesc += `\nCorazón: ${aiJson.corazon}`;
-                    if (aiJson.fondo) finalDesc += `\nFondo: ${aiJson.fondo}`;
-                    finalDesc = finalDesc.trim();
-                    document.getElementById('p-desc').value = finalDesc;
-                    
-                    if (aiJson.marca) {
-                        const brandClean = aiJson.marca.trim().toLowerCase();
-                        const marcaSelect = document.getElementById('p-marca');
-                        let bestMatch = '';
-                        for (let opt of marcaSelect.options) {
-                            if (opt.value && opt.text.toLowerCase().includes(brandClean)) { bestMatch = opt.value; break; }
-                        }
-                        if (bestMatch) marcaSelect.value = bestMatch;
-                        else document.getElementById('p-marca').value = aiJson.marca;
-                    }
-                    
-                    if (aiJson.familia) document.getElementById('p-familia').value = aiJson.familia;
-                    if (aiJson.categoria) document.getElementById('p-cat').value = aiJson.categoria;
-                    if (aiJson.tipo) document.getElementById('p-tipo').value = aiJson.tipo;
-                    if (aiJson.genero) document.getElementById('p-genero').value = aiJson.genero;
-                    
-                    aplicarPreciosIA(aiJson);
-                    
-                    toast('✨ ¡Perfume identificado mágicamente por la IA!', 'success');
-                }
-            } catch (e) {
-                console.error('Groq fallback error:', e);
-                toast('Error al intentar identificar con IA: ' + e.message, 'error');
-            }
-          }
-        } catch (err) {
-          console.error(err);
-          toast('Hubo un error de conexión al buscar el código.', 'error');
-        }
-      }
-    });
-  }
-});

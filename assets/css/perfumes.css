@@ -113,3 +113,17 @@ td.col-clicks {
 }
 .precio-input::-webkit-outer-spin-button,
 .precio-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Estrella de "Recomendados" */
+.btn-icon.estrella i { color: var(--text-faint); }
+.btn-icon.estrella.on i, .btn-icon.estrella:hover i { color: #f5c542; }
+.pcard { position: relative; }
+.pcard-estrella {
+  position: absolute; top: 6px; right: 6px; z-index: 2;
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.15);
+  color: rgba(255,255,255,.75); cursor: pointer; font-size: 14px;
+  backdrop-filter: blur(4px);
+}
+.pcard-estrella.on { color: #f5c542; border-color: rgba(245,197,66,.5); }
