@@ -5,7 +5,7 @@
   <link rel="icon" type="image/jpeg" href="../assets/img/LogoOficial2.jpeg">
   <link rel="apple-touch-icon" href="../assets/img/LogoOficial2.jpeg">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Fitoscents · Costos e Insumos</title>
+  <title>Fitoscents · Costos</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="../assets/css/variables.css">
@@ -31,6 +31,75 @@
     th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border); }
     th { color: var(--text-muted); font-weight: 500; }
     tr:hover td { background: var(--bg-card2); }
+    /* ── Rediseño: compras primero, ajustes al fondo ── */
+    .costos { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+    .compra-botones { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .compra-btn { display: flex; align-items: center; gap: 14px; text-align: left; padding: 18px; border-radius: var(--radius-md);
+                  background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary); font: inherit; cursor: pointer;
+                  transition: border-color var(--transition), transform var(--transition); }
+    .compra-btn:hover { border-color: var(--accent-border); }
+    .compra-btn:active { transform: scale(.98); }
+    .compra-btn > i { font-size: 26px; color: var(--accent); flex-shrink: 0; }
+    .compra-btn strong { display: block; font-size: 15px; }
+    .compra-btn small { display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .compra-btn-main { background: var(--accent); border-color: var(--accent); color: #111; }
+    .compra-btn-main > i, .compra-btn-main small { color: #2a2410; }
+    .compra-btn-main:hover { background: var(--accent-hover); }
+
+    .costos-resumen { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1px; background: var(--border);
+                      border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .res-item { background: var(--bg-card); padding: 18px; display: flex; flex-direction: column; gap: 3px; }
+    .res-label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+    .res-item strong { font-size: 28px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+    .res-main strong { color: var(--accent); }
+    .res-sub { font-size: 12.5px; color: var(--text-muted); }
+
+    .sec-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .sec-head h3 { margin: 0 !important; }
+    .sec-hint { font-size: 12px; color: var(--text-faint); }
+    .compras-lista { display: flex; flex-direction: column; gap: 6px; }
+    .compra-fila { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px 12px;
+                   background: var(--bg-card2); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+    .compra-fila strong { display: block; font-weight: 600; }
+    .compra-fila span { color: var(--text-muted); font-size: 12px; }
+    .compra-fila .monto { font-weight: 700; color: var(--text-primary); font-size: 14px; text-align: right; }
+    .vacio { color: var(--text-faint); font-size: 13px; padding: 6px 0; }
+
+    .ajustes-costos summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+    .ajustes-costos summary::-webkit-details-marker { display: none; }
+    .ajustes-costos summary .chev { margin-left: auto; transition: transform var(--transition); color: var(--text-muted); }
+    .ajustes-costos[open] summary .chev { transform: rotate(180deg); }
+    .ajustes-costos[open] summary { margin-bottom: 14px; }
+    .ajustes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .ayuda { font-size: 12.5px; color: var(--text-muted); line-height: 1.45; margin: 0 0 12px; }
+    .total-linea { display: flex; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--border); font-weight: 600; }
+    #c-total-insumos { color: var(--accent); font-weight: 700; }
+    .check-2ml { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 8px; cursor: pointer;
+                 background: rgba(239,68,68,.05); border: 1px solid rgba(239,68,68,.2); font-weight: 600; font-size: 13.5px; }
+    .check-2ml input { width: 18px; height: 18px; accent-color: #ef4444; margin-top: 2px; }
+    .check-2ml small { display: block; font-weight: 400; color: var(--text-muted); font-size: 12px; }
+
+    .b-resultados { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; max-height: 220px; overflow-y: auto; }
+    .b-resultados button { text-align: left; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+                           background: var(--bg-card2); color: var(--text-primary); font: inherit; font-size: 13.5px; cursor: pointer; }
+    .b-resultados button:hover { border-color: var(--accent-border); }
+    .b-resultados small { color: var(--text-muted); margin-left: 6px; }
+    .b-elegido { margin-top: 8px; padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); border: 1px solid var(--accent-border);
+                 display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13.5px; }
+    .b-elegido button { background: none; border: none; color: var(--text-muted); cursor: pointer; font: inherit; font-size: 12px; text-decoration: underline; }
+
+    @media (max-width: 640px) {
+      .compra-botones, .costos-resumen, .ajustes-grid { grid-template-columns: 1fr; }
+      .compra-btn { padding: 16px; }
+      .res-item strong { font-size: 24px; }
+      /* tabla de insumos como tarjetas */
+      #materia-table thead { display: none; }
+      #materia-table, #materia-table tbody, #materia-table tr, #materia-table td { display: block; width: 100%; }
+      #materia-table tr { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; background: var(--bg-card2); }
+      #materia-table td { border: none; padding: 2px 0; }
+      #materia-table td:nth-child(1), #materia-table td:nth-child(4), #materia-table td:nth-child(5) { display: none; }
+      #materia-table td:nth-child(6) { font-weight: 700; }
+    }
   </style>
 </head>
 <body>
@@ -40,107 +109,163 @@
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:12px">
         <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
-        <span class="topbar-title">Costos e Insumos</span>
-      </div>
-      <div>
-        <button class="btn btn-primary" onclick="guardarCostosGenerales()" id="btn-save-gral"><i class="bi bi-check2"></i> Guardar Cambios</button>
+        <span class="topbar-title">Costos</span>
       </div>
     </div>
-    
-    <div class="page-body">
-      <p style="color:var(--text-muted);margin-bottom:20px;font-size:14px;">Administra el costo de tus materias primas. Estos valores se usarán para calcular tu ganancia neta en la sección de Inteligencia de Negocio.</p>
 
-      <div class="kpi-bar">
-        <div class="kpi-card"><span class="title">Gasto Total Histórico</span><span class="val" id="kpi-total-hist">$0</span></div>
-        <div class="kpi-card"><span class="title">Gasto Este Mes</span><span class="val" id="kpi-total-mes">$0</span></div>
-        <div class="kpi-card"><span class="title">Promedio Calculado / Decant</span><span class="val" id="kpi-promedio" style="color:var(--gold)">$0</span></div>
-        <div class="kpi-card"><span class="title">Nº Compras</span><span class="val" id="kpi-compras">0</span></div>
+    <div class="page-body costos">
+
+      <!-- Lo que quieres hacer casi siempre: registrar una compra -->
+      <section class="compra-botones" aria-label="Registrar compra">
+        <button class="compra-btn compra-btn-main" onclick="openBotellaModal()">
+          <i class="bi bi-droplet-half"></i>
+          <span><strong>Compré una botella de perfume</strong><small>Para decantar. La marca como disponible otra vez.</small></span>
+        </button>
+        <button class="compra-btn" onclick="openMateriaModal()">
+          <i class="bi bi-box-seam"></i>
+          <span><strong>Compré insumos</strong><small>Botellitas, etiquetas, bolsas, atomizadores…</small></span>
+        </button>
+      </section>
+
+      <!-- Resumen en palabras -->
+      <section class="costos-resumen">
+        <div class="res-item res-main">
+          <span class="res-label">Gastado este mes</span>
+          <strong id="res-mes-total">$0</strong>
+          <span class="res-sub" id="res-mes-desglose">&nbsp;</span>
+        </div>
+        <div class="res-item">
+          <span class="res-label">Cada decant te cuesta</span>
+          <strong id="res-por-decant">$0</strong>
+          <span class="res-sub">en botellita + etiqueta + bolsa</span>
+        </div>
+      </section>
+      <!-- Compatibilidad: costos.js sigue escribiendo aquí -->
+      <div hidden>
+        <span id="kpi-total-hist"></span><span id="kpi-total-mes"></span>
+        <span id="kpi-promedio"></span><span id="kpi-compras"></span>
       </div>
 
-      <div class="card-grid">
-        
-        <!-- COSTOS GENERALES PROMEDIO -->
-        <div class="stat-card">
-          <h3><i class="bi bi-cash-stack" style="color:var(--gold)"></i> Costos Fijos Promedio (Por decant)</h3>
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px;line-height:1.4">Define el costo unitario aproximado que te cuesta armar un decant (sin contar el líquido). Puedes calcular un promedio general de lo que te cuestan las botellitas vacías, etiquetas y bolsas.</p>
-          
-          <div class="form-group">
-            <label>Costo promedio Botella Vacía (MXN)</label>
-            <input type="number" class="form-control" id="c-botella" step="0.5" placeholder="Ej. 12.50">
-          </div>
-          <div class="form-group">
-            <label>Costo promedio Etiqueta (MXN)</label>
-            <input type="number" class="form-control" id="c-etiqueta" step="0.10" placeholder="Ej. 1.20">
-          </div>
-          <div class="form-group">
-            <label>Costo promedio Bolsita (MXN)</label>
-            <input type="number" class="form-control" id="c-bolsa" step="0.5" placeholder="Ej. 3.00">
-          </div>
-          
-          <div class="form-group" style="margin-top:20px; background:rgba(239,68,68,0.05); padding:12px; border-radius:8px; border:1px solid rgba(239,68,68,0.2);">
-            <label style="display:flex; align-items:center; gap:8px; margin:0; color:var(--text); font-weight:600; cursor:pointer;">
-              <input type="checkbox" id="c-disable-2ml" style="width:16px;height:16px;accent-color:#ef4444;">
-              Desactivar decants de 2ml globalmente (Agotados)
-            </label>
-            <span style="font-size:11px; color:var(--text-muted); display:block; margin-top:4px; margin-left:24px;">Si marcas esta casilla, todos los perfumes que tengan presentación de 2ml aparecerán tachados y como agotados en el catálogo.</span>
-          </div>
-
-          <hr style="border:none;border-top:1px solid var(--border);margin:15px 0;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-weight:600;font-size:14px;">Costo Total Insumos por Decant:</span>
-            <span id="c-total-insumos" style="font-weight:700;color:var(--accent);font-size:16px;">$0.00</span>
-          </div>
-          <div id="promedio-banner" style="display:none; margin-top:15px; padding:10px; background:rgba(201,168,76,0.1); border:1px solid var(--gold-b); border-radius:8px; font-size:12px;">
-            <i class="bi bi-lightbulb" style="color:var(--gold)"></i> <strong>Sugerencia:</strong> El costo promedio calculado de tus últimas compras es de <span id="sugerencia-val" style="font-weight:bold">$0.00</span>.
-            <button class="btn btn-outline btn-sm" style="margin-top:8px; width:100%" onclick="aplicarPromedioCalculado()">Aplicar este valor</button>
-          </div>
+      <!-- Botellas de perfume compradas -->
+      <section class="stat-card">
+        <div class="sec-head">
+          <h3><i class="bi bi-droplet-half" style="color:var(--accent)"></i> Botellas de perfume compradas</h3>
+          <span class="sec-hint">Últimos 90 días</span>
         </div>
+        <div id="botellas-list" class="compras-lista"><div class="vacio">Cargando…</div></div>
+      </section>
 
-        <!-- BOTELLAS REFORZADAS -->
-        <div class="stat-card">
-          <h3><i class="bi bi-shield-check" style="color:#4f98a3"></i> Upsell: Botellas Reforzadas</h3>
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px;line-height:1.4">Esta opción se mostrará en el Punto de Venta al vender decants de 5ml y 10ml, permitiéndote ofrecer al cliente una botella de mejor calidad por un costo extra.</p>
-          
-          <div class="form-group">
-            <label>Costo Extra a cobrar al cliente (MXN)</label>
-            <input type="number" class="form-control" id="c-reforzada-venta" step="1" placeholder="Ej. 15">
-          </div>
-          <div class="form-group">
-            <label>Costo Real del insumo (Opcional)</label>
-            <input type="number" class="form-control" id="c-reforzada-costo" step="0.5" placeholder="Ej. 8.50">
-            <span style="font-size:11px;color:var(--text-faint)">¿Cuánto te cuesta a ti comprar la botella reforzada? (Para estadísticas)</span>
-          </div>
+      <!-- Insumos comprados -->
+      <section class="stat-card">
+        <div class="sec-head">
+          <h3><i class="bi bi-box-seam" style="color:#a36c4f"></i> Insumos comprados</h3>
+          <select id="f-mes" class="form-control" style="width:160px" onchange="renderInsumos()">
+            <option value="todos">Todos los meses</option>
+          </select>
         </div>
+        <div class="table-wrap">
+          <table id="materia-table">
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Cant.</th><th>Precio Unit.</th><th>Total</th><th>Acciones</th></tr></thead>
+            <tbody id="materia-list">
+              <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-faint)">Cargando compras...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-        <!-- CRUD MATERIA PRIMA (Registro Detallado) -->
-        <div class="stat-card" style="grid-column: 1 / -1;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-            <h3 style="margin:0;"><i class="bi bi-box-seam" style="color:#a36c4f"></i> Compras de Materia Prima</h3>
-            <div style="display:flex; gap:10px;">
-              <select id="f-mes" class="form-control" style="width:160px" onchange="renderInsumos()">
-                <option value="todos">Todos los meses</option>
-              </select>
-              <button class="btn btn-outline btn-sm" onclick="openMateriaModal()"><i class="bi bi-plus"></i> Nueva Compra</button>
+      <!-- Ajustes: se configuran una vez, no estorban el día a día -->
+      <details class="stat-card ajustes-costos">
+        <summary><i class="bi bi-sliders"></i> Ajustes de costo por decant <i class="bi bi-chevron-down chev"></i></summary>
+
+        <div class="ajustes-grid">
+          <div>
+            <p class="ayuda">Lo que te cuesta armar un decant sin contar el perfume. Se usa para calcular tu ganancia real en Estadísticas.</p>
+            <div class="form-group">
+              <label>Botellita vacía (MXN)</label>
+              <input type="number" class="form-control" id="c-botella" step="0.5" placeholder="Ej. 12.50">
+            </div>
+            <div class="form-group">
+              <label>Etiqueta (MXN)</label>
+              <input type="number" class="form-control" id="c-etiqueta" step="0.10" placeholder="Ej. 1.20">
+            </div>
+            <div class="form-group">
+              <label>Bolsita (MXN)</label>
+              <input type="number" class="form-control" id="c-bolsa" step="0.5" placeholder="Ej. 3.00">
+            </div>
+            <div class="total-linea">
+              <span>Total por decant</span>
+              <span id="c-total-insumos">$0.00</span>
+            </div>
+            <div id="promedio-banner" style="display:none; margin-top:12px; padding:10px; background:rgba(201,168,76,0.1); border:1px solid var(--accent-border); border-radius:8px; font-size:12px;">
+              <i class="bi bi-lightbulb" style="color:var(--gold)"></i> Según tus compras, una botellita te sale en <strong id="sugerencia-val">$0.00</strong>.
+              <button class="btn btn-outline btn-sm" style="margin-top:8px; width:100%" onclick="aplicarPromedioCalculado()">Usar este valor</button>
             </div>
           </div>
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px;line-height:1.4">Registra aquí las compras de insumos que haces. Esto es útil para llevar un control de tus gastos operativos.</p>
-          
-          <div class="table-wrap">
-            <table id="materia-table">
-              <thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Cant.</th><th>Precio Unit.</th><th>Total</th><th>Acciones</th></tr></thead>
-              <tbody id="materia-list">
-                <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-faint)">Cargando compras...</td></tr>
-              </tbody>
-            </table>
+
+          <div>
+            <p class="ayuda"><strong>Botella reforzada:</strong> se ofrece en el punto de venta para 5 y 10 ml.</p>
+            <div class="form-group">
+              <label>Cuánto cobras extra (MXN)</label>
+              <input type="number" class="form-control" id="c-reforzada-venta" step="1" placeholder="Ej. 15">
+            </div>
+            <div class="form-group">
+              <label>Cuánto te cuesta a ti (MXN)</label>
+              <input type="number" class="form-control" id="c-reforzada-costo" step="0.5" placeholder="Ej. 8.50">
+            </div>
+            <label class="check-2ml">
+              <input type="checkbox" id="c-disable-2ml">
+              <span>Ya no vendo 2 ml<small>Los 2 ml aparecen agotados en toda la tienda.</small></span>
+            </label>
           </div>
         </div>
 
-      </div>
+        <button class="btn btn-primary" onclick="guardarCostosGenerales()" id="btn-save-gral" style="width:100%;justify-content:center;margin-top:16px">
+          <i class="bi bi-check2"></i> Guardar ajustes
+        </button>
+      </details>
+
     </div>
   </div>
 </div>
 
-<!-- MODAL COMPRA MATERIA PRIMA -->
+<!-- Modal: compré una botella de perfume -->
+<div class="modal-overlay" id="modal-botella">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h4>Compré una botella</h4>
+      <button class="btn-icon" onclick="closeBotellaModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>¿De qué perfume? *</label>
+        <input type="text" class="form-control" id="b-buscar" placeholder="Escribe el nombre…" autocomplete="off">
+        <div id="b-resultados" class="b-resultados"></div>
+        <input type="hidden" id="b-perfume-id">
+        <div id="b-elegido" class="b-elegido" hidden></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label>Te costó (MXN) *</label>
+          <input type="number" class="form-control" id="b-costo" min="0" step="1" placeholder="Ej. 950" inputmode="decimal">
+        </div>
+        <div class="form-group">
+          <label>Tamaño (ml) *</label>
+          <input type="number" class="form-control" id="b-tamano" min="1" step="1" value="100" inputmode="numeric">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Fecha de compra</label>
+        <input type="date" class="form-control" id="b-fecha">
+      </div>
+      <p class="ayuda" id="b-aviso" style="margin:0"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeBotellaModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-botella" onclick="saveBotella()"><i class="bi bi-check2"></i> Registrar botella</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-materia">
   <div class="modal-box" style="max-width:400px">
     <div class="modal-header">
@@ -189,6 +314,6 @@
   </div>
 </div>
 
-<script type="module" src="../assets/js/costos.js?v=1.0"></script>
+<script type="module" src="../assets/js/costos.js?v=2.0"></script>
 </body>
 </html>

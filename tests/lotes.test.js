@@ -101,3 +101,41 @@ describe('ventasDeLote', () => {
     expect(hist.some(v => esResto(v.talla))).toBe(false);
   });
 });
+
+import { agregarBotella } from '../assets/js/lotes.js';
+
+describe('agregarBotella', () => {
+  const F = 1_760_000_000_000;
+
+  test('agrega la botella como activa y quita el agotado', () => {
+    const r = agregarBotella(
+      { lotes: [{ id: 'lote-1', fecha: 1, costo: 900, tamano: 100 }], loteActivo: 'lote-1', estadoStock: 'agotado' },
+      { costo: 1100, tamano: 100, fecha: F });
+    expect(r.lotes).toHaveLength(2);
+    expect(r.loteActivo).toBe('lote-' + F);
+    expect(r.lotes[1]).toEqual({ id: 'lote-' + F, fecha: F, costo: 1100, tamano: 100 });
+    expect(r.estadoStock).toBe('normal');
+  });
+
+  test('no muta los lotes originales', () => {
+    const orig = [{ id: 'lote-1', costo: 1 }];
+    agregarBotella({ lotes: orig }, { costo: 5, tamano: 50, fecha: F });
+    expect(orig).toHaveLength(1);
+  });
+
+  test('conserva la botella vieja de perfumes sin lotes', () => {
+    const r = agregarBotella({ costoBotella: 800, tamanoBotella: 100, creadoEn: 5 }, { costo: 950, tamano: 100, fecha: F });
+    expect(r.lotes.map(l => l.costo)).toEqual([800, 950]);
+    expect(r.lotes[0].id).toBe('lote-5');
+  });
+
+  test('perfume sin historial: primer lote', () => {
+    const r = agregarBotella({}, { costo: '700', tamano: '60', fecha: F });
+    expect(r.lotes).toEqual([{ id: 'lote-' + F, fecha: F, costo: 700, tamano: 60 }]);
+  });
+
+  test('no repite id si ya existe uno igual', () => {
+    const r = agregarBotella({ lotes: [{ id: 'lote-' + F }] }, { costo: 1, tamano: 1, fecha: F });
+    expect(new Set(r.lotes.map(l => l.id)).size).toBe(2);
+  });
+});

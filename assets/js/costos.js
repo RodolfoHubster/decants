@@ -1,7 +1,10 @@
 import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, getDoc, setDoc, auth, onAuthStateChanged } from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
+import { agregarBotella } from './lotes.js';
+import { borrarCache } from './catalogo-cache.js';
 
 let insumos = [];
+let perfumes = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   renderSidebar('costos');
@@ -9,7 +12,10 @@ document.addEventListener('DOMContentLoaded', () => {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       await loadCostosGenerales();
-      await loadInsumos();
+      await Promise.all([loadInsumos(), loadPerfumes()]);
+      const qs = new URLSearchParams(location.search);
+      if (qs.get('botella') === '1') window.openBotellaModal(qs.get('id'));
+      if (qs.get('insumo') === '1') window.openMateriaModal();
     }
   });
   
@@ -86,6 +92,8 @@ function calcTotalInsumos() {
   const bo = +document.getElementById('c-bolsa').value || 0;
   const total = b + e + bo;
   document.getElementById('c-total-insumos').textContent = total.toLocaleString('es-MX', {style:'currency', currency:'MXN'});
+  const r = document.getElementById('res-por-decant');
+  if (r) r.textContent = total.toLocaleString('es-MX', {style:'currency', currency:'MXN'});
 }
 
 // ── CRUD MATERIA PRIMA ──
@@ -163,6 +171,8 @@ function updateKPIs() {
   document.getElementById('kpi-total-hist').textContent = totalHist.toLocaleString('es-MX', {style: 'currency', currency: 'MXN'});
   document.getElementById('kpi-total-mes').textContent = totalMes.toLocaleString('es-MX', {style: 'currency', currency: 'MXN'});
   document.getElementById('kpi-compras').textContent = insumos.length;
+  window._gastoInsumosMes = totalMes;
+  renderResumen();
   
   let promedioCalc = 0;
   if (totalUnidadesDecant > 0) {
@@ -359,5 +369,162 @@ window.deleteInsumo = async (id) => {
     } catch(e) {
       toast('Error al eliminar: ' + e.message, 'error');
     }
+  }
+};
+
+
+// ── BOTELLAS DE PERFUME (lotes) ─────────────────────────────────────────────
+// Comprar una botella para decantar es un "lote" dentro del perfume. Antes no
+// había dónde registrarlo desde aquí y el gasto más grande no aparecía.
+
+const mx = n => (n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
+const escH = t => String(t ?? '').replace(/[&<>"']/g, c => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+async function loadPerfumes() {
+  try {
+    const snap = await getDocs(collection(db, 'perfumes'));
+    perfumes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.error('Error loading perfumes:', e);
+  }
+  renderBotellas();
+  renderResumen();
+}
+
+function botellasCompradas() {
+  const out = [];
+  perfumes.forEach(p => (p.lotes || []).forEach(l => {
+    if (l && l.fecha) out.push({ perfume: p.nombre, pid: p.id, ...l });
+  }));
+  return out.sort((a, b) => b.fecha - a.fecha);
+}
+
+function renderResumen() {
+  const d = new Date();
+  const mes0 = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+  const botMes = botellasCompradas().filter(b => b.fecha >= mes0);
+  const gastoBot = botMes.reduce((s, b) => s + (+b.costo || 0), 0);
+  const gastoIns = window._gastoInsumosMes || 0;
+  const el = document.getElementById('res-mes-total');
+  if (!el) return;
+  el.textContent = mx(gastoBot + gastoIns);
+  const partes = [];
+  if (gastoBot) partes.push(`${mx(gastoBot)} en ${botMes.length} ${botMes.length === 1 ? 'botella' : 'botellas'} de perfume`);
+  if (gastoIns) partes.push(`${mx(gastoIns)} en insumos`);
+  document.getElementById('res-mes-desglose').textContent = partes.length ? partes.join(' · ') : 'Nada registrado este mes';
+}
+
+function renderBotellas() {
+  const cont = document.getElementById('botellas-list');
+  if (!cont) return;
+  const desde = Date.now() - 90 * 86400000;
+  const lista = botellasCompradas().filter(b => b.fecha >= desde);
+  if (!lista.length) {
+    cont.innerHTML = '<div class="vacio">No has registrado botellas en los últimos 90 días. Usa el botón de arriba cuando compres una.</div>';
+    return;
+  }
+  cont.innerHTML = lista.slice(0, 20).map(b => `
+    <div class="compra-fila">
+      <div>
+        <strong>${escH(b.perfume)}</strong>
+        <span>${new Date(b.fecha).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })} · ${+b.tamano || '?'} ml</span>
+      </div>
+      <div class="monto">${mx(+b.costo)}</div>
+    </div>`).join('');
+}
+
+window.openBotellaModal = (pid) => {
+  ['b-buscar', 'b-costo', 'b-perfume-id'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('b-tamano').value = 100;
+  document.getElementById('b-fecha').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('b-resultados').innerHTML = '';
+  document.getElementById('b-elegido').hidden = true;
+  document.getElementById('b-buscar').hidden = false;
+  document.getElementById('b-aviso').textContent = '';
+  document.getElementById('modal-botella').classList.add('open');
+  document.body.classList.add('modal-open');
+  if (pid) elegirPerfume(pid);
+  else setTimeout(() => document.getElementById('b-buscar').focus(), 50);
+};
+
+window.closeBotellaModal = () => {
+  document.getElementById('modal-botella').classList.remove('open');
+  document.body.classList.remove('modal-open');
+};
+
+function elegirPerfume(pid) {
+  const p = perfumes.find(x => x.id === pid);
+  if (!p) return;
+  document.getElementById('b-perfume-id').value = pid;
+  document.getElementById('b-resultados').innerHTML = '';
+  document.getElementById('b-buscar').hidden = true;
+  const el = document.getElementById('b-elegido');
+  el.hidden = false;
+  el.innerHTML = `<span><strong>${escH(p.nombre)}</strong> <small style="color:var(--text-muted)">${escH(p.marca || '')}</small></span>
+                  <button type="button" onclick="cambiarPerfumeBotella()">Cambiar</button>`;
+  const ultimo = (p.lotes || []).slice(-1)[0];
+  if (ultimo) {
+    if (+ultimo.tamano) document.getElementById('b-tamano').value = +ultimo.tamano;
+    document.getElementById('b-costo').placeholder = `La anterior te costó ${mx(+ultimo.costo)}`;
+  }
+  document.getElementById('b-aviso').textContent = p.estadoStock === 'agotado'
+    ? 'Estaba como agotado: al guardar vuelve a estar disponible en la tienda.'
+    : 'Esta botella pasa a ser la activa: las próximas ventas se descuentan de ella.';
+  document.getElementById('b-costo').focus();
+}
+window.elegirPerfumeBotella = elegirPerfume;
+
+window.cambiarPerfumeBotella = () => {
+  document.getElementById('b-perfume-id').value = '';
+  document.getElementById('b-elegido').hidden = true;
+  const b = document.getElementById('b-buscar');
+  b.hidden = false; b.value = ''; b.focus();
+};
+
+document.addEventListener('input', (e) => {
+  if (e.target.id !== 'b-buscar') return;
+  const q = e.target.value.trim().toLowerCase();
+  const cont = document.getElementById('b-resultados');
+  if (q.length < 2) { cont.innerHTML = ''; return; }
+  const hits = perfumes
+    .filter(p => p.archivado !== true)
+    .filter(p => `${p.nombre} ${p.marca || ''}`.toLowerCase().includes(q))
+    // Primero los agotados: lo más probable es que estés reponiendo uno de esos.
+    .sort((a, b) => (b.estadoStock === 'agotado') - (a.estadoStock === 'agotado'))
+    .slice(0, 8);
+  cont.innerHTML = hits.length
+    ? hits.map(p => `<button type="button" onclick="elegirPerfumeBotella('${p.id}')">${escH(p.nombre)}<small>${escH(p.marca || '')}${p.estadoStock === 'agotado' ? ' · agotado' : ''}</small></button>`).join('')
+    : '<div class="vacio">No encontré ese perfume. Primero dalo de alta en Perfumes.</div>';
+});
+
+window.saveBotella = async () => {
+  const pid = document.getElementById('b-perfume-id').value;
+  const costo = +document.getElementById('b-costo').value;
+  const tamano = +document.getElementById('b-tamano').value;
+  const f = document.getElementById('b-fecha').value;
+  if (!pid) return toast('Elige de qué perfume es la botella', 'error');
+  if (!(costo > 0)) return toast('¿Cuánto te costó?', 'error');
+  if (!(tamano > 0)) return toast('Pon el tamaño en ml', 'error');
+
+  const p = perfumes.find(x => x.id === pid);
+  const fecha = f ? new Date(f + 'T12:00:00').getTime() : Date.now();
+  const cambios = agregarBotella(p, { costo, tamano, fecha });
+
+  const btn = document.getElementById('btn-save-botella');
+  btn.disabled = true;
+  try {
+    await updateDoc(doc(db, 'perfumes', pid), cambios);
+    Object.assign(p, cambios);
+    borrarCache();  // que la tienda no muestre el agotado viejo en esta pestaña
+    window.closeBotellaModal();
+    toast(`Botella de ${p.nombre} registrada`, 'success');
+    renderBotellas();
+    renderResumen();
+  } catch (e) {
+    console.error(e);
+    toast('No se pudo guardar: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
   }
 };

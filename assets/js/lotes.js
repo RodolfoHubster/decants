@@ -48,3 +48,29 @@ export function ventasDeLote(ventas, lotes, loteId) {
 export function esResto(talla) {
   return (talla || '').trim().toLowerCase().startsWith('resto');
 }
+
+/**
+ * Cambios a guardar en un perfume cuando se compra una botella nueva para
+ * decantar (restock). La nueva botella pasa a ser la activa y el perfume deja
+ * de estar agotado.
+ *
+ * Si el perfume es de antes de que existieran los lotes (costoBotella suelto),
+ * esa botella vieja se conserva como primer lote: si no, su historial de
+ * ventas se quedaría sin costo y la rentabilidad saldría inflada.
+ */
+export function agregarBotella(perfume, { costo, tamano, fecha = Date.now() } = {}) {
+  const p = perfume || {};
+  const lotes = Array.isArray(p.lotes) ? p.lotes.map(l => ({ ...l })) : [];
+  if (!lotes.length && (p.costoBotella || p.tamanoBotella)) {
+    lotes.push({
+      id: 'lote-' + (Number(p.creadoEn) || fecha - 1),
+      fecha: Number(p.creadoEn) || fecha - 1,
+      costo: Number(p.costoBotella) || 0,
+      tamano: Number(p.tamanoBotella) || 0
+    });
+  }
+  let id = 'lote-' + fecha;
+  while (lotes.some(l => l.id === id)) id += 'b';
+  lotes.push({ id, fecha, costo: Number(costo) || 0, tamano: Number(tamano) || 0 });
+  return { lotes, loteActivo: id, estadoStock: 'normal' };
+}
