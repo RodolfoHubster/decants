@@ -1,9 +1,21 @@
-import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, writeBatch, getDoc, auth, onAuthStateChanged, serverTimestamp }
+import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, writeBatch, getDoc, auth, onAuthStateChanged, serverTimestamp, increment }
   from './firebase-config.js';
+import { aMs } from './alertas.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
-import { indiceClientes } from './clientes-util.js';
+import { indiceClientes, idCliente } from './clientes-util.js?v=2';
 import { modoDeCanal, nombreTicketNuevo, resumenRenglones, validarRegistro } from './registro-dia.js';
+import { claveCanasta, canastaRestante } from './pos-cliente.js?v=2';
+
+/**
+ * Fecha local YYYY-MM-DD. toISOString() da la de UTC: en Tijuana, después de
+ * las 5 de la tarde (4 en invierno) ya devolvía la fecha de mañana.
+ */
+const fechaLocal = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** Id con el que se agrupan las ventas de un cliente (mismo criterio que antes). */
+const clienteIdPara = (nombre, fechaStr) => idCliente(nombre, fechaStr);
 import '../../admin/auth-guard.js';
 import { matchSearch } from './search-engine.js';
 renderSidebar('ventas');
@@ -22,6 +34,8 @@ function guardarIndiceClientes(lista) {
 }
 
 let currentPage = 1, pageSize = 10;
+// "Ir al día": muestra todo lo vendido el día de una venta (YYYY-MM-DD).
+let filtroDia = '';
 let jorCurrentPage = 1, jorPageSize = 10, jorSearchQuery = '';
 window.costoReforzada = 15; // default
 
@@ -58,7 +72,10 @@ async function loadAll() {
   });
   window.accesoriosData.sort((a,b) => a.nombre.localeCompare(b.nombre));
 
-  ventas = []; vs.forEach(d => ventas.push({ id: d.id, ...d.data() }));
+  ventas = []; vs.forEach(d => {
+    const data = d.data();
+    ventas.push({ id: d.id, ...data, creadoEn: aMs(data.creadoEn) || data.creadoEn });
+  });
   guardarIndiceClientes(ventas);
   ventas.sort((a,b) => {
     let tA = a.creadoEn ? (typeof a.creadoEn.toMillis === 'function' ? a.creadoEn.toMillis() : a.creadoEn) : 0;
@@ -115,6 +132,7 @@ async function loadAll() {
     if(cart.length > 0) {
       document.getElementById('batch-tbody').innerHTML = '';
       batchRows = []; ticketCounter = 0;
+      registroDesdeCanasta = true;
       let lastCid = -1;
       let tidActual = null;
       
@@ -162,6 +180,8 @@ async function loadAll() {
           rid, perfumeId: item.id, talla: finalTalla, 
           cantidad: item.cant || 1, precio: item.precio, 
           cliente: clientName, tid: tidActual, metodoPago: 'efectivo', estado: 'pagada', notas: notaBase,
+          perfumeNombre: item.nombre || '', perfumeMarca: item.marca || '',
+          canastaKey: claveCanasta(item),
           costoCompleto: item.costoCompleto,
           creadoEnOffset: item.cartClientId || 0,
           reforzada: isReforzada,
@@ -198,7 +218,7 @@ async function loadAll() {
             }
           }
           
-          const estadoWrap = tr.querySelector('td:nth-child(7) div');
+          const estadoWrap = tr.querySelector('.td-estado div');
           if(estadoWrap && estadoWrap._setValue) {
             estadoWrap._setValue('pagada');
             row.estado = 'pagada';
@@ -236,6 +256,7 @@ function getFiltered() {
   const pkgIds = new Set(window.paquetesData.map(p => p.id));
 
   return ventas.filter(v => {
+    if (filtroDia && fechaLocal(new Date(aMs(v.creadoEn) || 0)) !== filtroDia) return false;
     if (fe && v.estado !== fe) return false;
     if (fc && v.canal !== fc) return false;
     if (fp) {
@@ -542,8 +563,44 @@ window.checkVentasCustomLimit = (chk) => {
   }
 };
 
+window.irAlDia = (id) => {
+  const v = ventas.find(x => x.id === id);
+  if (!v || !aMs(v.creadoEn)) return;
+  filtroDia = fechaLocal(new Date(aMs(v.creadoEn)));
+  // Se ve el día completo: sin búsqueda ni otros filtros que escondan ventas.
+  ['search', 'f-estado', 'f-canal', 'f-periodo', 'f-perfume-estado'].forEach(fid => {
+    const el = document.getElementById(fid);
+    if (el) el.value = '';
+  });
+  currentPage = 1;
+  window.renderTable();
+  document.getElementById('chip-dia')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+window.quitarFiltroDia = () => {
+  filtroDia = '';
+  currentPage = 1;
+  window.renderTable();
+};
+
+function pintarChipDia(fil) {
+  const el = document.getElementById('chip-dia');
+  if (!el) return;
+  if (!filtroDia) { el.innerHTML = ''; return; }
+  const [y, m, d] = filtroDia.split('-').map(Number);
+  const nombreDia = new Date(y, m - 1, d).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const total = fil.reduce((s, v) => s + (+v.precio || 0) * (+v.cantidad || 1), 0);
+  const lugares = [...new Set(fil.map(v => v.lugar).filter(Boolean))];
+  el.innerHTML = `<div class="chip-dia">
+    <div><i class="bi bi-calendar-day"></i> <strong>Todo lo del ${nombreDia}</strong>
+      <span>${fil.length} venta${fil.length === 1 ? '' : 's'} · ${total.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}${lugares.length ? ' · ' + lugares.join(', ') : ''}</span></div>
+    <button class="btn btn-sm btn-outline" onclick="quitarFiltroDia()"><i class="bi bi-x-lg"></i> Ver todas</button>
+  </div>`;
+}
+
 window.renderTable = () => {
   const fil = getFiltered();
+  pintarChipDia(fil);
   updateKPIs(fil);
   document.getElementById('count-label').textContent = fil.length + ' ventas';
   const tb = document.getElementById('tbody');
@@ -606,6 +663,7 @@ window.renderTable = () => {
       <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${metodoMap[metodo]||metodo}</td>
       <td><span class="badge-estado ${v.estado||'pendiente'}">${v.estado||'pendiente'}</span></td>
       <td><div style="display:flex;gap:6px">
+        ${filtroDia ? '' : `<button class="btn-icon" onclick="irAlDia('${v.id}')" title="Ver todo lo vendido ese día"><i class="bi bi-calendar-day"></i></button>`}
         <button class="btn-icon" onclick="editVenta('${v.id}')" title="Editar venta"><i class="bi bi-pencil-square"></i></button>
         <button class="btn-icon" onclick="del('${v.id}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
       </div></td>
@@ -869,7 +927,7 @@ window.exportCSV = () => {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `ventas_${document.getElementById('f-periodo').value||'total'}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `ventas_${document.getElementById('f-periodo').value||'total'}_${fechaLocal()}.csv`;
   a.click();
   toast('CSV exportado', 'success');
 };
@@ -1016,6 +1074,11 @@ window.editVenta = (id) => {
   }
   
   tallaSel.value = v.talla || '';
+  // Cargar el perfume dispara el precio automático de la talla con el catálogo
+  // de hoy: se restaura lo que se cobró y si llevaba botella reforzada.
+  precioEl.value = v.precio ?? '';
+  const refChkEdit = document.getElementById('v-reforzada');
+  if (refChkEdit) refChkEdit.checked = !!v.reforzada;
   
   const refWrap = document.getElementById('v-reforzada-wrap');
   if (refWrap) {
@@ -1148,6 +1211,12 @@ window.save = async () => {
   }
   try {
     if (editId) {
+      // Si cambió el nombre, el id de cliente también (si no, quedaba agrupado
+      // con el nombre viejo: un "Cliente 3" renombrado seguía contando como de paso).
+      const original = ventas.find(x => x.id === editId);
+      if (original && (original.cliente || '') !== (data.cliente || '')) {
+        data.clienteId = clienteIdPara(data.cliente, fechaLocal(new Date(aMs(original.creadoEn) || Date.now())));
+      }
       await updateDoc(doc(db, 'ventas', editId), data);
       toast('Venta actualizada', 'success');
     } else {
@@ -1156,8 +1225,10 @@ window.save = async () => {
       toast('Venta registrada', 'success');
     }
     
-    // Check overflow
-    if (data.paqueteItems) {
+    // Check overflow (solo ventas nuevas: editar no vuelve a descontar inventario)
+    if (editId) {
+      // nada
+    } else if (data.paqueteItems) {
       data.paqueteItems.forEach(sub => {
          let ml = parseInt((data.talla||'').replace('Paquete ','')) || parseInt(data.talla) || 0;
          if(ml > 0 && window.checkLoteOverflow) window.checkLoteOverflow(sub.id, sub.loteId, ml * (+data.cantidad||1));
@@ -1176,7 +1247,7 @@ window.save = async () => {
         } else if (data.talla === 'Resto') {
           try {
             await updateDoc(doc(db, 'perfumes', data.perfumeId), { estadoStock: 'agotado' });
-            if(window.toast) toast(`Perfume marcado como agotado automáticamente`, 'info');
+            toast('Perfume marcado como agotado automáticamente', 'info');
           } catch(e) { console.error('Error auto-agotando', e); }
         }
       }
@@ -1742,10 +1813,11 @@ function buildBatchRowEl(row) {
     const r = batchRows.find(x => x.rid === rid);
     if (!r) return;
     r.perfumeId = p ? p.id : '';
-    if (p && p.id === 'custom') {
-      r.perfumeNombre = p.nombre;
-      r.perfumeMarca = p.marca;
-    }
+    // Lote y perfumes de combo eran del perfume anterior.
+    r.loteId = null;
+    r.paqueteItems = null;
+    r.perfumeNombre = p ? (p.nombre || '') : '';
+    r.perfumeMarca = p ? (p.marca || '') : '';
     r.talla = ''; r.precio = '';
     inPrecio.value = '';
     tdTotal.textContent = '—';
@@ -1779,6 +1851,8 @@ function buildBatchRowEl(row) {
 }
 
 let batchRows = [];
+// true solo cuando el registro se abrió desde la canasta (?openS=1)
+let registroDesdeCanasta = false;
 let batchRowCounter = 0;
 
 function updateBatchResumen() {
@@ -1946,10 +2020,12 @@ window.batchRefreshTotal = (rid) => {
  *   mercado → sobre ruedas: varios clientes, salen de la canasta.
  *   otro    → un pedido de una sola persona (entrega, encargo).
  */
-window.sincronizarModoDia = () => {
+window.sincronizarModoDia = (persistir = false) => {
   const canal = document.getElementById('dia-canal')?.value || 'mercado';
   const modo = modoDeCanal(canal);
-  try { localStorage.setItem('registroCanal', canal); } catch (e) { /* sin storage */ }
+  // Antes se guardaba también al abrir "Editar día": editar un día de WhatsApp
+  // hacía que el siguiente registro desde la canasta saliera como WhatsApp.
+  if (persistir) { try { localStorage.setItem('registroCanal', canal); } catch (e) { /* sin storage */ } }
 
   const inLugar = document.getElementById('dia-lugar');
   if (inLugar) inLugar.placeholder = modo === 'ruedas' ? 'Lugar (ej. Mercado Centro)' : 'Lugar de entrega (opcional)';
@@ -1969,7 +2045,7 @@ window.openDia = () => {
   document.querySelectorAll('#batch-tbody tr').forEach(tr => {
     tr.querySelectorAll('div').forEach(d => { d._destroyCombobox?.(); d._destroy?.(); });
   });
-  document.getElementById('dia-fecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('dia-fecha').value = fechaLocal();
   document.getElementById('dia-nota-global').value = '';
   document.getElementById('dia-lugar').value = '';
   let canal = 'mercado';
@@ -1977,6 +2053,7 @@ window.openDia = () => {
   document.getElementById('dia-canal').value = canal;
   document.getElementById('modal-dia-title').textContent = 'Registrar ventas';
   batchRows = []; batchRowCounter = 0; ticketCounter = 0; window.deletedBatchRows = [];
+  registroDesdeCanasta = false;
   document.getElementById('batch-tbody').innerHTML = '';
   window.sincronizarModoDia();
   window.addBatchClientSeparator();
@@ -2004,13 +2081,19 @@ window.saveDia = async () => {
   if (falta.mensaje) {
     toast(falta.mensaje, 'error');
     if (falta.tid) {
-      const inp = sepDe(falta.tid)?.querySelector('.ticket-nombre');
-      inp?.classList.add('falta');
-      inp?.focus();
+      const sep = sepDe(falta.tid);
+      sep?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // En rojo solo si lo que falta es el nombre; si es talla o precio, solo se muestra el cliente.
+      if (/nombre/.test(falta.mensaje)) {
+        const inp = sep?.querySelector('.ticket-nombre');
+        inp?.classList.add('falta');
+        inp?.focus();
+      }
     }
     return;
   }
-  const validas = batchRows.filter(r => r.perfumeId && r.talla && +r.precio > 0);
+  // Precio 0 vale (cortesía); vacío no. validarRegistro ya avisó de las incompletas.
+  const validas = batchRows.filter(r => r.perfumeId && r.talla && r.precio !== '' && r.precio != null && +r.precio >= 0);
   
   if (window.blacklistCache) {
     const checkName = (name) => name && window.blacklistCache.map(n => n.toLowerCase()).includes(name.trim().toLowerCase());
@@ -2022,6 +2105,9 @@ window.saveDia = async () => {
   }
   const [y,m,d] = fechaStr.split('-').map(Number);
   const fechaTs = new Date(y, m-1, d, 12, 0, 0).getTime();
+  // Un id por cliente (ticket) de este registro: Estadísticas cuenta clientes
+  // atendidos y ticket promedio con él, en vez de una venta = un cliente.
+  const registroId = Date.now().toString(36);
   const btn = document.getElementById('btn-dia-save');
   btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando…';
   try {
@@ -2069,21 +2155,13 @@ window.saveDia = async () => {
       
       // El cliente y el método de pago vienen del ticket de cada línea.
       let finalCliente = (r.cliente || '').trim();
-      let clienteId = '';
-      if (finalCliente) {
-        if (/^cliente\s*\d*$/i.test(finalCliente) || finalCliente.toLowerCase() === 'cliente (sin nombre)') {
-          const numMatch = finalCliente.match(/\d+/);
-          const num = numMatch ? numMatch[0].padStart(3, '0') : '000';
-          clienteId = `SR-${fechaStr}-${num}`;
-        } else {
-          clienteId = `NAMED-${finalCliente.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-        }
-      }
+      const clienteId = clienteIdPara(finalCliente, fechaStr);
       
       const dataObj = {
         perfumeId: r.perfumeId,
-        perfumeNombre: p ? p.nombre : (r.perfumeNombre || ''),
-        perfumeMarca: p ? p.marca : (r.perfumeMarca || ''),
+        perfumeNombre: (p && p.nombre) || r.perfumeNombre || '',
+        // Los combos no tienen marca: undefined hacía que Firestore rechazara TODO el registro.
+        perfumeMarca: isPaquete ? 'Combos Fitoscents' : ((p && p.marca) || r.perfumeMarca || ''),
         talla: r.talla,
         cantidad: +r.cantidad || 1,
         precio: +r.precio || 0,
@@ -2091,14 +2169,15 @@ window.saveDia = async () => {
         clienteId: clienteId,
         estado: r.estado,
         notas: finalNotas,
-        canal: canalVal,
+        canal: r.docId ? (r.canalOriginal || canalVal) : canalVal,
         metodoPago: r.metodoPago || metodoVal,
-        lugar: lugarStr,
+        lugar: r.docId ? (r.lugarOriginal ?? lugarStr) : lugarStr,
         creadoEn: r.creadoEn || (fechaTs + (r.creadoEnOffset || 0)),
         loteId: r.loteId || window.getSmartLoteId(p, r.creadoEn || (fechaTs + (r.creadoEnOffset || 0))),
         reforzada: r.reforzada || false,
         basePrecio: r.basePrecio || 0
       };
+      if (r.tid) dataObj.ticketId = `${fechaStr}-${registroId}-${r.tid}`;
       let ref;
       if (r.docId) {
         ref = doc(db, 'ventas', r.docId);
@@ -2110,6 +2189,8 @@ window.saveDia = async () => {
       if (paqueteItemsToSave) {
         dataObj.paqueteItems = paqueteItemsToSave;
       }
+      // Lo que costó una botella completa (lo pide el POS); antes nunca se guardaba.
+      if (r.costoCompleto != null && r.costoCompleto !== '') dataObj.costoCompleto = +r.costoCompleto;
       
       r._tempDataObj = dataObj; // save for overflow check
       batch.set(ref, dataObj, { merge: true });
@@ -2125,9 +2206,10 @@ window.saveDia = async () => {
     toast(`${validas.length} venta${validas.length>1?'s':''} guardada${validas.length>1?'s':''}`, 'success');
     
     // Check overflow for batch
+    const restarAccesorio = new Map();
     validas.forEach(r => {
       const dataObj = r._tempDataObj; // We need to store it temporarily to check
-      if (dataObj) {
+      if (dataObj && !r.docId) {
         if (dataObj.paqueteItems) {
           dataObj.paqueteItems.forEach(sub => {
              let ml = parseInt((dataObj.talla||'').replace('Paquete ','')) || parseInt(dataObj.talla) || 0;
@@ -2136,31 +2218,48 @@ window.saveDia = async () => {
         } else if (dataObj.perfumeId) {
           let isAccesorio = window.accesoriosData && window.accesoriosData.find(x => x.id === dataObj.perfumeId);
           if (isAccesorio) {
-            try {
-              const newStock = Math.max(0, (isAccesorio.stock || 0) - (+dataObj.cantidad || 1));
-              updateDoc(doc(db, 'accesorios', dataObj.perfumeId), { stock: newStock }).then(() => {
-                isAccesorio.stock = newStock;
-              });
-            } catch(e) {}
+            restarAccesorio.set(dataObj.perfumeId, (restarAccesorio.get(dataObj.perfumeId) || 0) + (+dataObj.cantidad || 1));
           } else {
             if (['2','3','5','10'].includes(dataObj.talla)) {
               if (window.checkLoteOverflow) window.checkLoteOverflow(dataObj.perfumeId, dataObj.loteId, parseInt(dataObj.talla) * (+dataObj.cantidad||1));
             } else if (dataObj.talla === 'Resto') {
-              try {
-                updateDoc(doc(db, 'perfumes', dataObj.perfumeId), { estadoStock: 'agotado' }).then(() => {
-                  if(window.toast) toast(`Perfume marcado como agotado automáticamente`, 'info');
-                });
-              } catch(e) {}
+              updateDoc(doc(db, 'perfumes', dataObj.perfumeId), { estadoStock: 'agotado' })
+                .then(() => toast('Perfume marcado como agotado automáticamente', 'info'))
+                .catch(e => console.error('No se pudo marcar agotado', e));
             }
           }
         }
       }
     });
+    // Una sola resta por accesorio, después de juntar todas las líneas (antes
+    // estaba dentro del recorrido de combos: sin combos no bajaba el stock y con
+    // varios combos lo bajaba de más). Sin pasar de 0, como antes.
+    restarAccesorio.forEach((cant, id) => {
+      const a = window.accesoriosData && window.accesoriosData.find(x => x.id === id);
+      const quitar = a ? Math.min(cant, Math.max(0, a.stock || 0)) : cant;
+      if (!quitar) return;
+      updateDoc(doc(db, 'accesorios', id), { stock: increment(-quitar) })
+        .then(() => { if (a) a.stock = (a.stock || 0) - quitar; })
+        .catch(e => console.error('No se pudo descontar el accesorio', e));
+    });
 
     document.getElementById('modal-dia').classList.remove('open');
     document.body.classList.remove('modal-open');
-    localStorage.removeItem('posCart');
-    if (window.resetPosCliente) window.resetPosCliente();
+    // La canasta solo se toca si este registro salió de ella, y solo se quitan
+    // las líneas que se acaban de guardar. Antes se vaciaba SIEMPRE: registrar
+    // un pedido aparte a media jornada borraba la canasta del sobre ruedas.
+    if (registroDesdeCanasta) {
+      let canasta = [];
+      try { canasta = JSON.parse(localStorage.getItem('posCart') || '[]'); } catch (e) { canasta = []; }
+      const resto = canastaRestante(canasta, validas.map(r => r.canastaKey).filter(Boolean));
+      if (resto.length) {
+        localStorage.setItem('posCart', JSON.stringify(resto));
+      } else {
+        localStorage.removeItem('posCart');
+        if (window.resetPosCliente) window.resetPosCliente();
+      }
+      registroDesdeCanasta = false;
+    }
     if(window.renderPosCart) window.renderPosCart();
     loadAll();
   } catch(e) {
@@ -2226,7 +2325,7 @@ window.openPackageSelectionModal = (p, onComplete, selectedMl = null) => {
       const checked = overlay.querySelectorAll('.pkg-custom-chk:checked');
       if (checked.length > max) {
         chk.checked = false;
-        if(window.toast) toast(`Solo puedes elegir ${max}`, 'warning');
+        toast(`Solo puedes elegir ${max}`, 'warning');
       }
     });
   });
@@ -2236,7 +2335,7 @@ window.openPackageSelectionModal = (p, onComplete, selectedMl = null) => {
   overlay.querySelector('#btn-pkg-confirm').onclick = () => {
     const checked = overlay.querySelectorAll('.pkg-custom-chk:checked');
     if (checked.length < max) {
-      if(window.toast) toast(`Selecciona ${max} perfumes`, 'warning');
+      toast(`Selecciona ${max} perfumes`, 'warning');
       return;
     }
     const result = Array.from(checked).map(c => ({ id: c.dataset.id, nombre: c.value }));
@@ -2277,7 +2376,7 @@ window.checkLoteOverflow = (perfId, loteId, mlToSell) => {
   
   if (totalMl + mlToSell > maxCap) {
     setTimeout(() => {
-      if(window.toast) toast(`⚠️ La botella activa de ${p.nombre} ha superado su límite de ml. ¡Considera crear una nueva en el catálogo!`, 'warning');
+      toast(`⚠️ La botella activa de ${p.nombre} ha superado su límite de ml. ¡Considera crear una nueva en el catálogo!`, 'warning');
     }, 1500);
   }
 };
@@ -2341,15 +2440,22 @@ window.editarGrupoDia = (fechaStr) => {
   document.getElementById('modal-dia-title').textContent = `Editando Día: ${targetDate.toLocaleDateString('es-MX')}`;
   
   batchRows = []; batchRowCounter = 0; ticketCounter = 0; window.deletedBatchRows = [];
+  registroDesdeCanasta = false;
   document.getElementById('batch-tbody').innerHTML = '';
   
   document.getElementById('dia-fecha').value = fechaStr;
   // Use first common properties for global fields if available
+  // La nota del registro anterior no debe pegarse a las ventas de este día.
+  document.getElementById('dia-nota-global').value = '';
   if (vdia.length > 0) {
     const first = vdia[0];
-    document.getElementById('dia-canal').value = first.canal || 'mercado';
+    // El canal y el lugar de aquí arriba solo aplican a líneas NUEVAS; las ya
+    // guardadas conservan los suyos. 'consignacion' no está en el selector.
+    const selCanal = document.getElementById('dia-canal');
+    selCanal.value = first.canal || 'mercado';
+    if (!selCanal.value) selCanal.value = 'mercado';
     document.getElementById('dia-lugar').value = first.lugar || '';
-  window.sincronizarModoDia();
+    window.sincronizarModoDia();
   }
   
   vdia.sort((a,b) => (a.cliente || '').localeCompare(b.cliente || ''));
@@ -2394,7 +2500,12 @@ window.editarGrupoDia = (fechaStr) => {
       cliente: v.cliente || '', tid: tidActual, metodoPago: v.metodoPago || 'efectivo', estado: v.estado || 'pagada', 
       notas: v.notas || '', creadoEn: v.creadoEn,
       loteId: v.loteId, reforzada: isReforzada,
-      basePrecio: basePrecio
+      basePrecio: basePrecio,
+      // Lo guardado se conserva tal cual: antes se reescribía con datos de hoy.
+      perfumeNombre: v.perfumeNombre || '', perfumeMarca: v.perfumeMarca || '',
+      paqueteItems: v.paqueteItems || null,
+      canalOriginal: v.canal || '', lugarOriginal: v.lugar ?? '',
+      costoCompleto: v.costoCompleto
     };
     
     batchRows.push(row);
@@ -2409,9 +2520,13 @@ window.editarGrupoDia = (fechaStr) => {
       if(inpPerf) inpPerf.value = dName;
       
       const tallaWrap = tr.querySelector('td:nth-child(2) div');
+      // Lo que de verdad se cobró. _setValue(talla) recalcula el precio con el
+      // catálogo de HOY y lo escribía encima: editar un día cambiaba ventas viejas.
+      const precioCobrado = row.precio;
       if(tallaWrap && tallaWrap._setItems) {
         tallaWrap._setItems(tallaItems(pId));
         tallaWrap._setValue(row.talla);
+        row.precio = precioCobrado;
         
         // Restore checkbox state visually
         const refChk = tr.querySelector('td:nth-child(2) input[type="checkbox"]');
@@ -2426,13 +2541,14 @@ window.editarGrupoDia = (fechaStr) => {
         }
       }
       
-      const estadoWrap = tr.querySelector('td:nth-child(7) div');
+      const estadoWrap = tr.querySelector('.td-estado div');
       if(estadoWrap && estadoWrap._setValue) {
         estadoWrap._setValue(row.estado);
       }
       
       const inPrecio = tr.querySelector('.td-precio input');
-      if(inPrecio) inPrecio.value = row.precio;
+      row.precio = precioCobrado;
+      if(inPrecio) inPrecio.value = precioCobrado;
       batchRefreshTotal(rid);
     }, 50);
   });

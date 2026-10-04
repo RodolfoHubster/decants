@@ -34,6 +34,11 @@
       .ventas-tabla tbody td[colspan]{grid-column:1/-1;grid-area:auto}
       .ventas-tabla tbody tr td br{display:none}
     }
+    .chip-dia { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+      background:var(--gold-s, rgba(201,168,76,.1)); border:1px solid var(--gold-b, rgba(201,168,76,.35));
+      border-radius:12px; padding:12px 16px; margin-bottom:14px; }
+    .chip-dia strong { text-transform:capitalize; }
+    .chip-dia span { display:block; font-size:12.5px; color:var(--text-muted); margin-top:2px; }
   </style>
   <style>
     /* Cada cliente es un ticket: nombre editable, método de pago y sus perfumes */
@@ -120,6 +125,7 @@
         </select>
       </div>
 
+      <div id="chip-dia"></div>
       <div class="card">
         <div class="card-header"><h5>Historial de Ventas</h5><span class="badge badge-muted" id="count-label">0 ventas</span></div>
         <div class="table-wrap">
@@ -223,6 +229,7 @@
             <option value="online">Online / WhatsApp</option>
             <option value="mercado">Sobre ruedas</option>
             <option value="otro">Otro</option>
+            <option value="consignacion">Punto externo</option>
           </select>
         </div>
         <div class="form-group">
@@ -299,7 +306,7 @@
         <label>Fecha</label>
         <input type="date" id="dia-fecha">
         <div class="dia-canal-wrap" style="flex:0.7;min-width:200px;">
-          <select id="dia-canal" onchange="sincronizarModoDia()" style="width:100%;height:100%;border:none;background:rgba(255,255,255,0.05);color:var(--text);border-radius:6px;padding:0 8px;font-size:14px;outline:none">
+          <select id="dia-canal" onchange="sincronizarModoDia(true)" style="width:100%;height:100%;border:none;background:rgba(255,255,255,0.05);color:var(--text);border-radius:6px;padding:0 8px;font-size:14px;outline:none">
             <option value="mercado">Sobre ruedas</option>
             <option value="online">Pedidos por WhatsApp</option>
             <option value="otro">Otra venta</option>
@@ -472,6 +479,6 @@ window.buildPerfumePicker = function(wrap, perfumes, onChange) {
   </div>
 </div>
 
-<script type="module" src="../assets/js/ventas.js?v=2.7"></script>
+<script type="module" src="../assets/js/ventas.js?v=3.0"></script>
 </body>
 </html>

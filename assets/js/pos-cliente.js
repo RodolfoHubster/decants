@@ -60,3 +60,21 @@ export function resumenPorCliente(cart, nombres = {}) {
   });
   return [...porCid.values()].sort((a, b) => a.cid - b.cid);
 }
+
+/**
+ * Identifica una línea de la canasta aunque cambie de posición. Las líneas del
+ * mismo perfume, talla y cliente se fusionan al agregarlas, así que esto es único.
+ */
+export function claveCanasta(item) {
+  const i = item || {};
+  return [i.id, i.ml, Number(i.cartClientId) || 1, i.addedAt || ''].join('|');
+}
+
+/**
+ * La canasta sin las líneas que se acaban de registrar. Lo demás se queda:
+ * lo que no se guardó, o lo que se agregó mientras el registro estaba abierto.
+ */
+export function canastaRestante(cart, clavesGuardadas) {
+  const guardadas = new Set(clavesGuardadas || []);
+  return (cart || []).filter(i => !guardadas.has(claveCanasta(i)));
+}

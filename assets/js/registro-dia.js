@@ -51,12 +51,25 @@ export function ticketsSinNombre(rows) {
   return vistos;
 }
 
+/** Precio capturado: 0 vale (cortesía); vacío o no numérico, no. */
+const tienePrecio = r => r.precio !== '' && r.precio != null && !Number.isNaN(Number(r.precio)) && Number(r.precio) >= 0;
+
 /**
  * Qué falta para guardar.
  * @returns {{mensaje:string, tid?:string}} mensaje vacío si todo bien.
  */
 export function validarRegistro(rows, modo) {
-  const validas = (rows || []).filter(r => r && r.perfumeId && r.talla && Number(r.precio) > 0);
+  const lista = (rows || []).filter(Boolean);
+  // Antes una línea con perfume pero sin precio se descartaba en silencio y el
+  // aviso decía "1 venta guardada" cuando en pantalla había dos.
+  const incompletas = lista.filter(r => r.perfumeId && (!r.talla || !tienePrecio(r)));
+  if (incompletas.length) {
+    return {
+      mensaje: incompletas.length === 1 ? 'A un perfume le falta talla o precio' : `A ${incompletas.length} perfumes les falta talla o precio`,
+      tid: incompletas[0].tid,
+    };
+  }
+  const validas = lista.filter(r => r.perfumeId && r.talla && tienePrecio(r));
   if (!validas.length) return { mensaje: 'Agrega al menos un perfume con talla y precio' };
   if (modo === 'entregas') {
     const sin = ticketsSinNombre(rows);

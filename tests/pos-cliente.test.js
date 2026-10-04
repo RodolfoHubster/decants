@@ -99,3 +99,30 @@ describe('resumenPorCliente', () => {
     expect(resumenPorCliente([])).toEqual([]);
   });
 });
+
+import { claveCanasta, canastaRestante } from '../assets/js/pos-cliente.js';
+
+describe('canastaRestante', () => {
+  const a = { id: 'p1', ml: 5, cartClientId: 1, addedAt: 100 };
+  const b = { id: 'p2', ml: 10, cartClientId: 1, addedAt: 200 };
+  const c = { id: 'p1', ml: 5, cartClientId: 2, addedAt: 300 };
+
+  test('quita solo lo que se guardó', () => {
+    expect(canastaRestante([a, b, c], [claveCanasta(a), claveCanasta(c)])).toEqual([b]);
+  });
+  test('un registro que no salió de la canasta no quita nada', () => {
+    // El bug: registrar un pedido aparte vaciaba la canasta del sobre ruedas.
+    expect(canastaRestante([a, b, c], [])).toEqual([a, b, c]);
+  });
+  test('lo agregado mientras el registro estaba abierto se queda', () => {
+    // Agregar otra vez el mismo perfume al mismo cliente actualiza addedAt.
+    const aActualizado = { ...a, cant: 2, addedAt: 999 };
+    expect(canastaRestante([aActualizado, b], [claveCanasta(a)])).toEqual([aActualizado, b]);
+  });
+  test('mismo perfume y talla en clientes distintos son líneas distintas', () => {
+    expect(claveCanasta(a)).not.toBe(claveCanasta(c));
+  });
+  test('tolera canasta vacía o nula', () => {
+    expect(canastaRestante(null, ['x'])).toEqual([]);
+  });
+});

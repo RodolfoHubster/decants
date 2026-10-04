@@ -52,8 +52,16 @@ describe('validarRegistro', () => {
   test('sobre ruedas no exige nombre', () => {
     expect(validarRegistro([fila({ cliente: '' })], 'ruedas').mensaje).toBe('');
   });
+  test('avisa de líneas con perfume pero sin talla o sin precio', () => {
+    const r = validarRegistro([fila(), fila({ tid: 't2', precio: '' })], 'ruedas');
+    expect(r).toEqual({ mensaje: 'A un perfume le falta talla o precio', tid: 't2' });
+    expect(validarRegistro([fila({ talla: '' }), fila({ precio: '' })], 'ruedas').mensaje).toBe('A 2 perfumes les falta talla o precio');
+  });
+  test('precio 0 es válido (cortesía); renglón vacío no cuenta', () => {
+    expect(validarRegistro([fila({ precio: 0 }), { tid: 't1', perfumeId: '', precio: '' }], 'ruedas').mensaje).toBe('');
+  });
   test('sin perfumes completos', () => {
-    expect(validarRegistro([{ tid: 't1', perfumeId: 'p', talla: '', precio: 0 }], 'ruedas').mensaje)
+    expect(validarRegistro([{ tid: 't1', perfumeId: '', talla: '', precio: '' }], 'ruedas').mensaje)
       .toMatch(/al menos un perfume/);
   });
 });

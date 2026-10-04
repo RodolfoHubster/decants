@@ -87,7 +87,13 @@ window.addToPosCart = async (item) => {
   item.cartClientId = cid;
 
   // Only merge if same perfume+ml AND same client
-  const extItem = cart.find(x => x.id === item.id && x.ml === item.ml && (x.cartClientId || 1) === cid);
+  // Solo se fusiona si es exactamente lo mismo: mismo perfume, talla, cliente,
+  // PRECIO y contenido de combo. Antes un 5 ml a $90 y otro a $105 (travel, o
+  // un combo con otra selección) se juntaban como 2 × $90.
+  const mismoCombo = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
+  const extItem = cart.find(x => x.id === item.id && x.ml === item.ml && (x.cartClientId || 1) === cid
+    && Number(x.precio) === Number(item.precio) && (x.nombre || '') === (item.nombre || '')
+    && mismoCombo(x.paqueteItems, item.paqueteItems));
   if (extItem) {
     extItem.cant = (extItem.cant || 0) + 1;
     extItem.addedAt = Date.now();
