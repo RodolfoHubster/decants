@@ -31,7 +31,12 @@ tests/*.test.js                                 ← Jest, importan los módulos 
 
 `lotes.js` · `clientes-util.js` · `stock.js` · `precios.js` · `catalogo-cache.js` ·
 `imagenes.js` · `hero.js` · `cart.js` · `slug.js` · `search-engine.js` ·
-`alertas.js` (dashboard: resumen y recordatorios) · `pos-cliente.js` (atribución en la canasta)
+`alertas.js` (dashboard: resumen y recordatorios) · `pos-cliente.js` (atribución en la canasta) ·
+`rentabilidad.js` (costo real por venta/botella, clientes atendidos, consumo para alertas) ·
+`visitas.js` (contador propio: `visitas/AAAA-MM-DD {personas}`, sin contar al dueño) ·
+`recordatorios.js` (links a Google Calendar con repetición)
+
+`config/costosOperativos` es **privado**; la tienda solo lee `config/tienda` (`disable2ml`).
 
 **Patrón del proyecto: la lógica testeable se extrae a un módulo puro que el test
 importa de verdad.** Nunca copies la lógica dentro del spec — si necesitas probar algo
@@ -69,6 +74,10 @@ Búscalos con `grep -n 'nombreDeFuncion' archivo` y lee solo el rango con
 - **Un campo de precio vacío significa "esa talla no se vende"**, no "falta llenarlo".
   Nada automático debe rellenarlo al editar un perfume existente.
 - `firestore.rules` **no se aplica al guardarlo**. Requiere `firebase deploy --only firestore:rules`.
+- **Producción es GitHub Pages** (`rodolfohubster.github.io/decants`, se publica en cada push a
+  `main`). `firebase.json` no aplica al sitio en vivo. GitHub guarda ~10 min en caché, así que
+  un `import` de un módulo al que le agregaste exports va con versión: `from './cart.js?v=2'`.
+- **No hacer commits por el dueño**: editar, copiar al checkout principal y darle los comandos.
 - **Imágenes siempre por `cloudinary.js`** (`imgCard`, `imgCart`, `imgThumb`): nunca `src="${p.imagen}"`
   directo — descarga el original y se salta el modo ahorro.
 - **Variables CSS**: usar los tokens de `variables.css`. `--surface`, `--text`, `--gold` son alias.

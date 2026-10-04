@@ -6,13 +6,30 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    match /perfumes/{id}           { allow read: if true; allow write: if isAuth(); }
+    // Un visitante solo puede sumar 1 al contador de clics de un perfume,
+    // combo o accesorio (lo usa la tienda para ordenar por "más vistos").
+    function soloSumaUnClick() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicks'])
+        && request.resource.data.clicks == resource.data.get('clicks', 0) + 1;
+    }
+
+    match /perfumes/{id}           { allow read: if true; allow write: if isAuth(); allow update: if soloSumaUnClick(); }
     match /marcas/{id}             { allow read: if true; allow write: if isAuth(); }
     match /categorias/{id}         { allow read: if true; allow write: if isAuth(); }
     match /familias_olfativas/{id} { allow read: if true; allow write: if isAuth(); }
     match /tipos_perfume/{id}      { allow read: if true; allow write: if isAuth(); }
-    match /paquetes/{id}           { allow read: if true; allow write: if isAuth(); }
-    match /accesorios/{id}         { allow read: if true; allow write: if isAuth(); }
+    match /paquetes/{id}           { allow read: if true; allow write: if isAuth(); allow update: if soloSumaUnClick(); }
+    match /accesorios/{id}         { allow read: if true; allow write: if isAuth(); allow update: if soloSumaUnClick(); }
+
+    // Contador propio de visitas: un documento por día ({ personas: N }).
+    // Un visitante solo puede crear el día con 1 o sumarle exactamente 1.
+    match /visitas/{dia} {
+      allow read, delete: if isAuth();
+      allow create: if request.resource.data.keys().hasOnly(['personas'])
+        && request.resource.data.personas == 1;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['personas'])
+        && request.resource.data.personas == resource.data.get('personas', 0) + 1;
+    }
 
     match /novedades/{id} { allow read: if true; allow write: if isAuth(); }
     match /anuncios/{id}  { allow read: if true; allow write: if isAuth(); }
@@ -50,7 +67,9 @@ service cloud.firestore {
     }
 
     match /config/{id} {
-      allow read: if true;
+      // La tienda solo lee config/tienda (p. ej. disable2ml). Tus costos
+      // (costosOperativos), la lista negra y los respaldos: solo con sesión.
+      allow read: if id == 'tienda' || isAuth();
       allow write: if isAuth();
     }
 
