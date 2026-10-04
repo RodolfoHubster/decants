@@ -2,7 +2,7 @@
  * Pruebas del módulo real assets/js/clientes-util.js
  */
 
-import { esNombreGenerico, esClienteTemporal, claveCliente } from '../assets/js/clientes-util.js';
+import { esNombreGenerico, esClienteTemporal, claveCliente, idCliente } from '../assets/js/clientes-util.js';
 
 describe('esNombreGenerico', () => {
   test.each([
@@ -149,5 +149,20 @@ describe('buscarCliente', () => {
   test('sin coincidencia o vacío devuelve null', () => {
     expect(buscarCliente(idx, 'otro')).toBeNull();
     expect(buscarCliente(idx, '')).toBeNull();
+  });
+});
+
+describe('idCliente y acentos', () => {
+  test('María López y Maria Lopez son la misma persona', () => {
+    expect(idCliente('María López', '2026-10-03')).toBe('NAMED-marialopez');
+    expect(idCliente('Maria Lopez', '2026-10-03')).toBe('NAMED-marialopez');
+  });
+  test('los Cliente N llevan id del día', () => {
+    expect(idCliente('Cliente 7', '2026-10-03')).toBe('SR-2026-10-03-007');
+    expect(idCliente('', '2026-10-03')).toBe('');
+  });
+  test('claveCliente une los ids viejos que borraban la letra acentuada', () => {
+    expect(claveCliente({ clienteId: 'NAMED-maralpez', cliente: 'María López' })).toBe('NAMED-marialopez');
+    expect(claveCliente({ clienteId: 'SR-2026-10-03-007', cliente: 'Cliente 7' })).toBe('SR-2026-10-03-007');
   });
 });

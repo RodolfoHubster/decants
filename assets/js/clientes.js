@@ -1,7 +1,12 @@
 import { db, collection, getDocs, doc, updateDoc, writeBatch, getDoc, setDoc } from './firebase-config.js';
 import { toast } from './toast.js';
 import { renderSidebar } from '../../admin/sidebar.js';
-import { claveCliente } from './clientes-util.js';
+import { claveCliente, idCliente } from './clientes-util.js?v=2';
+import { aMs } from './alertas.js';
+
+// Fecha local YYYY-MM-DD (toISOString da la de UTC: en la tarde ya era mañana).
+const fechaLocal = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 import '../../admin/auth-guard.js';
 
 renderSidebar('clientes');
@@ -28,7 +33,8 @@ async function loadData() {
     }
 
     const ventas = [];
-    vs.forEach(d => ventas.push({ id: d.id, ...d.data() }));
+    // creadoEn siempre en ms: con Timestamp salía "Invalid Date" y el orden fallaba.
+    vs.forEach(d => { const data = d.data(); ventas.push({ id: d.id, ...data, creadoEn: aMs(data.creadoEn) || data.creadoEn }); });
     
     const encargos = [];
     os.forEach(d => encargos.push({ id: d.id, ...d.data() }));
@@ -37,14 +43,11 @@ async function loadData() {
     const grupos = {};
 
     const addGroup = (docData) => {
-      let key = docData.clienteId;
+      // Un id por persona: los "Cliente N" llevan su id del día y los demás
+      // el de su nombre sin acentos (María López = Maria Lopez).
+      const key = claveCliente(docData);
       let name = docData.cliente || '';
-      
-      // Fallback for old data without clienteId — ignora nombres genéricos
-      if (!key) {
-        key = claveCliente(docData);
-        if (!key) return null;
-      }
+      if (!key) return null;
       
       if (!grupos[key]) {
         grupos[key] = {
@@ -59,6 +62,8 @@ async function loadData() {
     };
 
     ventas.forEach(v => {
+      // Las ventas de puntos externos llevan el nombre del lugar, no de una persona.
+      if (v.canal === 'consignacion') return;
       const g = addGroup(v);
       if (g) g.ventas.push(v);
     });
@@ -310,18 +315,13 @@ window.renameClient = async (oldName) => {
       if(!cData) return;
       
       cData.ventas.forEach(v => {
-        let newClienteId = `NAMED-${newName.trim().toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-        if (/^cliente\s*\d*$/i.test(newName.trim()) || newName.trim().toLowerCase() === 'cliente (sin nombre)') {
-           const numMatch = newName.match(/\d+/);
-           const num = numMatch ? numMatch[0].padStart(3, '0') : '000';
-           const fStr = (v.creadoEn && v.creadoEn > 0) ? new Date(v.creadoEn).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
-           newClienteId = `SR-${fStr}-${num}`;
-        }
+        const fStr = (v.creadoEn && v.creadoEn > 0) ? fechaLocal(new Date(v.creadoEn)) : fechaLocal();
+        const newClienteId = idCliente(newName, fStr);
         batch.update(doc(db, 'ventas', v.id), { cliente: newName.trim(), clienteId: newClienteId });
       });
       
       cData.encargos.forEach(e => {
-        let newClienteId = `NAMED-${newName.trim().toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        const newClienteId = idCliente(newName, fechaLocal());
         batch.update(doc(db, 'ordenes_completos', e.id), { cliente: newName.trim(), clienteId: newClienteId });
       });
       

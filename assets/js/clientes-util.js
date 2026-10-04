@@ -15,6 +15,11 @@
 
 const RE_GENERICO = /^cliente\s*\d*$/i;
 
+// Quita acentos convirtiéndolos (é → e), no borrándolos: antes "Pérez" acababa
+// como "prez", distinto de "Perez".
+const normNombre = t => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase().replace(/[^a-z0-9]/g, '');
+
 /**
  * ¿El nombre es un marcador genérico del punto de venta, no un nombre real?
  *
@@ -51,10 +56,30 @@ export function esClienteTemporal(venta) {
 export function claveCliente(venta) {
   if (!venta) return null;
   const id = (venta.clienteId || '').trim();
-  if (id) return id;
+  if (id.startsWith('SR-')) return id;
   const nombre = (venta.cliente || '').trim();
-  if (esNombreGenerico(nombre)) return null;
-  return `NAMED-${nombre.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+  // Los NAMED- viejos se guardaron borrando la letra acentuada ("María" →
+  // "mara"), así que la misma persona tenía dos ids. Se recalcula del nombre.
+  if (nombre && !esNombreGenerico(nombre)) return `NAMED-${normNombre(nombre)}`;
+  return id || null;
+}
+
+/**
+ * Id que se guarda en la venta: `SR-<fecha>-<num>` para los "Cliente N" de
+ * paso (atado al día) y `NAMED-<nombre sin acentos>` para clientes reales, así
+ * "María López" y "Maria Lopez" son la misma persona.
+ *
+ * @param {string} nombre
+ * @param {string} fechaStr  Día de la venta (YYYY-MM-DD).
+ */
+export function idCliente(nombre, fechaStr) {
+  const n = String(nombre || '').trim();
+  if (!n) return '';
+  if (esNombreGenerico(n) || n.toLowerCase() === 'cliente (sin nombre)') {
+    const num = (n.match(/\d+/) || ['000'])[0].padStart(3, '0');
+    return `SR-${fechaStr}-${num}`;
+  }
+  return `NAMED-${normNombre(n)}`;
 }
 
 /**
@@ -65,10 +90,6 @@ export function claveCliente(venta) {
  * Una "compra" es un día distinto: cinco decants en el mismo ticket cuentan
  * como una visita, que es lo que importa para saber si alguien regresa.
  */
-// Quita acentos convirtiéndolos (é → e), no borrándolos: claveCliente() borra
-// la letra entera y "Pérez" acaba como "prez", distinto de "Perez".
-const normNombre = t => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
-  .toLowerCase().replace(/[^a-z0-9]/g, '');
 
 export function indiceClientes(ventas) {
   const por = new Map();
