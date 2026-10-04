@@ -1,8 +1,9 @@
-import { db, collection, getDocs } from '../../assets/js/firebase-config.js';
+import { db, collection, getDocs, doc, getDoc, setDoc } from '../../assets/js/firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import '../../admin/auth-guard.js';
 import { resumenVentas, topVendidos, pendientes } from './alertas.js';
 import { indiceClientes } from './clientes-util.js';
+import { FRECUENCIAS, PLANTILLAS, urlGoogleCalendar, ordenarRecordatorios } from './recordatorios.js';
 
 // Índice ligero de clientes para que la canasta reconozca a quien ya compró.
 // Se guarda en el teléfono: la canasta no tiene que leer todas las ventas.
@@ -130,3 +131,92 @@ async function cargar() {
 }
 
 cargar();
+
+// ── Mis recordatorios (config/recordatorios → { lista: [...] }) ─────────────
+// FitoScents no tiene servidor que avise con la página cerrada: cada
+// recordatorio se manda a Google Calendar, que sí avisa en el celular.
+let recordatorios = [];
+const REC_DOC = () => doc(db, 'config', 'recordatorios');
+
+function pintarRecordatorios() {
+  const el = $('rec-lista');
+  if (!el) return;
+  if (!recordatorios.length) {
+    el.innerHTML = '<div class="rec-vacio">Aún no tienes recordatorios. Crea uno y Google Calendar te avisará en el celular.</div>';
+    return;
+  }
+  const hoy = new Date().toDateString();
+  el.innerHTML = ordenarRecordatorios(recordatorios, Date.now()).map(r => {
+    const cuando = r.proxima
+      ? new Date(r.proxima).toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+      : 'ya pasó';
+    const esHoy = r.proxima && new Date(r.proxima).toDateString() === hoy;
+    return `<div class="rec-item${esHoy ? ' hoy' : ''}${r.proxima ? '' : ' pasado'}">
+      <div class="rec-info"><strong>${esc(r.titulo)}</strong>
+        <span>${esc(FRECUENCIAS[r.frecuencia] || '')} · ${esHoy ? 'hoy' : 'próximo'}: ${esc(cuando)}</span></div>
+      <a class="btn-icon" href="${esc(urlGoogleCalendar(r))}" target="_blank" rel="noopener" title="Abrir en Google Calendar"><i class="bi bi-google"></i></a>
+      <button class="btn-icon" onclick="borrarRecordatorio('${esc(r.id)}')" title="Quitar de esta lista"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
+    </div>`;
+  }).join('');
+}
+
+async function cargarRecordatorios() {
+  try {
+    const snap = await getDoc(REC_DOC());
+    recordatorios = snap.exists() && Array.isArray(snap.data().lista) ? snap.data().lista : [];
+  } catch (e) { console.warn('No se pudieron leer los recordatorios', e); }
+  pintarRecordatorios();
+}
+
+window.abrirFormRecordatorio = () => {
+  $('rec-frecuencia').innerHTML = Object.entries(FRECUENCIAS)
+    .map(([k, v]) => `<option value="${k}"${k === 'semanal' ? ' selected' : ''}>${v}</option>`).join('');
+  $('rec-plantillas').innerHTML = PLANTILLAS
+    .map((p, i) => `<button type="button" class="rec-chip" onclick="usarPlantilla(${i})">${esc(p.titulo)}</button>`).join('');
+  const manana = new Date(Date.now() + 86400000);
+  $('rec-fecha').value = `${manana.getFullYear()}-${String(manana.getMonth() + 1).padStart(2, '0')}-${String(manana.getDate()).padStart(2, '0')}`;
+  $('rec-titulo').value = '';
+  $('rec-form').hidden = false;
+  $('rec-titulo').focus();
+};
+window.cerrarFormRecordatorio = () => { $('rec-form').hidden = true; };
+window.usarPlantilla = (i) => {
+  $('rec-titulo').value = PLANTILLAS[i].titulo;
+  $('rec-frecuencia').value = PLANTILLAS[i].frecuencia;
+};
+
+window.guardarRecordatorio = async () => {
+  const titulo = $('rec-titulo').value.trim();
+  const [y, m, d] = ($('rec-fecha').value || '').split('-').map(Number);
+  const [hh, mm] = ($('rec-hora').value || '09:00').split(':').map(Number);
+  if (!titulo || !y) return;
+  const plantilla = PLANTILLAS.find(p => p.titulo === titulo);
+  const rec = {
+    id: 'r' + Date.now().toString(36),
+    titulo,
+    detalle: (plantilla && plantilla.detalle) || 'Recordatorio de FitoScents.',
+    frecuencia: $('rec-frecuencia').value,
+    inicio: new Date(y, m - 1, d, hh || 0, mm || 0).getTime(),
+    creadoEn: Date.now(),
+  };
+  // Se abre ANTES del await: después, el navegador lo toma como ventana emergente y la bloquea.
+  window.open(urlGoogleCalendar(rec), '_blank', 'noopener');
+  recordatorios = [...recordatorios, rec];
+  pintarRecordatorios();
+  $('rec-form').hidden = true;
+  try { await setDoc(REC_DOC(), { lista: recordatorios }, { merge: true }); }
+  catch (e) {
+    console.error('No se pudo guardar el recordatorio', e);
+    alert('No se pudo guardar en FitoScents. Si lo guardas en Google Calendar, allá sí queda.');
+  }
+};
+
+window.borrarRecordatorio = async (id) => {
+  if (!confirm('¿Quitarlo de esta lista? Si ya lo guardaste en Google Calendar, bórralo también allá.')) return;
+  recordatorios = recordatorios.filter(r => r.id !== id);
+  pintarRecordatorios();
+  try { await setDoc(REC_DOC(), { lista: recordatorios }, { merge: true }); }
+  catch (e) { console.error('No se pudo borrar el recordatorio', e); }
+};
+
+cargarRecordatorios();

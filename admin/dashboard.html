@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="../assets/css/variables.css">
   <link rel="stylesheet" href="../assets/css/global.css">
-  <link rel="stylesheet" href="../assets/css/dashboard.css?v=3.0">
+  <link rel="stylesheet" href="../assets/css/dashboard.css?v=3.1">
 </head>
 <body>
 <div class="app-shell">
@@ -78,6 +78,29 @@
         </div>
       </section>
 
+      <!-- Mis recordatorios: se mandan a Google Calendar para que avise en el celular -->
+      <section class="hoy-bloque">
+        <div class="bloque-head">
+          <h2><i class="bi bi-alarm"></i> Mis recordatorios</h2>
+          <button class="btn btn-sm btn-outline" id="rec-nuevo-btn" onclick="abrirFormRecordatorio()"><i class="bi bi-plus-lg"></i> Nuevo</button>
+        </div>
+        <form id="rec-form" class="rec-form" hidden onsubmit="event.preventDefault(); guardarRecordatorio()">
+          <div class="rec-plantillas" id="rec-plantillas"></div>
+          <input class="form-control" id="rec-titulo" placeholder="¿Qué te recuerdo? Ej. Renovar stock" maxlength="120" required>
+          <div class="rec-fila">
+            <select class="form-control" id="rec-frecuencia"></select>
+            <input class="form-control" type="date" id="rec-fecha" required>
+            <input class="form-control" type="time" id="rec-hora" value="09:00" required>
+          </div>
+          <div class="rec-acciones">
+            <button type="button" class="btn btn-outline btn-sm" onclick="cerrarFormRecordatorio()">Cancelar</button>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-google"></i> Guardar y mandar a Google Calendar</button>
+          </div>
+          <small class="rec-ayuda">Se abre Google Calendar con el recordatorio listo: solo toca <strong>Guardar</strong> y Google te avisará en el celular.</small>
+        </form>
+        <div id="rec-lista" class="rec-lista"></div>
+      </section>
+
       <!-- Lo que se mueve -->
       <section class="hoy-bloque">
         <div class="bloque-head">
@@ -94,6 +117,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="../assets/js/dashboard.js?v=3.1"></script>
+<script type="module" src="../assets/js/dashboard.js?v=3.2"></script>
 </body>
 </html>

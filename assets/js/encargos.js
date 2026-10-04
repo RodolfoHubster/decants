@@ -66,7 +66,8 @@ window.renderTable = function () {
   const tbody = document.getElementById('tbody');
   if (!pageItems.length) {
     tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text-muted,#888)"><i class="bi bi-clock-history" style="font-size:28px;display:block;margin-bottom:8px"></i>No hay encargos registrados</td></tr>`;
-    document.getElementById('pagination').innerHTML = '';
+    const pag = document.getElementById('pagination');
+    if (pag) pag.innerHTML = '';
     return;
   }
 

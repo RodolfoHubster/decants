@@ -1,10 +1,36 @@
-import { auth, signOut } from '../assets/js/firebase-config.js';
+import { auth, signOut, db, doc, getDoc, setDoc } from '../assets/js/firebase-config.js';
 // Punto de entrada común del panel: todas las vistas cargan este módulo,
 // así el agrupado de filtros en móvil llega a todas sin tocar cada página.
 import { initFiltrosAdmin } from '../assets/js/admin-filtros.js';
 import { siguienteClienteId, nombreCliente } from '../assets/js/pos-cliente.js';
 import { imgCart, imgOPlaceholder } from '../assets/js/cloudinary.js';
 import { buscarCliente } from '../assets/js/clientes-util.js';
+
+auth.onAuthStateChanged(user => {
+  if (!user) return;
+  // Este navegador es del dueño: la tienda no cuenta sus visitas ni sus clics.
+  try { localStorage.setItem('fs_dueno', '1'); } catch (e) { /* sin storage */ }
+  sincronizarConfigTienda();
+});
+
+/**
+ * La tienda lee config/tienda (público) y ya no config/costosOperativos, que
+ * tiene tus costos. Una vez por sesión se copia ahí el único dato que necesita.
+ */
+async function sincronizarConfigTienda() {
+  try {
+    if (sessionStorage.getItem('fs_tienda_sync')) return;
+    const [costos, tienda] = await Promise.all([
+      getDoc(doc(db, 'config', 'costosOperativos')),
+      getDoc(doc(db, 'config', 'tienda'))
+    ]);
+    const disable2ml = !!(costos.exists() && costos.data().disable2ml);
+    if (!tienda.exists() || !!tienda.data().disable2ml !== disable2ml) {
+      await setDoc(doc(db, 'config', 'tienda'), { disable2ml }, { merge: true });
+    }
+    sessionStorage.setItem('fs_tienda_sync', '1');
+  } catch (e) { console.warn('No se pudo sincronizar config/tienda', e); }
+}
 
 export function renderSidebar(active) {
   const wrap = document.getElementById('sidebar-wrap');

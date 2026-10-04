@@ -11,6 +11,12 @@
   <link rel="stylesheet" href="../assets/css/global.css">
   <link rel="stylesheet" href="../assets/css/perfumes.css">
   <link rel="stylesheet" href="../assets/css/encargos.css">
+  <style>
+    .enc-paginacion { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; padding:12px; }
+    .enc-paginacion:empty { display:none; }
+    .enc-paginacion .btn { min-width:36px; justify-content:center; }
+    .enc-paginacion .btn.active { background:var(--accent); border-color:var(--accent); color:#111; }
+  </style>
 </head>
 <body>
 <div class="app-shell">
@@ -95,6 +101,8 @@
             <tbody id="tbody"></tbody>
           </table>
         </div>
+        <!-- Botones de página: el código ya los generaba, pero no había dónde ponerlos -->
+        <div id="pagination" class="enc-paginacion"></div>
       </div>
 
       <!-- Kanban View Container -->
@@ -239,6 +247,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="../assets/js/encargos.js?v=2.0"></script>
+<script type="module" src="../assets/js/encargos.js?v=2.1"></script>
 </body>
 </html>

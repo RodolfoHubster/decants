@@ -77,6 +77,8 @@ window.guardarCostosGenerales = async () => {
     };
     
     await setDoc(doc(db, 'config', 'costosOperativos'), data);
+    // La tienda solo lee esto; tus costos quedan privados (config/costosOperativos).
+    await setDoc(doc(db, 'config', 'tienda'), { disable2ml: data.disable2ml }, { merge: true });
     toast('Costos actualizados correctamente', 'success');
   } catch(e) {
     toast('Error al guardar: ' + e.message, 'error');
@@ -437,7 +439,9 @@ function renderBotellas() {
 window.openBotellaModal = (pid) => {
   ['b-buscar', 'b-costo', 'b-perfume-id'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('b-tamano').value = 100;
-  document.getElementById('b-fecha').value = new Date().toISOString().slice(0, 10);
+  // Fecha local: toISOString() da la de UTC y en la tarde ya era "mañana".
+  const hoy = new Date();
+  document.getElementById('b-fecha').value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
   document.getElementById('b-resultados').innerHTML = '';
   document.getElementById('b-elegido').hidden = true;
   document.getElementById('b-buscar').hidden = false;

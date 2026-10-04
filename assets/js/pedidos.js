@@ -47,6 +47,9 @@ async function generarVentasDesdePedido(pedido) {
       precio:        +item.precio || 0,
       cantidad:      +item.cantidad || 1,
       estado:        'pagada',
+      // Las reglas exigen canal al crear una venta; sin él Firestore la rechazaba
+      // y el pedido quedaba "entregado" sin venta registrada.
+      canal:         'online',
       cliente:       pedido.cliente || '',
       notas:         `Pedido ${pedido.folio || pedido.id.slice(0,6).toUpperCase()} - generado al entregar`,
       creadoEn:      Date.now(),

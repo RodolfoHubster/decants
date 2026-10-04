@@ -273,3 +273,29 @@
   .hoy-bloque { padding: 14px; }
   .hide-sm { display: none; }
 }
+
+/* ── Mis recordatorios ──────────────────────── */
+.rec-form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; padding: 12px;
+  border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-card2); }
+.rec-form[hidden] { display: none; }
+.rec-fila { display: grid; grid-template-columns: 1.3fr 1fr 0.8fr; gap: 8px; }
+.rec-acciones { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.rec-ayuda { color: var(--text-faint); font-size: 12px; line-height: 1.4; }
+.rec-plantillas { display: flex; flex-wrap: wrap; gap: 6px; }
+.rec-chip { border: 1px solid var(--border); background: transparent; color: var(--text-muted);
+  border-radius: 99px; padding: 4px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
+.rec-chip:hover { border-color: var(--accent); color: var(--accent); }
+.rec-lista { display: flex; flex-direction: column; gap: 8px; }
+.rec-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-md);
+  background: var(--bg-card2); border: 1px solid var(--border); }
+.rec-item.hoy { border-left: 3px solid var(--accent); }
+.rec-item.pasado { opacity: .55; }
+.rec-info { flex: 1; min-width: 0; }
+.rec-info strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
+.rec-info span { font-size: 12px; color: var(--text-muted); }
+.rec-item .btn-icon { flex-shrink: 0; }
+.rec-vacio { color: var(--text-faint); font-size: 13px; }
+@media (max-width: 600px) {
+  .rec-fila { grid-template-columns: 1fr 1fr; }
+  .rec-fila select { grid-column: 1 / -1; }
+}
