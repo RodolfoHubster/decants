@@ -78,6 +78,11 @@
         <label>Lugar / Punto de Venta (Ej. Barbería El Buki)</label>
         <input type="text" id="c-lugar" class="form-control" placeholder="Nombre del lugar">
       </div>
+      <div class="form-group">
+        <label>Comisión que le pagas por cada pieza vendida ($)</label>
+        <input type="number" id="c-comision" class="form-control" min="0" step="1" placeholder="Ej. 15 (vacío = sin comisión)">
+        <small style="color:var(--text-faint)">Se resta de tu ganancia en Estadísticas. Cambiarla no toca lo que ya se vendió.</small>
+      </div>
       
       <div style="margin-top:20px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
         <label style="margin:0; font-weight:600;">Perfumes a dejar</label>
@@ -94,6 +99,6 @@
   </div>
 </div>
 
-<script type="module" src="../assets/js/consignaciones.js?v=1.1"></script>
+<script type="module" src="../assets/js/consignaciones.js?v=1.2"></script>
 </body>
 </html>

@@ -93,7 +93,7 @@ function renderLotes() {
         <div class="cons-header">
           <div>
             <h3 class="cons-title">${c.lugar}</h3>
-            <div class="cons-date"><i class="bi bi-calendar3"></i> ${dateStr} • ${totalVendidos}/${totalDejados} vendidos</div>
+            <div class="cons-date"><i class="bi bi-calendar3"></i> ${dateStr} • ${totalVendidos}/${totalDejados} vendidos${c.comision ? ` • comisión $${c.comision} c/u` : ''}</div>
             ${totalVendidos ? `<a href="ventas.html?canal=consignacion&q=${encodeURIComponent(c.lugar || '')}" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:12.5px;color:var(--accent);text-decoration:none"><i class="bi bi-receipt"></i> Ver lo que se vendió</a>` : ''}
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
@@ -121,6 +121,7 @@ window.openModal = () => {
   document.getElementById('modal-title').textContent = 'Crear Lote de Consignación';
   document.getElementById('c-edit-id').value = '';
   document.getElementById('c-lugar').value = '';
+  document.getElementById('c-comision').value = '';
   document.getElementById('items-container').innerHTML = '';
   itemRowCounter = 0;
   addItemRow();
@@ -138,6 +139,7 @@ window.editarLote = (loteId) => {
   document.getElementById('modal-title').textContent = 'Editar Lote de Consignación';
   document.getElementById('c-edit-id').value = lote.id;
   document.getElementById('c-lugar').value = lote.lugar;
+  document.getElementById('c-comision').value = lote.comision || '';
   document.getElementById('items-container').innerHTML = '';
   itemRowCounter = 0;
   
@@ -197,6 +199,7 @@ window.guardarLote = async () => {
   const editId = document.getElementById('c-edit-id').value;
   const lugar = document.getElementById('c-lugar').value.trim();
   if (!lugar) return Swal.fire('Error', 'Ingresa el nombre del lugar', 'error');
+  const comision = Math.max(0, parseFloat(document.getElementById('c-comision').value) || 0);
   
   const rows = document.querySelectorAll('.item-row');
   if (rows.length === 0) return Swal.fire('Error', 'Añade al menos un perfume', 'error');
@@ -230,11 +233,12 @@ window.guardarLote = async () => {
   
   try {
     if (editId) {
-      await updateDoc(doc(db, 'consignaciones', editId), { lugar, items });
+      await updateDoc(doc(db, 'consignaciones', editId), { lugar, comision, items });
       Swal.fire('¡Éxito!', 'Lote actualizado', 'success');
     } else {
       const data = {
         lugar,
+        comision,
         estado: 'Abierto',
         creadoEn: Date.now(),
         items
@@ -291,8 +295,14 @@ window.registrarVenta = async (loteId, itemIdx) => {
       estado: 'pagada',
       // El resto del sistema lee `metodoPago`; con `metodo` este dato se
       // perdía en el historial y en las estadísticas.
-      metodoPago: 'efectivo'
+      metodoPago: 'efectivo',
+      // Lo que se le paga al punto por pieza: se guarda en la venta para que
+      // cambiar la comisión después no reescriba lo ya vendido.
+      comision: Number(lote.comision) || 0
     };
+    // Sin botella, Estadísticas no podía descontar estos ml del inventario.
+    const perf = perfumes.find(x => x.id === item.perfumeId);
+    if (perf && perf.loteActivo) ventaData.loteId = perf.loteActivo;
     await addDoc(collection(db, 'ventas'), ventaData);
     
     // 2. Increment sold counter in consignment

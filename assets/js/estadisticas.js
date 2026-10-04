@@ -1,13 +1,17 @@
 import { db, collection, getDocs, doc, getDoc, updateDoc, auth, onAuthStateChanged } from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
-import { ventasDeLote, esResto } from './lotes.js';
 import { esClienteTemporal, claveCliente } from './clientes-util.js';
 import { topVendidos, sinMovimiento, aMs } from './alertas.js';
+import { contextoRentabilidad, resumenGanancia, clientesAtendidos, rentabilidadPorBotella, consumoDePerfume } from './rentabilidad.js';
+import { sumarVisitas } from './visitas.js';
 
 let ventas = [];
 let ventasFiltradas = [];
 let perfumes = [];
 let costosOp = { botella: 0, etiqueta: 0, bolsa: 0 };
+let accesorios = [];
+let visitasPorDia = {};
+let ctxRent = null;
 let chartTallasObj = null;
 let chartTopObj = null;
 let chartTendenciaObj = null;
@@ -27,15 +31,23 @@ window.loadData = async () => {
   if(btn) btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
   
   try {
-    const [vs, ps, confSnap] = await Promise.all([
+    const [vs, ps, confSnap, accSnap, visSnap] = await Promise.all([
       getDocs(collection(db, 'ventas')),
       getDocs(collection(db, 'perfumes')),
-      getDoc(doc(db, 'config', 'costosOperativos')).catch(() => null)
+      getDoc(doc(db, 'config', 'costosOperativos')).catch(() => null),
+      getDocs(collection(db, 'accesorios')).catch(() => null),
+      getDocs(collection(db, 'visitas')).catch(() => null)
     ]);
+    accesorios = [];
+    if (accSnap) accSnap.forEach(d => accesorios.push({ id: d.id, ...d.data() }));
+    visitasPorDia = {};
+    if (visSnap) visSnap.forEach(d => { visitasPorDia[d.id] = d.data(); });
     
     ventas = []; vs.forEach(d => {
       const data = d.data();
-      if (data.estado !== 'cancelada') ventas.push({ id: d.id, ...data });
+      // creadoEn siempre en ms: las ventas del modal viejo traen Timestamp y
+      // caían en un "NaN/NaN" de la tendencia.
+      if (data.estado !== 'cancelada') ventas.push({ id: d.id, ...data, creadoEn: aMs(data.creadoEn) || data.creadoEn });
     });
     
     let marcasSet = new Set();
@@ -56,6 +68,7 @@ window.loadData = async () => {
     if (confSnap && confSnap.exists()) {
       costosOp = confSnap.data();
     }
+    ctxRent = contextoRentabilidad({ perfumes, accesorios, costosOp, ventas });
     
     aplicarFiltroFecha();
   } catch(e) {
@@ -64,6 +77,8 @@ window.loadData = async () => {
     if(btn) btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
   }
 };
+
+let periodoDesde = 0;
 
 function aplicarFiltroFecha() {
   const periodo = document.getElementById('f-periodo-global')?.value || '30';
@@ -82,6 +97,7 @@ function aplicarFiltroFecha() {
     desde = new Date(d.getFullYear(), 0, 1).getTime();
   }
   
+  periodoDesde = desde;
   if (desde > 0) {
     ventasFiltradas = ventas.filter(v => aMs(v.creadoEn) >= desde);
   } else {
@@ -144,127 +160,38 @@ function renderDecisiones() {
 }
 
 function renderKPIs() {
-  let ingresos = 0;
-  let decants = 0;
-  let ml = 0;
-  let ventasUnicas = new Set();
-  
-  // We need to calculate costs. Since cost depends on lotes and perfumes, we can do a simplified calculation for the KPI or we can just sum from the `renderProfitability` logic.
-  // Actually, the best way to get exact cost is to calculate it. For simplicity in the KPI, we calculate cost using the same logic:
-  let costoTotalInversion = 0;
-  const costoInsumoUnitario = (+costosOp.botella || 0) + (+costosOp.etiqueta || 0) + (+costosOp.bolsa || 0);
-  
-  ventasFiltradas.forEach(v => {
-    const cant = +v.cantidad || 1;
-    const precio = +v.precio || 0;
-    
-    let orderKey = '';
-    if (v.cartClientId) {
-      const d = new Date(v.creadoEn || 0);
-      const dateStr = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      orderKey = `${v.cliente || 'Anon'}_${dateStr}_cart${v.cartClientId}`;
-    } else {
-      orderKey = (v.creadoEn || Math.random()).toString();
-    }
-    ventasUnicas.add(orderKey);
-    
-    const getLote = (p, lId) => {
-      if (!p || !p.lotes) return null;
-      return p.lotes.find(l => l.id === lId) || p.lotes[0];
-    };
+  // El costo de cada venta sale de SU botella (rentabilidad.js): si un perfume
+  // se compró a $350 y luego a $400, cada venta usa el que le toca. Antes las
+  // botellas completas contaban costo $0 y los accesorios como decants de 1 ml.
+  const r = resumenGanancia(ventasFiltradas, ctxRent || contextoRentabilidad({ perfumes, accesorios, costosOp, ventas }));
+  const clientes = clientesAtendidos(ventasFiltradas);
+  const ticketPromedio = clientes > 0 ? r.ingresos / clientes : 0;
+  const pesos = n => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+  const poner = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
 
-    if (v.talla === 'Completo') {
-      const p = perfumes.find(x => x.id === v.perfumeId);
-      if (p) costoTotalInversion += (+p.costoBotella || 0) * cant;
-    } else if (v.paqueteItems && Array.isArray(v.paqueteItems)) {
-      // Es un paquete
-      let t = parseFloat(v.talla.replace('Paquete ', '')) || 0;
-      let itemCount = v.paqueteItems.length;
-      
-      if (t > 0) {
-        decants += (itemCount * cant);
-        ml += (t * itemCount * cant);
-        
-        // Insumos: 1 bolsa por paquete, pero N botellas y N etiquetas
-        let costoInsumosPaquete = (+costosOp.bolsa || 0) + (((+costosOp.botella || 0) + (+costosOp.etiqueta || 0)) * itemCount);
-        costoTotalInversion += (costoInsumosPaquete * cant);
-        
-        // Liquid costs for each item in the package
-        v.paqueteItems.forEach(item => {
-          const p = perfumes.find(x => x.id === item.id);
-          if (p) {
-            const l = getLote(p, item.loteId);
-            let costoMl = 0;
-            if (l) {
-              costoMl = (+l.costo || 0) / (+l.tamano || 1);
-            } else if (p.costoBotella && p.tamanoBotella) {
-              costoMl = (+p.costoBotella) / (+p.tamanoBotella);
-            }
-            costoTotalInversion += (costoMl * t * cant);
-          }
-        });
-      }
-    } else if (v.talla !== 'Otro') {
-      // Decant normal, pero puede ser una talla personalizada ej. "15" o "Resto"
-      let t = parseFloat(v.talla);
-      if (!isNaN(t) && t > 0) {
-        decants += cant;
-        ml += (t * cant);
-        costoTotalInversion += (costoInsumoUnitario * cant);
-        
-        const p = perfumes.find(x => x.id === v.perfumeId);
-        if (p) {
-          const l = getLote(p, v.loteId);
-          let costoMl = 0;
-          if (l) {
-            costoMl = (+l.costo || 0) / (+l.tamano || 1);
-          } else if (p.costoBotella && p.tamanoBotella) {
-            costoMl = (+p.costoBotella) / (+p.tamanoBotella);
-          }
-          costoTotalInversion += (costoMl * t * cant);
-        }
-      } else if (v.talla === 'Resto') {
-        decants += cant;
-        // No suma costoInsumoUnitario para Resto
-        const p = perfumes.find(x => x.id === v.perfumeId);
-        if (p) {
-          const l = getLote(p, v.loteId);
-          const costoBotella = l ? +l.costo || 0 : +p.costoBotella || 0;
-          const tamanoBotella = l ? +l.tamano || 1 : +p.tamanoBotella || 1;
-          const costoMl = costoBotella / tamanoBotella;
-          
-          // Calculate ML of Resto by finding all sales of this lote in `ventas`
-          let mlVendidosTotales = 0;
-          ventas.forEach(v2 => {
-            if (v2.perfumeId === v.perfumeId && v2.loteId === v.loteId && v2.talla !== 'Resto' && v2.talla !== 'Completo' && v2.talla !== 'Otro') {
-              let t = parseFloat(v2.talla.replace('Paquete ', ''));
-              if (!isNaN(t) && t > 0) mlVendidosTotales += t * (+v2.cantidad || 1);
-            }
-          });
-          const restoMl = Math.max(0, tamanoBotella - mlVendidosTotales);
-          costoTotalInversion += (costoMl * restoMl * cant);
-        }
-      }
-    }
-    
-    ingresos += (precio * cant);
-  });
-  
-  const gananciaNeta = ingresos - costoTotalInversion;
-  const margen = ingresos > 0 ? (gananciaNeta / ingresos) * 100 : 0;
-  const ticketPromedio = ventasUnicas.size > 0 ? ingresos / ventasUnicas.size : 0;
-  
-  document.getElementById('kpi-ingresos').textContent = ingresos.toLocaleString('es-MX', {style:'currency', currency:'MXN'});
-  document.getElementById('kpi-ganancia').textContent = gananciaNeta.toLocaleString('es-MX', {style:'currency', currency:'MXN'});
-  document.getElementById('kpi-costo').textContent = costoTotalInversion.toLocaleString('es-MX', {style:'currency', currency:'MXN'});
-  document.getElementById('kpi-margen').textContent = margen.toFixed(1) + '%';
-  document.getElementById('kpi-ticket').textContent = ticketPromedio.toLocaleString('es-MX', {style:'currency', currency:'MXN'});
-  if (document.getElementById('kpi-clientes')) {
-    document.getElementById('kpi-clientes').textContent = ventasUnicas.size;
-  }
-  
-  document.getElementById('kpi-decants').textContent = decants.toLocaleString();
-  document.getElementById('kpi-ml').textContent = ml.toLocaleString() + ' ml';
+  poner('kpi-ingresos', pesos(r.ingresos));
+  poner('kpi-ganancia', pesos(r.ganancia));
+  poner('kpi-costo', pesos(r.costo + r.comisiones));
+  poner('kpi-margen', r.margen.toFixed(1) + '%');
+  poner('kpi-ticket', pesos(ticketPromedio));
+  poner('kpi-clientes', clientes.toLocaleString());
+  poner('kpi-decants', r.decants.toLocaleString());
+  poner('kpi-ml', r.ml.toLocaleString() + ' ml');
+
+  const notas = [];
+  if (r.comisiones > 0) notas.push(`Ya descuenta ${mxn(r.comisiones)} de comisiones`);
+  if (r.sinCosto > 0) notas.push(`${r.sinCosto} venta${r.sinCosto > 1 ? 's' : ''} sin costo registrado`);
+  poner('kpi-ganancia-nota', notas.join(' · '));
+
+  const acc = r.porTipo.accesorio;
+  poner('kpi-acc', pesos(acc ? acc.ingresos : 0));
+  poner('kpi-acc-nota', acc ? `${acc.unidades} pza${acc.unidades > 1 ? 's' : ''} · ganancia ${mxn(acc.ganancia)}` : 'Aparte de los decants');
+
+  const vis = sumarVisitas(visitasPorDia, periodoDesde);
+  poner('kpi-visitas', Object.keys(visitasPorDia).length ? vis.personas.toLocaleString() : '—');
+  poner('kpi-visitas-nota', Object.keys(visitasPorDia).length
+    ? `${vis.porDia.toFixed(1)} al día · sin contarte a ti`
+    : 'Empieza a contar desde que se publique este cambio');
 }
 
 function renderCharts() {
@@ -318,7 +245,7 @@ function renderCharts() {
   }
 
   // 2. Canales de Venta
-  const canalesCount = { 'online': 0, 'mercado': 0, 'otro': 0 };
+  const canalesCount = { 'online': 0, 'mercado': 0, 'otro': 0, 'consignacion': 0 };
   ventasFiltradas.forEach(v => {
     const c = v.canal || 'online';
     if (canalesCount[c] !== undefined) canalesCount[c] += (+v.precio || 0) * (+v.cantidad || 1);
@@ -330,10 +257,10 @@ function renderCharts() {
     chartCanalesObj = new Chart(ctxCanales, {
       type: 'doughnut',
       data: {
-        labels: ['Online / WA', 'Sobre Ruedas', 'Otro'],
+        labels: ['Online / WA', 'Sobre Ruedas', 'Otro', 'Punto externo'],
         datasets: [{
-          data: [canalesCount['online'], canalesCount['mercado'], canalesCount['otro']],
-          backgroundColor: ['#4f98a3', '#C9A84C', '#a36c4f'],
+          data: [canalesCount['online'], canalesCount['mercado'], canalesCount['otro'], canalesCount['consignacion']],
+          backgroundColor: ['#4f98a3', '#C9A84C', '#a36c4f', '#a78bfa'],
           borderWidth: 0
         }]
       },
@@ -444,6 +371,8 @@ function renderTopClientes() {
     // "Cliente 12"… y esa numeración se reinicia cada jornada. Agruparlos por
     // nombre fusionaba a personas distintas en un "mejor cliente" inexistente.
     if (esClienteTemporal(v)) return;
+    // Las ventas de puntos externos llevan el nombre del lugar, no de una persona.
+    if (v.canal === 'consignacion') return;
 
     const key = claveCliente(v);
     if (!key) return;
@@ -493,103 +422,32 @@ function renderAlertasInventario() {
   const container = document.getElementById('alertas-inventario-list');
   if (!container) return;
   
-  // Need to calculate total sold + total consigned (unsold)
-  const pSoldsData = {};
-  ventas.forEach(v => {
-    if (v.paqueteItems && Array.isArray(v.paqueteItems)) {
-      let t = parseFloat(v.talla.replace('Paquete ', '')) || 0;
-      if (t > 0) {
-        v.paqueteItems.forEach(item => {
-          if (!pSoldsData[item.id]) pSoldsData[item.id] = { ml: 0, byLote: {} };
-          const pData = pSoldsData[item.id];
-          const lid = item.loteId || 'lote-1';
-          if (!pData.byLote[lid]) pData.byLote[lid] = { ml: 0, hasResto: false };
-          
-          const mlVendido = t * (+v.cantidad || 1);
-          pData.ml += mlVendido;
-          pData.byLote[lid].ml += mlVendido;
-        });
-      }
-    } else {
-      if (!pSoldsData[v.perfumeId]) pSoldsData[v.perfumeId] = { ml: 0, byLote: {} };
-      const pData = pSoldsData[v.perfumeId];
-      const lid = v.loteId || 'lote-1';
-      if (!pData.byLote[lid]) pData.byLote[lid] = { ml: 0, hasResto: false };
-      
-      if (v.talla === 'Resto') {
-        pData.byLote[lid].hasResto = true;
-      } else if (v.talla !== 'Completo' && v.talla !== 'Otro') {
-        const t = parseFloat(v.talla);
-        if (!isNaN(t) && t > 0) {
-          const mlVendido = t * (+v.cantidad || 1);
-          pData.ml += mlVendido;
-          pData.byLote[lid].ml += mlVendido;
-        }
-      }
-    }
-  });
-  
-  // Fetch consignaciones and add unsold decants to pSolds
+  // Lo dejado en puntos externos ya salió de la botella aunque no se haya vendido.
   getDocs(collection(db, 'consignaciones')).then(cSnap => {
+    const consignados = [];
     cSnap.forEach(d => {
       const c = d.data();
-      if (c.estado !== 'Cerrado') {
-        c.items.forEach(item => {
-          const unsolds = (item.cantidad || 0) - (item.vendidos || 0);
-          if (unsolds > 0) {
-            if (!pSoldsData[item.perfumeId]) pSoldsData[item.perfumeId] = { ml: 0, byLote: {} };
-            const lid = item.loteId || 'lote-1';
-            if (!pSoldsData[item.perfumeId].byLote[lid]) pSoldsData[item.perfumeId].byLote[lid] = { ml: 0, hasResto: false };
-            
-            const mlUnsold = parseFloat(item.talla) * unsolds;
-            pSoldsData[item.perfumeId].ml += mlUnsold;
-            pSoldsData[item.perfumeId].byLote[lid].ml += mlUnsold;
-          }
-        });
-      }
+      if (c.estado === 'Cerrado') return;
+      (c.items || []).forEach(item => {
+        const sinVender = (item.cantidad || 0) - (item.vendidos || 0);
+        if (sinVender > 0) consignados.push({ perfumeId: item.perfumeId, talla: item.talla, cantidad: sinVender, loteId: item.loteId });
+      });
     });
-    
-    _finishRenderAlertas(pSoldsData, container);
+    _finishRenderAlertas(consignados, container);
   }).catch(e => {
     console.error("Error loading consignaciones for alerts:", e);
-    _finishRenderAlertas(pSoldsData, container); // Fallback to just ventas
+    _finishRenderAlertas([], container);
   });
 }
 
-function _finishRenderAlertas(pSoldsData, container) {
+function _finishRenderAlertas(consignados, container) {
   const alerts = [];
   perfumes.forEach(p => {
     if (p.archivado) return; // Skip archived, but show hidden (activo===false) since they still need restock
-    const data = pSoldsData[p.id] || { ml: 0, byLote: {} };
-    
-    let totalCap = 0;
-    let sold = 0;
-    
-    if (p.lotes && p.lotes.length > 0) {
-      p.lotes.forEach(l => {
-         const lCap = +l.tamano || 0;
-         totalCap += lCap;
-         
-         const lSoldData = data.byLote[l.id] || { ml: 0, hasResto: false };
-         let lSold = lSoldData.ml;
-         if (lSoldData.hasResto) lSold = lCap;
-         
-         // Include manual adjustments
-         let lAjuste = parseFloat(l.mlAjuste) || 0;
-         lSold += lAjuste;
-         
-         sold += lSold;
-      });
-    } else {
-      totalCap = +p.tamanoBotella || 0;
-      sold = data.ml;
-      if (data.byLote['lote-1']?.hasResto) sold = totalCap;
-    }
-    
-    let pct = 0;
-    if (totalCap > 0) {
-      pct = (sold / totalCap) * 100;
-    }
+    const consumo = consumoDePerfume(p, ventas, consignados);
+    const totalCap = consumo.capacidad;
+    const sold = Math.round(consumo.usado);
+    const pct = consumo.pct;
     
     if (pct >= 85 || p.estadoStock === 'por_acabarse' || p.estadoStock === 'agotado') {
       let sortVal = pct;
@@ -641,9 +499,7 @@ function renderProfitability() {
   const tbody = document.getElementById('profit-tbody');
   const q = (document.getElementById('f-search')?.value || '').toLowerCase();
   const vista = document.getElementById('f-vista')?.value || 'stock';
-  
-  const costoInsumoUnitario = (+costosOp.botella || 0) + (+costosOp.etiqueta || 0) + (+costosOp.bolsa || 0);
-  
+
   let results = [];
   
   perfumes.forEach(p => {
@@ -682,113 +538,36 @@ function renderProfitability() {
       }
     });
     
-    let sumGanancia = 0;
-    let sumIngreso = 0;
-    let sumCostoBotella = 0;
-    let sumCostoInsumos = 0;
-    let loteResults = [];
+    // Cada botella con su costo; el renglón del perfume suma todas (antes
+    // mostraba solo la activa y no cuadraba con las de abajo).
+    const rent = rentabilidadPorBotella({ ...p, lotes }, hist, costosOp);
+    const loteResults = rent.botellas.map(b => ({
+      id: b.id,
+      nombre: `Botella #${b.idx + 1} (${new Date(b.fecha).toLocaleDateString('es-MX')})`,
+      progresoTexto: `${Math.round(b.usado)} / ${b.tamano}ml`,
+      progresoPorcentaje: b.progreso,
+      costoInversionReal: b.costoReal,
+      ingresoReal: b.ingreso,
+      gananciaReal: b.gananciaReal,
+      gananciaNetaFinal: b.proyeccion,
+      tamanoBotella: b.tamano,
+      mlVendidosVentas: b.mlVentas,
+      restoVendido: b.restoVendido,
+      enUso: rent.enUso && rent.enUso.id === b.id && rent.botellas.length > 1
+    }));
+    const enUso = rent.enUso;
 
-    lotes.forEach((l, idx) => {
-      const loteHist = ventasDeLote(hist, lotes, l.id);
-      
-      let totalMlVendidosVentas = 0;
-      let totalDecantsVendidos = 0;
-      let ingresoReal = 0;
-      let restoVendido = false;
-      const distribucion = { '2':0, '3':0, '5':0, '10':0 };
-      
-      loteHist.forEach(v => {
-        const tLower = (v.talla || '').trim().toLowerCase();
-        if (esResto(v.talla)) {
-          const c = +v.cantidad || 1;
-          ingresoReal += (+v.precio || 0) * c;
-          restoVendido = true;
-        } else if (tLower !== 'completo' && tLower !== 'otro') {
-          const t = parseFloat(v.talla);
-          if (!isNaN(t) && t > 0) {
-            const c = +v.cantidad || 1;
-            totalMlVendidosVentas += (t * c);
-            totalDecantsVendidos += c;
-            ingresoReal += (+v.precio || 0) * c;
-          }
-        }
-      });
-      
-      let mlAjuste = parseFloat(l.mlAjuste) || 0;
-      let totalMlVendidos = totalMlVendidosVentas + mlAjuste;
-      
-      const costoBotella = parseFloat(l.costo) || 0;
-      const tamanoBotella = parseFloat(l.tamano) || 100;
-      
-      if (restoVendido) totalMlVendidos = tamanoBotella; // Force 100% progress
-      
-      const progresoPorcentaje = tamanoBotella > 0 ? Math.min(100, Math.round((totalMlVendidos / tamanoBotella) * 100)) : 0;
-      
-      const costoInsumosReal = totalDecantsVendidos * costoInsumoUnitario;
-      const costoInversionReal = costoBotella + costoInsumosReal;
-      const gananciaReal = ingresoReal - costoInversionReal;
-      
-      let totalDecantsProyectados = 0;
-      let ingresoTotalProyectado = 0;
-      let costoTotalInsumos = costoInsumosReal;
-      let gananciaNetaFinal = gananciaReal;
-      
-      if (!restoVendido && totalMlVendidos < tamanoBotella) {
-        if (totalMlVendidos > 0) {
-          const factor = tamanoBotella / totalMlVendidos;
-          totalDecantsProyectados = totalDecantsVendidos * factor;
-          ingresoTotalProyectado = ingresoReal * factor;
-        } else {
-          const avgMlPerDecant = (2*0.25) + (3*0.25) + (5*0.25) + (10*0.25); // 5 ml
-          totalDecantsProyectados = tamanoBotella / avgMlPerDecant;
-          let sumP = (+p.precios['2']||0) + (+p.precios['3']||0) + (+p.precios['5']||0) + (+p.precios['10']||0);
-          if (sumP === 0) sumP = avgMlPerDecant * 30; // fallback $30/ml if no prices set
-          
-          ingresoTotalProyectado = totalDecantsProyectados * (
-            (0.25 * (+p.precios['2'] || 0)) +
-            (0.25 * (+p.precios['3'] || 0)) +
-            (0.25 * (+p.precios['5'] || 0)) +
-            (0.25 * (+p.precios['10'] || 0)) || sumP / 4
-          );
-        }
-        costoTotalInsumos = totalDecantsProyectados * costoInsumoUnitario;
-        gananciaNetaFinal = ingresoTotalProyectado - (costoBotella + costoTotalInsumos);
-      }
-      
-      sumGanancia += gananciaReal; // Ordenar y totalizar usando la ganancia REAL
-      sumIngreso += ingresoReal;
-      sumCostoBotella += costoInversionReal;
-      sumCostoInsumos += gananciaNetaFinal; // Usamos esto para la proyección final
-      
-      loteResults.push({
-        id: l.id,
-        nombre: `Botella #${idx+1} (${new Date(l.fecha).toLocaleDateString('es-MX')})`,
-        progresoTexto: `${totalMlVendidos} / ${tamanoBotella}ml`,
-        progresoPorcentaje,
-        costoInversionReal,
-        ingresoReal,
-        gananciaReal,
-        gananciaNetaFinal,
-        tamanoBotella,
-        mlVendidosVentas: totalMlVendidosVentas,
-        restoVendido
-      });
-    });
-    
-    const activeLoteId = p.loteActivo || lotes[lotes.length - 1].id;
-    const activeLoteData = loteResults.find(x => x.id === activeLoteId) || loteResults[loteResults.length - 1];
-    
     results.push({
       pid: p.id,
       nombre: p.nombre,
       marca: p.marca || '',
       agotado,
-      progreso: activeLoteData.progresoPorcentaje,
-      progresoTexto: activeLoteData.progresoTexto,
-      sumGanancia: activeLoteData.gananciaReal,
-      sumIngreso: activeLoteData.ingresoReal,
-      sumCostoBotella: activeLoteData.costoInversionReal,
-      sumCostoInsumos: activeLoteData.gananciaNetaFinal,
+      progreso: enUso ? enUso.progreso : 0,
+      progresoTexto: enUso ? `${rent.botellas.length > 1 ? 'En uso: ' : ''}${Math.round(enUso.usado)} / ${enUso.tamano}ml` : '',
+      sumGanancia: rent.total.gananciaReal,
+      sumIngreso: rent.total.ingreso,
+      sumCostoBotella: rent.total.costoReal,
+      sumCostoInsumos: rent.total.proyeccion,
       lotes: loteResults
     });
   });
@@ -903,7 +682,7 @@ function renderProfitability() {
         const colorProgreso = l.progresoPorcentaje >= 100 ? '#ef4444' : 'var(--accent)';
         html += `
           <tr data-fila="lote" class="lotes-row-${r.pid}" style="display:none; background:var(--bg-card2)">
-            <td style="padding-left:35px; border-left:3px solid var(--accent)">↳ ${l.nombre}</td>
+            <td style="padding-left:35px; border-left:3px solid var(--accent)">↳ ${l.nombre}${l.enUso ? ' <span style="font-size:10.5px;color:var(--accent)">· en uso</span>' : ''}</td>
             <td>
               <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:flex;align-items:center;gap:8px;">
                 <span>${l.progresoTexto}</span>
