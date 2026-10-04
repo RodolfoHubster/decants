@@ -238,3 +238,38 @@ describe('countUniqueProducts', () => {
     expect(countUniqueProducts([])).toBe(0);
   });
 });
+
+import { revalidarCarrito } from '../assets/js/cart.js';
+
+describe('revalidarCarrito', () => {
+  const catalogo = {
+    p1: { id: 'p1', nombre: 'Eros', precios: { 5: 130, 10: 230 } },
+    p2: { id: 'p2', nombre: 'Agotado', precios: { 5: 100 }, estadoStock: 'agotado' },
+  };
+  const cat = {
+    buscar: id => catalogo[id],
+    disponible: p => p.estadoStock !== 'agotado',
+    precioDe: (p, size) => +(p.precios || {})[String(size).replace('Paquete ', '')] || 0,
+  };
+  const linea = (id, size, price, extra = {}) => ({ key: `${id}-${size}`, id, nombre: id, size, price, qty: 1, ...extra });
+
+  test('actualiza un precio que cambió', () => {
+    const r = revalidarCarrito([linea('p1', '5', 120)], cat);
+    expect(r.cart[0].price).toBe(130);
+    expect(r.actualizados).toEqual(['p1']);
+  });
+  test('quita agotados, productos que ya no existen y tallas que ya no se venden', () => {
+    const r = revalidarCarrito([linea('p2', '5', 100), linea('borrado', '5', 90), linea('p1', '2', 70), linea('p1', '10', 230)], cat);
+    expect(r.cart.map(i => i.key)).toEqual(['p1-10']);
+    expect(r.quitados).toEqual(['p2', 'borrado', 'p1']);
+  });
+  test('sin cambios lo deja igual', () => {
+    const c = [linea('p1', '5', 130)];
+    expect(revalidarCarrito(c, cat)).toEqual({ cart: c, quitados: [], actualizados: [] });
+  });
+  test('combo armado por el cliente con un perfume que se agotó', () => {
+    const r = revalidarCarrito([linea('p1', '5', 130, { customItems: [{ id: 'p2' }] })],
+      { ...cat, itemsDisponibles: items => items.every(i => cat.disponible(catalogo[i.id])) });
+    expect(r.cart).toEqual([]);
+  });
+});

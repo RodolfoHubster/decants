@@ -1,9 +1,9 @@
-import { db, auth, collection, getDocs, query, where, onAuthStateChanged, doc, updateDoc, increment, getDoc }
+import { db, auth, collection, getDocs, query, where, onAuthStateChanged, doc, updateDoc, increment, getDoc, setDoc }
   from './firebase-config.js';
 import { addItem, decrementItem, removeItem, clearCart as pureCleart,
          calcTotal, totalUnits, buildWhatsAppURL, getItemQty, MAX_QTY,
-         saveCart, loadCart, clearSavedCart, cartExpiresInMinutes }
-  from './cart.js';
+         saveCart, loadCart, clearSavedCart, cartExpiresInMinutes, revalidarCarrito }
+  from './cart.js?v=2';
 import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug } from './slug.js';
 import { imgCard, imgModal, imgCart, imgOg } from './cloudinary.js';
 import { heroStats, pickShowcase, construirColecciones, barajar } from './hero.js';
@@ -12,6 +12,19 @@ import { ahorroPorTalla } from './precios.js';
 import { leerCache, guardarCache, borrarCache } from './catalogo-cache.js';
 import { precargarImagen } from './imagenes.js';
 import { parsearFicha } from './ficha.js';
+import { CLAVE_DUENO, CLAVE_ULTIMO_DIA, diaLocal, debeContar } from './visitas.js';
+
+// ── Visitas: una por persona al día, sin contar al dueño ──────────
+const esDueno = (() => { try { return localStorage.getItem(CLAVE_DUENO) === '1'; } catch (e) { return false; } })();
+(function contarVisita() {
+  try {
+    const hoy = diaLocal();
+    if (!debeContar({ esDueno, ultimoDia: localStorage.getItem(CLAVE_ULTIMO_DIA), hoy, userAgent: navigator.userAgent })) return;
+    localStorage.setItem(CLAVE_ULTIMO_DIA, hoy);
+    setDoc(doc(db, 'visitas', hoy), { personas: increment(1) }, { merge: true })
+      .catch(() => { try { localStorage.removeItem(CLAVE_ULTIMO_DIA); } catch (e) { /* sin storage */ } });
+  } catch (e) { /* sin storage: no se cuenta */ }
+})();
 
 // ── Tipos fijos (chips del panel — mapean al campo `categoria` del perfume) ─
 // Ícono de cada familia olfativa (viene de Firestore, campo `emoji`).
@@ -37,6 +50,9 @@ onAuthStateChanged(auth, user => {
 // ── Estado global ────────────────────────────────────────────
 const PAGE_SIZE = 10;
 let all = [], gF = '', modalData = null;
+// true si al abrir la ficha se agregó una entrada al historial (#/perfumes/...).
+// Cerrarla debe regresar esa entrada, no apilar otra encima.
+let fichaEnHistorial = false;
 let currentPage = 1, filtered = [];
 let cart = loadCart();
 
@@ -85,8 +101,11 @@ window.undoDelete = () => {
 };
 
 // ── Helpers ───────────────────────────────────────────────
+// Con los 2 ml apagados (Costos) esa talla no se ofrece: ni en la tarjeta ni en el "desde".
+const sin2ml = (p, k) => !(window.disable2ml && p.tipo !== 'paquete' && String(k) === '2');
+
 function minPrecio(p) {
-  const vals = Object.values(p.precios || {}).map(Number).filter(v => v > 0);
+  const vals = Object.entries(p.precios || {}).filter(([k]) => sin2ml(p, k)).map(([, v]) => Number(v)).filter(v => v > 0);
   if (vals.length) return Math.min(...vals);
   return Number(p.precio) || 9999;
 }
@@ -486,7 +505,8 @@ async function traerDeFirestore() {
     getDocs(collection(db, 'familias_olfativas')),
     getDocs(query(collection(db, 'paquetes'), where('activo', '==', true))),
     getDocs(query(collection(db, 'accesorios'), where('activo', '==', true))),
-    getDoc(doc(db, 'config', 'costosOperativos')).catch(() => null)
+    // Solo lo que la tienda necesita: tus costos (config/costosOperativos) ya no son públicos.
+    getDoc(doc(db, 'config', 'tienda')).catch(() => null)
   ]);
 
   const disable2ml = !!(confSnap && confSnap.exists() && confSnap.data().disable2ml);
@@ -509,7 +529,12 @@ async function traerDeFirestore() {
 /** Pantalla de error con reintento: antes los esqueletos giraban sin fin. */
 function mostrarErrorCarga(err) {
   console.error('No se pudo cargar el catálogo:', err);
-  if (document.querySelector('#modal .modal-box.cargando')) doCloseModal();
+  const esqueleto = document.querySelector('#modal .modal-box.cargando');
+  if (esqueleto) {
+    esqueleto.classList.remove('cargando');
+    document.getElementById('modal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
   const g = document.getElementById('grid');
   if (!g) return;
   g.innerHTML = `
@@ -597,9 +622,32 @@ async function load() {
 
   renderHero();
   renderGrid();
+  // El pedido guardado se revisa contra el catálogo de hoy: si cambió un precio
+  // o algo se agotó, el WhatsApp ya no sale con datos viejos.
+  let avisoPedido = '';
+  if (cart.length) {
+    const rev = revalidarCarrito(cart, {
+      buscar: id => all.find(x => x.id === id),
+      disponible: prod => !agotadoEnTienda(prod),
+      precioDe: precioActualDeTalla,
+      itemsDisponibles: items => !resolverItemsPaquete(items, all).some(i => i.agotado),
+    });
+    if (rev.quitados.length || rev.actualizados.length) {
+      cart = rev.cart;
+      persistCart();
+      updateCartBadge();
+      const partes = [];
+      if (rev.quitados.length) partes.push(`ya no hay: ${rev.quitados.join(', ')}`);
+      if (rev.actualizados.length) partes.push(`cambió el precio de: ${rev.actualizados.join(', ')}`);
+      // Un solo aviso: el de "pedido restaurado" lo tapaba al instante.
+      avisoPedido = `Actualizamos tu pedido (${partes.join(' · ')})`;
+    }
+  }
+  if (avisoPedido && !cart.length) showToast(avisoPedido);
   if (cart.length) {
     const mins = cartExpiresInMinutes();
-    showToast(`Pedido restaurado (${cart.length} item${cart.length > 1 ? 's' : ''})${mins ? ` · expira en ${mins} min` : ''}`);
+    if (avisoPedido) showToast(avisoPedido);
+    else showToast(`Pedido restaurado (${cart.length} item${cart.length > 1 ? 's' : ''})${mins ? ` · expira en ${mins} min` : ''}`);
     updateCartBadge();
   }
 
@@ -722,7 +770,7 @@ window.addEventListener('hashchange', () => {
   const modal = document.getElementById('modal');
   if (slug) {
     const p = findBySlug(all, slug);
-    if (p && (!modal || !modal.classList.contains('open'))) openModal(p.id, false);
+    if (p && (!modal || !modal.classList.contains('open'))) { openModal(p.id, false); fichaEnHistorial = true; }
   } else {
     if (modal && modal.classList.contains('open')) {
       modal.classList.remove('open');
@@ -730,6 +778,7 @@ window.addEventListener('hashchange', () => {
       modalData = null;
       resetMetaTags();
     }
+    fichaEnHistorial = false;
   }
 });
 
@@ -763,7 +812,7 @@ function cardHTML(p) {
   let pills = '';
   let savingsTag = '';
   const pr = p.precios || (p.ml && p.precio ? { [p.ml]: p.precio } : {});
-  const sizes = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
+  const sizes = Object.entries(pr).filter(([k, v]) => +v > 0 && sin2ml(p, k)).sort((a, b) => +a[0] - +b[0]);
 
   if (p.tipo === 'paquete') {
     pills = sizes.map(([k, v]) => {
@@ -792,7 +841,7 @@ function cardHTML(p) {
       ${src
         ? `<img src="${src}" alt="${p.nombre}" loading="lazy" width="400" height="400" decoding="async">`
         : `<div class="card-no-img"><i class="bi ${p.tipo === 'paquete' ? 'bi-box2-heart' : (p.tipo === 'accesorio' ? 'bi-bag' : 'bi-droplet')}"></i></div>`}
-      ${p.estadoStock === 'agotado' ? `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:5;pointer-events:none;"><div style="background:#ef4444;color:white;padding:4px 12px;border-radius:20px;font-weight:bold;font-size:12px;letter-spacing:1px;box-shadow:0 2px 10px rgba(239,68,68,0.3);">AGOTADO</div></div>` : ''}
+      ${agotadoEnTienda(p) ? `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:5;pointer-events:none;"><div style="background:#ef4444;color:white;padding:4px 12px;border-radius:20px;font-weight:bold;font-size:12px;letter-spacing:1px;box-shadow:0 2px 10px rgba(239,68,68,0.3);">AGOTADO</div></div>` : ''}
       ${units > 0 ? `<div class="card-in-cart"><i class="bi bi-bag-check-fill"></i>${units > 1 ? ` <span>${units}</span>` : ''}</div>` : ''}
     </div>
     <div class="card-body">
@@ -846,8 +895,8 @@ window.renderGrid = () => {
 
   filtered.sort((a, b) => {
     // 1. Agotados siempre al final
-    const aAgotado = (a.estadoStock === 'agotado');
-    const bAgotado = (b.estadoStock === 'agotado');
+    const aAgotado = agotadoEnTienda(a);
+    const bAgotado = agotadoEnTienda(b);
     if (aAgotado !== bAgotado) {
       return aAgotado ? 1 : -1;
     }
@@ -982,10 +1031,18 @@ window.openModal = (id, pushHash = true) => {
   const p = all.find(x => x.id === id);
   if (!p) return;
   modalData = p;
+  // Quitar el esqueleto del link compartido ANTES de llenar: con .cargando el
+  // contenido está oculto y prepararDescripcion() medía 0, así que el
+  // "Ver más" quedaba escondido en descripciones largas.
+  document.querySelector('#modal .modal-box')?.classList.remove('cargando');
   const colName = p.tipo === 'paquete' ? 'paquetes' : 'perfumes';
-  updateDoc(doc(db, colName, id), { clicks: increment(1) }).catch(() => {});
+  // Los perfumes que abres tú no cuentan como interés de clientes.
+  if (!esDueno) updateDoc(doc(db, colName, id), { clicks: increment(1) }).catch(() => {});
 
-  if (pushHash) window.location.hash = '/perfumes/' + perfumeURL(p).replace('#/perfumes/', '');
+  if (pushHash) {
+    window.location.hash = '/perfumes/' + perfumeURL(p).replace('#/perfumes/', '');
+    fichaEnHistorial = true;
+  }
   const precio = minPrecio(p);
 
   // ─ imgOg: 1200x630 para Open Graph / compartir en redes ─
@@ -1080,7 +1137,7 @@ window.openModal = (id, pushHash = true) => {
     sizesLabel.style.display = sizes.length <= 1 ? 'none' : 'block';
   }
 
-  const isAgotado = (p.estadoStock === 'agotado');
+  const isAgotado = agotadoEnTienda(p);
   let pillsHTML = '';
   if (p.tipo === 'paquete') {
     pillsHTML = sizes.length
@@ -1228,7 +1285,7 @@ function syncModalCartBtn() {
   const waBtn   = document.getElementById('modal-btn');
   if (!wrapper) return;
   
-  if (modalData.estadoStock === 'agotado') {
+  if (agotadoEnTienda(modalData)) {
     const waUrl = `https://wa.me/526648162623?text=${encodeURIComponent('Hola, me interesa saber si tendrán disponibilidad pronto de "' + modalData.nombre + (modalData.marca ? ' · ' + modalData.marca : '') + '"')}`;
     wrapper.innerHTML = `<a href="${waUrl}" target="_blank" class="btn-add-cart" style="background:#25D366; color:#fff; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px;"><i class="bi bi-whatsapp"></i> Preguntar disponibilidad</a>`;
     if (orSpan) orSpan.style.display = 'none';
@@ -1338,11 +1395,22 @@ window.selPill = btn => {
 };
 
 function doCloseModal() {
-  document.getElementById('modal').classList.remove('open');
+  const ov = document.getElementById('modal');
+  if (!ov.classList.contains('open') && !modalData) return;  // nada que cerrar
+  ov.classList.remove('open');
   document.body.style.overflow = '';
   modalData = null;
-  history.pushState(null, '', window.location.pathname + window.location.search);
   resetMetaTags();
+  if (!getSlugFromHash()) return;
+  if (fichaEnHistorial) {
+    // Se abrió desde el catálogo: regresar la entrada que se agregó. Antes se
+    // apilaba otra y "atrás" volvía a abrir la misma ficha.
+    fichaEnHistorial = false;
+    history.back();
+  } else {
+    // Llegó por un link compartido: quitar el hash sin sumar entradas.
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
 }
 
 window.closeModal = e => {
@@ -1351,7 +1419,9 @@ window.closeModal = e => {
 };
 window.doCloseModal = doCloseModal;
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') doCloseModal(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('modal')?.classList.contains('open')) doCloseModal();
+});
 
 window.pedirModal = () => {
   if (!modalData) return;
@@ -1367,8 +1437,25 @@ window.pedirModal = () => {
 };
 
 // ── CARRITO ───────────────────────────────────────────────
+/**
+ * Agotado para la tienda: el perfume mismo, o un combo FIJO al que le falta
+ * alguno de sus perfumes (agotado o archivado). Antes solo se miraba el estado
+ * del combo, que los combos no tienen: se podía pedir uno incompleto.
+ * Los personalizables se validan al elegir sus perfumes.
+ */
+function agotadoEnTienda(p) {
+  if (!p) return true;
+  if (p.estadoStock === 'agotado') return true;
+  if (p.tipo === 'paquete' && !p.esPersonalizable && (p.items || []).length) {
+    const items = resolverItemsPaquete(p.items, all);
+    return !paqueteArmable(items, items.length);
+  }
+  return false;
+}
+
 window.addToCart = () => {
   if (!modalData) return;
+  if (agotadoEnTienda(modalData)) { showToast('Este producto no está disponible por ahora', 'warning'); return; }
   const sel = document.querySelector('.mpill.sel');
   if (!sel) { flashPills(); return; }
   checkCartTTL();
@@ -1553,8 +1640,24 @@ function renderCartDrawer() {
 
 window.sendCartWA = () => {
   const url = buildWhatsAppURL(cart, '526648162623');
-  if (url) { clearSavedCart(); window.open(url, '_blank'); }
+  if (!url) return;
+  const w = window.open(url, '_blank');
+  // Solo se borra el pedido si WhatsApp sí se abrió: con un bloqueador de
+  // ventanas window.open devuelve null y antes el cliente perdía su pedido.
+  if (!w) { showToast('No se pudo abrir WhatsApp. Revisa que tu navegador permita ventanas.'); return; }
+  clearSavedCart();
+  cart = [];
+  updateCartBadge();
+  patchGridBadges();
 };
+
+/** Precio vigente de una talla (o 0 si ya no se vende), igual que en la ficha. */
+function precioActualDeTalla(p, size) {
+  const pr = p.precios || (p.ml && p.precio ? { [p.ml]: p.precio } : {});
+  const k = String(size).replace(/^Paquete\s+/, '');
+  if (p.tipo !== 'paquete' && window.disable2ml && k === '2') return 0;
+  return +pr[k] || 0;
+}
 
 function flashPills() {
   const pills = document.getElementById('modal-pills');

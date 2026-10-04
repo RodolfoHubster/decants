@@ -877,10 +877,21 @@
 </footer>
 
 <script type="module">
-import { db } from './assets/js/firebase-config.js';
+import { db, doc, setDoc, increment } from './assets/js/firebase-config.js';
 import {
   collection, getDocs, query, orderBy, where
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { CLAVE_DUENO, CLAVE_ULTIMO_DIA, diaLocal, debeContar } from './assets/js/visitas.js';
+
+// Visitas: la misma cuenta que la tienda (una por persona al día, sin el dueño).
+try {
+  const hoy = diaLocal();
+  if (debeContar({ esDueno: localStorage.getItem(CLAVE_DUENO) === '1', ultimoDia: localStorage.getItem(CLAVE_ULTIMO_DIA), hoy, userAgent: navigator.userAgent })) {
+    localStorage.setItem(CLAVE_ULTIMO_DIA, hoy);
+    setDoc(doc(db, 'visitas', hoy), { personas: increment(1) }, { merge: true })
+      .catch(() => { try { localStorage.removeItem(CLAVE_ULTIMO_DIA); } catch (e) { /* sin storage */ } });
+  }
+} catch (e) { /* sin storage: no se cuenta */ }
 
 const WA = '526648162623';
 const TALLAS = { px30:'30ml', px50:'50ml', px75:'75ml', px100:'100ml', px150:'150ml', px200:'200ml' };
@@ -980,7 +991,7 @@ function cardHTML(p) {
         <span class="badge-stock ${dispClass}">${dispLabel}</span>
       </div>
       ${precios ? `<div class="card-precios">${precios}</div>` : ''}
-      <button class="card-btn-wa ${btnClass}" onclick="event.stopPropagation();abrirWA(${JSON.stringify(p.id)})">
+      <button class="card-btn-wa ${btnClass}" onclick="event.stopPropagation();abrirWA('${p.id}')">
         <i class="bi ${btnIcon}"></i> ${btnLabel}
       </button>
     </div>

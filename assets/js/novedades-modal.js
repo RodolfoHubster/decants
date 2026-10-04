@@ -438,6 +438,9 @@ export async function initNovedadesModal() {
     const slides = await Promise.all(novedades.map(n => buildSlideDOM(n)));
     slides.forEach(s => wrap.appendChild(s));
 
+    // Se revisa ANTES de armar el carrusel: initCarousel marca la primera como
+    // vista, y con una sola novedad el aviso ya nunca se abría solo.
+    const hayNoVista = novedades.some(n => !yaVisto(n));
     initCarousel(novedades);
 
     // Cierre
@@ -459,7 +462,6 @@ export async function initNovedadesModal() {
     fab.classList.add('visible');
 
     // Abrir auto solo si hay al menos una novedad no vista
-    const hayNoVista = novedades.some(n => !yaVisto(n));
     if (hayNoVista) {
       overlay.classList.add('open');
       document.body.style.overflow = 'hidden';

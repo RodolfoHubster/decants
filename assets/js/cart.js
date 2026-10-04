@@ -99,3 +99,35 @@ export function countUniqueProducts(cart) {
 export function getItemQty(cart, key) {
   return cart.find(i => i.key === key)?.qty ?? 0;
 }
+
+/**
+ * Revisa el pedido guardado contra el catálogo vivo antes de usarlo.
+ *
+ * El pedido vive hasta una hora en el teléfono del cliente. Si mientras tanto
+ * el dueño cambia un precio o marca algo agotado, el WhatsApp salía con el
+ * precio viejo o con un producto que ya no hay.
+ *
+ * @param {Array} cart
+ * @param {object} cat
+ * @param {(id:string)=>object|undefined} cat.buscar     producto vivo por id
+ * @param {(p:object)=>boolean}           cat.disponible si se puede pedir
+ * @param {(p:object, size:string)=>number} cat.precioDe precio actual; 0 si esa talla ya no se vende
+ * @param {(items:Array)=>boolean}       [cat.itemsDisponibles] para combos armados por el cliente
+ * @returns {{cart:Array, quitados:string[], actualizados:string[]}}
+ */
+export function revalidarCarrito(cart, { buscar, disponible, precioDe, itemsDisponibles }) {
+  const quitados = [], actualizados = [], nuevo = [];
+  (cart || []).forEach(it => {
+    const p = buscar(it.id);
+    const precio = p ? Number(precioDe(p, it.size)) || 0 : 0;
+    const comboOk = !it.customItems || !itemsDisponibles || itemsDisponibles(it.customItems);
+    if (!p || !disponible(p) || precio <= 0 || !comboOk) { quitados.push(it.nombre); return; }
+    if (precio !== Number(it.price)) {
+      actualizados.push(it.nombre);
+      nuevo.push({ ...it, price: precio });
+      return;
+    }
+    nuevo.push(it);
+  });
+  return { cart: nuevo, quitados, actualizados };
+}
