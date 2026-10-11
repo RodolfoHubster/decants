@@ -109,4 +109,4 @@ export function matchSearch(query, target) {
 }
 
 // Adjuntar a window para disponibilidad global en entornos mixtos
-window.matchSearch = matchSearch;
+if (typeof window !== "undefined") window.matchSearch = matchSearch;

@@ -11,6 +11,7 @@
  * probadores ya no están en tu frasco aunque no se hayan vendido.
  */
 import { mlDeTalla, lotesDe, loteDeVenta, insumoUnitario, consumoPorBotella } from './rentabilidad.js';
+import { matchSearch } from './search-engine.js';
 
 /** La botella de la que se sirve hoy: la asignada (loteActivo) o la más nueva. */
 export function botellaAsignada(p) {
@@ -110,4 +111,52 @@ export function costoProbadores(puntos, ctx, desde = 0) {
     });
   });
   return { total, piezas };
+}
+
+const sinAcentos = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+/**
+ * Perfumes que coinciden con lo que se escribe en el buscador (nombre o marca,
+ * sin importar acentos y tolerando errores de dedo). Primero los que empiezan
+ * igual, luego los que lo contienen, luego los parecidos; los archivados al final.
+ */
+// Distancia de edición (letras cambiadas, de más o de menos).
+function distancia(a, b) {
+  const fila = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = fila[0]; fila[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = fila[j];
+      fila[j] = Math.min(fila[j] + 1, fila[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = tmp;
+    }
+  }
+  return fila[b.length];
+}
+
+/** "candy" encuentra "Candee", "hamrah" encuentra "Khamrah": cada palabra
+ *  escrita se parece al inicio de alguna palabra del perfume. */
+function seParece(nq, texto) {
+  const palabras = texto.split(/[^a-z0-9]+/).filter(Boolean);
+  return nq.split(/\s+/).filter(Boolean).every(t => palabras.some(w => {
+    if (w.includes(t)) return true;
+    if (t.length < 4) return false;
+    const tolera = t.length >= 6 ? 2 : 1;
+    return distancia(t, w.slice(0, t.length)) <= tolera || distancia(t, w) <= tolera;
+  }));
+}
+
+export function filtrarPerfumes(lista, q) {
+  const nq = sinAcentos(q);
+  const res = (lista || []).filter(p => {
+    if (!nq) return true;
+    const texto = `${p.nombre || ''} ${p.marca || ''}`;
+    return matchSearch(nq, texto) || seParece(nq, sinAcentos(texto));
+  });
+  const peso = p => {
+    const nom = sinAcentos(p.nombre);
+    const texto = `${nom} ${sinAcentos(p.marca)}`;
+    return (p.archivado ? 4 : 0) + (!nq || nom.startsWith(nq) ? 0 : texto.includes(nq) ? 1 : 2);
+  };
+  return res.sort((a, b) => peso(a) - peso(b) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
 }

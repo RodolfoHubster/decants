@@ -1,5 +1,5 @@
 import {
-  botellaAsignada, piezasFueraDeBotella, ventasDelPunto, resumenPunto, revisarDisponibilidad, costoProbadores,
+  botellaAsignada, piezasFueraDeBotella, filtrarPerfumes, ventasDelPunto, resumenPunto, revisarDisponibilidad, costoProbadores,
 } from '../assets/js/puntos-externos.js';
 import { contextoRentabilidad } from '../assets/js/rentabilidad.js';
 
@@ -68,5 +68,28 @@ describe('costoProbadores', () => {
     expect(r.piezas).toBe(2);
     expect(r.total).toBeCloseTo(2 * (5 * 2.75 + 8));
     expect(costoProbadores([barberia], ctx, 1000).piezas).toBe(0); // fuera del periodo
+  });
+});
+
+describe('filtrarPerfumes', () => {
+  const lista = [
+    { nombre: 'Khamrah', marca: 'Lattafa' }, { nombre: 'Asad', marca: 'Lattafa' },
+    { nombre: '9PM', marca: 'Afnan' }, { nombre: 'Atlas', marca: 'Lattafa', archivado: true },
+    { nombre: 'Bleu de Chanel', marca: 'Chanel' }, { nombre: 'Élixir Bleu', marca: 'X' },
+  ];
+  const nombres = r => r.map(p => p.nombre);
+  test('sin texto salen todos, los archivados al final', () => {
+    expect(nombres(filtrarPerfumes(lista, ''))).toEqual(['9PM', 'Asad', 'Bleu de Chanel', 'Élixir Bleu', 'Khamrah', 'Atlas']);
+  });
+  test('busca por marca y sin acentos; primero lo que empieza igual', () => {
+    expect(nombres(filtrarPerfumes(lista, 'lattafa'))).toEqual(['Asad', 'Khamrah', 'Atlas']);
+    expect(nombres(filtrarPerfumes(lista, 'bleu'))).toEqual(['Bleu de Chanel', 'Élixir Bleu']);
+    expect(nombres(filtrarPerfumes(lista, 'elixir'))).toEqual(['Élixir Bleu']);
+  });
+  test('tolera cómo lo dices tú: "candy" encuentra Candee, "hamrah" Khamrah', () => {
+    const mas = [...lista, { nombre: 'Odyssey Candee', marca: 'Armaf' }];
+    expect(nombres(filtrarPerfumes(mas, 'candy'))).toContain('Odyssey Candee');
+    expect(nombres(filtrarPerfumes(mas, 'hamrah'))).toEqual(['Khamrah']);
+    expect(nombres(filtrarPerfumes(mas, 'odisey candy'))).toEqual(['Odyssey Candee']);
   });
 });

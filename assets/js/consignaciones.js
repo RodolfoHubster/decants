@@ -1,6 +1,7 @@
 import { db, collection, getDocs, doc, updateDoc, deleteDoc, addDoc, onAuthStateChanged, auth } from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
-import { botellaAsignada, piezasFueraDeBotella, resumenPunto, revisarDisponibilidad } from './puntos-externos.js';
+import { botellaAsignada, piezasFueraDeBotella, resumenPunto, revisarDisponibilidad, filtrarPerfumes } from './puntos-externos.js?v=2';
+import { consumoPorBotella } from './rentabilidad.js?v=2';
 
 // Puntos externos: lo que dejas en barberías y otros locales. Cada perfume lleva
 // decants para vender y probadores; todo sale de la botella asignada al perfume.
@@ -37,10 +38,7 @@ async function loadData() {
     ]);
 
     perfumes = [];
-    pSnap.forEach(d => {
-      const p = d.data();
-      if (!p.archivado) perfumes.push({ id: d.id, ...p });
-    });
+    pSnap.forEach(d => perfumes.push({ id: d.id, ...d.data() }));
     perfumes.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
     perfumesPorId = new Map(perfumes.map(p => [p.id, p]));
 
@@ -181,8 +179,10 @@ window.openModal = () => {
   document.getElementById('c-comision').value = '';
   document.getElementById('items-container').innerHTML = '';
   itemRowCounter = 0;
+  calcularRestantes();
   addItemRow();
   actualizarDisponibilidad();
+  setTimeout(() => document.querySelector('#items-container .pk-input')?.focus(), 50);
   document.getElementById('modal-nuevo').classList.add('open');
 };
 
@@ -200,6 +200,7 @@ window.editarLote = (loteId) => {
   document.getElementById('c-comision').value = lote.comision || '';
   document.getElementById('items-container').innerHTML = '';
   itemRowCounter = 0;
+  calcularRestantes();
 
   (lote.items || []).forEach(item => addItemRow(item));
   actualizarDisponibilidad();
@@ -225,15 +226,19 @@ window.addItemRow = (itemData = null) => {
   const precio = itemData && itemData.precio ? itemData.precio : '';
   const vendidos = itemData ? (+itemData.vendidos || 0) : 0;
 
-  const options = '<option value="">Elige un perfume…</option>' + perfumes.map(p =>
-    `<option value="${p.id}" ${p.id === pId ? 'selected' : ''}>${esc(p.nombre)} (${esc(p.marca)})</option>`).join('');
+  const elegido = perfumesPorId.get(pId);
 
   div.innerHTML = `
     <input type="hidden" class="p-vendidos" value="${vendidos}">
     <input type="hidden" class="p-lote" value="${esc(itemData && itemData.loteId || '')}">
     <div class="form-group ir-perfume">
       <label>Perfume</label>
-      <select class="form-control p-sel">${options}</select>
+      <div class="pk">
+        <input type="hidden" class="p-sel" value="${esc(pId)}">
+        <input type="text" class="form-control pk-input" placeholder="Escribe nombre o marca…" autocomplete="off" spellcheck="false"
+          value="${esc(elegido ? `${elegido.nombre} (${elegido.marca || ''})` : (itemData && itemData.perfumeNombre) || '')}">
+        <div class="pk-lista" hidden></div>
+      </div>
     </div>
     <div class="form-group">
       <label>Tamaño</label>
@@ -265,10 +270,103 @@ window.addItemRow = (itemData = null) => {
   const inPr = div.querySelector('.p-precio');
   const sugerir = () => { if (!inPr.value || inPr.dataset.sugerido === '1') { inPr.value = precioTienda(sel.value, selT.value); inPr.dataset.sugerido = '1'; } };
   sel.addEventListener('change', () => { sugerir(); actualizarDisponibilidad(); });
+  conectarBuscador(div, id);
   selT.addEventListener('change', () => { sugerir(); actualizarDisponibilidad(); });
   inPr.addEventListener('input', () => { inPr.dataset.sugerido = '0'; });
   div.querySelectorAll('.p-cant, .p-prob').forEach(el => el.addEventListener('input', actualizarDisponibilidad));
 };
+
+// ── Buscador de perfumes ────────────────────────────────────────────────────
+// Antes era un <select> de 130 nombres sin poder escribir. Ahora se busca por
+// nombre o marca (sin acentos, tolera errores) y cada opción dice cuánto le
+// queda a su botella.
+let restantes = new Map();
+
+function calcularRestantes() {
+  const editId = document.getElementById('c-edit-id').value;
+  const fuera = piezasFueraDeBotella(consignaciones.filter(c => c.id !== editId));
+  restantes = new Map(perfumes.map(p => {
+    const asignada = botellaAsignada(p);
+    if (!asignada) return [p.id, null];
+    const b = consumoPorBotella(p, ventas, fuera).botellas.find(x => x.id === asignada.id);
+    return [p.id, b ? { botella: b.idx + 1, restante: Math.round(b.restante) } : null];
+  }));
+}
+
+function etiquetaPerfume(p) {
+  if (p.archivado) return { txt: 'Archivado', cls: '' };
+  const r = restantes.get(p.id);
+  if (!r) return { txt: 'Sin botella', cls: '' };
+  if (p.estadoStock === 'agotado' || r.restante <= 0) return { txt: 'Agotado', cls: 'mal' };
+  return { txt: `Botella #${r.botella} · ${r.restante} ml`, cls: r.restante < 25 ? 'poco' : 'ok' };
+}
+
+function conectarBuscador(row, rowId) {
+  const input = row.querySelector('.pk-input');
+  const oculto = row.querySelector('.p-sel');
+  const lista = row.querySelector('.pk-lista');
+  let opciones = [];
+  let activa = 0;
+  const texto = p => `${p.nombre} (${p.marca || ''})`;
+
+  const pintar = () => {
+    const actual = perfumesPorId.get(oculto.value);
+    // Si el texto es el del perfume ya elegido, se muestran todos para poder cambiarlo.
+    const q = actual && input.value === texto(actual) ? '' : input.value;
+    const enOtrasFilas = new Set([...document.querySelectorAll('.item-row')]
+      .filter(r => r !== row).map(r => r.querySelector('.p-sel').value).filter(Boolean));
+    opciones = filtrarPerfumes(perfumes, q);
+    activa = Math.min(activa, Math.max(0, opciones.length - 1));
+    lista.innerHTML = opciones.length
+      ? `<div class="pk-cuenta">${opciones.length} perfume${opciones.length > 1 ? 's' : ''}</div>` + opciones.map((p, i) => {
+          const e = etiquetaPerfume(p);
+          return `<div class="pk-op${i === activa ? ' act' : ''}${enOtrasFilas.has(p.id) ? ' usado' : ''}" data-i="${i}">
+            <div><strong>${esc(p.nombre)}</strong><small>${esc(p.marca || '')}${enOtrasFilas.has(p.id) ? ' · ya está en la lista' : ''}</small></div>
+            <span class="pk-tag ${e.cls}">${esc(e.txt)}</span>
+          </div>`;
+        }).join('')
+      : '<div class="pk-vacio">No encontré ese perfume. Prueba con la marca o con menos letras.</div>';
+    lista.hidden = false;
+  };
+
+  const verActiva = () => lista.querySelector('.pk-op.act')?.scrollIntoView({ block: 'nearest' });
+
+  const elegir = (p) => {
+    oculto.value = p.id;
+    input.value = texto(p);
+    lista.hidden = true;
+    oculto.dispatchEvent(new Event('change'));
+    // Al llenar el último renglón aparece otro vacío para seguir capturando.
+    const filas = [...document.querySelectorAll('.item-row')];
+    if (filas[filas.length - 1] === row) addItemRow();
+    row.querySelector('.p-cant').focus();
+    row.querySelector('.p-cant').select();
+  };
+
+  input.addEventListener('focus', () => { input.select(); activa = 0; pintar(); });
+  input.addEventListener('input', () => { activa = 0; pintar(); lista.scrollTop = 0; });
+  input.addEventListener('keydown', (e) => {
+    if (lista.hidden && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { pintar(); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); activa = Math.min(activa + 1, opciones.length - 1); pintar(); verActiva(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); activa = Math.max(activa - 1, 0); pintar(); verActiva(); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (opciones[activa] && !lista.hidden) elegir(opciones[activa]); }
+    else if (e.key === 'Escape') { lista.hidden = true; }
+  });
+  // pointerdown + preventDefault: si no, el input pierde el foco y la lista se cierra antes del clic.
+  lista.addEventListener('pointerdown', (e) => {
+    const op = e.target.closest('.pk-op');
+    if (!op) return;
+    e.preventDefault();
+    elegir(opciones[+op.dataset.i]);
+  });
+  input.addEventListener('blur', () => {
+    lista.hidden = true;
+    // Texto a medias: se regresa al perfume elegido (o se limpia si no había).
+    const actual = perfumesPorId.get(oculto.value);
+    input.value = actual ? texto(actual) : '';
+  });
+  row.dataset.buscador = rowId;
+}
 
 window.quitarFila = (id) => {
   document.getElementById(`item-row-${id}`)?.remove();
