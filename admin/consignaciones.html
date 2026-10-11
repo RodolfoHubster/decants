@@ -12,30 +12,74 @@
   <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@4/dark.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
   <style>
-    .cons-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
-    .cons-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display:flex; flex-direction:column; gap:15px; }
-    .cons-header { display: flex; justify-content: space-between; align-items: flex-start; }
-    .cons-title { font-size: 18px; font-weight: 700; color: var(--accent); margin:0 0 5px 0; }
-    .cons-date { font-size: 12px; color: var(--text-faint); }
-    .cons-status { font-size: 11px; padding: 4px 8px; border-radius: 99px; font-weight: 600; text-transform: uppercase; }
-    .status-open { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
-    .status-closed { background: rgba(255, 255, 255, 0.1); color: var(--text-muted); }
-    
-    .cons-items { border-top: 1px solid var(--border); padding-top: 15px; display:flex; flex-direction:column; gap:10px; flex:1; }
-    .cons-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-card2); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
-    .cons-item-info { flex:1; }
-    .cons-item-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; line-height:1.2; }
-    .cons-item-meta { font-size: 12px; color: var(--text-muted); display:flex; gap:10px; }
-    .cons-item-actions { display: flex; align-items: center; gap: 8px; }
-    
-    .btn-sell { background: rgba(201, 168, 76, 0.15); color: #C9A84C; border: 1px solid rgba(201, 168, 76, 0.3); border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .btn-sell:hover { background: #C9A84C; color: #000; }
-    .btn-sell:disabled { opacity: 0.5; cursor: not-allowed; background:var(--bg-card2); border-color:var(--border); color:var(--text-muted); }
-    
-    /* Modal styles */
-    .item-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 40px; gap: 10px; align-items: end; margin-bottom: 10px; }
-    @media (max-width: 600px) {
-      .item-row { grid-template-columns: 1fr; gap:5px; margin-bottom:15px; background:var(--bg-card2); padding:10px; border-radius:8px;}
+    /* Resumen de todos los puntos abiertos */
+    .cons-resumen { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:20px; }
+    .cons-resumen:empty { display:none; }
+    .cr-item { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; display:flex; flex-direction:column; gap:2px; }
+    .cr-item span { font-size:11.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; }
+    .cr-item strong { font-size:24px; color:var(--text-primary); }
+    .cr-item small { font-size:12px; color:var(--text-faint); }
+
+    .cons-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(330px, 1fr)); gap:20px; }
+    .cons-card { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:14px; }
+    .cons-card.cerrado { opacity:.7; }
+    .cons-header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+    .cons-title { font-size:18px; font-weight:700; color:var(--accent); margin:0 0 4px 0; overflow-wrap:anywhere; }
+    .cons-date { font-size:12px; color:var(--text-faint); }
+    .cons-status { font-size:11px; padding:4px 8px; border-radius:99px; font-weight:600; text-transform:uppercase; white-space:nowrap; }
+    .status-open { background:rgba(34,197,94,0.15); color:#22c55e; }
+    .status-closed { background:rgba(255,255,255,0.1); color:var(--text-muted); }
+    .cons-acciones { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+    .cons-mini { color:var(--text-muted); width:26px; height:26px; display:flex; align-items:center; justify-content:center; }
+
+    .cons-stats { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; }
+    .cons-stats div { background:var(--bg-card2); border-radius:8px; padding:8px 4px; text-align:center; }
+    .cons-stats strong { display:block; font-size:17px; color:var(--text-primary); }
+    .cons-stats span { font-size:11px; color:var(--text-muted); }
+
+    .cons-items { display:flex; flex-direction:column; gap:8px; flex:1; }
+    .cons-item { display:flex; justify-content:space-between; align-items:center; gap:10px; background:var(--bg-card2); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); }
+    .cons-item.done { opacity:.6; }
+    .cons-item-info { flex:1; min-width:0; }
+    .cons-item-name { font-size:14px; font-weight:600; margin-bottom:3px; line-height:1.2; overflow-wrap:anywhere; }
+    .cons-item-meta { font-size:12px; color:var(--text-muted); display:flex; flex-wrap:wrap; gap:4px 10px; }
+    .cons-item-meta .ok { color:#22c55e; }
+    .cons-prog { height:4px; background:rgba(255,255,255,0.08); border-radius:2px; margin-top:6px; overflow:hidden; }
+    .cons-prog span { display:block; height:100%; background:var(--accent); border-radius:2px; }
+    .cons-item-actions { display:flex; align-items:center; gap:8px; }
+    .cons-vacio { font-size:13px; color:var(--text-faint); }
+
+    .cons-sub { font-size:12.5px; font-weight:600; color:var(--text-muted); margin-top:4px; display:flex; align-items:center; gap:6px; }
+    .cons-sub small { font-weight:400; color:var(--text-faint); }
+    .cons-probadores { display:flex; flex-wrap:wrap; gap:6px; }
+    .cons-prob { display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:4px 6px 4px 10px; border-radius:99px; border:1px dashed var(--border); color:var(--text-muted); }
+    .cons-prob button { background:none; border:none; color:var(--accent); cursor:pointer; padding:0 2px; font-size:14px; line-height:1; }
+
+    .cons-pie { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+    .cons-pie a { display:inline-flex; align-items:center; gap:4px; font-size:12.5px; color:var(--accent); text-decoration:none; }
+
+    .btn-sell { background:rgba(201,168,76,0.15); color:#C9A84C; border:1px solid rgba(201,168,76,0.3); border-radius:6px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+    .btn-sell:hover { background:#C9A84C; color:#000; }
+    .btn-sell:disabled { opacity:0.5; cursor:not-allowed; background:var(--bg-card2); border-color:var(--border); color:var(--text-muted); }
+
+    /* Formulario */
+    .item-row { display:grid; grid-template-columns:2.2fr 0.9fr 0.9fr 0.9fr 0.9fr 36px; gap:8px; align-items:end; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+    .item-row .form-group { margin-bottom:0; }
+    .item-row label { font-size:11.5px; }
+    .ir-aviso, .ir-nota { grid-column:1 / -1; font-size:12px; line-height:1.4; }
+    .ir-aviso:empty { display:none; }
+    .ir-nota { color:var(--text-faint); }
+    .aviso-ok { color:var(--text-muted); }
+    .aviso-ok i { color:#22c55e; }
+    .aviso-mal { color:#ef4444; }
+    .aviso-gris { color:var(--text-faint); }
+    .form-pie { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px; }
+    #form-total { font-size:13px; color:var(--text-muted); }
+    @media (max-width: 720px) {
+      .cons-resumen { grid-template-columns:1fr 1fr; }
+      .item-row { grid-template-columns:1fr 1fr; background:var(--bg-card2); padding:10px; border-radius:8px; border-bottom:none; }
+      .item-row .ir-perfume { grid-column:1 / -1; }
+      .item-row .ir-quitar { grid-column:1 / -1; justify-self:end; }
     }
   </style>
 </head>
@@ -46,20 +90,21 @@
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:12px">
         <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
-        <span class="topbar-title">Puntos Externos (Consignaciones)</span>
+        <span class="topbar-title">Puntos Externos</span>
       </div>
       <div>
-        <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> Nuevo Lote</button>
+        <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> Dejar perfumes</button>
       </div>
     </div>
     
     <div class="page-body">
       <div id="loading" style="text-align:center;padding:40px;color:var(--text-muted)"><i class="bi bi-hourglass-split"></i> Cargando...</div>
+      <div id="cons-resumen" class="cons-resumen"></div>
       <div id="cons-grid" class="cons-grid" style="display:none;"></div>
       <div id="empty-state" style="display:none; text-align:center; padding:60px 20px;">
         <i class="bi bi-shop" style="font-size:48px; color:var(--text-faint); margin-bottom:15px; display:block;"></i>
-        <h3 style="margin-bottom:10px; color:var(--text-primary)">No hay lotes en consignación</h3>
-        <p style="color:var(--text-muted)">Crea un lote para administrar los decants que dejas en barberías u otros puntos de venta.</p>
+        <h3 style="margin-bottom:10px; color:var(--text-primary)">Aún no dejas perfumes en ningún punto</h3>
+        <p style="color:var(--text-muted)">Registra los decants y probadores que dejas en barberías u otros locales: cada uno se descuenta de su botella.</p>
       </div>
     </div>
   </div>
@@ -67,9 +112,9 @@
 
 <!-- Modal Nuevo Lote -->
 <div class="modal-overlay" id="modal-nuevo">
-  <div class="modal-box" style="max-width:600px;">
+  <div class="modal-box" style="max-width:760px;">
     <div class="modal-header">
-      <h3 id="modal-title">Crear Lote de Consignación</h3>
+      <h3 id="modal-title">Dejar perfumes en un punto</h3>
       <button class="btn-icon" onclick="closeModal()"><i class="bi bi-x-lg"></i></button>
     </div>
     <div class="modal-body">
@@ -84,21 +129,29 @@
         <small style="color:var(--text-faint)">Se resta de tu ganancia en Estadísticas. Cambiarla no toca lo que ya se vendió.</small>
       </div>
       
-      <div style="margin-top:20px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="margin-top:20px; margin-bottom:6px;">
         <label style="margin:0; font-weight:600;">Perfumes a dejar</label>
-        <button class="btn btn-sm btn-outline" onclick="addItemRow()"><i class="bi bi-plus"></i> Añadir</button>
+        <small style="display:block; color:var(--text-faint)">Cada decant y probador se sirve de la botella asignada al perfume (la activa en Costos). Los probadores no se cobran.</small>
       </div>
-      
+
       <div id="items-container"></div>
+
+      <div class="form-pie">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-sm btn-outline" onclick="addItemRow()"><i class="bi bi-plus"></i> Otro perfume</button>
+          <button type="button" class="btn btn-sm btn-outline" onclick="probadorATodos()"><i class="bi bi-droplet-half"></i> 1 probador a cada uno</button>
+        </div>
+        <span id="form-total"></span>
+      </div>
       
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" id="btn-save" onclick="guardarLote()"><i class="bi bi-check2"></i> Guardar Lote</button>
+      <button class="btn btn-primary" id="btn-save" onclick="guardarLote()"><i class="bi bi-check2"></i> Guardar</button>
     </div>
   </div>
 </div>
 
-<script type="module" src="../assets/js/consignaciones.js?v=1.2"></script>
+<script type="module" src="../assets/js/consignaciones.js?v=2.0"></script>
 </body>
 </html>

@@ -34,7 +34,8 @@ tests/*.test.js                                 ← Jest, importan los módulos 
 `alertas.js` (dashboard: resumen y recordatorios) · `pos-cliente.js` (atribución en la canasta) ·
 `rentabilidad.js` (costo real por venta/botella, clientes atendidos, consumo para alertas) ·
 `visitas.js` (contador propio: `visitas/AAAA-MM-DD {personas}`, sin contar al dueño) ·
-`recordatorios.js` (links a Google Calendar con repetición)
+`recordatorios.js` (links a Google Calendar con repetición) ·
+`puntos-externos.js` (decants y probadores en barberías: botella asignada, ml que alcanzan, costo de probadores)
 
 `config/costosOperativos` es **privado**; la tienda solo lee `config/tienda` (`disable2ml`).
 

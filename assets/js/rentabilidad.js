@@ -305,11 +305,10 @@ export function rentabilidadPorBotella(p, hist, costosOp) {
  * @param {Array} ventas  Todas las ventas.
  * @param {Array} consignados  [{perfumeId, talla, cantidad, loteId?}] dejados
  *   en puntos externos y aún sin vender.
- * @returns {{usado:number, capacidad:number, pct:number}}
+ * @returns {{botellas:Array<{id,idx,tamano,usado,restante,cerrada}>, sinLote:object}}
  */
-export function consumoDePerfume(p, ventas, consignados = []) {
+export function consumoPorBotella(p, ventas, consignados = []) {
   const lotes = lotesDe(p);
-  const capacidad = lotes.length ? lotes.reduce((s, l) => s + tamanoDe(l), 0) : (+p.tamanoBotella || 0);
   const porLote = new Map(lotes.map(l => [l.id, { ml: 0, resto: false }]));
   const sinLote = { ml: 0, resto: false };
   const de = loteId => {
@@ -333,12 +332,19 @@ export function consumoDePerfume(p, ventas, consignados = []) {
     // Lo dejado en un punto externo sale de la botella activa (no se guarda de cuál).
     if (c && c.perfumeId === p.id) de(c.loteId || p.loteActivo).ml += mlDeTalla(c.talla) * (+c.cantidad || 0);
   });
-  let usado = 0;
-  lotes.forEach(l => {
+  const botellas = lotes.map((l, idx) => {
     const d = porLote.get(l.id);
-    const tam = tamanoDe(l);
-    usado += d.resto ? tam : Math.min(tam, d.ml + (parseFloat(l.mlAjuste) || 0));
+    const tamano = tamanoDe(l);
+    const usado = d.resto ? tamano : Math.min(tamano, Math.max(0, d.ml + (parseFloat(l.mlAjuste) || 0)));
+    return { id: l.id, idx, tamano, usado, restante: Math.max(0, tamano - usado), cerrada: d.resto };
   });
-  if (!lotes.length) usado = sinLote.resto ? capacidad : sinLote.ml;
+  return { botellas, sinLote };
+}
+
+/** Lo mismo, sumado por perfume. */
+export function consumoDePerfume(p, ventas, consignados = []) {
+  const { botellas, sinLote } = consumoPorBotella(p, ventas, consignados);
+  const capacidad = botellas.length ? botellas.reduce((s, b) => s + b.tamano, 0) : (+p.tamanoBotella || 0);
+  const usado = botellas.length ? botellas.reduce((s, b) => s + b.usado, 0) : (sinLote.resto ? capacidad : sinLote.ml);
   return { usado, capacidad, pct: capacidad > 0 ? (usado / capacidad) * 100 : 0 };
 }

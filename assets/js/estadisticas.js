@@ -4,6 +4,7 @@ import { esClienteTemporal, claveCliente } from './clientes-util.js';
 import { topVendidos, sinMovimiento, aMs } from './alertas.js';
 import { contextoRentabilidad, resumenGanancia, clientesAtendidos, rentabilidadPorBotella, consumoDePerfume } from './rentabilidad.js';
 import { sumarVisitas } from './visitas.js';
+import { piezasFueraDeBotella, costoProbadores } from './puntos-externos.js';
 
 let ventas = [];
 let ventasFiltradas = [];
@@ -11,6 +12,7 @@ let perfumes = [];
 let costosOp = { botella: 0, etiqueta: 0, bolsa: 0 };
 let accesorios = [];
 let visitasPorDia = {};
+let puntos = [];
 let ctxRent = null;
 let chartTallasObj = null;
 let chartTopObj = null;
@@ -31,15 +33,18 @@ window.loadData = async () => {
   if(btn) btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
   
   try {
-    const [vs, ps, confSnap, accSnap, visSnap] = await Promise.all([
+    const [vs, ps, confSnap, accSnap, visSnap, consSnap] = await Promise.all([
       getDocs(collection(db, 'ventas')),
       getDocs(collection(db, 'perfumes')),
       getDoc(doc(db, 'config', 'costosOperativos')).catch(() => null),
       getDocs(collection(db, 'accesorios')).catch(() => null),
-      getDocs(collection(db, 'visitas')).catch(() => null)
+      getDocs(collection(db, 'visitas')).catch(() => null),
+      getDocs(collection(db, 'consignaciones')).catch(() => null)
     ]);
     accesorios = [];
     if (accSnap) accSnap.forEach(d => accesorios.push({ id: d.id, ...d.data() }));
+    puntos = [];
+    if (consSnap) consSnap.forEach(d => puntos.push({ id: d.id, ...d.data() }));
     visitasPorDia = {};
     if (visSnap) visSnap.forEach(d => { visitasPorDia[d.id] = d.data(); });
     
@@ -163,7 +168,12 @@ function renderKPIs() {
   // El costo de cada venta sale de SU botella (rentabilidad.js): si un perfume
   // se compró a $350 y luego a $400, cada venta usa el que le toca. Antes las
   // botellas completas contaban costo $0 y los accesorios como decants de 1 ml.
-  const r = resumenGanancia(ventasFiltradas, ctxRent || contextoRentabilidad({ perfumes, accesorios, costosOp, ventas }));
+  const ctx = ctxRent || contextoRentabilidad({ perfumes, accesorios, costosOp, ventas });
+  const r = resumenGanancia(ventasFiltradas, ctx);
+  // Los probadores que dejas en puntos externos no se cobran: son gasto de promoción.
+  const prob = costoProbadores(puntos, ctx, periodoDesde);
+  r.ganancia -= prob.total;
+  r.margen = r.ingresos > 0 ? (r.ganancia / r.ingresos) * 100 : 0;
   const clientes = clientesAtendidos(ventasFiltradas);
   const ticketPromedio = clientes > 0 ? r.ingresos / clientes : 0;
   const pesos = n => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
@@ -171,7 +181,7 @@ function renderKPIs() {
 
   poner('kpi-ingresos', pesos(r.ingresos));
   poner('kpi-ganancia', pesos(r.ganancia));
-  poner('kpi-costo', pesos(r.costo + r.comisiones));
+  poner('kpi-costo', pesos(r.costo + r.comisiones + prob.total));
   poner('kpi-margen', r.margen.toFixed(1) + '%');
   poner('kpi-ticket', pesos(ticketPromedio));
   poner('kpi-clientes', clientes.toLocaleString());
@@ -180,6 +190,7 @@ function renderKPIs() {
 
   const notas = [];
   if (r.comisiones > 0) notas.push(`Ya descuenta ${mxn(r.comisiones)} de comisiones`);
+  if (prob.piezas > 0) notas.push(`${mxn(prob.total)} en ${prob.piezas} probador${prob.piezas > 1 ? 'es' : ''}`);
   if (r.sinCosto > 0) notas.push(`${r.sinCosto} venta${r.sinCosto > 1 ? 's' : ''} sin costo registrado`);
   poner('kpi-ganancia-nota', notas.join(' · '));
 
@@ -423,21 +434,7 @@ function renderAlertasInventario() {
   if (!container) return;
   
   // Lo dejado en puntos externos ya salió de la botella aunque no se haya vendido.
-  getDocs(collection(db, 'consignaciones')).then(cSnap => {
-    const consignados = [];
-    cSnap.forEach(d => {
-      const c = d.data();
-      if (c.estado === 'Cerrado') return;
-      (c.items || []).forEach(item => {
-        const sinVender = (item.cantidad || 0) - (item.vendidos || 0);
-        if (sinVender > 0) consignados.push({ perfumeId: item.perfumeId, talla: item.talla, cantidad: sinVender, loteId: item.loteId });
-      });
-    });
-    _finishRenderAlertas(consignados, container);
-  }).catch(e => {
-    console.error("Error loading consignaciones for alerts:", e);
-    _finishRenderAlertas([], container);
-  });
+  _finishRenderAlertas(piezasFueraDeBotella(puntos), container);
 }
 
 function _finishRenderAlertas(consignados, container) {
