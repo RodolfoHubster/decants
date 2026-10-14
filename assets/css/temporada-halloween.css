@@ -101,27 +101,34 @@ html[data-temporada="halloween"] .tag-temporada {
 html[data-temporada="halloween"] .pcard-temporada .card-marca { color: var(--halloween) !important; }
 
 /* ── Franja especial ─────────────────────────────────────────────── */
+/* Mismo ancho que el catálogo (1200px, centrada) y 16px de orilla en celular:
+   antes ocupaba toda la pantalla y se veía como un bloque. */
 html[data-temporada="halloween"] .temporada-franja {
   position: relative;
-  margin: 8px 16px 20px;
-  padding: 34px 0 20px;
+  max-width: 1200px;
+  margin: 12px 16px 24px;
+  padding: 40px 0 22px;
   border: 1px solid var(--halloween-border);
-  border-radius: var(--radius-lg);
+  border-radius: 24px;
   background:
-    radial-gradient(120% 90% at 100% 0%, var(--halloween-soft), transparent 60%),
-    radial-gradient(90% 70% at 0% 100%, rgba(247, 179, 43, .07), transparent 60%),
+    radial-gradient(80% 120% at 100% 0%, var(--halloween-soft), transparent 65%),
+    radial-gradient(70% 90% at 0% 100%, rgba(247, 179, 43, .07), transparent 60%),
     var(--bg-card);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .35);
   overflow: hidden;
 }
-html[data-temporada="halloween"] .papel-picado {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 30px;
-  color: var(--cempasuchil);
-  opacity: .5;
+@media (min-width: 1232px) {
+  html[data-temporada="halloween"] .temporada-franja { margin-left: auto; margin-right: auto; }
 }
-html[data-temporada="halloween"] .pp-banderas path { fill: var(--cempasuchil); opacity: .55; }
-html[data-temporada="halloween"] .pp-banderas path:nth-child(even) { fill: var(--halloween); }
+/* Papel picado: banderitas chicas que se repiten (antes un SVG estirado de lado a lado). */
+html[data-temporada="halloween"] .temporada-franja::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 26px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='34' viewBox='0 0 128 34'%3E%3Cpath d='M0 2H128' stroke='%23f7b32b' stroke-opacity='.55'/%3E%3Cpath d='M8 2h48v22l-6 6-6-6-6 6-6-6-6 6-6-6-6 6-6-6z' fill='%23f7b32b' fill-opacity='.5'/%3E%3Cpath d='M72 2h48v22l-6 6-6-6-6 6-6-6-6 6-6-6-6 6-6-6z' fill='%23f28c38' fill-opacity='.55'/%3E%3C/svg%3E") repeat-x 8px 0 / 96px 26px;
+  pointer-events: none;
+}
 
 html[data-temporada="halloween"] .tf-inner {
   display: flex;
@@ -129,7 +136,19 @@ html[data-temporada="halloween"] .tf-inner {
   gap: 18px;
   min-width: 0;
 }
-html[data-temporada="halloween"] .tf-head { padding: 0 16px; }
+html[data-temporada="halloween"] .tf-head { padding: 0 20px; }
+/* En escritorio: el texto a la izquierda y el carrusel a la derecha, sin hueco vacío. */
+@media (min-width: 900px) {
+  html[data-temporada="halloween"] .temporada-franja { padding: 44px 0 26px; }
+  html[data-temporada="halloween"] .tf-inner {
+    display: grid;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+  }
+  html[data-temporada="halloween"] .tf-head { padding: 0 8px 0 32px; }
+  html[data-temporada="halloween"] .tf-carrusel { padding-right: 28px; }
+}
 html[data-temporada="halloween"] .tf-kicker {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 11px;
@@ -199,7 +218,7 @@ html[data-temporada="halloween"] .tf-card {
   gap: 4px;
   padding: 0 0 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 16px;
   background: var(--bg-card2);
   color: var(--text-primary);
   font-family: var(--font-body);
@@ -208,7 +227,7 @@ html[data-temporada="halloween"] .tf-card {
   overflow: hidden;
   transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
 }
-@media (min-width: 600px) { html[data-temporada="halloween"] .tf-card { flex-basis: 220px; } }
+@media (min-width: 600px) { html[data-temporada="halloween"] .tf-card { flex-basis: 210px; } }
 html[data-temporada="halloween"] .tf-card:hover {
   transform: translateY(-4px);
   border-color: var(--halloween-border);

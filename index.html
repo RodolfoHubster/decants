@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css"/>
   <link rel="stylesheet" href="./assets/css/catalog.css?v=4.9">
   <!-- Temporadas: sus reglas solo aplican con html[data-temporada]; fuera de fechas no cambia nada. -->
-  <link rel="stylesheet" href="./assets/css/temporada-halloween.css?v=4">
+  <link rel="stylesheet" href="./assets/css/temporada-halloween.css?v=5">
   <style>
     /* ══════════════════════════════════════════════════
        TOKENS — paleta Fitoscents (unificada con faq.html)
@@ -351,6 +351,11 @@
     }
     .hero-shot:hover { transform:translateY(-4px); border-color:var(--gold); }
     .hero-shot:focus-visible { outline:2px solid var(--gold); outline-offset:3px; }
+    /* Sin "arrastrar imagen" del navegador: con el mouse dibujaba una copia
+       grande y translúcida de la foto encima de la página. */
+    .hero-shot img, .card-img img, .tf-img img, .modal-img img {
+      -webkit-user-drag:none; user-select:none;
+    }
     .hero-shot img {
       width:100%; height:100%; object-fit:cover; display:block;
       animation:shot-in .5s var(--ease) both;
@@ -1018,7 +1023,7 @@
       <div class="hero-frame" id="hero-frame">
         <button class="hero-shot" id="hero-shot" type="button" aria-label="Ver perfume destacado">
           <span class="hero-col-chip" id="hero-col-label"></span>
-          <img id="hero-shot-img" alt="" decoding="async">
+          <img id="hero-shot-img" alt="" decoding="async" draggable="false">
           <span class="hero-shot-tag">
             <span class="hero-shot-marca" id="hero-shot-marca"></span>
             <span class="hero-shot-nombre" id="hero-shot-nombre"></span>
@@ -1040,16 +1045,6 @@
 
 <!-- ══ TEMPORADA (solo con la temporada vigente y paquetes marcados) ══ -->
 <section class="temporada-franja" id="temporada-franja" hidden aria-labelledby="temporada-titulo">
-  <svg class="papel-picado" aria-hidden="true" focusable="false" viewBox="0 0 320 34" preserveAspectRatio="none">
-    <path class="pp-hilo" d="M0 2 H320" fill="none" stroke="currentColor" stroke-width="1"/>
-    <g class="pp-banderas">
-      <path d="M8 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
-      <path d="M72 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
-      <path d="M136 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
-      <path d="M200 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
-      <path d="M264 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
-    </g>
-  </svg>
   <div class="tf-inner">
     <div class="tf-head">
       <span class="tf-kicker"><i class="bi bi-moon-stars-fill"></i> Temporada</span>
@@ -1425,7 +1420,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
 
-<script type="module" src="./assets/js/catalog.js?v=2.39"></script>
+<script type="module" src="./assets/js/catalog.js?v=2.41"></script>
 <script type="module">
 import { initNovedadesModal } from './assets/js/novedades-modal.js?v=2';
 import { initTour } from './assets/js/tour.js';

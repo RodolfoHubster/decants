@@ -403,6 +403,9 @@ function iniciarCarrusel(lista) {
   // se cambia de perfume y se anula el clic, para no abrir la ficha sin querer.
   let inicioX = 0, inicioY = 0, arrastrando = false, huboDesliz = false;
 
+  // El arrastre nativo de imágenes (mouse) pintaba una copia fantasma de la foto.
+  shot.addEventListener('dragstart', e => e.preventDefault());
+
   const alEmpezar = (x, y) => {
     inicioX = x; inicioY = y; arrastrando = true; huboDesliz = false; parar();
     // La animación de entrada fija el transform; hay que soltarla para arrastrar.
@@ -865,7 +868,7 @@ function cardHTML(p) {
       ${etiqueta}
       ${savingsTag}
       ${src
-        ? `<img src="${src}" alt="${p.nombre}" loading="lazy" width="400" height="400" decoding="async">`
+        ? `<img src="${src}" alt="${p.nombre}" loading="lazy" width="400" height="400" decoding="async" draggable="false">`
         : `<div class="card-no-img"><i class="bi ${p.tipo === 'paquete' ? 'bi-box2-heart' : (p.tipo === 'accesorio' ? 'bi-bag' : 'bi-droplet')}"></i></div>`}
       ${agotadoEnTienda(p) ? `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:5;pointer-events:none;"><div style="background:#ef4444;color:white;padding:4px 12px;border-radius:20px;font-weight:bold;font-size:12px;letter-spacing:1px;box-shadow:0 2px 10px rgba(239,68,68,0.3);">AGOTADO</div></div>` : ''}
       ${units > 0 ? `<div class="card-in-cart"><i class="bi bi-bag-check-fill"></i>${units > 1 ? ` <span>${units}</span>` : ''}</div>` : ''}
@@ -913,7 +916,7 @@ function pintarFranjaTemporada(paquetes) {
     const agotado = agotadoEnTienda(p);
     return `<button type="button" class="tf-card${agotado ? ' agotado' : ''}" role="listitem" onclick="openModal('${p.id}')">
       <span class="tf-img">${src
-        ? `<img src="${src}" alt="${escFicha(p.nombre)}" loading="lazy" width="400" height="400" decoding="async">`
+        ? `<img src="${src}" alt="${escFicha(p.nombre)}" loading="lazy" width="400" height="400" decoding="async" draggable="false">`
         : '<i class="bi bi-box2-heart"></i>'}
         ${agotado ? '<span class="tf-agotado">Agotado</span>' : ''}</span>
       <span class="tf-nombre">${escFicha(p.nombre)}</span>
@@ -1106,8 +1109,23 @@ function checkCartTTL() {
   if (cart.length > 0 && loadCart().length === 0) {
     cart = [];
     showToast('Tu carrito anterior expiró por inactividad');
+    // Antes solo se vaciaba en memoria: el cajón seguía mostrando el pedido
+    // viejo, el total decía $0 y los botones no encontraban nada que cambiar.
+    updateCartBadge(); renderCartDrawer(); patchGridBadges();
+    if (modalData) syncModalCartBtn();
+    return true;
   }
+  return false;
 }
+
+/** Ver el pedido cuenta como actividad: renueva sus 60 minutos si sigue vigente. */
+function renovarPedido() {
+  if (checkCartTTL()) return;
+  if (cart.length) saveCart(cart);
+}
+
+// Al volver a la pestaña (p. ej. después de un rato en WhatsApp) se revisa el pedido.
+document.addEventListener('visibilitychange', () => { if (!document.hidden) renovarPedido(); });
 
 function persistCart() {
   if (cart.length) saveCart(cart);
@@ -1769,6 +1787,7 @@ window.toggleCart = () => {
   document.getElementById('cart-overlay').classList.add('open');
   document.body.classList.add('cart-open');
   document.body.style.overflow = 'hidden';
+  renovarPedido();
   renderCartDrawer();
 };
 
@@ -1829,6 +1848,7 @@ function renderCartDrawer() {
 }
 
 window.sendCartWA = () => {
+  if (checkCartTTL()) return;
   const url = buildWhatsAppURL(cart, '526648162623');
   if (!url) return;
   const w = window.open(url, '_blank');
