@@ -5,7 +5,7 @@
  * que usa la app, así que una regresión en el código real rompe el test.
  */
 
-import { resolveLoteId, ventasDeLote, esResto } from '../assets/js/lotes.js';
+import { resolveLoteId, ventasDeLote, esResto, loteParaVenta } from '../assets/js/lotes.js';
 
 describe('resolveLoteId', () => {
   const unLote = [{ id: 'lote-1716854400000' }];
@@ -137,5 +137,35 @@ describe('agregarBotella', () => {
   test('no repite id si ya existe uno igual', () => {
     const r = agregarBotella({ lotes: [{ id: 'lote-' + F }] }, { costo: 1, tamano: 1, fecha: F });
     expect(new Set(r.lotes.map(l => l.id)).size).toBe(2);
+  });
+});
+
+describe('loteParaVenta: manda la botella marcada', () => {
+  const dia = (m, d, h = 12) => new Date(2026, m - 1, d, h).getTime();
+  const hawas = {
+    loteActivo: 'b5',
+    lotes: [
+      { id: 'b3', fecha: dia(8, 1) }, { id: 'b4', fecha: dia(8, 23) },
+      { id: 'b5', fecha: '2026-09-20' }, { id: 'b6', fecha: dia(10, 1) },
+    ],
+  };
+  test('la 5ta marcada desde el 20 de sep: lo vendido el 25 sale de la 5ta', () => {
+    expect(loteParaVenta(hawas, dia(9, 25))).toBe('b5');
+  });
+  test('aunque haya una botella más nueva guardada (de reserva)', () => {
+    expect(loteParaVenta(hawas, dia(10, 5))).toBe('b5');
+  });
+  test('el mismo día que se compró, aunque sea más temprano', () => {
+    expect(loteParaVenta(hawas, dia(9, 20, 8))).toBe('b5');
+  });
+  test('un día viejo registrado tarde sale de la botella de ese momento', () => {
+    expect(loteParaVenta(hawas, dia(8, 10))).toBe('b3');
+    expect(loteParaVenta(hawas, dia(9, 1))).toBe('b4');
+  });
+  test('sin fecha: la marcada; sin marcada: la más nueva; sin botellas: la marcada o lote-1', () => {
+    expect(loteParaVenta(hawas, null)).toBe('b5');
+    expect(loteParaVenta({ lotes: hawas.lotes }, null)).toBe('b6');
+    expect(loteParaVenta({ loteActivo: 'x' }, dia(9, 1))).toBe('x');
+    expect(loteParaVenta(null, 0)).toBe('lote-1');
   });
 });

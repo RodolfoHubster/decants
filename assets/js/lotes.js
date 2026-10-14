@@ -74,3 +74,46 @@ export function agregarBotella(perfume, { costo, tamano, fecha = Date.now() } = 
   lotes.push({ id, fecha, costo: Number(costo) || 0, tamano: Number(tamano) || 0 });
   return { lotes, loteActivo: id, estadoStock: 'normal' };
 }
+
+// Fecha de compra de una botella en ms: se guardó como número o como 'AAAA-MM-DD'.
+function fechaDeLote(l) {
+  const f = l && l.fecha;
+  if (typeof f === 'number') return f;
+  const partes = String(f || '').split('-');
+  if (partes.length === 3) return new Date(+partes[0], +partes[1] - 1, +partes[2]).getTime();
+  const t = new Date(f).getTime();
+  return Number.isNaN(t) ? 0 : t;
+}
+
+const inicioDelDia = ms => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+
+/**
+ * De qué botella sale una venta nueva.
+ *
+ * Manda la botella que el dueño marcó como activa (el círculo en Perfumes):
+ * si la venta es del día en que se compró esa botella o después, sale de
+ * ella, aunque haya botellas más nuevas guardadas. Antes ganaba siempre la
+ * botella más nueva por fecha, y registrar una botella de reserva movía todas
+ * las ventas a esa.
+ *
+ * Una venta con fecha anterior a la botella activa (un día viejo que se
+ * registra tarde) sale de la botella que había en ese momento: la más nueva
+ * comprada hasta ese día.
+ *
+ * @param {{lotes?:Array, loteActivo?:string}} p
+ * @param {number|null} fechaVenta  ms; sin fecha = hoy.
+ * @returns {string} id de la botella.
+ */
+export function loteParaVenta(p, fechaVenta) {
+  if (!p) return 'lote-1';
+  const lotes = Array.isArray(p.lotes) ? p.lotes.filter(Boolean) : [];
+  if (!lotes.length) return p.loteActivo || 'lote-1';
+  const activa = lotes.find(l => l.id === p.loteActivo);
+  const venta = Number(fechaVenta);
+  if (!fechaVenta || Number.isNaN(venta)) return (activa || lotes[lotes.length - 1]).id;
+  if (activa && venta >= inicioDelDia(fechaDeLote(activa))) return activa.id;
+  const ordenados = [...lotes].sort((a, b) => fechaDeLote(a) - fechaDeLote(b));
+  let mejor = ordenados[0];
+  ordenados.forEach(l => { if (inicioDelDia(fechaDeLote(l)) <= venta) mejor = l; });
+  return mejor.id;
+}

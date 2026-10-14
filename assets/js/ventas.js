@@ -1,6 +1,7 @@
 import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, writeBatch, getDoc, auth, onAuthStateChanged, serverTimestamp, increment }
   from './firebase-config.js';
 import { aMs } from './alertas.js';
+import { loteParaVenta } from './lotes.js?v=2';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
 import { indiceClientes, idCliente } from './clientes-util.js?v=2';
@@ -348,33 +349,9 @@ window.getLoteRemaining = (perfId, loteId) => {
   return { cap, sold: totalMl, rem: Math.max(0, cap - totalMl), hasResto };
 };
 
-window.getSmartLoteId = (p, saleDate) => {
-  if (!p) return 'lote-1';
-  if (!p.lotes || p.lotes.length === 0) return p.loteActivo || 'lote-1';
-  if (!saleDate) return p.loteActivo || p.lotes[0].id;
-  
-  const dSale = new Date(saleDate);
-  if (isNaN(dSale.getTime())) return p.loteActivo || p.lotes[0].id;
-
-  const parseLocalDate = (dateStr) => {
-    if (!dateStr) return 0;
-    if (typeof dateStr === 'number') return dateStr;
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-      return new Date(parts[0], parts[1]-1, parts[2]).getTime();
-    }
-    return new Date(dateStr).getTime();
-  };
-
-  const sorted = [...p.lotes].sort((a,b) => parseLocalDate(a.fecha) - parseLocalDate(b.fecha));
-  let best = sorted[0];
-  for (let l of sorted) {
-    if (parseLocalDate(l.fecha) <= dSale.getTime()) {
-      best = l;
-    }
-  }
-  return best.id;
-};
+// La botella marcada como activa manda (lotes.js → loteParaVenta). Antes ganaba
+// siempre la más nueva por fecha, aunque el dueño hubiera marcado otra.
+window.getSmartLoteId = (p, saleDate) => loteParaVenta(p, saleDate);
 
 window.updateTallaOptions = (perfId, loteId, isPaquete) => {
   const tallaSel = document.getElementById('v-talla');
