@@ -300,3 +300,277 @@ html[data-temporada="halloween"] .cart-item-sorpresa {
   html[data-temporada="halloween"] .tf-btn:hover { transform: none; }
   html[data-temporada="halloween"] .tf-carrusel { scroll-behavior: auto; }
 }
+
+/* ══ Scroll de temporada ══════════════════════════════════════════ */
+html[data-temporada="halloween"] {
+  scrollbar-color: rgba(242, 140, 56, .6) var(--bg-dark);
+  scroll-behavior: smooth;
+}
+html[data-temporada="halloween"]::-webkit-scrollbar { width: 10px; }
+html[data-temporada="halloween"]::-webkit-scrollbar-track { background: var(--bg-dark); }
+html[data-temporada="halloween"]::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--halloween), var(--cempasuchil));
+  border: 2px solid var(--bg-dark);
+  border-radius: 999px;
+}
+
+/* ══ Decoración alrededor de la pantalla ══════════════════════════
+   Fija, sin clics (pointer-events: none) y por debajo del encabezado,
+   la barra de filtros, los modales y los botones flotantes. */
+html[data-temporada="halloween"] .deco-pantalla {
+  position: fixed;
+  inset: 0;
+  z-index: 0;                 /* detrás del contenido, como las partículas: con 90 el hilo cruzaba la barra de filtros */
+  pointer-events: none;
+}
+html[data-temporada="halloween"] :where(.deco-pantalla svg) { display: block; }   /* sin peso: no le gana a los display:none */
+
+/* Telarañas en las esquinas de arriba (debajo del encabezado). */
+html[data-temporada="halloween"] .dp-telarana {
+  position: absolute;
+  top: 62px;
+  width: 64px;
+  height: 64px;
+  color: var(--text-primary);
+  opacity: .08;
+}
+html[data-temporada="halloween"] .dp-izq { left: 0; }
+html[data-temporada="halloween"] .dp-der { right: 0; transform: scaleX(-1); }
+
+/* Calabazas y la araña colgante: solo donde sobra orilla a los lados. */
+html[data-temporada="halloween"] .dp-calabaza,
+html[data-temporada="halloween"] .dp-colgante { display: none; }
+
+html[data-temporada="halloween"] .cal-cuerpo { fill: var(--halloween); }
+html[data-temporada="halloween"] .cal-gajos  { stroke: #b85f1a; stroke-width: 1.4; }
+html[data-temporada="halloween"] .cal-tallo  { fill: #5c6b2e; }
+html[data-temporada="halloween"] .cal-cara   { fill: #ffd36b; }
+
+@media (min-width: 1300px) {
+  html[data-temporada="halloween"] .dp-telarana {
+    width: clamp(70px, calc((100vw - 1200px) / 2 - 10px), 150px);
+    height: clamp(70px, calc((100vw - 1200px) / 2 - 10px), 150px);
+    opacity: .12;
+  }
+  html[data-temporada="halloween"] .dp-calabaza {
+    display: block;
+    position: absolute;
+    bottom: 120px;
+    width: clamp(44px, calc((100vw - 1200px) / 2 - 24px), 72px);
+    opacity: .7;
+    filter: drop-shadow(0 0 14px rgba(242, 140, 56, .35));
+  }
+  html[data-temporada="halloween"] .dp-cal-izq { left: 14px; transform: rotate(-8deg); }
+  html[data-temporada="halloween"] .dp-cal-der { right: 14px; transform: rotate(6deg) scale(.85); }
+  /* Araña colgando de la telaraña izquierda. */
+  html[data-temporada="halloween"] .dp-colgante {
+    display: block;
+    position: absolute;
+    top: 62px;
+    left: clamp(30px, calc((100vw - 1200px) / 4), 70px);
+    width: 16px;
+    padding-top: 90px;
+    color: var(--text-primary);
+    opacity: .35;
+    transform-origin: top center;
+    animation: ht-columpio 5s ease-in-out infinite;
+  }
+  html[data-temporada="halloween"] .dp-colgante::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 50%;
+    width: 1px; height: 92px;
+    background: currentColor;
+    opacity: .6;
+  }
+}
+@keyframes ht-columpio {
+  0%, 100% { transform: rotate(-4deg); }
+  50%      { transform: rotate(4deg); }
+}
+
+/* La arañita del scroll: su hilo crece con --bajada (0 arriba, 1 abajo).
+   Se detiene antes del botón flotante del carrito. */
+html[data-temporada="halloween"] .dp-scroll {
+  position: absolute;
+  top: 62px;
+  right: 3px;
+  width: 16px;
+  height: calc(100vh - 62px - 160px);
+  height: calc(100dvh - 62px - 160px);
+  color: var(--halloween);
+}
+html[data-temporada="halloween"] .dp-hilo {
+  position: absolute;
+  top: 0; left: 50%;
+  width: 1px;
+  height: calc(var(--bajada, 0) * 100% + 4px);
+  background: currentColor;
+  opacity: .45;
+}
+html[data-temporada="halloween"] .dp-arana {
+  position: absolute;
+  top: calc(var(--bajada, 0) * 100%);
+  left: 0;
+  width: 16px;
+  opacity: .85;
+  filter: drop-shadow(0 0 6px rgba(242, 140, 56, .4));
+}
+@media (min-width: 1300px) {
+  html[data-temporada="halloween"] .dp-scroll { right: 10px; width: 20px; }   /* sale de la esquina de la telaraña */
+  html[data-temporada="halloween"] .dp-arana { width: 20px; }
+}
+
+/* ══ Modal: 3 diseños ═════════════════════════════════════════════
+   catalog.js pone data-variante en .modal-box: calabaza · telarana · muertos.
+   En celular la foto va arriba y la X a la derecha: la decoración va a la izquierda.
+   En escritorio la columna de texto es la derecha: la decoración va ahí. */
+html[data-temporada="halloween"] .modal-deco {
+  position: absolute;
+  inset: 0;
+  z-index: 3;                 /* debajo de la X (z-index 4) */
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+html[data-temporada="halloween"] .modal-deco > * { display: none; position: absolute; }
+html[data-temporada="halloween"] :where(.modal-deco svg) { display: block; }
+
+/* 1 · Calabaza */
+html[data-temporada="halloween"] .modal-box[data-variante="calabaza"] {
+  border-color: var(--halloween-border);
+  background-image: radial-gradient(70% 45% at 100% 100%, var(--halloween-soft), transparent 70%);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 50px rgba(242, 140, 56, .12);
+}
+html[data-temporada="halloween"] .modal-box[data-variante="calabaza"] .md-calabaza {
+  display: block;
+  top: 12px; left: 12px;
+  width: 42px;
+  filter: drop-shadow(0 0 10px rgba(242, 140, 56, .5));
+}
+
+/* 2 · Telaraña */
+html[data-temporada="halloween"] .modal-box[data-variante="telarana"] {
+  border-color: rgba(255, 255, 255, .16);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 50px rgba(170, 160, 255, .08);
+}
+html[data-temporada="halloween"] .modal-box[data-variante="telarana"] .md-telarana {
+  display: block;
+  top: 0; left: 0;
+  width: 96px; height: 96px;
+  color: #fff;
+  opacity: .32;
+}
+html[data-temporada="halloween"] .modal-box[data-variante="telarana"] .md-arana {
+  display: block;
+  top: 0; left: 64px;
+  width: 15px;
+  padding-top: 44px;
+  color: #fff;
+  opacity: .55;
+  transform-origin: top center;
+  animation: ht-columpio 4.5s ease-in-out infinite;
+}
+html[data-temporada="halloween"] .modal-box[data-variante="telarana"] .md-arana::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 50%;
+  width: 1px; height: 46px;
+  background: currentColor;
+  opacity: .7;
+}
+
+/* 3 · Día de Muertos */
+html[data-temporada="halloween"] .modal-box[data-variante="muertos"] {
+  border-color: rgba(247, 179, 43, .45);
+  background-image: radial-gradient(70% 40% at 100% 0%, rgba(247, 179, 43, .09), transparent 70%);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 50px rgba(247, 179, 43, .10);
+}
+html[data-temporada="halloween"] .modal-box[data-variante="muertos"] .md-papel {
+  display: block;
+  top: 0; left: 0;
+  width: calc(100% - 64px); height: 24px;   /* termina antes de la X de cerrar */
+  color: var(--cempasuchil);
+  opacity: .85;
+}
+html[data-temporada="halloween"] .md-banderas path { fill: var(--cempasuchil); opacity: .7; }
+html[data-temporada="halloween"] .md-banderas path:nth-child(3n+2) { fill: var(--halloween); }
+html[data-temporada="halloween"] .md-banderas path:nth-child(3n) { fill: #c94f7c; }   /* rosa mexicano */
+html[data-temporada="halloween"] .modal-box[data-variante="muertos"] .md-flores {
+  display: block;
+  top: 30px; left: 10px;
+  width: 92px;
+  opacity: .8;
+}
+html[data-temporada="halloween"] .md-flores circle { fill: var(--cempasuchil); }
+html[data-temporada="halloween"] .md-flores .md-centro { fill: var(--halloween); }
+
+@media (min-width: 860px) {
+  /* Abajo a la izquierda de la foto: abajo a la derecha la tapaba el botón de agregar. */
+  html[data-temporada="halloween"] .modal-box[data-variante="calabaza"] .md-calabaza {
+    top: auto; bottom: 16px; left: 16px; width: 56px;
+  }
+  html[data-temporada="halloween"] .modal-box[data-variante="telarana"] .md-telarana {
+    left: auto; right: 0; width: 130px; height: 130px; transform: scaleX(-1); opacity: .22;
+  }
+  /* En escritorio cuelga corto, dentro de la esquina: no tapa el nombre del perfume. */
+  html[data-temporada="halloween"] .modal-box[data-variante="telarana"] .md-arana { left: auto; right: 34px; padding-top: 20px; }
+  html[data-temporada="halloween"] .modal-box[data-variante="telarana"] .md-arana::before { height: 22px; }
+  html[data-temporada="halloween"] .modal-box[data-variante="muertos"] .md-papel { left: 50%; width: 50%; height: 28px; }
+  html[data-temporada="halloween"] .modal-box[data-variante="muertos"] .md-flores {
+    top: auto; bottom: 12px; left: 14px; width: 120px;
+  }
+}
+
+/* ══ Sin movimiento para quien lo pide ════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  html[data-temporada="halloween"] { scroll-behavior: auto; }
+  html[data-temporada="halloween"] .dp-colgante,
+  html[data-temporada="halloween"] .md-arana { animation: none; }
+}
+
+/* ══ Carrito vacío: telaraña y una araña esperando ════════════════ */
+html[data-temporada="halloween"] .cart-empty { position: relative; overflow: hidden; }
+html[data-temporada="halloween"] .cart-empty > :not(.cart-empty-deco) { position: relative; z-index: 1; }
+html[data-temporada="halloween"] .cart-empty-deco {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+html[data-temporada="halloween"] .ced-telarana {
+  position: absolute;
+  top: 0; right: 0;
+  width: 130px; height: 130px;
+  color: var(--text-primary);
+  opacity: .16;
+  transform: scaleX(-1);
+}
+html[data-temporada="halloween"] .ced-telarana.izq {
+  right: auto; left: 0;
+  width: 80px; height: 80px;
+  opacity: .1;
+  transform: none;
+}
+html[data-temporada="halloween"] .ced-arana {
+  position: absolute;
+  top: 0; right: 46px;
+  width: 18px;
+  padding-top: 110px;
+  color: var(--halloween);
+  opacity: .8;
+  transform-origin: top center;
+  animation: ht-columpio 4s ease-in-out infinite;
+}
+html[data-temporada="halloween"] .ced-arana::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 50%;
+  width: 1px; height: 112px;
+  background: currentColor;
+  opacity: .5;
+}
+html[data-temporada="halloween"] .ced-arana svg { display: block; }
+html[data-temporada="halloween"] .cart-empty i { color: var(--halloween); opacity: .8; }
+@media (prefers-reduced-motion: reduce) {
+  html[data-temporada="halloween"] .ced-arana { animation: none; }
+}

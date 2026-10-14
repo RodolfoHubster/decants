@@ -1,5 +1,6 @@
 import {
   temporadaVigente, hoyEnTijuana, temporadaSimulada, paquetesDeTemporada, seleccionRequerida, ofreceTrucoOTrato,
+  varianteModal, VARIANTES_MODAL, progresoScroll,
 } from '../assets/js/temporada.js';
 
 const config = { temporada: { id: 'halloween', activa: true, inicio: '2026-10-16', fin: '2026-11-03' } };
@@ -62,5 +63,22 @@ describe('paquetes y Truco o Trato', () => {
     expect(ofreceTrucoOTrato(items[3], 'halloween')).toBe(false);
     expect(ofreceTrucoOTrato(items[0], null)).toBe(false);
     expect(ofreceTrucoOTrato(items[1], 'halloween')).toBe(false);
+  });
+});
+
+describe('varianteModal y progresoScroll', () => {
+  test('cada producto siempre abre con el mismo diseño', () => {
+    expect(varianteModal('abc123')).toBe(varianteModal('abc123'));
+    expect(VARIANTES_MODAL).toContain(varianteModal('n9AN5OVk5aQ43N1wtG1f'));
+  });
+  test('el catálogo se reparte entre los 3 diseños', () => {
+    const vistos = new Set(Array.from({ length: 30 }, (_, i) => varianteModal('perfume-' + i)));
+    expect(vistos.size).toBe(3);
+  });
+  test('progreso del scroll entre 0 y 1', () => {
+    expect(progresoScroll(0, 3000, 800)).toBe(0);
+    expect(progresoScroll(1100, 3000, 800)).toBe(0.5);
+    expect(progresoScroll(5000, 3000, 800)).toBe(1);
+    expect(progresoScroll(100, 500, 800)).toBe(0); // página más corta que la pantalla
   });
 });

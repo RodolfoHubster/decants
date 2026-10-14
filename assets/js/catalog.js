@@ -17,7 +17,7 @@ import { leerCache, guardarCache, borrarCache } from './catalogo-cache.js?v=2';
 import { precargarImagen } from './imagenes.js';
 import { parsearFicha } from './ficha.js';
 import { CLAVE_DUENO, CLAVE_ULTIMO_DIA, diaLocal, debeContar } from './visitas.js';
-import { temporadaVigente, temporadaSimulada, paquetesDeTemporada, seleccionRequerida, ofreceTrucoOTrato } from './temporada.js';
+import { temporadaVigente, temporadaSimulada, paquetesDeTemporada, seleccionRequerida, ofreceTrucoOTrato, varianteModal, progresoScroll } from './temporada.js?v=2';
 
 // ── Visitas: una por persona al día, sin contar al dueño ──────────
 const esDueno = (() => { try { return localStorage.getItem(CLAVE_DUENO) === '1'; } catch (e) { return false; } })();
@@ -878,7 +878,8 @@ function aplicarTemporada() {
   if (!temporada) return;
   const paquetes = paquetesDeTemporada(all, temporada.id);
   document.documentElement.dataset.temporada = temporada.id;
-  document.querySelectorAll('.deco-temporada').forEach(el => { el.hidden = false; });
+  document.querySelectorAll('.deco-temporada, .deco-pantalla, .modal-deco, .cart-empty-deco').forEach(el => { el.hidden = false; });
+  iniciarAranaScroll();
   // Sin paquetes cargados no hay pestaña ni franja vacías: solo el look.
   if (!paquetes.length) return;
   const tab = document.getElementById('ftab-temporada');
@@ -909,6 +910,23 @@ function pintarFranjaTemporada(paquetes) {
     </button>`;
   }).join('');
   franja.hidden = false;
+}
+
+/** La arañita de la orilla baja con su hilo conforme bajas la página. */
+function iniciarAranaScroll() {
+  const caja = document.querySelector('.dp-scroll');
+  if (!caja) return;
+  let pendiente = false;
+  const mover = () => {
+    pendiente = false;
+    const p = progresoScroll(window.scrollY, document.documentElement.scrollHeight, window.innerHeight);
+    caja.style.setProperty('--bajada', p.toFixed(4));
+  };
+  window.addEventListener('scroll', () => {
+    if (!pendiente) { pendiente = true; requestAnimationFrame(mover); }
+  }, { passive: true });
+  window.addEventListener('resize', mover, { passive: true });
+  mover();
 }
 
 window.verPaquetesTemporada = () => {
@@ -1127,6 +1145,12 @@ window.openModal = (id, pushHash = true) => {
   const p = all.find(x => x.id === id);
   if (!p) return;
   modalData = p;
+  // En temporada cada producto abre con uno de los 3 diseños (siempre el mismo).
+  const cajaModal = document.querySelector('#modal .modal-box');
+  if (cajaModal) {
+    if (temporada) cajaModal.dataset.variante = varianteModal(p.id);
+    else delete cajaModal.dataset.variante;
+  }
   // Quitar el esqueleto del link compartido ANTES de llenar: con .cargando el
   // contenido está oculto y prepararDescripcion() medía 0, así que el
   // "Ver más" quedaba escondido en descripciones largas.

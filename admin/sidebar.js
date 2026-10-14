@@ -108,6 +108,7 @@ export function renderSidebar(active) {
         </div>
         <ul class="sb-group-children ${isOpen('ajustes_grp','ajustes','novedades','anuncios')}">
           <li><a href="./ajustes.html"   class="${active==='ajustes'?'active':''}"><i class="bi bi-cpu"></i> Inteligencia artificial</a></li>
+          <li><a href="./ajustes.html#temporada"><i class="bi bi-moon-stars"></i> Temporada (Halloween)</a></li>
           <li><a href="./novedades.html" class="${active==='novedades'?'active':''}"><i class="bi bi-stars"></i> Aviso de novedades</a></li>
           <li><a href="./anuncios.html"  class="${active==='anuncios'?'active':''}"><i class="bi bi-megaphone"></i> Anuncios</a></li>
         </ul>

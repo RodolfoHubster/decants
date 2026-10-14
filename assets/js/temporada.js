@@ -67,3 +67,27 @@ export function ofreceTrucoOTrato(paquete, idTemporada) {
   return !!(paquete && idTemporada && paquete.tipo === 'paquete' && paquete.esPersonalizable
     && paquete.temporada === idTemporada && (Number(paquete.maxSeleccion) || 3) >= 2);
 }
+
+/** Los 3 diseños del modal en temporada. */
+export const VARIANTES_MODAL = ['calabaza', 'telarana', 'muertos'];
+
+/**
+ * Diseño del modal para un producto: sale de su id, así cada perfume siempre
+ * se abre con el mismo (no cambia cada vez que lo abres) y el catálogo queda
+ * repartido entre los tres.
+ */
+export function varianteModal(id) {
+  const txt = String(id || '');
+  let h = 0;
+  for (let i = 0; i < txt.length; i++) h = (h * 31 + txt.charCodeAt(i)) >>> 0;
+  return VARIANTES_MODAL[h % VARIANTES_MODAL.length];
+}
+
+/**
+ * Qué tanto bajó la arañita del scroll: 0 arriba, 1 al final de la página.
+ */
+export function progresoScroll(scrollY, altoPagina, altoVentana) {
+  const recorrido = (Number(altoPagina) || 0) - (Number(altoVentana) || 0);
+  if (!(recorrido > 0)) return 0;
+  return Math.min(1, Math.max(0, (Number(scrollY) || 0) / recorrido));
+}
