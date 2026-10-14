@@ -574,3 +574,19 @@ html[data-temporada="halloween"] .cart-empty i { color: var(--halloween); opacit
 @media (prefers-reduced-motion: reduce) {
   html[data-temporada="halloween"] .ced-arana { animation: none; }
 }
+
+/* ══ Paquete sorpresa (Calaverita) ════════════════════════════════ */
+html[data-temporada="halloween"] .tag-sorpresa {
+  background: var(--bg-dark);
+  color: var(--halloween);
+  border: 1px solid var(--halloween);
+}
+html[data-temporada="halloween"] .sorpresa-caja {
+  border-color: var(--halloween-border);
+  background: var(--halloween-soft);
+}
+html[data-temporada="halloween"] .sorpresa-caja > i,
+html[data-temporada="halloween"] .sorpresa-caja .sorpresa-extra,
+html[data-temporada="halloween"] .cart-precio-extra,
+html[data-temporada="halloween"] .cart-nota-extra,
+html[data-temporada="halloween"] .cart-item-extra { color: var(--halloween); }

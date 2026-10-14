@@ -3,12 +3,13 @@ import { db, auth, collection, getDocs, query, where, onAuthStateChanged, doc, u
 import { addItem, decrementItem, removeItem, clearCart as pureCleart,
          calcTotal, totalUnits, buildWhatsAppURL, getItemQty, MAX_QTY,
          saveCart, loadCart, clearSavedCart, cartExpiresInMinutes, revalidarCarrito }
-  from './cart.js?v=3';
+  from './cart.js?v=4';
 import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug } from './slug.js';
 import { imgCard, imgModal, imgCart, imgOg } from './cloudinary.js';
 import { heroStats, pickShowcase, construirColecciones, barajar } from './hero.js';
 import { resolverItemsPaquete, contarDisponibles, paqueteArmable } from './stock.js';
 import { ahorroPorTalla } from './precios.js';
+import { sorpresaDisponible, opcionesSorpresa, preciosDelCarrito, desgloseSorpresa } from './sorpresa.js';
 
 // Temporada especial vigente (Halloween…) o null. La pone load() desde config/tienda.
 let temporada = null;
@@ -653,6 +654,15 @@ async function load() {
       avisoPedido = `Actualizamos tu pedido (${partes.join(' · ')})`;
     }
   }
+  if (cart.length) {
+    // Los renglones guardados antes no traían temporada ni precio de extra.
+    cart = cart.map(it => {
+      const prod = all.find(x => x.id === it.id);
+      if (!prod || prod.tipo !== 'paquete') return it;
+      return { ...it, esPaquete: true, esSorpresa: !!prod.esSorpresa, temporada: prod.temporada || null, precioExtra: Number(prod.precioExtra) || 0 };
+    });
+    persistCart();
+  }
   if (avisoPedido && !cart.length) showToast(avisoPedido);
   if (cart.length) {
     const mins = cartExpiresInMinutes();
@@ -793,7 +803,7 @@ window.addEventListener('hashchange', () => {
 });
 
 function calcSavings(paquete, size) {
-  if (paquete.tipo !== 'paquete' || !paquete.items || paquete.items.length === 0) return { saving: 0, original: 0 };
+  if (paquete.tipo !== 'paquete' || paquete.esSorpresa || !paquete.items || paquete.items.length === 0) return { saving: 0, original: 0 };
   const pkgPrice = paquete.precios && paquete.precios[size] ? paquete.precios[size] : (paquete.ml == size ? paquete.precio : 0);
   if (!pkgPrice) return { saving: 0, original: 0 };
   
@@ -845,7 +855,9 @@ function cardHTML(p) {
   // ─ imgCard: 400x400, WebP automático, q_auto:good ─
   const src = imgCard(p.imagen);
   const deTemporada = !!(temporada && p.tipo === 'paquete' && p.temporada === temporada.id);
-  const etiqueta = deTemporada
+  const etiqueta = deTemporada && p.esSorpresa
+    ? '<div class="tag-temporada tag-sorpresa"><i class="bi bi-question-diamond-fill"></i> SORPRESA</div>'
+    : deTemporada
     ? `<div class="tag-temporada"><i class="bi bi-moon-stars-fill"></i> ${escFicha((NOMBRE_TEMPORADA[temporada.id] || temporada.id).toUpperCase())}</div>`
     : (p.tipo === 'paquete' ? `<div style="position:absolute;top:8px;left:8px;background:var(--gold-s);border:1px solid var(--gold-b);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;z-index:2;display:flex;align-items:center;gap:4px;"><i class="bi bi-box2-heart-fill"></i> PAQUETE</div>` : '');
   return `<div class="pcard ${p.tipo === 'paquete' ? 'pcard-paquete' : ''}${deTemporada ? ' pcard-temporada' : ''}" onclick="openModal('${p.id}')" data-id="${p.id}" ${p.tipo === 'paquete' ? 'style="border:1px solid var(--gold-b); box-shadow:0 4px 20px rgba(201,168,76,0.1);"' : ''}>
@@ -906,7 +918,9 @@ function pintarFranjaTemporada(paquetes) {
         ${agotado ? '<span class="tf-agotado">Agotado</span>' : ''}</span>
       <span class="tf-nombre">${escFicha(p.nombre)}</span>
       <span class="tf-precio">Desde $${desde}</span>
-      ${ahorro > 0 ? `<span class="tf-ahorro">Ahorras $${ahorro}</span>` : ''}
+      ${p.esSorpresa && +p.precioExtra > 0
+        ? `<span class="tf-ahorro">$${+p.precioExtra} con otro paquete</span>`
+        : (ahorro > 0 ? `<span class="tf-ahorro">Ahorras $${ahorro}</span>` : '')}
     </button>`;
   }).join('');
   franja.hidden = false;
@@ -1233,6 +1247,17 @@ window.openModal = (id, pushHash = true) => {
           `).join('')}
         </div>
       `;
+    } else if (p.esSorpresa) {
+      const opciones = opcionesSorpresa(itemsPq);
+      pqItemsEl.innerHTML = `
+        <div class="sorpresa-caja">
+          <i class="bi bi-question-diamond-fill" aria-hidden="true"></i>
+          <div>
+            <strong>Perfume sorpresa de nuestro caldero</strong>
+            <span>${opciones ? `Sale de entre ${opciones} perfume${opciones === 1 ? '' : 's'} que tenemos hoy. Fito lo elige al preparar tu pedido.` : 'Por ahora el caldero está vacío.'}</span>
+            ${+p.precioExtra > 0 ? `<span class="sorpresa-extra">En 3 ml queda en $${+p.precioExtra} si la llevas con otro paquete de temporada.</span>` : ''}
+          </div>
+        </div>`;
     } else {
       pqItemsEl.innerHTML = `
         <div style="margin-top:10px; margin-bottom:8px; font-size:11px; font-weight:600; color:var(--gold); text-transform:uppercase; letter-spacing:1px;">Perfumes incluidos en el paquete:</div>
@@ -1566,6 +1591,7 @@ window.pedirModal = () => {
     extra = `\nPerfumes: ${window.customPackageSelections.map(x => x.nombre).join(', ')}`;
   }
   if (esTruco()) extra += '\n+1 sorpresa de Fito';
+  if (modalData.esSorpresa) extra += '\nPerfume sorpresa: Fito lo elige al preparar el pedido';
   const msg = sel
     ? `Hola! Me interesa:\n${title}\nTamaño: ${sel.dataset.size}${modalData.tipo === 'paquete' ? '' : 'ml'}\nPrecio: $${sel.dataset.price} MXN${extra}\n${url}`
     : `Hola! Me interesa:\n${title}${extra}\n${url}`;
@@ -1582,6 +1608,8 @@ window.pedirModal = () => {
 function agotadoEnTienda(p) {
   if (!p) return true;
   if (p.estadoStock === 'agotado') return true;
+  // Sorpresa: se puede vender mientras quede al menos un perfume del caldero.
+  if (p.tipo === 'paquete' && p.esSorpresa) return !sorpresaDisponible(resolverItemsPaquete(p.items || [], all));
   if (p.tipo === 'paquete' && !p.esPersonalizable && (p.items || []).length) {
     const items = resolverItemsPaquete(p.items, all);
     return !paqueteArmable(items, items.length);
@@ -1628,7 +1656,12 @@ window.addToCart = () => {
     price:  +sel.dataset.price,
     qty:    1,
     customItems: customItems,
-    sorpresa: esTruco()
+    sorpresa: esTruco(),
+    // Para el precio de la Calaverita (sorpresa.js): una a precioExtra por paquete de su temporada.
+    esPaquete: modalData.tipo === 'paquete',
+    esSorpresa: !!modalData.esSorpresa,
+    temporada: modalData.temporada || null,
+    precioExtra: Number(modalData.precioExtra) || 0
   };
   const { cart: newCart, added, reason } = addItem(cart, item);
   if (!added) { if (reason === 'max_qty') showToast(`Máximo ${MAX_QTY} unidades por talla`); return; }
@@ -1650,9 +1683,19 @@ window.incrementCartItem = key => {
   if (qtyEl)   qtyEl.textContent = newQty;
   if (plusBtn) plusBtn.disabled  = (newQty >= MAX_QTY);
   _updateDecBtn(key, newQty);
-  updateCartBadge(); patchGridBadges();
+  updateCartBadge(); patchGridBadges(); refrescarPreciosSorpresa();
   if (modalData?.id === cart.find(i => i.key === key)?.id) syncModalCartBtn();
 };
+
+/** Con una sorpresa en el carrito, cambiar cantidades mueve qué pieza va a precio
+ *  de extra: se redibuja el cajón (sin saltar arriba) para que el precio cuadre. */
+function refrescarPreciosSorpresa() {
+  if (!cart.some(i => i.esSorpresa)) return;
+  const body = document.querySelector('.cart-body');
+  const y = body ? body.scrollTop : 0;
+  renderCartDrawer();
+  if (body) body.scrollTop = y;
+}
 
 window.decrementCartItem = key => {
   checkCartTTL();
@@ -1674,7 +1717,7 @@ window.decrementCartItem = key => {
     if (plusBtn) plusBtn.disabled  = (updated.qty >= MAX_QTY);
     _updateDecBtn(key, updated.qty);
   }
-  updateCartBadge(); patchGridBadges();
+  updateCartBadge(); patchGridBadges(); refrescarPreciosSorpresa();
   if (modalData) syncModalCartBtn();
 };
 
@@ -1751,7 +1794,13 @@ function renderCartDrawer() {
   }
   if (empty) empty.style.display = 'none'; if (foot) foot.style.display = 'flex';
   // Nota: item.imagen ya guarda la URL con transformación imgCart (80x80) aplicada al agregar
-  list.innerHTML = cart.map(item => `
+  const { renglones } = preciosDelCarrito(cart);
+  list.innerHTML = cart.map((item, n) => {
+    const r = renglones[n];
+    const precio = r.conExtra === r.qty
+      ? `<del class="cart-precio-antes">$${r.normal}</del> <strong class="cart-precio-extra">$${r.extra}</strong> <span class="cart-nota-extra">precio con paquete</span>`
+      : `<strong>$${item.price}</strong>`;
+    return `
     <div class="cart-item" data-key="${item.key}">
       <div class="cart-item-img">
         ${item.imagen ? `<img src="${imgCart(item.imagen)}" alt="${item.nombre}" loading="lazy" width="80" height="80" decoding="async">` : '<div class="cart-item-no-img"><i class="bi bi-droplet"></i></div>'}
@@ -1759,7 +1808,9 @@ function renderCartDrawer() {
       <div class="cart-item-info">
         <div class="cart-item-marca">${item.marca}</div>
         <div class="cart-item-nombre">${item.nombre}</div>
-        <div class="cart-item-size">${item.size}ml — <strong>$${item.price}</strong></div>
+        <div class="cart-item-size">${item.size}ml — ${precio}</div>
+        ${r.conExtra && r.conExtra < r.qty ? `<div class="cart-item-extra">${desgloseSorpresa(r)}</div>` : ''}
+        ${item.esSorpresa ? '<div class="cart-item-caldero"><i class="bi bi-question-diamond"></i> Perfume sorpresa: lo elige Fito</div>' : ''}
         ${item.customItems ? `<div style="font-size:10px; color:var(--text-faint); margin-top:2px;">[${item.customItems.map(c=>c.nombre).join(', ')}]</div>` : ''}
         ${item.sorpresa ? '<div class="cart-item-sorpresa"><i class="bi bi-magic"></i> +1 sorpresa de Fito</div>' : ''}
       </div>
@@ -1770,7 +1821,8 @@ function renderCartDrawer() {
         <span class="cart-qty-num" data-key="${item.key}">${item.qty}</span>
         <button class="cart-qty-btn" data-inc="${item.key}" aria-label="Agregar uno" ${item.qty >= MAX_QTY ? 'disabled' : ''}>+</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   const totalEl = document.getElementById('cart-total');
   if (totalEl) totalEl.textContent = '$' + calcTotal(cart) + ' MXN';
   if (body) body.scrollTop = 0;

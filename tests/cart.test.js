@@ -289,3 +289,25 @@ describe('buildWhatsAppURL — Truco o Trato', () => {
     expect(decodeURIComponent(buildWhatsAppURL(cart, '52'))).not.toContain('sorpresa');
   });
 });
+
+describe('Calaverita: precio con paquete en el total y en WhatsApp', () => {
+  const truco = { key: 't', id: 't', marca: 'Combos Fitoscents', nombre: 'Truco o Aroma', size: 'Paquete 5', price: 300, qty: 1, esPaquete: true, temporada: 'halloween' };
+  const cal = qty => ({ key: 'c', id: 'c', marca: 'Combos Fitoscents', nombre: 'Calaverita', size: 'Paquete 3', price: 59, qty, esPaquete: true, esSorpresa: true, temporada: 'halloween', precioExtra: 49 });
+  const texto = cart => decodeURIComponent(buildWhatsAppURL(cart, '52').split('text=')[1]);
+  test('una con paquete: $49 y avisa que es sorpresa', () => {
+    const msg = texto([truco, cal(1)]);
+    expect(msg).toContain('Calaverita sorpresa (3ml) x1 — $49 MXN (precio con paquete)');
+    expect(msg).toContain('Perfume sorpresa: Fito lo elige');
+    expect(msg).toContain('Total estimado: $349 MXN');
+  });
+  test('tres con un paquete: 1 a $49 y 2 a $59', () => {
+    const msg = texto([truco, cal(3)]);
+    expect(msg).toContain('x3 — $167 MXN');
+    expect(msg).toContain('1 a $49 (precio con paquete) + 2 a $59');
+    expect(calcTotal([truco, cal(3)])).toBe(467);
+  });
+  test('sin paquete, a su precio normal', () => {
+    expect(texto([cal(1)])).toContain('x1 — $59 MXN');
+    expect(texto([cal(1)])).not.toContain('precio con paquete');
+  });
+});

@@ -36,7 +36,8 @@ tests/*.test.js                                 ← Jest, importan los módulos 
 `visitas.js` (contador propio: `visitas/AAAA-MM-DD {personas}`, sin contar al dueño) ·
 `recordatorios.js` (links a Google Calendar con repetición) ·
 `puntos-externos.js` (decants y probadores en barberías: botella asignada, ml que alcanzan, costo de probadores) ·
-`temporada.js` (temporada especial vigente desde `config/tienda.temporada`; `?temporada=halloween` la simula solo en localhost)
+`temporada.js` (temporada especial vigente desde `config/tienda.temporada`; `?temporada=halloween` la simula solo en localhost) ·
+`sorpresa.js` (paquetes sorpresa como la Calaverita: disponibilidad, una a `precioExtra` por paquete de su temporada, "elige 1" al venderla en el panel)
 
 `config/costosOperativos` es **privado**; la tienda solo lee `config/tienda` (`disable2ml`).
 

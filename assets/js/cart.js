@@ -3,6 +3,8 @@
  * Cada item: { key, id, nombre, marca, imagen, size, price, qty }
  */
 
+import { preciosDelCarrito, desgloseSorpresa } from './sorpresa.js';
+
 export const MAX_QTY = 5;
 
 // ── Persistencia localStorage con TTL ─────────────
@@ -69,8 +71,9 @@ export function removeItem(cart, key) {
 
 export function clearCart() { return []; }
 
+// El total respeta el precio de extra de los paquetes sorpresa (sorpresa.js).
 export function calcTotal(cart) {
-  return cart.reduce((sum, i) => sum + (Number(i.price) || 0) * (i.qty || 1), 0);
+  return preciosDelCarrito(cart).total;
 }
 
 export function totalUnits(cart) {
@@ -79,9 +82,17 @@ export function totalUnits(cart) {
 
 export function buildWhatsAppURL(cart, waNumber) {
   if (!cart.length) return null;
-  const total = calcTotal(cart);
-  const lines = cart.map(i => {
-    let base = `• ${i.marca} - ${i.nombre} (${i.size.replace('Paquete ', '')}ml) x${i.qty} — $${i.price * i.qty} MXN`;
+  const { renglones, total } = preciosDelCarrito(cart);
+  const lines = cart.map((i, n) => {
+    const r = renglones[n];
+    const nombre = i.esSorpresa ? `${i.nombre} sorpresa` : i.nombre;
+    let base = `• ${i.marca} - ${nombre} (${i.size.replace('Paquete ', '')}ml) x${i.qty} — $${r.total} MXN`;
+    // Cuáles van a precio de extra y cuáles a precio normal.
+    if (r.conExtra === r.qty) base += ' (precio con paquete)';
+    else if (r.conExtra) base += `
+  ↳ ${desgloseSorpresa(r)}`;
+    if (i.esSorpresa) base += `
+  ↳ Perfume sorpresa: Fito lo elige al preparar tu pedido`;
     if (i.customItems && i.customItems.length) {
       const names = i.customItems.map(c => c.nombre).join(', ');
       base += `\n  ↳ [${names}]`;

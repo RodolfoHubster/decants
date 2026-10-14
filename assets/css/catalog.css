@@ -1663,3 +1663,20 @@ footer p { font-size: 13px; color: var(--muted); }
 @media (min-width: 860px) {
   #modal .modal-actions { margin: 0 -28px; padding-left: 28px; padding-right: 28px; }
 }
+
+/* ── Paquete sorpresa (Calaverita) ──────────────────────────── */
+.sorpresa-caja {
+  display: flex; gap: 12px; align-items: flex-start;
+  margin-top: 10px; padding: 12px 14px;
+  border: 1px dashed var(--gold-b); border-radius: 10px;
+  background: var(--gold-s);
+}
+.sorpresa-caja > i { font-size: 26px; color: var(--gold); line-height: 1; }
+.sorpresa-caja strong { display: block; font-size: 14px; color: var(--text); margin-bottom: 3px; }
+.sorpresa-caja span { display: block; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+.sorpresa-caja .sorpresa-extra { margin-top: 6px; color: var(--gold); font-weight: 600; }
+.cart-precio-antes { color: var(--muted); font-weight: 400; }
+.cart-precio-extra { color: var(--gold); }
+.cart-nota-extra, .cart-item-extra { font-size: 10.5px; color: var(--gold); }
+.cart-item-extra { margin-top: 2px; }
+.cart-item-caldero { margin-top: 2px; font-size: 10.5px; color: var(--text-faint); }

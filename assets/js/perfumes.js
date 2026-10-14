@@ -1,5 +1,6 @@
 import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onAuthStateChanged }
   from './firebase-config.js';
+import { paraVenderEnPanel } from './sorpresa.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { auth } from './firebase-config.js';
 import '../../admin/auth-guard.js';
@@ -176,7 +177,8 @@ async function loadAll() {
   }));
   
   window.paquetesData = [];
-  pq.forEach(d => window.paquetesData.push({ id: d.id, ...d.data(), isPaquete: true }));
+  // Sorpresa (Calaverita) = elegir 1 del caldero al registrarla (sorpresa.js).
+  pq.forEach(d => window.paquetesData.push(paraVenderEnPanel({ id: d.id, ...d.data(), isPaquete: true })));
 
   const cOpts = cats.map(c => `<option>${c.nombre}</option>`).join('');
   document.getElementById('f-cat').innerHTML   = `<option value="">Todas las categorias</option>${cOpts}`;

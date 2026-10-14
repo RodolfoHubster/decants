@@ -102,7 +102,9 @@ function renderTable() {
     });
     const nAgotados = marcados.filter(i => i.agotado).length;
     const disponibles = items.length - nAgotados;
-    const agotado = items.length > 0 && (p.esPersonalizable
+    const agotado = items.length > 0 && (p.esSorpresa
+      ? disponibles < 1
+      : p.esPersonalizable
       ? disponibles < (p.maxSeleccion || 3)
       : nAgotados > 0);
 
@@ -110,7 +112,9 @@ function renderTable() {
       ? Object.entries(p.precios).filter(([, v]) => v > 0).sort(([a], [b]) => +a - +b)
       : (p.ml ? [[p.ml, p.precio]] : []);
 
-    const tipo = p.esPersonalizable
+    const tipo = p.esSorpresa
+      ? `Sorpresa entre ${items.length} ${items.length === 1 ? 'perfume' : 'perfumes'}${p.precioExtra ? ` · $${p.precioExtra} como extra` : ''}`
+      : p.esPersonalizable
       ? `Elige ${p.maxSeleccion || 3} de ${items.length}`
       : `${items.length} ${items.length === 1 ? 'fragancia' : 'fragancias'} fijas`;
 
@@ -127,6 +131,7 @@ function renderTable() {
           <span class="pkg-sub">${tipo}</span>
           ${estado}
           ${p.temporada === 'halloween' ? '<span class="badge badge-temporada"><i class="bi bi-moon-stars-fill"></i> Halloween</span>' : ''}
+          ${p.esSorpresa ? '<span class="badge badge-sorpresa"><i class="bi bi-question-diamond-fill"></i> Sorpresa</span>' : ''}
         </div>
         <div class="pkg-acc">
           <button class="btn-icon" onclick="edit('${p.id}')" title="Editar"><i class="bi bi-pencil"></i></button>
@@ -195,6 +200,9 @@ function limpiarFormulario() {
   document.getElementById('p-desc').value = '';
   document.getElementById('p-activo').checked = true;
   document.getElementById('p-temporada').checked = false;
+  document.getElementById('p-sorpresa').checked = false;
+  document.getElementById('p-precio-extra').value = '';
+  window.toggleSorpresa();
 
   document.getElementById('p-personalizable').checked = false;
   document.getElementById('p-max-sel').value = '';
@@ -251,6 +259,9 @@ window.edit = (id) => {
   document.getElementById('p-desc').value = p.descripcion || '';
   document.getElementById('p-activo').checked = p.activo !== false;
   document.getElementById('p-temporada').checked = p.temporada === 'halloween';
+  document.getElementById('p-sorpresa').checked = p.esSorpresa === true;
+  document.getElementById('p-precio-extra').value = p.precioExtra || '';
+  window.toggleSorpresa();
   
   document.getElementById('p-personalizable').checked = p.esPersonalizable === true;
   document.getElementById('p-max-sel').value = p.maxSeleccion || '';
@@ -271,8 +282,24 @@ window.edit = (id) => {
   document.getElementById('modal').classList.add('open');
 };
 
+window.toggleSorpresa = () => {
+  const sorpresa = document.getElementById('p-sorpresa').checked;
+  if (sorpresa && document.getElementById('p-personalizable').checked) {
+    document.getElementById('p-personalizable').checked = false;
+    window.togglePersonalizable();
+  }
+  document.getElementById('sorpresa-options').hidden = !sorpresa;
+  document.getElementById('lbl-perfumes').textContent = sorpresa
+    ? 'Caldero: perfumes de los que sale la sorpresa *'
+    : (document.getElementById('p-personalizable').checked ? 'Opciones disponibles para el cliente *' : 'Perfumes incluidos en el paquete *');
+};
+
 window.togglePersonalizable = () => {
   const isPers = document.getElementById('p-personalizable').checked;
+  if (isPers && document.getElementById('p-sorpresa')?.checked) {
+    document.getElementById('p-sorpresa').checked = false;
+    document.getElementById('sorpresa-options').hidden = true;
+  }
   document.getElementById('pers-options').style.display = isPers ? 'block' : 'none';
   document.getElementById('lbl-perfumes').textContent = isPers ? 'Opciones disponibles para el cliente *' : 'Perfumes incluidos en el paquete *';
 };
@@ -398,6 +425,17 @@ window.save = async () => {
     return;
   }
 
+  const esSorpresa = document.getElementById('p-sorpresa').checked;
+  const precioExtra = +document.getElementById('p-precio-extra').value || 0;
+  if (esSorpresa && precioExtra > 0 && precios['3'] > 0 && precioExtra >= precios['3']) {
+    toast('El precio como extra debe ser menor que el precio de 3 ml', 'error');
+    return;
+  }
+  if (esSorpresa && precioExtra > 0 && !(precios['3'] > 0)) {
+    toast('Para el precio como extra pon también el precio de 3 ml', 'error');
+    return;
+  }
+
   const btnSave = document.getElementById('btn-save');
   btnSave.disabled = true;
   btnSave.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
@@ -436,6 +474,18 @@ window.save = async () => {
     const deTemporada = document.getElementById('p-temporada').checked;
     if (deTemporada) data.temporada = 'halloween';
     else if (id) data.temporada = deleteField();
+
+    // Sorpresa: el cliente no elige; precioExtra = 3 ml junto con otro paquete de la temporada.
+    if (esSorpresa) {
+      data.esSorpresa = true;
+      data.esPersonalizable = false;
+      data.maxSeleccion = null;
+      if (precioExtra > 0) data.precioExtra = precioExtra;
+      else if (id) data.precioExtra = deleteField();
+    } else if (id) {
+      data.esSorpresa = deleteField();
+      data.precioExtra = deleteField();
+    }
 
     if (id) {
       await updateDoc(doc(db, 'paquetes', id), data);

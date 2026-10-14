@@ -2,6 +2,7 @@ import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, writeBatch,
   from './firebase-config.js';
 import { aMs } from './alertas.js';
 import { loteParaVenta } from './lotes.js?v=2';
+import { paraVenderEnPanel } from './sorpresa.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
 import { indiceClientes, idCliente } from './clientes-util.js?v=2';
@@ -61,7 +62,8 @@ async function loadAll() {
   perfumes.sort((a,b) => a.nombre.localeCompare(b.nombre));
   
   window.paquetesData = []; 
-  pq.forEach(d => window.paquetesData.push({ id: d.id, ...d.data() }));
+  // Sorpresa (Calaverita) = elegir 1 del caldero al registrarla (sorpresa.js).
+  pq.forEach(d => window.paquetesData.push(paraVenderEnPanel({ id: d.id, ...d.data() })));
   window.paquetesData.sort((a,b) => a.nombre.localeCompare(b.nombre));
   
   window.accesoriosData = [];
