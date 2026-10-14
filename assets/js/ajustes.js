@@ -1,6 +1,7 @@
-import { onAuthStateChanged } from './firebase-config.js';
+import { onAuthStateChanged, db, doc, getDoc, setDoc, updateDoc } from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { auth } from './firebase-config.js';
+import { temporadaVigente } from './temporada.js';
 
 renderSidebar('ajustes');
 
@@ -100,3 +101,56 @@ window.testKey = async () => {
     btn.innerHTML = ogHtml;
   }
 };
+
+// ── Temporada especial (config/tienda → temporada) ──────────────────────────
+const TEMP_ID = 'halloween';
+const TIENDA = () => doc(db, 'config', 'tienda');
+
+function pintarEstadoTemporada(t) {
+  const el = document.getElementById('temp-estado');
+  if (!el) return;
+  const vigente = temporadaVigente({ temporada: t });
+  el.classList.toggle('on', !!vigente);
+  if (!t || !t.activa) el.textContent = 'Apagada: la tienda se ve como siempre.';
+  else if (vigente) el.textContent = 'Se está viendo en la tienda ahora mismo.';
+  else el.textContent = 'Encendida, pero hoy está fuera de las fechas: no se ve.';
+}
+
+async function cargarTemporada() {
+  try {
+    const snap = await getDoc(TIENDA());
+    const t = snap.exists() ? snap.data().temporada : null;
+    document.getElementById('temp-activa').checked = !!(t && t.activa);
+    document.getElementById('temp-inicio').value = (t && t.inicio) || '2026-10-16';
+    document.getElementById('temp-fin').value = (t && t.fin) || '2026-11-03';
+    pintarEstadoTemporada(t);
+  } catch (e) {
+    console.error('No se pudo leer la temporada', e);
+  }
+}
+
+window.guardarTemporada = async () => {
+  const activa = document.getElementById('temp-activa').checked;
+  const inicio = document.getElementById('temp-inicio').value;
+  const fin = document.getElementById('temp-fin').value;
+  if (!inicio || !fin) return toast('Pon la fecha de inicio y la de fin', 'error');
+  if (inicio >= fin) return toast('La fecha de fin debe ser después del inicio', 'error');
+  const btn = document.getElementById('btn-temp');
+  btn.disabled = true;
+  try {
+    // Por campo (dot-notation): no se pisa disable2ml ni lo demás de config/tienda.
+    const cambios = { 'temporada.id': TEMP_ID, 'temporada.activa': activa, 'temporada.inicio': inicio, 'temporada.fin': fin };
+    const snap = await getDoc(TIENDA());
+    if (snap.exists()) await updateDoc(TIENDA(), cambios);
+    else await setDoc(TIENDA(), { temporada: { id: TEMP_ID, activa, inicio, fin } }, { merge: true });
+    pintarEstadoTemporada({ id: TEMP_ID, activa, inicio, fin });
+    toast('Temporada guardada. Los visitantes la ven en su siguiente visita.', 'success');
+  } catch (e) {
+    console.error(e);
+    toast('No se pudo guardar: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+onAuthStateChanged(auth, user => { if (user) cargarTemporada(); });

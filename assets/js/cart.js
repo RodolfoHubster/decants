@@ -86,6 +86,8 @@ export function buildWhatsAppURL(cart, waNumber) {
       const names = i.customItems.map(c => c.nombre).join(', ');
       base += `\n  ↳ [${names}]`;
     }
+    // Truco o Trato: el cliente eligió uno menos y el último lo escoge Fito.
+    if (i.sorpresa) base += `\n  ↳ +1 sorpresa de Fito`;
     return base;
   }).join('\n');
   const msg   = `Hola! Quisiera hacer el siguiente pedido de decants:\n\n${lines}\n\n*Total estimado: $${total} MXN*\n\n¿Tienen disponibilidad? 🙏`;

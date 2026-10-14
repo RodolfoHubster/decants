@@ -1,0 +1,302 @@
+/* ══════════════════════════════════════════════════════════════════
+   Temporada Halloween y Día de Muertos.
+   Todo aplica SOLO bajo html[data-temporada="halloween"], que pone
+   catalog.js cuando la temporada está vigente (Ajustes → Temporada).
+   Fuera de fechas este archivo no cambia nada de la tienda.
+
+   Base: el negro y el dorado de siempre. Acentos: naranja calabaza y
+   cempasúchil. Contraste AA: texto naranja solo sobre fondo oscuro
+   (≈7.9:1) y, sobre naranja, texto casi negro (≈7.8:1).
+   ══════════════════════════════════════════════════════════════════ */
+
+html[data-temporada="halloween"] {
+  --halloween:        #f28c38;
+  --halloween-hover:  #f6a35e;
+  --halloween-soft:   rgba(242, 140, 56, .12);
+  --halloween-border: rgba(242, 140, 56, .45);
+  --halloween-glow:   rgba(242, 140, 56, .28);
+  --halloween-ink:    #1a0e05;   /* texto sobre fondo naranja */
+  --cempasuchil:      #f7b32b;
+}
+
+/* ── Decoración del hero ─────────────────────────────────────────── */
+html[data-temporada="halloween"] .deco-temporada {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+html[data-temporada="halloween"] .deco-telarana,
+html[data-temporada="halloween"] .deco-murcielagos { position: absolute; }
+html[data-temporada="halloween"] .deco-telarana {
+  top: 0; right: 0;
+  width: 110px; height: 110px;
+  color: var(--text-primary);
+  opacity: .10;
+  transform: scaleX(-1);
+}
+html[data-temporada="halloween"] .deco-murcielagos {
+  top: 18px; left: 4%;
+  width: 150px; height: 66px;
+  color: var(--halloween);
+  opacity: .22;
+}
+html[data-temporada="halloween"] .murcielago {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ht-vuelo 7s ease-in-out infinite;
+}
+html[data-temporada="halloween"] .murcielago.m2 { animation-delay: -2.3s; animation-duration: 8.5s; }
+html[data-temporada="halloween"] .murcielago.m3 { animation-delay: -4.6s; animation-duration: 6.2s; }
+@keyframes ht-vuelo {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(6px, -5px) scale(.94); }
+}
+@media (min-width: 900px) {
+  html[data-temporada="halloween"] .deco-telarana { width: 170px; height: 170px; }
+  html[data-temporada="halloween"] .deco-murcielagos { width: 210px; height: 92px; }
+}
+
+/* ── Pestaña Halloween ───────────────────────────────────────────── */
+html[data-temporada="halloween"] .ftab-temporada {
+  color: var(--halloween);
+  border-color: var(--halloween-border);
+  background: var(--halloween-soft);
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition), color var(--transition);
+}
+html[data-temporada="halloween"] .ftab-temporada:hover {
+  border-color: var(--halloween);
+  box-shadow: 0 0 0 3px var(--halloween-soft), 0 0 14px var(--halloween-glow);
+}
+html[data-temporada="halloween"] .ftab-temporada.active {
+  background: var(--halloween);
+  border-color: var(--halloween);
+  color: var(--halloween-ink);
+  box-shadow: 0 0 16px var(--halloween-glow);
+}
+
+/* ── Tarjetas de paquetes de temporada (grid) ────────────────────── */
+html[data-temporada="halloween"] .pcard-temporada {
+  border-color: var(--halloween-border) !important;   /* la tarjeta de paquete trae borde dorado en línea */
+  box-shadow: 0 4px 20px var(--halloween-soft) !important;
+}
+html[data-temporada="halloween"] .pcard-temporada:hover {
+  transform: translateY(-4px);
+  border-color: var(--halloween) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .55), 0 0 0 1px var(--halloween-border), 0 0 22px var(--halloween-glow) !important;
+}
+html[data-temporada="halloween"] .tag-temporada {
+  position: absolute;
+  top: 8px; left: 8px;
+  z-index: 2;
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--halloween);
+  color: var(--halloween-ink);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .4px;
+}
+html[data-temporada="halloween"] .pcard-temporada .card-marca { color: var(--halloween) !important; }
+
+/* ── Franja especial ─────────────────────────────────────────────── */
+html[data-temporada="halloween"] .temporada-franja {
+  position: relative;
+  margin: 8px 16px 20px;
+  padding: 34px 0 20px;
+  border: 1px solid var(--halloween-border);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(120% 90% at 100% 0%, var(--halloween-soft), transparent 60%),
+    radial-gradient(90% 70% at 0% 100%, rgba(247, 179, 43, .07), transparent 60%),
+    var(--bg-card);
+  overflow: hidden;
+}
+html[data-temporada="halloween"] .papel-picado {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 30px;
+  color: var(--cempasuchil);
+  opacity: .5;
+}
+html[data-temporada="halloween"] .pp-banderas path { fill: var(--cempasuchil); opacity: .55; }
+html[data-temporada="halloween"] .pp-banderas path:nth-child(even) { fill: var(--halloween); }
+
+html[data-temporada="halloween"] .tf-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+html[data-temporada="halloween"] .tf-head { padding: 0 16px; }
+html[data-temporada="halloween"] .tf-kicker {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--cempasuchil);
+}
+html[data-temporada="halloween"] .tf-head h2 {
+  margin: 6px 0 6px;
+  font-size: clamp(22px, 5.5vw, 32px);
+  line-height: 1.15;
+  color: var(--text-primary);
+}
+html[data-temporada="halloween"] .tf-head p {
+  margin: 0 0 14px;
+  max-width: 560px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+html[data-temporada="halloween"] .tf-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid var(--halloween);
+  border-radius: 999px;
+  background: var(--halloween);
+  color: var(--halloween-ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+html[data-temporada="halloween"] .tf-btn:hover {
+  background: var(--halloween-hover);
+  box-shadow: 0 0 18px var(--halloween-glow);
+  transform: translateY(-1px);
+}
+html[data-temporada="halloween"] .tf-btn:focus-visible,
+html[data-temporada="halloween"] .tf-card:focus-visible,
+html[data-temporada="halloween"] .tt-op:focus-visible {
+  outline: 2px solid var(--cempasuchil);
+  outline-offset: 3px;
+}
+
+/* Carrusel: scroll-snap nativo, se desliza con el dedo; la página no se desborda. */
+html[data-temporada="halloween"] .tf-carrusel {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 16px;
+  padding: 4px 16px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--halloween-border) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+html[data-temporada="halloween"] .tf-card {
+  flex: 0 0 72%;
+  max-width: 240px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card2);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+@media (min-width: 600px) { html[data-temporada="halloween"] .tf-card { flex-basis: 220px; } }
+html[data-temporada="halloween"] .tf-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--halloween-border);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .5), 0 0 18px var(--halloween-glow);
+}
+html[data-temporada="halloween"] .tf-img {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  aspect-ratio: 1 / 1;
+  background: var(--bg-card);
+  color: var(--text-faint);
+  font-size: 32px;
+  margin-bottom: 6px;
+}
+html[data-temporada="halloween"] .tf-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+html[data-temporada="halloween"] .tf-card.agotado .tf-img img { filter: grayscale(1); opacity: .6; }
+html[data-temporada="halloween"] .tf-agotado {
+  position: absolute;
+  top: 8px; left: 8px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+html[data-temporada="halloween"] .tf-nombre { padding: 0 12px; font-size: 14px; font-weight: 600; line-height: 1.25; }
+html[data-temporada="halloween"] .tf-precio { padding: 0 12px; font-size: 13px; color: var(--halloween); font-weight: 700; }
+html[data-temporada="halloween"] .tf-ahorro {
+  align-self: flex-start;
+  margin: 2px 12px 0;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--cempasuchil);
+  color: var(--halloween-ink);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ── Truco o Trato (modal del paquete) ───────────────────────────── */
+html[data-temporada="halloween"] .tt-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+html[data-temporada="halloween"] .tt-op {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card2);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), box-shadow var(--transition);
+}
+html[data-temporada="halloween"] .tt-op strong { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+html[data-temporada="halloween"] .tt-op small { font-size: 12px; line-height: 1.35; color: var(--text-muted); }
+html[data-temporada="halloween"] .tt-op:hover { border-color: var(--halloween-border); }
+html[data-temporada="halloween"] .tt-op.on {
+  border-color: var(--halloween);
+  background: var(--halloween-soft);
+  box-shadow: 0 0 14px var(--halloween-soft);
+}
+html[data-temporada="halloween"] .tt-op.on strong { color: var(--halloween); }
+
+/* Línea de la sorpresa en el carrito */
+html[data-temporada="halloween"] .cart-item-sorpresa {
+  margin-top: 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--halloween);
+}
+
+/* ── Sin movimiento para quien lo pide ───────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html[data-temporada="halloween"] .murcielago { animation: none; }
+  html[data-temporada="halloween"] .pcard-temporada,
+  html[data-temporada="halloween"] .tf-card,
+  html[data-temporada="halloween"] .tf-btn,
+  html[data-temporada="halloween"] .ftab-temporada,
+  html[data-temporada="halloween"] .tt-op { transition: none; }
+  html[data-temporada="halloween"] .pcard-temporada:hover,
+  html[data-temporada="halloween"] .tf-card:hover,
+  html[data-temporada="halloween"] .tf-btn:hover { transform: none; }
+  html[data-temporada="halloween"] .tf-carrusel { scroll-behavior: auto; }
+}

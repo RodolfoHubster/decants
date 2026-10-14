@@ -18,7 +18,11 @@
     .item-selected-remove { color:#ef4444; cursor:pointer; font-size:18px; background:none; border:none; padding:4px; }
     .sug-item { padding:10px; border-bottom:1px solid var(--border); cursor:pointer; display:flex; gap:10px; align-items:center; }
     .sug-item:hover { background:var(--bg-card2); }
-  </style>
+    .pkg-temporada-chk { display:flex; align-items:flex-start; gap:8px; cursor:pointer; }
+  .pkg-temporada-chk input { width:16px; height:16px; margin-top:3px; accent-color:#f28c38; flex-shrink:0; }
+  .pkg-temporada-chk small { display:block; font-size:12px; color:var(--text-faint); font-weight:400; }
+  .badge-temporada { align-self:flex-start; background:rgba(242,140,56,.14); color:#f28c38; border:1px solid rgba(242,140,56,.45); }
+</style>
   <style>
     .pkg-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:12px; padding:14px; }
     .pkg { background:var(--bg-card2); border:1px solid var(--border); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:10px; }
@@ -175,6 +179,11 @@
           <input type="checkbox" id="p-activo" checked style="width:16px;height:16px;accent-color:var(--accent)">
           Activo y visible en la tienda
         </label>
+        <label class="pkg-temporada-chk">
+          <input type="checkbox" id="p-temporada">
+          <span><i class="bi bi-moon-stars-fill"></i> Paquete de temporada (Halloween)
+            <small>Sale en la franja y la pestaña Halloween mientras la temporada esté encendida en Ajustes.</small></span>
+        </label>
       </div>
 
     </div>
@@ -186,6 +195,6 @@
 </div>
 
 <script src="https://widget.cloudinary.com/v2.0/global/all.js" type="text/javascript"></script>
-<script type="module" src="../assets/js/paquetes.js?v=2.0"></script>
+<script type="module" src="../assets/js/paquetes.js?v=2.1"></script>
 </body>
 </html>

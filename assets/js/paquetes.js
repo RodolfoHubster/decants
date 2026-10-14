@@ -1,6 +1,9 @@
 import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onAuthStateChanged }
   from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
+// deleteField directo del SDK (la misma versión que firebase-config): así no hay
+// que tocar firebase-config.js, que todas las páginas importan sin ?v=.
+import { deleteField } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { toast } from './toast.js';
 import { auth } from './firebase-config.js';
 import '../../admin/auth-guard.js';
@@ -123,6 +126,7 @@ function renderTable() {
           <strong>${esc(p.nombre)}</strong>
           <span class="pkg-sub">${tipo}</span>
           ${estado}
+          ${p.temporada === 'halloween' ? '<span class="badge badge-temporada"><i class="bi bi-moon-stars-fill"></i> Halloween</span>' : ''}
         </div>
         <div class="pkg-acc">
           <button class="btn-icon" onclick="edit('${p.id}')" title="Editar"><i class="bi bi-pencil"></i></button>
@@ -190,6 +194,7 @@ function limpiarFormulario() {
   document.getElementById('p-cat').value = '';
   document.getElementById('p-desc').value = '';
   document.getElementById('p-activo').checked = true;
+  document.getElementById('p-temporada').checked = false;
 
   document.getElementById('p-personalizable').checked = false;
   document.getElementById('p-max-sel').value = '';
@@ -245,6 +250,7 @@ window.edit = (id) => {
   document.getElementById('p-cat').value = p.categoria || '';
   document.getElementById('p-desc').value = p.descripcion || '';
   document.getElementById('p-activo').checked = p.activo !== false;
+  document.getElementById('p-temporada').checked = p.temporada === 'halloween';
   
   document.getElementById('p-personalizable').checked = p.esPersonalizable === true;
   document.getElementById('p-max-sel').value = p.maxSeleccion || '';
@@ -425,6 +431,11 @@ window.save = async () => {
       esPersonalizable: isPers,
       maxSeleccion: isPers ? (parseInt(document.getElementById('p-max-sel').value) || 1) : null
     };
+
+    // De temporada: se marca, o se borra el campo al desmarcar (un paquete nuevo sin marcar ni lo lleva).
+    const deTemporada = document.getElementById('p-temporada').checked;
+    if (deTemporada) data.temporada = 'halloween';
+    else if (id) data.temporada = deleteField();
 
     if (id) {
       await updateDoc(doc(db, 'paquetes', id), data);

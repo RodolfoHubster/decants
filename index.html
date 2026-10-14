@@ -25,6 +25,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css"/>
   <link rel="stylesheet" href="./assets/css/catalog.css?v=4.8">
+  <!-- Temporadas: sus reglas solo aplican con html[data-temporada]; fuera de fechas no cambia nada. -->
+  <link rel="stylesheet" href="./assets/css/temporada-halloween.css?v=1">
   <style>
     /* ══════════════════════════════════════════════════
        TOKENS — paleta Fitoscents (unificada con faq.html)
@@ -942,6 +944,25 @@
 <!-- ══ HERO ══ -->
 <section class="hero" aria-labelledby="hero-title">
   <div class="hero-bg"></div>
+  <!-- Decoración de temporada: un <div> porque [hidden] no aplica a <svg>. -->
+  <div class="deco-temporada" hidden aria-hidden="true">
+    <svg class="deco-telarana" aria-hidden="true" focusable="false" viewBox="0 0 120 120">
+      <g fill="none" stroke="currentColor" stroke-width="1">
+        <path d="M0 0 L120 120 M0 0 L120 60 M0 0 L60 120 M0 0 L120 15 M0 0 L15 120"/>
+        <path d="M0 30 Q16 24 26 10 Q24 2 30 0"/>
+        <path d="M0 58 Q30 48 46 26 Q52 12 58 0"/>
+        <path d="M0 88 Q44 74 66 42 Q76 22 88 0"/>
+        <path d="M0 116 Q58 100 86 58 Q100 30 116 0"/>
+      </g>
+    </svg>
+    <svg class="deco-murcielagos" aria-hidden="true" focusable="false" viewBox="0 0 160 70">
+      <g fill="currentColor">
+        <path class="murcielago m1" d="M20 30 q6 -8 12 -2 q3 -5 6 0 q6 -6 12 2 q-6 -1 -9 4 q-3 -3 -6 0 q-3 -3 -6 0 q-3 -5 -9 -4z"/>
+        <path class="murcielago m2" d="M90 12 q5 -6 10 -1 q2 -4 5 0 q5 -5 10 1 q-5 -1 -7 3 q-3 -2 -5 0 q-2 -2 -5 0 q-2 -4 -8 -3z"/>
+        <path class="murcielago m3" d="M120 46 q4 -5 8 -1 q2 -3 4 0 q4 -4 8 1 q-4 -1 -6 3 q-2 -2 -4 0 q-2 -2 -4 0 q-2 -3 -6 -3z"/>
+      </g>
+    </svg>
+  </div>
   <div class="hero-inner">
 
     <div class="hero-copy">
@@ -1017,6 +1038,29 @@
   </div>
 </section>
 
+<!-- ══ TEMPORADA (solo con la temporada vigente y paquetes marcados) ══ -->
+<section class="temporada-franja" id="temporada-franja" hidden aria-labelledby="temporada-titulo">
+  <svg class="papel-picado" aria-hidden="true" focusable="false" viewBox="0 0 320 34" preserveAspectRatio="none">
+    <path class="pp-hilo" d="M0 2 H320" fill="none" stroke="currentColor" stroke-width="1"/>
+    <g class="pp-banderas">
+      <path d="M8 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
+      <path d="M72 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
+      <path d="M136 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
+      <path d="M200 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
+      <path d="M264 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
+    </g>
+  </svg>
+  <div class="tf-inner">
+    <div class="tf-head">
+      <span class="tf-kicker"><i class="bi bi-moon-stars-fill"></i> Temporada</span>
+      <h2 id="temporada-titulo">Especial Halloween y Día de Muertos</h2>
+      <p>Paquetes de temporada para la fiesta y para Día de Muertos. Pide antes del jueves 29 de octubre.</p>
+      <button type="button" class="tf-btn" onclick="verPaquetesTemporada()">Ver paquetes <i class="bi bi-arrow-down-short"></i></button>
+    </div>
+    <div class="tf-carrusel" id="temporada-carrusel" role="list" aria-label="Paquetes de temporada"></div>
+  </div>
+</section>
+
 <!-- ══════════════════════════════════════
      BARRA DE FILTROS
 ══════════════════════════════════════ -->
@@ -1053,6 +1097,7 @@
       <button class="fbar-tab ftab"         data-g="Dama"      role="tab" aria-selected="false" onclick="setG(this)"><i class="bi bi-person-standing-dress"></i> Dama</button>
       <button class="fbar-tab ftab"         data-g="Unisex"    role="tab" aria-selected="false" onclick="setG(this)"><i class="bi bi-stars"></i> Unisex</button>
       <button class="fbar-tab ftab"         data-g="Paquete"   role="tab" aria-selected="false" onclick="setG(this)"><i class="bi bi-gift"></i> Paquetes</button>
+      <button class="fbar-tab ftab ftab-temporada" id="ftab-temporada" data-g="Halloween" role="tab" aria-selected="false" onclick="setG(this)" hidden><i class="bi bi-moon-stars-fill"></i> Halloween</button>
     </div>
   </div>
 </div>
@@ -1259,7 +1304,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
 
-<script type="module" src="./assets/js/catalog.js?v=2.35"></script>
+<script type="module" src="./assets/js/catalog.js?v=2.36"></script>
 <script type="module">
 import { initNovedadesModal } from './assets/js/novedades-modal.js?v=2';
 import { initTour } from './assets/js/tour.js';

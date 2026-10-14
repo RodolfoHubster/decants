@@ -3,16 +3,21 @@ import { db, auth, collection, getDocs, query, where, onAuthStateChanged, doc, u
 import { addItem, decrementItem, removeItem, clearCart as pureCleart,
          calcTotal, totalUnits, buildWhatsAppURL, getItemQty, MAX_QTY,
          saveCart, loadCart, clearSavedCart, cartExpiresInMinutes, revalidarCarrito }
-  from './cart.js?v=2';
+  from './cart.js?v=3';
 import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug } from './slug.js';
 import { imgCard, imgModal, imgCart, imgOg } from './cloudinary.js';
 import { heroStats, pickShowcase, construirColecciones, barajar } from './hero.js';
 import { resolverItemsPaquete, contarDisponibles, paqueteArmable } from './stock.js';
 import { ahorroPorTalla } from './precios.js';
-import { leerCache, guardarCache, borrarCache } from './catalogo-cache.js';
+
+// Temporada especial vigente (Halloween…) o null. La pone load() desde config/tienda.
+let temporada = null;
+const NOMBRE_TEMPORADA = { halloween: 'Halloween' };
+import { leerCache, guardarCache, borrarCache } from './catalogo-cache.js?v=2';
 import { precargarImagen } from './imagenes.js';
 import { parsearFicha } from './ficha.js';
 import { CLAVE_DUENO, CLAVE_ULTIMO_DIA, diaLocal, debeContar } from './visitas.js';
+import { temporadaVigente, temporadaSimulada, paquetesDeTemporada, seleccionRequerida, ofreceTrucoOTrato } from './temporada.js';
 
 // ── Visitas: una por persona al día, sin contar al dueño ──────────
 const esDueno = (() => { try { return localStorage.getItem(CLAVE_DUENO) === '1'; } catch (e) { return false; } })();
@@ -509,7 +514,8 @@ async function traerDeFirestore() {
     getDoc(doc(db, 'config', 'tienda')).catch(() => null)
   ]);
 
-  const disable2ml = !!(confSnap && confSnap.exists() && confSnap.data().disable2ml);
+  const tienda = confSnap && confSnap.exists() ? confSnap.data() : {};
+  const disable2ml = !!tienda.disable2ml;
 
   const items = [];
   perfSnap.forEach(d => items.push({ id: d.id, ...d.data() }));
@@ -523,7 +529,7 @@ async function traerDeFirestore() {
   famData.sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre));
   famData = famData.filter(f => famUsadas.has(f.nombre));
 
-  return { all: items, disable2ml, famData };
+  return { all: items, disable2ml, famData, temporadaConfig: tienda.temporada || null };
 }
 
 /** Pantalla de error con reintento: antes los esqueletos giraban sin fin. */
@@ -577,6 +583,10 @@ async function load() {
 
   // Tipos: los 3 fijos — se usan para filtrar por p.categoria
   buildFilterPanelDynamic(TIPOS_PERMITIDOS, datos.famData);
+
+  // Fuera de fechas (o apagada en Ajustes) no se toca nada: la tienda queda igual.
+  temporada = temporadaSimulada(window.location.href) || temporadaVigente({ temporada: datos.temporadaConfig });
+  aplicarTemporada();
 
   const params = new URLSearchParams(window.location.search);
   
@@ -834,9 +844,13 @@ function cardHTML(p) {
   const units = cart.filter(i => i.id === p.id).reduce((s, i) => s + i.qty, 0);
   // ─ imgCard: 400x400, WebP automático, q_auto:good ─
   const src = imgCard(p.imagen);
-  return `<div class="pcard ${p.tipo === 'paquete' ? 'pcard-paquete' : ''}" onclick="openModal('${p.id}')" data-id="${p.id}" ${p.tipo === 'paquete' ? 'style="border:1px solid var(--gold-b); box-shadow:0 4px 20px rgba(201,168,76,0.1);"' : ''}>
+  const deTemporada = !!(temporada && p.tipo === 'paquete' && p.temporada === temporada.id);
+  const etiqueta = deTemporada
+    ? `<div class="tag-temporada"><i class="bi bi-moon-stars-fill"></i> ${escFicha((NOMBRE_TEMPORADA[temporada.id] || temporada.id).toUpperCase())}</div>`
+    : (p.tipo === 'paquete' ? `<div style="position:absolute;top:8px;left:8px;background:var(--gold-s);border:1px solid var(--gold-b);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;z-index:2;display:flex;align-items:center;gap:4px;"><i class="bi bi-box2-heart-fill"></i> PAQUETE</div>` : '');
+  return `<div class="pcard ${p.tipo === 'paquete' ? 'pcard-paquete' : ''}${deTemporada ? ' pcard-temporada' : ''}" onclick="openModal('${p.id}')" data-id="${p.id}" ${p.tipo === 'paquete' ? 'style="border:1px solid var(--gold-b); box-shadow:0 4px 20px rgba(201,168,76,0.1);"' : ''}>
     <div class="card-img">
-      ${p.tipo === 'paquete' ? `<div style="position:absolute;top:8px;left:8px;background:var(--gold-s);border:1px solid var(--gold-b);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;z-index:2;display:flex;align-items:center;gap:4px;"><i class="bi bi-box2-heart-fill"></i> PAQUETE</div>` : ''}
+      ${etiqueta}
       ${savingsTag}
       ${src
         ? `<img src="${src}" alt="${p.nombre}" loading="lazy" width="400" height="400" decoding="async">`
@@ -851,6 +865,86 @@ function cardHTML(p) {
     </div>
   </div>`;
 }
+
+// ── Temporada especial ───────────────────────────────────────────
+/** Ahorro de un paquete en una talla: contra comprar sus perfumes por separado;
+ *  si eso no se puede calcular, contra la talla chica (ahorroPorTalla). */
+function ahorroPaquete(p, sizes, k, v) {
+  const sv = calcSavings(p, k);
+  return sv.saving > 0 ? sv.saving : ahorroPorTalla(sizes, k, v);
+}
+
+function aplicarTemporada() {
+  if (!temporada) return;
+  const paquetes = paquetesDeTemporada(all, temporada.id);
+  document.documentElement.dataset.temporada = temporada.id;
+  document.querySelectorAll('.deco-temporada').forEach(el => { el.hidden = false; });
+  // Sin paquetes cargados no hay pestaña ni franja vacías: solo el look.
+  if (!paquetes.length) return;
+  const tab = document.getElementById('ftab-temporada');
+  if (tab) tab.hidden = false;
+  pintarFranjaTemporada(paquetes);
+}
+
+function pintarFranjaTemporada(paquetes) {
+  const franja = document.getElementById('temporada-franja');
+  const cont = document.getElementById('temporada-carrusel');
+  if (!franja || !cont) return;
+  cont.innerHTML = paquetes.map(p => {
+    const pr = p.precios || (p.ml && p.precio ? { [p.ml]: p.precio } : {});
+    const sizes = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
+    if (!sizes.length) return '';
+    const desde = Math.min(...sizes.map(([, v]) => +v));
+    const ahorro = Math.max(0, ...sizes.map(([k, v]) => ahorroPaquete(p, sizes, k, v)));
+    const src = imgCard(p.imagen);
+    const agotado = agotadoEnTienda(p);
+    return `<button type="button" class="tf-card${agotado ? ' agotado' : ''}" role="listitem" onclick="openModal('${p.id}')">
+      <span class="tf-img">${src
+        ? `<img src="${src}" alt="${escFicha(p.nombre)}" loading="lazy" width="400" height="400" decoding="async">`
+        : '<i class="bi bi-box2-heart"></i>'}
+        ${agotado ? '<span class="tf-agotado">Agotado</span>' : ''}</span>
+      <span class="tf-nombre">${escFicha(p.nombre)}</span>
+      <span class="tf-precio">Desde $${desde}</span>
+      ${ahorro > 0 ? `<span class="tf-ahorro">Ahorras $${ahorro}</span>` : ''}
+    </button>`;
+  }).join('');
+  franja.hidden = false;
+}
+
+window.verPaquetesTemporada = () => {
+  const tab = document.getElementById('ftab-temporada');
+  if (tab && !tab.hidden) window.setG(tab);
+  document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+// Truco o Trato: en Truco se elige uno menos y el último lo escoge Fito.
+window.modoTT = 'trato';
+const hayTrucoOTrato = () => !!(modalData && temporada && ofreceTrucoOTrato(modalData, temporada.id));
+const requeridos = () => seleccionRequerida(modalData, hayTrucoOTrato() ? window.modoTT : 'trato');
+const esTruco = () => hayTrucoOTrato() && window.modoTT === 'truco';
+/** Parte de la clave del carrito que distingue la selección (y el Truco del Trato). */
+const sufijoCustom = () => '-' + window.customPackageSelections.map(x => x.id).sort().join(',') + (esTruco() ? '-sorpresa' : '');
+
+window.setModoTT = (modo) => {
+  window.modoTT = modo === 'truco' ? 'truco' : 'trato';
+  document.querySelectorAll('.tt-op').forEach(b => {
+    const on = b.dataset.modo === window.modoTT;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  // Al pasar a Truco sobra una elección: se suelta la última.
+  const max = requeridos();
+  while (window.customPackageSelections.length > max) {
+    const quitado = window.customPackageSelections.pop();
+    const chk = document.querySelector(`.custom-pkg-chk[value="${quitado.id}"]`);
+    if (chk) chk.checked = false;
+  }
+  const titulo = document.getElementById('custom-pkg-titulo');
+  if (titulo) titulo.textContent = `Arma tu paquete (Elige ${max}${esTruco() ? ' + 1 sorpresa' : ''}):`;
+  const algun = document.querySelector('.custom-pkg-chk');
+  if (algun) window.toggleCustomPkgItem({ checked: false, value: '__ninguno__', dataset: {} }, max);
+  else syncModalCartBtn();
+};
 
 // ── Render grid ───────────────────────────────────────────────
 import { matchSearch } from './search-engine.js';
@@ -871,7 +965,9 @@ window.renderGrid = () => {
     
     // Custom filter for Paquete vs Genero
     if (gF) {
-      if (gF === 'Paquete') {
+      if (temporada && gF.toLowerCase() === temporada.id) {
+        if (!(p.tipo === 'paquete' && p.temporada === temporada.id)) return false;
+      } else if (gF === 'Paquete') {
         if (p.tipo !== 'paquete') return false;
       } else {
         if (p.tipo === 'paquete') {
@@ -1068,6 +1164,7 @@ window.openModal = (id, pushHash = true) => {
   prepararDescripcion(descEl);
 
   window.customPackageSelections = [];
+  window.modoTT = 'trato';
 
   const pqItemsEl = document.getElementById('modal-paquete-items');
   if (p.tipo === 'paquete' && p.items && p.items.length) {
@@ -1079,8 +1176,17 @@ window.openModal = (id, pushHash = true) => {
       const disponibles = contarDisponibles(itemsPq);
       const armable = paqueteArmable(itemsPq, maxSel);
       pqItemsEl.innerHTML = `
+        ${temporada && ofreceTrucoOTrato(p, temporada.id) ? `
+        <div class="tt-selector" role="radiogroup" aria-label="Truco o Trato">
+          <button type="button" class="tt-op on" data-modo="trato" role="radio" aria-checked="true" onclick="setModoTT('trato')">
+            <strong><i class="bi bi-gift"></i> Trato</strong><small>${maxSel === 3 ? 'Tú eliges los 3' : `Tú eliges los ${maxSel}`}</small>
+          </button>
+          <button type="button" class="tt-op" data-modo="truco" role="radio" aria-checked="false" onclick="setModoTT('truco')">
+            <strong><i class="bi bi-magic"></i> Truco</strong><small>${maxSel === 3 ? 'Eliges 2 y el tercero es sorpresa' : `Eliges ${maxSel - 1} y el último es sorpresa`}</small>
+          </button>
+        </div>` : ''}
         <div style="margin-top:10px; margin-bottom:8px; font-size:11px; font-weight:600; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:flex; justify-content:space-between;">
-          <span>Arma tu paquete (Elige ${maxSel}):</span>
+          <span id="custom-pkg-titulo">Arma tu paquete (Elige ${maxSel}):</span>
           <span id="custom-pkg-count">0 / ${maxSel}</span>
         </div>
         ${!armable ? `
@@ -1244,6 +1350,7 @@ function pintarFicha(f) {
 }
 
 window.toggleCustomPkgItem = (chk, maxSel) => {
+  maxSel = requeridos();
   if (chk.checked) {
     if (window.customPackageSelections.length >= maxSel) {
       chk.checked = false;
@@ -1297,8 +1404,8 @@ function syncModalCartBtn() {
   }
   
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable) {
-    if (window.customPackageSelections.length < (modalData.maxSeleccion || 3)) {
-      wrapper.innerHTML = `<button class="btn-add-cart" disabled style="opacity:0.5; cursor:not-allowed;"><i class="bi bi-bag-plus"></i> Selecciona ${modalData.maxSeleccion || 3} perfumes</button>`;
+    if (window.customPackageSelections.length < (requeridos())) {
+      wrapper.innerHTML = `<button class="btn-add-cart" disabled style="opacity:0.5; cursor:not-allowed;"><i class="bi bi-bag-plus"></i> Selecciona ${requeridos()} perfumes</button>`;
       return;
     }
   }
@@ -1310,7 +1417,7 @@ function syncModalCartBtn() {
   
   let key = modalData.id + '-' + sel.dataset.size;
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable) {
-    key += '-' + window.customPackageSelections.map(x => x.id).sort().join(',');
+    key += sufijoCustom();
   }
   const qty = getItemQty(cart, key);
   if (qty === 0) {
@@ -1361,7 +1468,7 @@ window.modalIncrement = () => {
   checkCartTTL();
   let key = modalData.id + '-' + sel.dataset.size;
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable && window.customPackageSelections) {
-    key += '-' + window.customPackageSelections.map(x => x.id).sort().join(',');
+    key += sufijoCustom();
   }
   const idx = cart.findIndex(i => i.key === key);
   if (idx === -1) return;
@@ -1378,7 +1485,7 @@ window.modalDecrement = () => {
   checkCartTTL();
   let key = modalData.id + '-' + sel.dataset.size;
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable && window.customPackageSelections) {
-    key += '-' + window.customPackageSelections.map(x => x.id).sort().join(',');
+    key += sufijoCustom();
   }
   const item = cart.find(i => i.key === key);
   if (!item) return;
@@ -1430,9 +1537,14 @@ window.pedirModal = () => {
   const marcaStr = modalData.tipo === 'paquete' ? 'Combos Fitoscents' : (modalData.marca || '');
   const title = marcaStr ? `*${marcaStr} - ${modalData.nombre}*` : `*${modalData.nombre}*`;
   
+  let extra = '';
+  if (modalData.tipo === 'paquete' && modalData.esPersonalizable && (window.customPackageSelections || []).length) {
+    extra = `\nPerfumes: ${window.customPackageSelections.map(x => x.nombre).join(', ')}`;
+  }
+  if (esTruco()) extra += '\n+1 sorpresa de Fito';
   const msg = sel
-    ? `Hola! Me interesa:\n${title}\nTamaño: ${sel.dataset.size}${modalData.tipo === 'paquete' ? '' : 'ml'}\nPrecio: $${sel.dataset.price} MXN\n${url}`
-    : `Hola! Me interesa:\n${title}\n${url}`;
+    ? `Hola! Me interesa:\n${title}\nTamaño: ${sel.dataset.size}${modalData.tipo === 'paquete' ? '' : 'ml'}\nPrecio: $${sel.dataset.price} MXN${extra}\n${url}`
+    : `Hola! Me interesa:\n${title}${extra}\n${url}`;
   window.open(`https://wa.me/526648162623?text=${encodeURIComponent(msg)}`, '_blank');
 };
 
@@ -1460,8 +1572,8 @@ window.addToCart = () => {
   if (!sel) { flashPills(); return; }
   checkCartTTL();
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable) {
-    if (window.customPackageSelections.length < (modalData.maxSeleccion || 3)) {
-      showToast(`Selecciona ${modalData.maxSeleccion || 3} perfumes primero`, 'warning');
+    if (window.customPackageSelections.length < (requeridos())) {
+      showToast(`Selecciona ${requeridos()} perfumes primero`, 'warning');
       return;
     }
     // Última verificación contra el stock vivo: la selección pudo quedarse
@@ -1477,7 +1589,7 @@ window.addToCart = () => {
   let key = modalData.id + '-' + sel.dataset.size;
   let customItems = null;
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable) {
-    key += '-' + window.customPackageSelections.map(x => x.id).sort().join(',');
+    key += sufijoCustom();
     customItems = [...window.customPackageSelections];
   }
 
@@ -1491,7 +1603,8 @@ window.addToCart = () => {
     size:   sel.dataset.size,
     price:  +sel.dataset.price,
     qty:    1,
-    customItems: customItems
+    customItems: customItems,
+    sorpresa: esTruco()
   };
   const { cart: newCart, added, reason } = addItem(cart, item);
   if (!added) { if (reason === 'max_qty') showToast(`Máximo ${MAX_QTY} unidades por talla`); return; }
@@ -1624,6 +1737,7 @@ function renderCartDrawer() {
         <div class="cart-item-nombre">${item.nombre}</div>
         <div class="cart-item-size">${item.size}ml — <strong>$${item.price}</strong></div>
         ${item.customItems ? `<div style="font-size:10px; color:var(--text-faint); margin-top:2px;">[${item.customItems.map(c=>c.nombre).join(', ')}]</div>` : ''}
+        ${item.sorpresa ? '<div class="cart-item-sorpresa"><i class="bi bi-magic"></i> +1 sorpresa de Fito</div>' : ''}
       </div>
       <div class="cart-item-controls">
         <button class="cart-qty-btn ${item.qty === 1 ? 'is-trash' : ''}" data-dec="${item.key}" aria-label="${item.qty === 1 ? 'Eliminar item' : 'Quitar uno'}">

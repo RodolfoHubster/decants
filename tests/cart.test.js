@@ -273,3 +273,19 @@ describe('revalidarCarrito', () => {
     expect(r.cart).toEqual([]);
   });
 });
+
+describe('buildWhatsAppURL — Truco o Trato', () => {
+  test('el paquete en Truco avisa "+1 sorpresa de Fito" y no cambia el precio', () => {
+    const cart = [{ key: 'k', id: 'tr', marca: 'Combos Fitoscents', nombre: 'Truco o Aroma', size: 'Paquete 5', price: 300, qty: 1,
+      customItems: [{ id: 'a', nombre: 'Khamrah' }, { id: 'b', nombre: 'Asad' }], sorpresa: true }];
+    const msg = decodeURIComponent(buildWhatsAppURL(cart, '52').split('text=')[1]);
+    expect(msg).toContain('[Khamrah, Asad]');
+    expect(msg).toContain('+1 sorpresa de Fito');
+    expect(msg).toContain('$300 MXN');
+  });
+  test('en Trato no aparece la sorpresa', () => {
+    const cart = [{ key: 'k', id: 'tr', marca: 'Combos', nombre: 'Truco o Aroma', size: 'Paquete 5', price: 300, qty: 1,
+      customItems: [{ id: 'a', nombre: 'Khamrah' }] }];
+    expect(decodeURIComponent(buildWhatsAppURL(cart, '52'))).not.toContain('sorpresa');
+  });
+});
