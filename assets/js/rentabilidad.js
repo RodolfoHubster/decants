@@ -212,8 +212,11 @@ export function clientesAtendidos(ventas) {
  * Rentabilidad de cada botella de un perfume y el total del perfume.
  *
  * El renglón del perfume suma TODAS sus botellas (antes mostraba solo la
- * activa y no cuadraba con las botellas de abajo). `enUso` es la botella que se
- * está gastando: la más vieja que no se ha terminado.
+ * activa y no cuadraba con las botellas de abajo). `enUso` es la botella que TÚ
+ * marcaste como activa (loteActivo), a la que se apuntan las ventas nuevas.
+ * Las botellas anteriores que no llegaron al 100% salen con `sinCerrar`: casi
+ * siempre ya se acabaron y solo falta ajustarlas (ventas no capturadas,
+ * probadores o merma).
  *
  * @param {object} p  Perfume con `lotes`.
  * @param {Array} hist  Ventas del perfume (los combos ya repartidos por perfume,
@@ -277,7 +280,10 @@ export function rentabilidadPorBotella(p, hist, costosOp) {
     };
   });
 
-  const enUso = botellas.find(b => b.progreso < 100) || botellas[botellas.length - 1] || null;
+  // Antes se adivinaba (la más vieja sin terminar) y marcaba una que el dueño no eligió.
+  const enUso = botellas.find(b => b.id === (p && p.loteActivo)) || botellas[botellas.length - 1] || null;
+  const iActiva = enUso ? botellas.indexOf(enUso) : -1;
+  botellas.forEach((b, i) => { b.sinCerrar = i < iActiva && b.progreso < 100; });
   const suma = k => botellas.reduce((s, b) => s + b[k], 0);
   return {
     botellas,

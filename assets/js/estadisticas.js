@@ -550,7 +550,8 @@ function renderProfitability() {
       tamanoBotella: b.tamano,
       mlVendidosVentas: b.mlVentas,
       restoVendido: b.restoVendido,
-      enUso: rent.enUso && rent.enUso.id === b.id && rent.botellas.length > 1
+      enUso: rent.enUso && rent.enUso.id === b.id && rent.botellas.length > 1,
+      sinCerrar: b.sinCerrar
     }));
     const enUso = rent.enUso;
 
@@ -560,7 +561,7 @@ function renderProfitability() {
       marca: p.marca || '',
       agotado,
       progreso: enUso ? enUso.progreso : 0,
-      progresoTexto: enUso ? `${rent.botellas.length > 1 ? 'En uso: ' : ''}${Math.round(enUso.usado)} / ${enUso.tamano}ml` : '',
+      progresoTexto: enUso ? `${rent.botellas.length > 1 ? 'Activa: ' : ''}${Math.round(enUso.usado)} / ${enUso.tamano}ml` : '',
       sumGanancia: rent.total.gananciaReal,
       sumIngreso: rent.total.ingreso,
       sumCostoBotella: rent.total.costoReal,
@@ -679,7 +680,7 @@ function renderProfitability() {
         const colorProgreso = l.progresoPorcentaje >= 100 ? '#ef4444' : 'var(--accent)';
         html += `
           <tr data-fila="lote" class="lotes-row-${r.pid}" style="display:none; background:var(--bg-card2)">
-            <td style="padding-left:35px; border-left:3px solid var(--accent)">↳ ${l.nombre}${l.enUso ? ' <span style="font-size:10.5px;color:var(--accent)">· en uso</span>' : ''}</td>
+            <td style="padding-left:35px; border-left:3px solid var(--accent)">↳ ${l.nombre}${l.enUso ? ' <span style="font-size:10.5px;color:var(--accent)">· activa</span>' : ''}${l.sinCerrar ? ' <span class="sin-cerrar" title="Ya compraste otra después y esta no llegó al 100%. Si ya se acabó, toca Ajustar y pon 0 ml.">· ¿ya se acabó? Ajústala</span>' : ''}</td>
             <td>
               <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:flex;align-items:center;gap:8px;">
                 <span>${l.progresoTexto}</span>

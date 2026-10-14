@@ -135,7 +135,7 @@ describe('rentabilidadPorBotella', () => {
       { talla: '10', precio: 160, cantidad: 10, loteId: 'lote-a' },
       { talla: '5', precio: 90, cantidad: 2, loteId: 'lote-b' },
     ];
-    const r = rentabilidadPorBotella(sauvage, hist, costosOp);
+    const r = rentabilidadPorBotella({ ...sauvage, loteActivo: 'lote-b' }, hist, costosOp);
     expect(r.botellas[0].progreso).toBe(100);
     expect(r.botellas[1].usado).toBe(10);
     expect(r.enUso.id).toBe('lote-b');
@@ -146,7 +146,7 @@ describe('rentabilidadPorBotella', () => {
   test('un resto cierra la botella al 100%', () => {
     const r = rentabilidadPorBotella(sauvage, [{ talla: 'Resto', precio: 600, cantidad: 1, loteId: 'lote-b' }], costosOp);
     expect(r.botellas[1]).toMatchObject({ restoVendido: true, progreso: 100, ingreso: 600 });
-    expect(r.enUso.id).toBe('lote-a');
+    expect(r.enUso.id).toBe('lote-b'); // sin activa marcada: la más nueva
   });
 });
 
@@ -161,5 +161,24 @@ describe('consumoDePerfume', () => {
     // lote-a: 80 + 20 + 30 = 100 (tope) y el resto huérfano también cae en lote-a.
     expect(r.capacidad).toBe(200);
     expect(r.usado).toBe(100);
+  });
+});
+
+describe('botella activa (Hawas Ice)', () => {
+  const hawas = {
+    id: 'hw', loteActivo: 'l5', precios: { 5: 90 },
+    lotes: ['l1', 'l2', 'l3', 'l4', 'l5'].map((id, i) => ({ id, fecha: i, costo: 700, tamano: 100 })),
+  };
+  const hist = [
+    { talla: 'Resto', cantidad: 1, precio: 500, loteId: 'l1' }, { talla: 'Resto', cantidad: 1, precio: 500, loteId: 'l2' },
+    { talla: '10', cantidad: 6, precio: 150, loteId: 'l3' }, { talla: '10', cantidad: 8, precio: 150, loteId: 'l4' },
+  ];
+  test('es la que marcaste, no la más vieja sin terminar', () => {
+    const r = rentabilidadPorBotella(hawas, hist, costosOp);
+    expect(r.enUso.id).toBe('l5');
+  });
+  test('las anteriores que no llegaron al 100% avisan que falta cerrarlas', () => {
+    const r = rentabilidadPorBotella(hawas, hist, costosOp);
+    expect(r.botellas.map(b => !!b.sinCerrar)).toEqual([false, false, true, true, false]);
   });
 });
