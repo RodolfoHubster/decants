@@ -65,29 +65,83 @@ export function resumenPunto(punto, ventas) {
 /**
  * ¿Alcanza la botella asignada para lo que vas a dejar?
  *
- * @param {Array} filas  [{perfumeId, talla, cantidad, probadores}] del formulario.
- *   En una edición, `cantidad` es lo que sigue sin vender + lo nuevo; lo ya
- *   guardado de este punto NO debe venir en `fuera` para no contarlo doble.
+ * Al EDITAR un punto, lo que ya estaba guardado ahí ya salió de la botella: solo
+ * se piden los ml de lo que agregues de más. Antes se volvía a descontar todo y,
+ * con la botella ya vendida como resto, decía "faltan 20 ml" aunque no faltara nada.
+ *
+ * @param {Array} filas  [{perfumeId, talla, cantidad, vendidos, probadores}] del formulario.
  * @param {Map} perfumesPorId
  * @param {Array} ventas
  * @param {Array} fuera  piezasFueraDeBotella() de los OTROS puntos.
- * @returns {Array<{perfumeId, nombre, ml, botella, restante, despues, alcanza}>}
+ * @param {Array} guardados  piezasFueraDeBotella() de ESTE punto como está guardado (al editar).
+ * @returns {Array<{perfumeId, nombre, ml, ya, extra, devuelve, botella, restante, despues, alcanza}>}
+ *   ml = lo que queda en el punto; ya = lo que ya estaba; extra = lo que se sirve de nuevo;
+ *   devuelve = lo que sale del punto (ya servido: no regresa a la botella).
  */
-export function revisarDisponibilidad(filas, perfumesPorId, ventas, fuera = []) {
-  const porPerfume = new Map();
+export function revisarDisponibilidad(filas, perfumesPorId, ventas, fuera = [], guardados = []) {
+  const sumar = (mapa, id, ml) => mapa.set(id, (mapa.get(id) || 0) + ml);
+  const enForm = new Map();
   (filas || []).forEach(f => {
     if (!f || !f.perfumeId) return;
     const piezas = Math.max(0, (+f.cantidad || 0) - (+f.vendidos || 0)) + (+f.probadores || 0);
-    porPerfume.set(f.perfumeId, (porPerfume.get(f.perfumeId) || 0) + piezas * mlDeTalla(f.talla));
+    sumar(enForm, f.perfumeId, piezas * mlDeTalla(f.talla));
   });
-  return [...porPerfume].map(([perfumeId, ml]) => {
+  const yaEstaban = new Map();
+  (guardados || []).forEach(g => { if (g && g.perfumeId) sumar(yaEstaban, g.perfumeId, mlDeTalla(g.talla) * (+g.cantidad || 0)); });
+
+  return [...enForm].map(([perfumeId, ml]) => {
     const p = perfumesPorId.get(perfumeId);
+    const ya = yaEstaban.get(perfumeId) || 0;
+    const extra = Math.max(0, ml - ya);
+    const devuelve = Math.max(0, ya - ml);
     const asignada = p && botellaAsignada(p);
-    if (!asignada) return { perfumeId, nombre: p ? p.nombre : '', ml, botella: null, restante: null, despues: null, alcanza: true };
-    const b = consumoPorBotella(p, ventas, fuera).botellas.find(x => x.id === asignada.id);
-    const despues = b.restante - ml;
-    return { perfumeId, nombre: p.nombre, ml, botella: b.idx + 1, restante: b.restante, despues, alcanza: despues >= 0 };
+    if (!asignada) return { perfumeId, nombre: p ? p.nombre : '', ml, ya, extra, devuelve, botella: null, restante: null, despues: null, alcanza: true };
+    // Lo de este punto ya cuenta como salido de la botella; solo lo nuevo se resta.
+    const b = consumoPorBotella(p, ventas, [...(fuera || []), ...(guardados || [])]).botellas.find(x => x.id === asignada.id);
+    const despues = b.restante - extra;
+    return { perfumeId, nombre: p.nombre, ml, ya, extra, devuelve, botella: b.idx + 1, restante: b.restante, despues, alcanza: extra === 0 || despues >= 0 };
   });
+}
+
+/**
+ * Retirar piezas de un punto (las recogiste). No baja de lo ya vendido.
+ * @returns {object} el renglón con la nueva cantidad.
+ */
+export function retirarDelPunto(item, piezas) {
+  const vendidos = +item.vendidos || 0;
+  const cantidad = Math.max(vendidos, (+item.cantidad || 0) - Math.max(0, Math.floor(+piezas || 0)));
+  return { ...item, cantidad };
+}
+
+/** Cuántas piezas para vender siguen en el punto (las que se pueden retirar). */
+export function piezasRetirables(item) {
+  return Math.max(0, (+item.cantidad || 0) - (+item.vendidos || 0));
+}
+
+/**
+ * Venta de piezas que recogiste del punto y vendiste tú: los ml se juntan
+ * (2 de 5 ml = un decant de 10 ml) y salen de LA MISMA botella de donde se
+ * sirvieron, sin comisión (no la vendió el punto). Así los ml no se cuentan
+ * dos veces: los que salen del punto son los que entran a la venta.
+ */
+export function ventaDeRetiro({ item, piezas, precio, cliente = '', lugar = '', canal = 'otro', ahora = Date.now() }) {
+  const ml = mlDeTalla(item.talla) * (Math.floor(+piezas) || 0);
+  const venta = {
+    creadoEn: ahora,
+    perfumeId: item.perfumeId,
+    perfumeNombre: item.perfumeNombre || '',
+    perfumeMarca: item.perfumeMarca || '',
+    talla: String(ml),
+    cantidad: 1,
+    precio: Number(precio) || 0,
+    canal,
+    cliente: String(cliente || '').trim(),
+    estado: 'pagada',
+    metodoPago: 'efectivo',
+    notas: `Decants recogidos de ${lugar || 'un punto externo'} (${piezas} de ${item.talla} ml)`,
+  };
+  if (item.loteId) venta.loteId = item.loteId;
+  return venta;
 }
 
 /**

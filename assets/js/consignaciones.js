@@ -1,6 +1,7 @@
 import { db, collection, getDocs, doc, updateDoc, deleteDoc, addDoc, onAuthStateChanged, auth } from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
-import { botellaAsignada, piezasFueraDeBotella, resumenPunto, revisarDisponibilidad, filtrarPerfumes } from './puntos-externos.js?v=2';
+import { botellaAsignada, piezasFueraDeBotella, resumenPunto, revisarDisponibilidad, filtrarPerfumes, retirarDelPunto, piezasRetirables, ventaDeRetiro } from './puntos-externos.js?v=3';
+import { idCliente } from './clientes-util.js?v=2';
 import { consumoPorBotella } from './rentabilidad.js?v=2';
 
 // Puntos externos: lo que dejas en barberías y otros locales. Cada perfume lleva
@@ -123,6 +124,7 @@ function renderLotes() {
           </div>
           <div class="cons-item-actions">
             <button class="btn-sell" ${isClosed || isItemDone ? 'disabled' : ''} onclick="registrarVenta('${c.id}', ${itemIdx})">+1 Vendido</button>
+            ${!isClosed && piezasRetirables(item) > 0 ? `<button class="btn-retirar" onclick="retirarPiezas('${c.id}', ${itemIdx})" title="Recogí decants de este punto"><i class="bi bi-box-arrow-left"></i> Retirar</button>` : ''}
           </div>
         </div>`;
     }).join('');
@@ -398,7 +400,9 @@ function filasDelFormulario() {
 function revisarFormulario() {
   const editId = document.getElementById('c-edit-id').value;
   const fuera = piezasFueraDeBotella(consignaciones.filter(c => c.id !== editId));
-  return revisarDisponibilidad(filasDelFormulario(), perfumesPorId, ventas, fuera);
+  // Al editar, lo que ya estaba en el punto ya salió de la botella: solo cuenta lo que agregues.
+  const guardados = editId ? piezasFueraDeBotella(consignaciones.filter(c => c.id === editId)) : [];
+  return revisarDisponibilidad(filasDelFormulario(), perfumesPorId, ventas, fuera, guardados);
 }
 
 function actualizarDisponibilidad() {
@@ -415,9 +419,17 @@ function actualizarDisponibilidad() {
     if (r.botella === null) {
       el.innerHTML = '<span class="aviso-gris"><i class="bi bi-info-circle"></i> Este perfume no tiene botella registrada en Costos.</span>';
     } else {
-      el.innerHTML = `<span class="${r.alcanza ? 'aviso-ok' : 'aviso-mal'}"><i class="bi ${r.alcanza ? 'bi-droplet' : 'bi-exclamation-triangle'}"></i>
-        Sale de la Botella #${r.botella}: quedan ${Math.round(r.restante)} ml, usas ${Math.round(r.ml)} ml →
-        ${r.alcanza ? `te quedan ${Math.round(r.despues)} ml` : `<strong>faltan ${Math.round(-r.despues)} ml</strong>`}</span>`;
+      const ml = n => Math.round(n);
+      if (r.extra > 0) {
+        el.innerHTML = `<span class="${r.alcanza ? 'aviso-ok' : 'aviso-mal'}"><i class="bi ${r.alcanza ? 'bi-droplet' : 'bi-exclamation-triangle'}"></i>
+          Sale de la Botella #${r.botella}: quedan ${ml(r.restante)} ml, usas ${ml(r.extra)} ml${r.ya ? ' más' : ''} →
+          ${r.alcanza ? `te quedan ${ml(r.despues)} ml` : `<strong>faltan ${ml(-r.despues)} ml</strong>`}</span>`;
+      } else if (r.devuelve > 0) {
+        el.innerHTML = `<span class="aviso-gris"><i class="bi bi-box-arrow-left"></i>
+          Quitas ${ml(r.devuelve)} ml del punto. Ya estaban servidos: no regresan a la botella. Si los vendiste tú, mejor usa "Retirar" en la tarjeta.</span>`;
+      } else {
+        el.innerHTML = `<span class="aviso-gris"><i class="bi bi-check2"></i> Sin cambio: estos ${ml(r.ml)} ml ya habían salido de la Botella #${r.botella}.</span>`;
+      }
     }
   });
   const piezas = filas.filter(f => f.perfumeId).reduce((s, f) => s + Math.max(0, f.cantidad - f.vendidos) + f.probadores, 0);
@@ -537,6 +549,81 @@ window.registrarVenta = async (loteId, itemIdx) => {
     await updateDoc(doc(db, 'consignaciones', loteId), { items: lote.items });
 
     Swal.fire('Venta Registrada', 'El ingreso se reflejará en tus estadísticas.', 'success');
+    renderLotes();
+  } catch (e) {
+    console.error(e);
+    Swal.fire('Error', e.message, 'error');
+  }
+};
+
+// Retirar: recogiste decants del punto. Si los vendiste tú, se registra la venta con
+// los ml juntos (2 de 5 ml = un 10 ml) y de LA MISMA botella: así no se duplican.
+window.retirarPiezas = async (loteId, itemIdx) => {
+  const lote = consignaciones.find(c => c.id === loteId);
+  const item = lote && lote.items[itemIdx];
+  if (!item) return;
+  const max = piezasRetirables(item);
+  const { value: datos } = await Swal.fire({
+    title: `Retirar ${item.perfumeNombre}`,
+    html: `
+      <div class="retiro-form">
+        <label>¿Cuántos decants de ${esc(item.talla)} ml recogiste? (quedan ${max})
+          <input id="ret-piezas" type="number" min="1" max="${max}" value="${Math.min(2, max)}" class="swal2-input">
+        </label>
+        <label class="retiro-op"><input type="radio" name="ret-modo" value="vendi" checked> Los vendí yo</label>
+        <label class="retiro-op"><input type="radio" name="ret-modo" value="recogi"> Solo los recogí (no hubo venta)</label>
+        <div id="ret-venta">
+          <label>¿En cuánto lo vendiste? ($ total)
+            <input id="ret-precio" type="number" min="0" class="swal2-input" placeholder="Ej. 280">
+          </label>
+          <label>Cliente (opcional)
+            <input id="ret-cliente" type="text" class="swal2-input" placeholder="Nombre">
+          </label>
+          <small id="ret-nota"></small>
+        </div>
+      </div>`,
+    showCancelButton: true,
+    confirmButtonText: 'Guardar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#C9A84C',
+    didOpen: () => {
+      const caja = document.getElementById('ret-venta');
+      const nota = document.getElementById('ret-nota');
+      const pintar = () => {
+        const n = Math.max(1, parseInt(document.getElementById('ret-piezas').value) || 1);
+        const vendi = document.querySelector('input[name="ret-modo"]:checked').value === 'vendi';
+        caja.hidden = !vendi;
+        nota.textContent = `Se registra como un decant de ${n * (parseFloat(item.talla) || 0)} ml, de la misma botella, sin comisión.`;
+      };
+      document.querySelectorAll('input[name="ret-modo"]').forEach(r => r.addEventListener('change', pintar));
+      document.getElementById('ret-piezas').addEventListener('input', pintar);
+      pintar();
+    },
+    preConfirm: () => {
+      const piezas = parseInt(document.getElementById('ret-piezas').value) || 0;
+      const vendi = document.querySelector('input[name="ret-modo"]:checked').value === 'vendi';
+      const precio = parseFloat(document.getElementById('ret-precio').value);
+      if (piezas < 1 || piezas > max) { Swal.showValidationMessage(`Pon entre 1 y ${max}`); return false; }
+      if (vendi && !(precio >= 0)) { Swal.showValidationMessage('Pon el precio de la venta'); return false; }
+      return { piezas, vendi, precio, cliente: document.getElementById('ret-cliente').value };
+    }
+  });
+  if (!datos) return;
+
+  try {
+    if (datos.vendi) {
+      const venta = ventaDeRetiro({ item, piezas: datos.piezas, precio: datos.precio, cliente: datos.cliente, lugar: lote.lugar });
+      const d = new Date(venta.creadoEn);
+      const fecha = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (venta.cliente) venta.clienteId = idCliente(venta.cliente, fecha);
+      const ref = await addDoc(collection(db, 'ventas'), venta);
+      ventas.push({ id: ref.id, ...venta });
+    }
+    lote.items[itemIdx] = retirarDelPunto(item, datos.piezas);
+    await updateDoc(doc(db, 'consignaciones', loteId), { items: lote.items });
+    Swal.fire(datos.vendi ? 'Venta registrada' : 'Listo', datos.vendi
+      ? 'Se descontó del punto y quedó en tus ventas, de la misma botella.'
+      : 'Se quitaron del punto.', 'success');
     renderLotes();
   } catch (e) {
     console.error(e);

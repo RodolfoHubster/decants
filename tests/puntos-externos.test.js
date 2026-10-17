@@ -1,7 +1,8 @@
 import {
   botellaAsignada, piezasFueraDeBotella, filtrarPerfumes, ventasDelPunto, resumenPunto, revisarDisponibilidad, costoProbadores,
+  retirarDelPunto, piezasRetirables, ventaDeRetiro,
 } from '../assets/js/puntos-externos.js';
-import { contextoRentabilidad } from '../assets/js/rentabilidad.js';
+import { contextoRentabilidad, consumoDePerfume } from '../assets/js/rentabilidad.js';
 
 const candee = {
   id: 'cand', nombre: 'Odyssey Candee', loteActivo: 'l3',
@@ -91,5 +92,44 @@ describe('filtrarPerfumes', () => {
     expect(nombres(filtrarPerfumes(mas, 'candy'))).toContain('Odyssey Candee');
     expect(nombres(filtrarPerfumes(mas, 'hamrah'))).toEqual(['Khamrah']);
     expect(nombres(filtrarPerfumes(mas, 'odisey candy'))).toEqual(['Odyssey Candee']);
+  });
+});
+
+describe('editar un punto y retirar piezas (caso Valentino Born in Roma)', () => {
+  // Botella #2 de 100 ml: se dejaron 3 de 5 ml para vender + 1 probador y luego se vendió el resto.
+  const valentino = { id: 'val', nombre: 'Born in Roma Intense', loteActivo: 'b2', lotes: [{ id: 'b1', costo: 900, tamano: 100 }, { id: 'b2', costo: 950, tamano: 100 }] };
+  const porId = new Map([[valentino.id, valentino]]);
+  const item = { perfumeId: 'val', perfumeNombre: 'Born in Roma Intense', talla: '5', cantidad: 3, vendidos: 0, probadores: 1, precio: 150, loteId: 'b2' };
+  const barber = { id: 'pt', lugar: 'Barber', estado: 'Abierto', items: [item] };
+  const ventas = [{ perfumeId: 'val', talla: 'Resto', cantidad: 1, precio: 900, loteId: 'b2' }];
+
+  test('editar sin cambios no pide ml aunque la botella ya esté vendida', () => {
+    const [r] = revisarDisponibilidad([item], porId, ventas, [], piezasFueraDeBotella([barber]));
+    expect(r).toMatchObject({ ml: 20, ya: 20, extra: 0, alcanza: true });
+  });
+  test('quitar 2 del punto: salen 10 ml que ya estaban servidos', () => {
+    const [r] = revisarDisponibilidad([{ ...item, cantidad: 1 }], porId, ventas, [], piezasFueraDeBotella([barber]));
+    expect(r).toMatchObject({ ml: 10, extra: 0, devuelve: 10, alcanza: true });
+  });
+  test('agregar uno más sí se revisa contra la botella (ya no queda)', () => {
+    const [r] = revisarDisponibilidad([{ ...item, cantidad: 4 }], porId, ventas, [], piezasFueraDeBotella([barber]));
+    expect(r).toMatchObject({ extra: 5, restante: 0, alcanza: false });
+  });
+  test('retirar no baja de lo vendido', () => {
+    expect(retirarDelPunto(item, 2).cantidad).toBe(1);
+    expect(retirarDelPunto({ ...item, vendidos: 2 }, 3).cantidad).toBe(2);
+    expect(piezasRetirables({ ...item, vendidos: 1 })).toBe(2);
+  });
+  test('"los vendí yo": un decant de 10 ml de la misma botella, sin comisión', () => {
+    const v = ventaDeRetiro({ item, piezas: 2, precio: 280, cliente: 'Juan', lugar: 'Barber', ahora: 5 });
+    expect(v).toMatchObject({ talla: '10', cantidad: 1, precio: 280, loteId: 'b2', perfumeId: 'val', cliente: 'Juan', creadoEn: 5 });
+    expect(v.comision).toBeUndefined();
+  });
+  test('los ml no se duplican: lo que sale del punto entra a la venta', () => {
+    const antes = consumoDePerfume({ ...valentino, loteActivo: 'b2' }, [], piezasFueraDeBotella([barber]));
+    const despuesPunto = { ...barber, items: [retirarDelPunto(item, 2)] };
+    const venta = ventaDeRetiro({ item, piezas: 2, precio: 280 });
+    const despues = consumoDePerfume({ ...valentino, loteActivo: 'b2' }, [venta], piezasFueraDeBotella([despuesPunto]));
+    expect(despues.usado).toBe(antes.usado);
   });
 });
