@@ -18,7 +18,8 @@ Se prueba en **Live Server en :5501** (`.vscode/settings.json`), no en XAMPP. Li
 ## Mapa del código
 
 ```
-index.html, perfumes-completos.html, faq.html   ← tienda pública
+index.html, producto.html,                      ← tienda pública (producto.html = página de
+perfumes-completos.html, faq.html                  cada perfume, ?p=<marca-nombre>)
 admin/*.html (18 páginas)                       ← una página por sección,
                                                   cada una importa admin/sidebar.js
 assets/js/*.js                                  ← un módulo por página + módulos puros
@@ -37,9 +38,18 @@ tests/*.test.js                                 ← Jest, importan los módulos 
 `recordatorios.js` (links a Google Calendar con repetición) ·
 `puntos-externos.js` (decants y probadores en barberías: botella asignada, ml que alcanzan, costo de probadores) ·
 `temporada.js` (temporada especial vigente desde `config/tienda.temporada`; `?temporada=halloween` la simula solo en localhost) ·
-`sorpresa.js` (paquetes sorpresa como la Calaverita: disponibilidad, una a `precioExtra` por paquete de su temporada, "elige 1" al venderla en el panel)
+`sorpresa.js` (paquetes sorpresa como la Calaverita: disponibilidad, una a `precioExtra` por paquete de su temporada, "elige 1" al venderla en el panel) ·
+`similares.js` (productos similares de la página de producto) · `pro.js` (decant PRO: 5/10 ml a +`reforzadaVenta`, 7 colores) ·
+`newsletter.js` (validar correo, documento `suscriptores/<correo>`, armar el correo de novedades para Brevo) ·
+`ia-perfume.js` (prompt de la IA de decants) · `ia-completos.js` (prompt de la IA de perfumes completos: presentaciones que existen, precio de mercado en México y sugerido; descarta precios fuera de rango)
 
-`config/costosOperativos` es **privado**; la tienda solo lee `config/tienda` (`disable2ml`).
+**Página de producto:** `producto.html` carga el mismo `catalog.js` con `<body data-pagina="producto">`
+(`ES_PRODUCTO`); la ficha es el marcado del antiguo modal (`#modal`) mostrado como página. Las tarjetas
+son `<a href="producto.html?p=...">` y los links viejos `#/perfumes/slug` redirigen. El encabezado,
+el carrito, el pie y la decoración de temporada están **duplicados en index.html y producto.html**:
+un cambio ahí va en los dos. Los estilos de la tienda viven en `assets/css/tienda.css` (antes inline).
+
+`config/costosOperativos` es **privado**; la tienda solo lee `config/tienda` (`disable2ml`, `reforzadaVenta`, `temporada`).
 
 **Patrón del proyecto: la lógica testeable se extrae a un módulo puro que el test
 importa de verdad.** Nunca copies la lógica dentro del spec — si necesitas probar algo
@@ -55,7 +65,8 @@ Búscalos con `grep -n 'nombreDeFuncion' archivo` y lee solo el rango con
 ### Colecciones de Firestore
 
 `perfumes` · `ventas` · `paquetes` · `categorias` · `accesorios` · `marcas` · `novedades` ·
-`pedidos` · `consignaciones` · `insumos` · `config` · `perfumes_completos` · `ordenes_completos`
+`pedidos` · `consignaciones` · `insumos` · `config` · `perfumes_completos` · `ordenes_completos` ·
+`visitas` · `suscriptores` (newsletter: el visitante solo puede crear)
 
 `perfumes`, `marcas`, `categorias`, `paquetes`, `accesorios`, `novedades` y `config` son de
 **lectura pública** — se pueden consultar sin auth para verificar datos reales.
