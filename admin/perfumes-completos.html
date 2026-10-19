@@ -25,6 +25,30 @@
     .pc-mas[open] summary i { transform:rotate(180deg); }
     .pc-mas-body { padding-bottom:14px; }
     .disp-btn { border:none; cursor:pointer; font:inherit; }
+    .foto-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(92px, 1fr)); gap:8px; margin-top:10px; max-height:300px; overflow-y:auto; padding:2px; }
+    .foto-op { display:flex; flex-direction:column; gap:4px; padding:5px; border:1px solid var(--border); border-radius:10px; background:var(--bg-card2); color:var(--text-primary); font:inherit; cursor:pointer; text-align:left; transition:border-color .18s, background .18s, transform .15s, box-shadow .2s; animation:foto-op-entra .3s ease-out both; }
+    .foto-op:hover, .foto-op.sel { border-color:var(--accent); background:var(--accent-soft); }
+    .foto-op:hover { transform:translateY(-3px); box-shadow:0 8px 18px rgba(0,0,0,.35); }
+    .foto-op:active { transform:scale(.95); }
+    .foto-op.sel { box-shadow:0 0 0 2px var(--accent); }
+    .foto-op img { transition:transform .25s; }
+    .foto-op:hover img { transform:scale(1.04); }
+    @keyframes foto-op-entra { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+    @media (prefers-reduced-motion: reduce) { .foto-op, .foto-op img { animation:none; transition:none; } }
+    .foto-op img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:7px; background:#222; }
+    .foto-op span { font-size:11px; line-height:1.25; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+    .foto-op small { font-size:10px; color:var(--text-muted); }
+    .ia-precios { margin-top:10px; padding:10px 12px; border:1px solid var(--accent-border); border-radius:10px; background:var(--accent-soft); display:flex; flex-direction:column; gap:6px; animation:foto-op-entra .3s ease-out both; }
+    .ia-precios-tit { font-size:12.5px; font-weight:600; color:var(--accent); }
+    .ia-precios-tit em { color:var(--warning, #e0a040); font-style:normal; }
+    .ia-precio-fila { display:grid; grid-template-columns:56px 1fr auto auto; gap:10px; align-items:center; font-size:13px; }
+    .ia-precio-fila span { color:var(--text-muted); }
+    .ia-precio-fila .ia-sug { color:var(--text-primary); font-weight:600; }
+    .ia-precios small { font-size:11.5px; color:var(--text-muted); }
+    .ia-lleno { animation:ia-lleno .9s ease-out; }
+    @keyframes ia-lleno { 0% { box-shadow:0 0 0 3px var(--accent); } 100% { box-shadow:0 0 0 0 transparent; } }
+    @media (max-width: 520px) { .ia-precio-fila { grid-template-columns:48px 1fr auto; } .ia-precio-fila span:not(.ia-sug) { grid-column:2 / 4; grid-row:2; font-size:12px; } }
+    .foto-vacio { grid-column:1/-1; font-size:12.5px; color:var(--text-muted); padding:8px 2px; }
     @media (max-width: 640px) {
       #modal .form-row { grid-template-columns:1fr !important; display:grid; }
       .precios-completos-grid { grid-template-columns:repeat(3,1fr) !important; }
@@ -146,17 +170,24 @@
           <div class="precio-completo-item"><label>150 ml</label><input class="form-control" type="number" id="px150" min="0" placeholder="0"></div>
           <div class="precio-completo-item"><label>200 ml</label><input class="form-control" type="number" id="px200" min="0" placeholder="0"></div>
         </div>
+        <div class="ia-precios" id="ia-precios" hidden></div>
       </div>
       <div class="form-group">
         <label>Imagen</label>
         <div style="display:flex;gap:8px;margin-bottom:8px">
           <button type="button" class="btn btn-outline btn-sm" id="btn-url" onclick="setMode('url')"><i class="bi bi-link-45deg"></i> URL</button>
           <button type="button" class="btn btn-outline btn-sm" id="btn-file" onclick="setMode('file')"><i class="bi bi-upload"></i> Subir</button>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-decant" onclick="setMode('decant')"><i class="bi bi-images"></i> De mis decants</button>
         </div>
         <div id="sec-url"><input class="form-control" id="p-img-url" placeholder="https://..." oninput="previewUrl()"></div>
         <div id="sec-file" style="display:none">
           <input type="file" class="form-control" id="p-img-file" accept="image/*" onchange="previewFile()">
           <p style="font-size:11px;color:#666;margin-top:4px"><i class="bi bi-cloud-upload"></i> La imagen se subirá a Cloudinary al guardar.</p>
+        </div>
+        <!-- Reusar la foto que ya tiene el decant (no se sube otra a Cloudinary) -->
+        <div id="sec-decant" style="display:none">
+          <input class="form-control" id="foto-buscar" placeholder="Busca el decant: aqua, sauvage, 9pm…" oninput="pintarFotosDecant()" autocomplete="off">
+          <div class="foto-grid" id="foto-grid"></div>
         </div>
         <div id="preview-wrap" class="img-preview-wrap" style="display:none;margin-top:10px"><img id="preview-img" src="" alt=""></div>
       </div>
@@ -262,6 +293,6 @@
   </div>
 </div>
 <script src="https://widget.cloudinary.com/v2.0/global/all.js" type="text/javascript"></script>
-<script type="module" src="../assets/js/perfumes-completos.js?v=3.1"></script>
+<script type="module" src="../assets/js/perfumes-completos.js?v=3.3"></script>
 </body>
 </html>

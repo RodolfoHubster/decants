@@ -5,6 +5,9 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { toast } from './toast.js';
 import { imgThumb } from './cloudinary.js';
+import { matchSearch } from './search-engine.js';
+import { parsearRespuesta } from './ia-perfume.js';
+import { construirPromptCompleto, interpretarCompleto, referenciasDe } from './ia-completos.js';
 
 renderSidebar('perfumes-completos');
 
@@ -124,6 +127,9 @@ window.openModal = function (id = null) {
   document.getElementById('preview-img').src = p?.imagen || '';
   document.getElementById('preview-wrap').style.display = p?.imagen ? 'block' : 'none';
 
+  document.getElementById('foto-buscar').value = '';
+  const sug = document.getElementById('ia-precios');
+  if (sug) { sug.hidden = true; sug.innerHTML = ''; }
   setMode('url');
   toggleTiempo();
   document.getElementById('modal').classList.add('open');
@@ -145,9 +151,60 @@ window.setMode = function (mode) {
   imgMode = mode;
   document.getElementById('sec-url').style.display  = mode === 'url'  ? 'block' : 'none';
   document.getElementById('sec-file').style.display = mode === 'file' ? 'block' : 'none';
+  document.getElementById('sec-decant').style.display = mode === 'decant' ? 'block' : 'none';
   document.getElementById('btn-url').classList.toggle('active', mode === 'url');
   document.getElementById('btn-file').classList.toggle('active', mode === 'file');
+  document.getElementById('btn-decant').classList.toggle('active', mode === 'decant');
+  if (mode === 'decant') abrirFotosDecant();
 };
+
+// ── Foto de un decant: el mismo perfume ya tiene foto en la tienda; se reusa
+// la URL (nada se sube a Cloudinary). Se guarda igual que una URL pegada.
+let fotosDecant = null;
+async function abrirFotosDecant() {
+  const buscar = document.getElementById('foto-buscar');
+  if (!buscar.value) buscar.value = document.getElementById('p-nombre').value.trim();
+  if (!fotosDecant) {
+    document.getElementById('foto-grid').innerHTML = '<div class="foto-vacio">Cargando fotos…</div>';
+    try {
+      const snap = await getDocs(collection(db, 'perfumes'));
+      fotosDecant = [];
+      snap.forEach(d => { const x = d.data(); if (x.imagen) fotosDecant.push({ nombre: x.nombre || '', marca: x.marca || '', imagen: x.imagen }); });
+      fotosDecant.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+    } catch (e) {
+      console.error(e);
+      document.getElementById('foto-grid').innerHTML = '<div class="foto-vacio">No se pudieron cargar las fotos.</div>';
+      return;
+    }
+  }
+  pintarFotosDecant();
+  buscar.focus();
+}
+
+window.pintarFotosDecant = function () {
+  const grid = document.getElementById('foto-grid');
+  if (!fotosDecant) return;
+  const q = document.getElementById('foto-buscar').value.trim();
+  const actual = document.getElementById('p-img-url').value.trim();
+  const lista = (q ? fotosDecant.filter(f => matchSearch(q, f.nombre + ' ' + f.marca)) : fotosDecant).slice(0, 40);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  grid.innerHTML = lista.length
+    ? lista.map(f => `<button type="button" class="foto-op${f.imagen === actual ? ' sel' : ''}" data-url="${esc(f.imagen)}">
+        <img src="${esc(imgThumb(f.imagen))}" loading="lazy" alt="">
+        <span>${esc(f.nombre)}</span>${f.marca ? `<small>${esc(f.marca)}</small>` : ''}
+      </button>`).join('')
+    : '<div class="foto-vacio">Ningún decant con foto coincide. Prueba con otra palabra.</div>';
+};
+
+document.addEventListener('click', e => {
+  const op = e.target.closest('.foto-op');
+  if (!op) return;
+  document.getElementById('p-img-url').value = op.dataset.url;
+  previewUrl();
+  document.querySelectorAll('.foto-op.sel').forEach(b => b.classList.remove('sel'));
+  op.classList.add('sel');
+  toast('Foto del decant elegida', 'success');
+});
 
 window.previewUrl = function () {
   const url = document.getElementById('p-img-url').value.trim();
@@ -178,120 +235,137 @@ async function uploadCloudinary(file) {
 }
 
 // ── Guardar ───────────────────────────────────────────────
-    document.getElementById('btn-ia-name')?.addEventListener('click', async () => {
-        const prodTitle = document.getElementById('p-nombre').value.trim();
-        if (!prodTitle) {
-            toast('Por favor, escribe el nombre del perfume primero.', 'warning');
-            return;
-        }
-        
-        const geminiKey = localStorage.getItem('gemini_api_key');
-        if (!geminiKey) {
-            toast('Configura tu API Key en Ajustes para usar la IA.', 'warning');
-            return;
-        }
-        
-        const btn = document.getElementById('btn-ia-name');
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-        btn.disabled = true;
-        toast('Generando perfil olfativo con Inteligencia Artificial...', 'info');
-        
-        try {
-            const promptText = `
-Eres un experto sommelier de perfumes. 
-Se te ha dado este nombre de perfume: "${prodTitle}".
-Completa el siguiente JSON estrictamente y devuélvelo en formato JSON válido. 
-No incluyas markdown ni explicaciones, solo el JSON puro.
-
-{
-  "title": "Nombre exacto y completo del perfume",
-  "brand": "Marca diseñadora (ej. Carolina Herrera)",
-  "gender": "Caballero, Dama o Unisex",
-  "concentration": "EDP, EDT, Parfum, Elixir, etc",
-  "salida": "Notas de salida (ej. Bergamota, Limón)",
-  "corazon": "Notas de corazón (ej. Lavanda, Pimienta)",
-  "fondo": "Notas de fondo (ej. Cedro, Vainilla)",
-  "ocasion": "Ocasión recomendada (ej. Diario, Noche, Citas)",
-  "longevity": "baja, moderada, duradera, muy-duradera o eterna",
-  "sillage": "intima, moderada, pesada o enorme",
-  "desc": "Descripción detallada y poética (2-3 párrafos)",
-  "px30": "Precio competitivo MXN botella 30ml (0 si no aplica)",
-  "px50": "Precio competitivo MXN botella 50ml (ej. 1500 diseñador, 3500 nicho. 0 si no aplica)",
-  "px100": "Precio competitivo MXN botella 100ml (ej. 2500 diseñador, 5500 nicho. 0 si no aplica)",
-  "px150": "Precio competitivo MXN botella 150ml (0 si no aplica)",
-  "px200": "Precio competitivo MXN botella 200ml (0 si no aplica)"
-}
-`;
-            
-            const reqUrl = "https://api.openai.com/v1/chat/completions";
-            const res3 = await fetch(reqUrl, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${geminiKey}`
-                },
-                body: JSON.stringify({
-                    model: "gpt-4o",
-                    messages: [{ role: "user", content: promptText }],
-                    temperature: 0.1,
-                    response_format: { type: "json_object" }
-                })
-            });
-            
-            if (!res3.ok) throw new Error("Groq API falló: " + res3.statusText);
-            const aiData = await res3.json();
-            let aiText = aiData.choices[0].message.content;
-            
-            const match = aiText.match(/\{[\s\S]*\}/);
-            if (match) aiText = match[0];
-            
-            let aiJson;
-            try {
-                aiJson = JSON.parse(aiText);
-            } catch (err) {
-                // Fallback: replace unescaped control characters
-                aiText = aiText.replace(/[\u0000-\u001F]+/g, " ");
-                aiJson = JSON.parse(aiText);
-            }
-            
-            if (aiJson.brand) document.getElementById('p-marca').value = aiJson.brand;
-            if (aiJson.gender && document.getElementById('p-genero')) document.getElementById('p-genero').value = aiJson.gender;
-            
-            if (aiJson.concentration && document.getElementById('p-concentracion')) {
-                const conSelect = document.getElementById('p-concentracion');
-                for (let opt of conSelect.options) {
-                    if (opt.value && opt.text.toLowerCase() === aiJson.concentration.toLowerCase()) {
-                        conSelect.value = opt.value; break;
-                    }
-                }
-                if (!conSelect.value) conSelect.value = aiJson.concentration;
-            }
-            
-            if (aiJson.salida) document.getElementById('p-salida').value = aiJson.salida;
-            if (aiJson.corazon) document.getElementById('p-corazon').value = aiJson.corazon;
-            if (aiJson.fondo) document.getElementById('p-fondo').value = aiJson.fondo;
-            if (aiJson.ocasion) document.getElementById('p-ocasion').value = aiJson.ocasion;
-            
-            if (aiJson.longevity && document.getElementById('p-longevidad')) document.getElementById('p-longevidad').value = aiJson.longevity;
-            if (aiJson.sillage && document.getElementById('p-proyeccion')) document.getElementById('p-proyeccion').value = aiJson.sillage;
-            
-            if (aiJson.desc) document.getElementById('p-desc').value = aiJson.desc;
-            
-            if (aiJson.px30) document.getElementById('px30').value = aiJson.px30;
-            if (aiJson.px50) document.getElementById('px50').value = aiJson.px50;
-            if (aiJson.px100) document.getElementById('px100').value = aiJson.px100;
-            if (aiJson.px150) document.getElementById('px150').value = aiJson.px150;
-            if (aiJson.px200) document.getElementById('px200').value = aiJson.px200;
-            
-            toast('¡Perfil IA completado con éxito!', 'success');
-        } catch (e) {
-            console.error('Gemini error:', e);
-            toast('Error al consultar la Inteligencia Artificial: ' + e.message, 'error');
-        } finally {
-            btn.innerHTML = '<i class="bi bi-magic"></i> IA';
-            btn.disabled = false;
-        }
+// ── IA: alta por nombre (botella completa) ────────────────
+// El prompt vive en ia-completos.js (probado). Busca en la web: Fragrantica y
+// Parfumo para las notas; Mercado Libre, Amazon y Liverpool para el precio.
+// Antes contestaba de memoria y por eso los precios salían disparatados.
+async function consultarIACompleto(promptText, apiKey) {
+  const SITIOS = ['fragrantica.com', 'fragrantica.mx', 'parfumo.com',
+    'mercadolibre.com.mx', 'amazon.com.mx', 'liverpool.com.mx'];
+  try {
+    const res = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-5.6',
+        input: promptText,
+        tools: [{ type: 'web_search', filters: { allowed_domains: SITIOS } }],
+      }),
     });
+    if (!res.ok) throw new Error(`búsqueda web no disponible (${res.status})`);
+    const data = await res.json();
+    // Con búsqueda la respuesta trae la llamada de búsqueda y el mensaje: se busca el mensaje.
+    const mensaje = (data.output || []).find(o => o.type === 'message');
+    const texto = mensaje?.content?.find(c => typeof c.text === 'string')?.text;
+    if (!texto) throw new Error('respuesta sin texto');
+    return texto;
+  } catch (e) {
+    console.warn('Sin búsqueda web, se usa la consulta normal:', e.message);
+    toast('Sin búsqueda web: revisa bien los precios', 'info');
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: promptText }],
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+      }),
+    });
+    if (!res.ok) throw new Error(`OpenAI respondió ${res.status} ${res.statusText}`);
+    const data = await res.json();
+    return data.choices[0].message.content;
+  }
+}
+
+// Sugerencia de precio: se muestra debajo de las tallas con "Usar" por talla.
+let sugerenciaIA = {};
+const pesos = n => '$' + Number(n).toLocaleString('es-MX');
+function pintarSugerenciaPrecios(ia) {
+  const box = document.getElementById('ia-precios');
+  if (!box) return;
+  sugerenciaIA = ia.precios;
+  const filas = Object.entries(ia.precios).map(([ml, v]) => `
+    <div class="ia-precio-fila">
+      <b>${ml} ml</b>
+      <span>${v.mercado ? `Mercado ≈ ${pesos(v.mercado)}` : 'Mercado: sin dato'}</span>
+      <span class="ia-sug">Sugerido ${pesos(v.sugerido)}</span>
+      <button type="button" class="btn btn-outline btn-sm" data-usar-precio="${ml}">Usar</button>
+    </div>`).join('');
+  const fuera = ia.descartados.map(d => `${d.ml} ml (${d.razon})`).join(', ');
+  const duda = ia.confianza === 'baja' ? ' <em>· poco segura, verifícalo</em>' : '';
+  box.innerHTML = filas
+    ? `<div class="ia-precios-tit"><i class="bi bi-stars"></i> Precio sugerido por la IA${duda}</div>${filas}${fuera ? `<small>Descartado: ${fuera}</small>` : ''}`
+    : `<div class="ia-precios-tit"><i class="bi bi-stars"></i> La IA no encontró un precio confiable${fuera ? ` (descartado: ${fuera})` : ''}. Ponlo tú.</div>`;
+  box.hidden = false;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-usar-precio]');
+  if (!b) return;
+  const v = sugerenciaIA[b.dataset.usarPrecio];
+  const inp = document.getElementById(`px${b.dataset.usarPrecio}`);
+  if (!v || !inp) return;
+  inp.value = v.sugerido;
+  inp.classList.remove('ia-lleno'); void inp.offsetWidth; inp.classList.add('ia-lleno');
+});
+
+document.getElementById('btn-ia-name')?.addEventListener('click', async () => {
+  const nombre = document.getElementById('p-nombre').value.trim();
+  if (!nombre) { toast('Por favor, escribe el nombre del perfume primero.', 'warning'); return; }
+  const apiKey = localStorage.getItem('gemini_api_key');
+  if (!apiKey) { toast('Configura tu API Key en Ajustes para usar la IA.', 'warning'); return; }
+
+  const btn = document.getElementById('btn-ia-name');
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  btn.disabled = true;
+  toast('Buscando el perfume y su precio en México…', 'info');
+
+  try {
+    const conc = [...document.getElementById('p-concentracion').options]
+      .filter(o => o.value).map(o => ({ value: o.value, text: o.text }));
+    const marcaEscrita = document.getElementById('p-marca').value.trim();
+    const idActual = document.getElementById('p-id').value;
+    const prompt = construirPromptCompleto({
+      nombre,
+      marcaPista: marcaEscrita,
+      concentraciones: conc.map(o => o.value),
+      referencias: referenciasDe(items.filter(x => x.id !== idActual)),
+    });
+    const ia = interpretarCompleto(parsearRespuesta(await consultarIACompleto(prompt, apiKey)), { concentraciones: conc });
+
+    const poner = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+    if (!marcaEscrita) poner('p-marca', ia.marca);   // la marca que escribiste se respeta
+    poner('p-genero', ia.genero);
+    poner('p-concentracion', ia.concentracion);
+    poner('p-salida', ia.salida);
+    poner('p-corazon', ia.corazon);
+    poner('p-fondo', ia.fondo);
+    poner('p-ocasion', ia.ocasion);
+    poner('p-longevidad', ia.longevidad);
+    poner('p-proyeccion', ia.proyeccion);
+    poner('p-desc', ia.desc);
+
+    // Precios: en un perfume nuevo se llenan las tallas vacías que existen;
+    // al editar no se toca ninguna (un precio vacío = esa talla no se vende).
+    let llenadas = 0;
+    if (!idActual) {
+      for (const [ml, v] of Object.entries(ia.precios)) {
+        const inp = document.getElementById(`px${ml}`);
+        if (inp && !inp.value) { inp.value = v.sugerido; inp.classList.add('ia-lleno'); llenadas++; }
+      }
+    }
+    pintarSugerenciaPrecios(ia);
+
+    if (ia.confianza === 'baja') toast('La IA no está segura de este perfume: revisa notas y precios.', 'warning');
+    else toast(llenadas ? 'Ficha lista. Revisa el precio sugerido antes de guardar.' : 'Ficha lista.', 'success');
+  } catch (e) {
+    console.error('IA completos:', e);
+    toast('Error al consultar la IA: ' + e.message, 'error');
+  } finally {
+    btn.innerHTML = '<i class="bi bi-magic"></i> IA';
+    btn.disabled = false;
+  }
+});
 
 window.save = async function () {
   const btn = document.getElementById('btn-save');
