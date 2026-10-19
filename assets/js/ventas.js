@@ -1318,6 +1318,7 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
 
   let selectedValue = null;
   let isOpen = false;
+  let abiertoEn = 0;
 
   function reposition() {
     const r = btn.getBoundingClientRect();
@@ -1340,10 +1341,11 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
 
   function renderItems() {
     dd.innerHTML = '';
+    const dedo = window.matchMedia('(max-width: 700px)').matches; // opciones grandes en el teléfono
     items.forEach(item => {
       const opt = document.createElement('div');
       opt.style.cssText = [
-        'padding:8px 12px', 'cursor:pointer', 'font-size:13px',
+        dedo ? 'padding:13px 14px' : 'padding:8px 12px', 'cursor:pointer', dedo ? 'font-size:15px' : 'font-size:13px',
         'color:var(--text-primary)', 'display:flex', 'align-items:center', 'gap:8px',
         'transition:background .1s'
       ].join(';');
@@ -1387,6 +1389,7 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
     renderItems();
     dd.style.display = 'block';
     isOpen = true;
+    abiertoEn = Date.now();
     btn.querySelector('i').className = 'bi bi-chevron-up';
     btn.querySelector('i').style.cssText = 'position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text-muted)';
   }
@@ -1408,9 +1411,15 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
   };
   document.addEventListener('mousedown', outsideClick);
 
+  // En el teléfono, tocar la talla cierra el teclado y la pantalla cambia de
+  // tamaño: antes eso cerraba el menú recién abierto y había que tocar dos
+  // veces. Ahora el cambio de tamaño solo lo reacomoda, y un desplazamiento
+  // justo al abrir (el del teclado) tampoco lo cierra.
   const closeOnScroll = (e) => {
     if (e.target === dd || (e.target instanceof Node && dd.contains(e.target))) return;
-    if (dd.style.display !== 'none') closeDD();
+    if (dd.style.display === 'none') return;
+    if (e.type === 'resize' || Date.now() - abiertoEn < 700) { reposition(); return; }
+    closeDD();
   };
   window.addEventListener('scroll', closeOnScroll, true);
   window.addEventListener('resize', closeOnScroll, true);
@@ -1419,6 +1428,7 @@ function buildCustomDropdown(container, items, defaultLabel, onChange) {
 
   // API pública
   container._getValue  = () => selectedValue;
+  container._open      = () => { if (!isOpen) openDD(); };
   container._setValue  = (v) => {
     const item = items.find(i => i.value === v);
     if (item) choose(item);
@@ -1507,7 +1517,7 @@ function buildCombobox(container, onSelect) {
     }
     list.forEach((p, i) => {
       const li = document.createElement('li');
-      li.style.cssText = 'padding:8px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);';
+      li.style.cssText = (window.matchMedia('(max-width: 700px)').matches ? 'padding:12px 14px;' : 'padding:8px 14px;') + 'cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);';
       const pName = p.isPaquete ? `<i class="bi bi-box-seam"></i> ${p.nombre}` : p.nombre;
       li.innerHTML = `<span style="color:var(--text,#e0e0e0);font-size:14px;font-weight:500;">${pName}</span><br>
         <span style="color:var(--text-muted,#888);font-size:12px;">${p.marca||''}</span>`;
@@ -1536,6 +1546,7 @@ function buildCombobox(container, onSelect) {
     const pName = p && p.isPaquete ? `[Paquete] ${p.nombre}` : (p ? p.nombre : '');
     inp.value = p ? `${pName} ${p.marca ? '· ' + p.marca : ''}` : '';
     closeDD();
+    inp.blur();
     onSelect(p);
   }
 
@@ -1656,6 +1667,7 @@ function buildBatchRowEl(row) {
 
   // ── Celda Perfume: combobox portal ────────────────────────────────────────
   const tdPerf = document.createElement('td');
+  tdPerf.className = 'td-perfume';
   tdPerf.style.minWidth = '180px';
   const perfWrap = document.createElement('div');
   tdPerf.appendChild(perfWrap);
@@ -1663,6 +1675,8 @@ function buildBatchRowEl(row) {
 
   // ── Celda Talla: custom dropdown portal ───────────────────────────────────
   const tdTalla = document.createElement('td');
+  tdTalla.className = 'td-talla';
+  tdTalla.dataset.label = 'Talla';
   tdTalla.style.minWidth = '120px';
   const tallaWrap = document.createElement('div');
   tdTalla.appendChild(tallaWrap);
@@ -1733,6 +1747,7 @@ function buildBatchRowEl(row) {
   // ── Celda Cantidad ────────────────────────────────────────────────────────
   const tdCant = document.createElement('td');
   tdCant.className = 'td-cant';
+  tdCant.dataset.label = 'Cant.';
   const inCant = document.createElement('input');
   inCant.type = 'number'; inCant.min = '1'; inCant.value = cantidad || 1;
   inCant.oninput = () => { batchSet(rid,'cantidad',inCant.value); batchRefreshTotal(rid); };
@@ -1742,6 +1757,7 @@ function buildBatchRowEl(row) {
   // ── Celda Precio ──────────────────────────────────────────────────────────
   const tdPrecio = document.createElement('td');
   tdPrecio.className = 'td-precio';
+  tdPrecio.dataset.label = 'Precio';
   const inPrecio = document.createElement('input');
   inPrecio.type = 'number'; inPrecio.min = '0'; inPrecio.id = `brow-precio-${rid}`;
   inPrecio.value = precio || ''; inPrecio.placeholder = '$';
@@ -1752,6 +1768,7 @@ function buildBatchRowEl(row) {
   // ── Celda Total ───────────────────────────────────────────────────────────
   const tdTotal = document.createElement('td');
   tdTotal.className = 'td-total'; tdTotal.id = `brow-total-${rid}`;
+  tdTotal.dataset.label = 'Total';
   tdTotal.textContent = '—';
   tr.appendChild(tdTotal);
 
@@ -1760,6 +1777,7 @@ function buildBatchRowEl(row) {
   // ── Celda Estado: custom dropdown portal ──────────────────────────────────
   const tdEstado = document.createElement('td');
   tdEstado.className = 'td-estado';
+  tdEstado.dataset.label = 'Estado';
   const estadoWrap = document.createElement('div');
   tdEstado.appendChild(estadoWrap);
   tr.appendChild(tdEstado);
@@ -1772,6 +1790,7 @@ function buildBatchRowEl(row) {
   // ── Celda Nota ────────────────────────────────────────────────────────────
   const tdNota = document.createElement('td');
   tdNota.className = 'td-notas';
+  tdNota.dataset.label = 'Nota';
   const inNota = document.createElement('input');
   inNota.type = 'text'; inNota.value = notas || ''; inNota.placeholder = 'Nota';
   inNota.oninput = () => batchSet(rid,'notas',inNota.value);
@@ -1808,6 +1827,11 @@ function buildBatchRowEl(row) {
     if (items.length > 0) {
       const defaultTalla = items.find(i => i.value === '5') || items[0];
       tallaWrap._setValue(defaultTalla.value);
+      // En el teléfono se abre el menú de tallas (ya con 5 ml marcado): un toque
+      // para cambiarla, en vez de cerrar el teclado y luego abrir el menú.
+      if (items.length > 1 && window.matchMedia('(max-width: 700px)').matches && !(p && p.isPaquete && p.esPersonalizable)) {
+        setTimeout(() => tallaWrap._open && tallaWrap._open(), 350);
+      }
     } else {
       updateBatchResumen();
     }

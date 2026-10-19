@@ -68,6 +68,61 @@
     .ticket-btn:hover { background: var(--accent-soft); }
     .ticket-quitar { border-color: transparent; color: var(--text-muted); }
     .ticket-quitar:hover { color: var(--danger); background: rgba(224,92,92,.08); }
+    /* Los perfumes de cada cliente quedan agrupados bajo su nombre (raya dorada a la izquierda). */
+    #batch-tbody tr:not(.client-separator) > td:first-child { border-left: 3px solid var(--accent-border); padding-left: 8px; }
+
+    /* ── Teléfono: cada perfume es una tarjeta, todo grande para el dedo ── */
+    @media (max-width: 700px) {
+      #modal-dia .modal-body { padding: 14px 12px; }
+      .dia-header { gap: 8px; }
+      .dia-header > label { display: none; }
+      .dia-header > * { flex: 1 1 100% !important; min-width: 0 !important; }
+      .dia-header input, .dia-header select { min-height: 44px; font-size: 16px !important; }
+      .dia-canal-wrap { height: 44px; }
+      .batch-table-wrap { overflow: visible; }
+      .batch-table thead { display: none; }
+      .batch-table, .batch-table tbody { display: block; }
+      #batch-tbody tr.client-separator { display: block; margin-top: 16px; }
+      #batch-tbody tr.client-separator:first-child { margin-top: 0; }
+      #batch-tbody tr.client-separator td { display: block; border-radius: 12px 12px 0 0; border: 1px solid var(--accent-border) !important; border-bottom: none !important; }
+      .ticket-head { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+      .ticket-head > i { display: none; }
+      .ticket-nombre { grid-column: 1 / -1; min-width: 0; min-height: 46px; font-size: 16px; }
+      .ticket-metodo, .ticket-btn { min-height: 44px; font-size: 15px; }
+      .ticket-btn { justify-content: center; }
+      #batch-tbody tr:not(.client-separator) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 70px 52px 44px;
+        grid-template-areas: "per per per per rm" "tal tal tal pre pre" "can est est tot tot" "not not not not not";
+        gap: 10px 8px;
+        padding: 12px;
+        background: var(--bg-card2);
+        border: 1px solid var(--accent-border);
+        border-top: 1px dashed var(--border);
+      }
+      #batch-tbody tr:not(.client-separator) > td { display: block; padding: 0 !important; border: none !important; width: auto !important; min-width: 0 !important; }
+      .batch-table td.td-perfume { grid-area: per; }
+      .batch-table td.td-talla { grid-area: tal; }
+      .batch-table td.td-cant { grid-area: can; }
+      .batch-table td.td-precio { grid-area: pre; }
+      .batch-table td.td-estado { grid-area: est; }
+      .batch-table td.td-total { grid-area: tot; align-self: end; text-align: right; font-size: 17px; padding-bottom: 10px !important; }
+      .batch-table td.td-notas { grid-area: not; }
+      .batch-table td.td-rm { grid-area: rm; align-self: start; }
+      .batch-table td.td-rm button { width: 44px; height: 44px; font-size: 18px; }
+      .batch-table td[data-label]::before {
+        content: attr(data-label); display: block; margin-bottom: 4px;
+        font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted);
+      }
+      .batch-table input, .batch-table select,
+      .batch-table td.td-talla > div > button, .batch-table td.td-estado > div > button {
+        min-height: 44px; font-size: 16px !important;
+      }
+      .batch-table td.td-perfume input { min-width: 0 !important; }
+      .batch-table input[type="checkbox"] { min-height: 0; width: 20px; height: 20px; }
+      .batch-table td.td-talla label { gap: 8px !important; margin-top: 8px !important; font-size: 14px !important; }
+      #modal-dia .modal-footer .btn { flex: 1; min-height: 46px; }
+    }
   </style>
 </head>
 <body>
@@ -479,6 +534,6 @@ window.buildPerfumePicker = function(wrap, perfumes, onChange) {
   </div>
 </div>
 
-<script type="module" src="../assets/js/ventas.js?v=3.2"></script>
+<script type="module" src="../assets/js/ventas.js?v=3.3"></script>
 </body>
 </html>
