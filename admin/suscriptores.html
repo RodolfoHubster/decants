@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/jpeg" href="../assets/img/LogoOficial2.jpeg">
+  <link rel="apple-touch-icon" href="../assets/img/LogoOficial2.jpeg">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Suscriptores · Admin Fitoscents</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <style>
+    .sus-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    @media (min-width: 1000px) { .sus-grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: start; } }
+    .sus-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; }
+    .sus-card h2 { font-size: 16px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+    .sus-card h2 i { color: var(--accent); }
+    .sus-ayuda { font-size: 13px; color: var(--text-muted); margin: 0 0 14px; line-height: 1.5; }
+    .sus-total { font-size: 34px; font-weight: 700; color: var(--text-primary); line-height: 1; }
+    .sus-total small { font-size: 13px; font-weight: 400; color: var(--text-muted); margin-left: 6px; }
+    .sus-acciones { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+    .sus-lista { display: flex; flex-direction: column; gap: 6px; max-height: 460px; overflow-y: auto; }
+    .sus-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius-md); background: var(--bg-card2); border: 1px solid var(--border); }
+    .sus-item .sus-mail { flex: 1; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
+    .sus-item small { font-size: 11.5px; color: var(--text-faint); white-space: nowrap; }
+    .sus-vacio { color: var(--text-faint); font-size: 13px; padding: 10px 0; }
+    .nov-fila { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .nov-fila select { max-width: 200px; }
+    .nov-resumen { font-size: 13px; color: var(--text-muted); }
+    .nov-preview { width: 100%; height: 520px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #0d0d0d; }
+    .sus-pasos { margin: 0; padding-left: 20px; font-size: 13.5px; color: var(--text-muted); line-height: 1.6; }
+    .sus-pasos strong { color: var(--text-primary); }
+    .sus-pasos a { color: var(--accent); }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+<div id="sidebar-wrap"></div>
+<div class="main-content">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
+      <span class="topbar-title">Suscriptores</span>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <div class="sus-grid">
+      <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+        <section class="sus-card">
+          <h2><i class="bi bi-envelope-heart"></i> Quién se anotó</h2>
+          <p class="sus-ayuda">Los correos que dejan en la cajita "Novedades cada martes" de la tienda.</p>
+          <div class="sus-total" id="sus-total">—</div>
+          <div class="sus-acciones">
+            <button class="btn btn-outline btn-sm" onclick="copiarCorreos()"><i class="bi bi-clipboard"></i> Copiar correos</button>
+            <button class="btn btn-outline btn-sm" onclick="descargarCSV()"><i class="bi bi-download"></i> Descargar para Brevo (.csv)</button>
+          </div>
+          <div class="sus-lista" id="sus-lista"><div class="sus-vacio">Cargando…</div></div>
+        </section>
+
+        <section class="sus-card">
+          <h2><i class="bi bi-send"></i> Cómo mandarlo cada martes (Brevo)</h2>
+          <ol class="sus-pasos">
+            <li>Entra a <a href="https://www.brevo.com" target="_blank" rel="noopener">brevo.com</a> y crea tu cuenta gratis con tu Gmail de Fitoscents.</li>
+            <li>En <strong>Contactos → Importar</strong> sube el archivo de <strong>"Descargar para Brevo"</strong>. Hazlo cada semana para sumar a los nuevos (Brevo no los repite).</li>
+            <li>En <strong>Campañas → Crear campaña de email</strong> elige la plantilla <strong>"Programa tu propio diseño" → HTML</strong> y pega lo de <strong>"Copiar HTML"</strong> de aquí al lado.</li>
+            <li>Asunto sugerido: <strong>"Lo nuevo de esta semana en Fitoscents"</strong>. Programa el envío para el <strong>martes</strong> en la mañana.</li>
+          </ol>
+        </section>
+      </div>
+
+      <section class="sus-card">
+        <h2><i class="bi bi-stars"></i> Correo de novedades</h2>
+        <p class="sus-ayuda">Junta lo que agregaste (decants, paquetes y perfumes completos) con foto, precio desde y link a su página.</p>
+        <div class="nov-fila">
+          <select class="form-control" id="nov-desde" onchange="armarNovedades()">
+            <option value="7" selected>Últimos 7 días</option>
+            <option value="14">Últimos 14 días</option>
+            <option value="30">Últimos 30 días</option>
+          </select>
+          <span class="nov-resumen" id="nov-resumen"></span>
+        </div>
+        <div class="sus-acciones">
+          <button class="btn btn-primary btn-sm" onclick="copiarHTML()"><i class="bi bi-code-slash"></i> Copiar HTML</button>
+          <button class="btn btn-outline btn-sm" onclick="copiarTexto()"><i class="bi bi-card-text"></i> Copiar texto</button>
+        </div>
+        <iframe class="nov-preview" id="nov-preview" title="Vista previa del correo" sandbox></iframe>
+      </section>
+    </div>
+  </div>
+  <div id="toast-container"></div>
+</div>
+</div>
+
+<script type="module" src="../assets/js/suscriptores.js?v=1.1"></script>
+</body>
+</html>

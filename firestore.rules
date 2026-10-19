@@ -32,6 +32,19 @@ service cloud.firestore {
     }
 
     match /novedades/{id} { allow read: if true; allow write: if isAuth(); }
+
+    // Newsletter: el id es el correo en minúsculas. Un visitante solo puede
+    // anotarse (crear); leer, editar o borrar es solo del admin.
+    match /suscriptores/{correo} {
+      allow read, update, delete: if isAuth();
+      allow create: if request.resource.data.keys().hasOnly(['email', 'creadoEn', 'origen'])
+        && request.resource.data.email is string
+        && request.resource.data.email == correo
+        && request.resource.data.email.size() <= 120
+        && request.resource.data.email.matches('^[^@\\s/]+@[^@\\s/]+\\.[^@\\s/]+$')
+        && request.resource.data.creadoEn is int
+        && request.resource.data.origen in ['tienda', 'producto'];
+    }
     match /anuncios/{id}  { allow read: if true; allow write: if isAuth(); }
 
     match /pedidos/{id} { allow read, write: if isAuth(); }
