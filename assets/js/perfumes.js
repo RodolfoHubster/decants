@@ -593,6 +593,7 @@ window.openPosItemModal = (id) => {
   if(!p) return;
   const imgEl = document.getElementById('pos-m-img');
   const ds = localStorage.getItem('adminDataSaver') === '1';
+  document.getElementById('pos-m-media')?.classList.toggle('sin-foto', ds || !p.imagen);
   if (ds || !p.imagen) {
     imgEl.style.display = 'none';
   } else {

@@ -127,3 +127,8 @@ td.col-clicks {
   backdrop-filter: blur(4px);
 }
 .pcard-estrella.on { color: #f5c542; border-color: rgba(245,197,66,.5); }
+
+/* Modal rápido (POS): sin foto, o en modo ahorro, la X queda en su propia franja
+   y ya no se encima con el nombre ni con el botón de copiar precios. */
+#pos-m-media.sin-foto { height: 46px; border-bottom: 1px solid var(--border); }
+#pos-m-media.sin-foto .btn-icon { top: 7px !important; background: transparent !important; color: var(--text-muted) !important; }
