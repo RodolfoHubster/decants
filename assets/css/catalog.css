@@ -1680,3 +1680,7 @@ footer p { font-size: 13px; color: var(--muted); }
 .cart-nota-extra, .cart-item-extra { font-size: 10.5px; color: var(--gold); }
 .cart-item-extra { margin-top: 2px; }
 .cart-item-caldero { margin-top: 2px; font-size: 10.5px; color: var(--text-faint); }
+
+/* Las tarjetas ahora son links a la página de cada perfume (antes abrían un modal). */
+a.pcard { display: block; color: inherit; text-decoration: none; }
+a.pcard:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }

@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/jpeg" href="./assets/img/LogoOficial2.jpeg">
+  <link rel="apple-touch-icon" href="./assets/img/LogoOficial2.jpeg">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Perfume — Fitoscents</title>
+
+  <!-- Vista previa al compartir el enlace. Va en el HTML y no por JavaScript:
+       WhatsApp y las redes leen la página sin ejecutar scripts, así que unas
+       etiquetas puestas desde el código nunca las verían.
+       Si cambia el dominio, hay que actualizar estas dos URL absolutas. -->
+  <meta property="og:type"        content="website">
+  <meta property="og:title"       content="Fito Scents · Decants de perfumes originales">
+  <meta property="og:description" content="Decants 100% originales de perfumes de diseñador y árabes desde 2ml. Prueba antes de invertir en el frasco completo. Tijuana y Rosarito, B.C.">
+  <meta property="og:image"       content="https://rodolfohubster.github.io/decants/assets/img/LogoOficial2.jpeg">
+  <meta property="og:url"         content="https://rodolfohubster.github.io/decants/">
+  <meta name="twitter:card"       content="summary_large_image">
+  <meta name="description"        content="Decants 100% originales de perfumes de diseñador y árabes desde 2ml. Tijuana y Rosarito, B.C.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="./assets/css/catalog.css?v=5.0">
+  <!-- Temporadas: sus reglas solo aplican con html[data-temporada]; fuera de fechas no cambia nada. -->
+  <link rel="stylesheet" href="./assets/css/temporada-halloween.css?v=6">
+  <link rel="stylesheet" href="./assets/css/tienda.css?v=3">
+  <link rel="stylesheet" href="./assets/css/producto.css?v=10">
+</head>
+<body data-pagina="producto">
+
+<!-- Banner de Anuncios (se inyecta desde catalog.js si hay uno activo) -->
+<div id="anuncio-banner" style="display:none" role="alert" aria-live="polite"></div>
+
+<!-- Partículas fondo -->
+<div id="particles-bg" aria-hidden="true"></div>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-mark"><img src="./assets/img/LogoOficial2.jpeg" alt="Fito Scents"></div>
+      <div class="logo-text">
+        <div class="name">Fitoscents</div>
+        <div class="sub">Decants</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <!-- FAQ -->
+      <a href="./faq.html" class="btn-faq" aria-label="Preguntas frecuentes">
+        <i class="bi bi-question-circle"></i>
+        <span class="btn-faq-text">FAQ</span>
+      </a>
+      <!-- Perfumes Completos -->
+      <a href="./perfumes-completos.html" class="btn-completos" aria-label="Ver perfumes completos">
+        <i class="bi bi-collection-fill"></i>
+        <span class="btn-completos-text">Perfumes</span>
+      </a>
+      <!-- Admin -->
+      <a href="./login.html" id="btn-admin" class="btn-admin">
+        <i class="bi bi-shield-lock"></i>
+        <span id="btn-admin-label">Admin</span>
+      </a>
+      <!-- Carrito -->
+      <button class="btn-cart-header" onclick="toggleCart()" aria-label="Ver pedido">
+        <i class="bi bi-bag"></i>
+        <span id="cart-badge" class="cart-badge" style="display:none">0</span>
+      </button>
+      <!-- WhatsApp -->
+      <a href="https://wa.me/526648162623" target="_blank" rel="noopener" class="btn-wa" aria-label="WhatsApp">
+        <i class="bi bi-whatsapp"></i>
+        <span class="btn-wa-text">WhatsApp</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- ══ PÁGINA DEL PERFUME ══ -->
+<main class="producto-pagina" id="producto">
+  <div class="producto-barra">
+    <button class="producto-volver" type="button" onclick="volverAlCatalogo()"><i class="bi bi-arrow-left"></i> <span class="volver-largo">Volver al catálogo</span><span class="volver-corto">Volver</span></button>
+    <nav class="producto-migas" id="producto-migas" aria-label="Estás en"></nav>
+  </div>
+
+  <!-- ══ FICHA DEL PERFUME (mismo marcado que el modal; aquí es página) ══ -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal-box cargando" aria-labelledby="modal-nombre">
+      <!-- Temporada: 3 diseños (calabaza, telaraña, Día de Muertos); catalog.js elige uno por producto. -->
+      <div class="modal-deco" hidden aria-hidden="true">
+        <svg class="md-calabaza" viewBox="0 0 64 60" focusable="false">
+          <path class="cal-tallo" d="M30 10 q1 -8 9 -9 q-2 5 -5 10z"/>
+          <ellipse class="cal-cuerpo" cx="32" cy="37" rx="28" ry="21"/>
+          <path class="cal-gajos" fill="none" d="M32 16 C 22 22 22 52 32 58 M32 16 C 42 22 42 52 32 58 M15 22 C 7 31 8 49 20 55 M49 22 C 57 31 56 49 44 55"/>
+          <path class="cal-cara" d="M19 32 l6 -7 l6 7z M33 32 l6 -7 l6 7z M17 42 q15 13 30 0 l-4 3 l-3 -3 l-4 3 l-4 -3 l-4 3 l-4 -3 l-3 3z"/>
+        </svg>
+        <svg class="md-telarana" viewBox="0 0 120 120" focusable="false">
+        <g fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M0 0 L120 120 M0 0 L120 60 M0 0 L60 120 M0 0 L120 15 M0 0 L15 120"/>
+          <path d="M0 30 Q16 24 26 10 Q24 2 30 0"/>
+          <path d="M0 58 Q30 48 46 26 Q52 12 58 0"/>
+          <path d="M0 88 Q44 74 66 42 Q76 22 88 0"/>
+          <path d="M0 116 Q58 100 86 58 Q100 30 116 0"/>
+        </g>
+        </svg>
+        <span class="md-arana"><svg viewBox="0 0 24 24" focusable="false">
+          <g fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+            <path d="M9 11 L4 6 M9 12 L2 11 M9 13 L3 17 M10 14 L6 21 M15 11 L20 6 M15 12 L22 11 M15 13 L21 17 M14 14 L18 21"/>
+          </g>
+          <ellipse cx="12" cy="13.5" rx="3.6" ry="4.2" fill="currentColor"/>
+          <circle cx="12" cy="8.6" r="2.5" fill="currentColor"/>
+        </svg></span>
+        <svg class="md-papel" viewBox="0 0 320 34" preserveAspectRatio="none" focusable="false">
+          <path d="M0 2 H320" fill="none" stroke="currentColor" stroke-width="1"/>
+          <g class="md-banderas">
+            <path d="M8 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
+            <path d="M72 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
+            <path d="M136 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
+            <path d="M200 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
+            <path d="M264 2 h48 v22 l-6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6 -6 6 -6 -6z"/>
+          </g>
+        </svg>
+        <svg class="md-flores" viewBox="0 0 120 50" focusable="false">
+          <g class="md-flor"><circle cx="20" cy="30" r="9"/><circle cx="20" cy="30" r="4" class="md-centro"/></g>
+          <g class="md-flor"><circle cx="48" cy="38" r="6"/><circle cx="48" cy="38" r="2.6" class="md-centro"/></g>
+          <g class="md-flor"><circle cx="70" cy="22" r="7"/><circle cx="70" cy="22" r="3" class="md-centro"/></g>
+          <circle cx="92" cy="40" r="2.4"/><circle cx="104" cy="28" r="1.8"/><circle cx="34" cy="12" r="2"/>
+        </svg>
+      </div>
+      <div class="modal-media">
+        <div class="modal-img" id="modal-img">
+          <div class="modal-img-placeholder"><i class="bi bi-droplet"></i></div>
+        </div>
+      </div>
+      <div class="modal-content">
+        <div class="modal-skeleton" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="modal-marca" id="modal-marca"></div>
+        <h2 class="modal-nombre" id="modal-nombre"></h2>
+        <div class="modal-tags" id="modal-tags"></div>
+        <div class="modal-desc"  id="modal-desc"></div>
+        <button class="modal-desc-more" id="modal-desc-more" type="button" hidden>Ver más</button>
+        <div class="modal-ficha" id="modal-ficha" hidden></div>
+        <div id="modal-paquete-items" style="display:none"></div>
+        <div class="modal-sizes-row">
+          <div class="modal-sizes-label">Elige tu presentación</div>
+          <button type="button" class="pro-info" id="pro-info" hidden onclick="abrirInfoPro()"><b class="pro-tag">PRO</b> ¿Qué es PRO?</button>
+        </div>
+        <div class="modal-pills" id="modal-pills"></div>
+        <div class="pro-colores" id="pro-colores" hidden></div>
+
+        <!-- Barra de acción: se queda pegada abajo para que comprar no exija
+             desplazarse por toda la ficha. -->
+        <div class="acciones-sitio">
+        <div class="modal-actions">
+          <div id="modal-cart-wrapper">
+            <button class="btn-add-cart" id="modal-btn-cart" onclick="addToCart()">
+              <i class="bi bi-bag-plus"></i> Agregar al pedido
+            </button>
+          </div>
+          <button class="btn-wa-modal" id="modal-btn" onclick="pedirModal()">
+            <i class="bi bi-whatsapp"></i> <span class="wa-largo">¿Dudas? Consultar por WhatsApp</span><span class="wa-corto">Dudas</span>
+          </button>
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="producto-no-encontrado" id="producto-no-encontrado" hidden>
+    <i class="bi bi-search" aria-hidden="true"></i>
+    <h1>No encontramos este perfume</h1>
+    <p>Puede que ya no esté en el catálogo o que el enlace esté incompleto.</p>
+    <a class="producto-volver" href="index.html"><i class="bi bi-grid"></i> Ver el catálogo</a>
+  </div>
+
+  <!-- Productos similares: carrusel que se desliza con el dedo; flechas en escritorio -->
+  <section class="similares" id="similares" hidden aria-labelledby="similares-titulo">
+    <div class="similares-head">
+      <h2 id="similares-titulo">Productos similares</h2>
+      <div class="similares-flechas">
+        <button type="button" onclick="moverSimilares(-1)" aria-label="Ver anteriores"><i class="bi bi-chevron-left"></i></button>
+        <button type="button" onclick="moverSimilares(1)" aria-label="Ver siguientes"><i class="bi bi-chevron-right"></i></button>
+      </div>
+    </div>
+    <div class="similares-lista" id="similares-lista"></div>
+  </section>
+
+  <!-- Al terminar de ver el perfume, salir sin subir hasta arriba -->
+  <div class="producto-fin">
+    <button class="producto-volver producto-volver-grande" type="button" onclick="volverAlCatalogo()"><i class="bi bi-grid"></i> Ver más perfumes</button>
+  </div>
+</main>
+
+<!-- ¿Qué es PRO? -->
+<div class="pro-sheet" id="pro-sheet" onclick="if (event.target === this) cerrarInfoPro()">
+  <div class="pro-sheet-box" role="dialog" aria-modal="true" aria-labelledby="pro-sheet-titulo">
+    <button type="button" class="pro-sheet-x" onclick="cerrarInfoPro()" aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+    <div class="pro-sheet-kicker"><b class="pro-tag">PRO</b> Decant reforzado</div>
+    <h3 id="pro-sheet-titulo">¿Qué es un decant PRO?</h3>
+    <p>Es el mismo perfume original, en un envase reforzado y cubierto de aluminio de color.</p>
+    <ul>
+      <li><i class="bi bi-shield-check" aria-hidden="true"></i><span><strong>Resiste caídas.</strong> El aluminio cubre todo el envase y absorbe el golpe, así que difícilmente se rompe.</span></li>
+      <li><i class="bi bi-airplane" aria-hidden="true"></i><span><strong>Ideal para viaje.</strong> Llévalo en la bolsa o la maleta sin miedo.</span></li>
+      <li><i class="bi bi-palette" aria-hidden="true"></i><span><strong>Tú eliges el color.</strong> Escoge el que más te guste.</span></li>
+      <li><i class="bi bi-droplet-half" aria-hidden="true"></i><span><strong>En 5 o 10 ml</strong>, por <span id="pro-sheet-extra">+$15</span> sobre el precio del perfume.</span></li>
+    </ul>
+    <div class="pro-sheet-colores" id="pro-sheet-colores"></div>
+    <button type="button" class="pro-sheet-ok" onclick="cerrarInfoPro()">Entendido</button>
+  </div>
+</div>
+
+
+<!-- ══ CART DRAWER ══ -->
+<div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+<div class="cart-drawer" id="cart-drawer">
+  <div class="cart-handle" id="cart-handle"></div>
+  <div class="cart-header">
+    <div class="cart-title"><i class="bi bi-bag"></i> Tu pedido</div>
+    <button class="btn-close" id="btn-cart-close" onclick="closeCart()" aria-label="Cerrar pedido">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+  <div class="cart-body">
+    <div class="cart-empty" id="cart-empty" style="display:none">
+      <!-- Temporada: telaraña cuando no hay pedido (un <div> porque [hidden] no aplica a <svg>). -->
+      <div class="cart-empty-deco" hidden aria-hidden="true">
+        <svg class="ced-telarana" viewBox="0 0 120 120" focusable="false">
+        <g fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M0 0 L120 120 M0 0 L120 60 M0 0 L60 120 M0 0 L120 15 M0 0 L15 120"/>
+          <path d="M0 30 Q16 24 26 10 Q24 2 30 0"/>
+          <path d="M0 58 Q30 48 46 26 Q52 12 58 0"/>
+          <path d="M0 88 Q44 74 66 42 Q76 22 88 0"/>
+          <path d="M0 116 Q58 100 86 58 Q100 30 116 0"/>
+        </g>
+        </svg>
+        <svg class="ced-telarana izq" viewBox="0 0 120 120" focusable="false">
+        <g fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M0 0 L120 120 M0 0 L120 60 M0 0 L60 120 M0 0 L120 15 M0 0 L15 120"/>
+          <path d="M0 30 Q16 24 26 10 Q24 2 30 0"/>
+          <path d="M0 58 Q30 48 46 26 Q52 12 58 0"/>
+          <path d="M0 88 Q44 74 66 42 Q76 22 88 0"/>
+          <path d="M0 116 Q58 100 86 58 Q100 30 116 0"/>
+        </g>
+        </svg>
+        <span class="ced-arana"><svg viewBox="0 0 24 24" focusable="false">
+          <g fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+            <path d="M9 11 L4 6 M9 12 L2 11 M9 13 L3 17 M10 14 L6 21 M15 11 L20 6 M15 12 L22 11 M15 13 L21 17 M14 14 L18 21"/>
+          </g>
+          <ellipse cx="12" cy="13.5" rx="3.6" ry="4.2" fill="currentColor"/>
+          <circle cx="12" cy="8.6" r="2.5" fill="currentColor"/>
+        </svg></span>
+      </div>
+      <i class="bi bi-bag-x"></i>
+      <p>Tu pedido está vacío</p>
+      <span>Abre un perfume y elige tu talla para agregar</span>
+    </div>
+    <div id="cart-list"></div>
+  </div>
+  <div class="cart-footer" id="cart-footer" style="display:none">
+    <div class="cart-total-row">
+      <span>Total estimado</span>
+      <strong id="cart-total">$0 MXN</strong>
+    </div>
+    <p class="cart-disclaimer">* Precios sujetos a confirmación de disponibilidad</p>
+    <button class="btn-cart-wa" onclick="sendCartWA()">
+      <i class="bi bi-whatsapp"></i> Enviar pedido por WhatsApp
+    </button>
+    <button class="btn-cart-clear" id="btn-cart-clear" onclick="clearCart()">
+      <i class="bi bi-trash"></i> Limpiar pedido
+    </button>
+  </div>
+  <div class="cart-close-row">
+    <button class="btn-cart-close-bottom" onclick="closeCart()">
+      <i class="bi bi-chevron-down"></i> Cerrar pedido
+    </button>
+  </div>
+</div>
+
+<!-- FAB carrito -->
+<!-- Temporada: decoración fija alrededor de la pantalla (oculta fuera de temporada). -->
+<div class="deco-pantalla" hidden aria-hidden="true">
+  <svg class="dp-telarana dp-izq" viewBox="0 0 120 120" focusable="false">
+      <g fill="none" stroke="currentColor" stroke-width="1">
+        <path d="M0 0 L120 120 M0 0 L120 60 M0 0 L60 120 M0 0 L120 15 M0 0 L15 120"/>
+        <path d="M0 30 Q16 24 26 10 Q24 2 30 0"/>
+        <path d="M0 58 Q30 48 46 26 Q52 12 58 0"/>
+        <path d="M0 88 Q44 74 66 42 Q76 22 88 0"/>
+        <path d="M0 116 Q58 100 86 58 Q100 30 116 0"/>
+      </g>
+  </svg>
+  <svg class="dp-telarana dp-der" viewBox="0 0 120 120" focusable="false">
+      <g fill="none" stroke="currentColor" stroke-width="1">
+        <path d="M0 0 L120 120 M0 0 L120 60 M0 0 L60 120 M0 0 L120 15 M0 0 L15 120"/>
+        <path d="M0 30 Q16 24 26 10 Q24 2 30 0"/>
+        <path d="M0 58 Q30 48 46 26 Q52 12 58 0"/>
+        <path d="M0 88 Q44 74 66 42 Q76 22 88 0"/>
+        <path d="M0 116 Q58 100 86 58 Q100 30 116 0"/>
+      </g>
+  </svg>
+  <span class="dp-colgante" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false">
+        <g fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+          <path d="M9 11 L4 6 M9 12 L2 11 M9 13 L3 17 M10 14 L6 21 M15 11 L20 6 M15 12 L22 11 M15 13 L21 17 M14 14 L18 21"/>
+        </g>
+        <ellipse cx="12" cy="13.5" rx="3.6" ry="4.2" fill="currentColor"/>
+        <circle cx="12" cy="8.6" r="2.5" fill="currentColor"/>
+      </svg></span>
+  <svg class="dp-calabaza dp-cal-izq" viewBox="0 0 64 60" focusable="false">
+        <path class="cal-tallo" d="M30 10 q1 -8 9 -9 q-2 5 -5 10z"/>
+        <ellipse class="cal-cuerpo" cx="32" cy="37" rx="28" ry="21"/>
+        <path class="cal-gajos" fill="none" d="M32 16 C 22 22 22 52 32 58 M32 16 C 42 22 42 52 32 58 M15 22 C 7 31 8 49 20 55 M49 22 C 57 31 56 49 44 55"/>
+        <path class="cal-cara" d="M19 32 l6 -7 l6 7z M33 32 l6 -7 l6 7z M17 42 q15 13 30 0 l-4 3 l-3 -3 l-4 3 l-4 -3 l-4 3 l-4 -3 l-3 3z"/>
+  </svg>
+  <svg class="dp-calabaza dp-cal-der" viewBox="0 0 64 60" focusable="false">
+        <path class="cal-tallo" d="M30 10 q1 -8 9 -9 q-2 5 -5 10z"/>
+        <ellipse class="cal-cuerpo" cx="32" cy="37" rx="28" ry="21"/>
+        <path class="cal-gajos" fill="none" d="M32 16 C 22 22 22 52 32 58 M32 16 C 42 22 42 52 32 58 M15 22 C 7 31 8 49 20 55 M49 22 C 57 31 56 49 44 55"/>
+        <path class="cal-cara" d="M19 32 l6 -7 l6 7z M33 32 l6 -7 l6 7z M17 42 q15 13 30 0 l-4 3 l-3 -3 l-4 3 l-4 -3 l-4 3 l-4 -3 l-3 3z"/>
+  </svg>
+  <!-- La arañita del scroll: baja colgada de su hilo conforme bajas la página. -->
+  <div class="dp-scroll">
+    <span class="dp-hilo"></span>
+    <span class="dp-arana"><svg viewBox="0 0 24 24" focusable="false">
+        <g fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+          <path d="M9 11 L4 6 M9 12 L2 11 M9 13 L3 17 M10 14 L6 21 M15 11 L20 6 M15 12 L22 11 M15 13 L21 17 M14 14 L18 21"/>
+        </g>
+        <ellipse cx="12" cy="13.5" rx="3.6" ry="4.2" fill="currentColor"/>
+        <circle cx="12" cy="8.6" r="2.5" fill="currentColor"/>
+      </svg></span>
+  </div>
+</div>
+
+<button class="cart-fab" id="cart-fab" onclick="toggleCart()" aria-label="Ver pedido">
+  <i class="bi bi-bag"></i>
+  <span class="cart-badge" id="cart-badge-fab" style="display:none">0</span>
+</button>
+
+<!-- FAB WhatsApp -->
+<a id="wa-fab"
+   href="https://wa.me/526648162623?text=Hola!%20Me%20interesa%20saber%20m%C3%A1s%20sobre%20los%20decants%20%F0%9F%8C%B8"
+   target="_blank" rel="noopener"
+   aria-label="Contactar por WhatsApp">
+  <i class="bi bi-whatsapp"></i>
+</a>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="undo-toast" role="status" aria-live="polite">
+  <span id="undo-msg"></span>
+  <button id="undo-btn" onclick="undoDelete()">Deshacer</button>
+</div>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <div class="footer-social">
+    <p>Síguenos en redes</p>
+    <div class="social-buttons">
+      <a href="https://www.instagram.com/fitoscents/" target="_blank" rel="noopener noreferrer" class="social-btn instagram">
+        <i class="bi bi-instagram"></i><span>@fitoscents</span>
+      </a>
+      <a href="https://www.tiktok.com/@fitoscents" target="_blank" rel="noopener noreferrer" class="social-btn tiktok">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M9 0h1.98c.144.715.54 1.617 1.235 2.512C12.895 3.389 13.797 4 15 4v2c-1.753 0-3.07-.814-4-1.829V11a5 5 0 1 1-5-5v2a3 3 0 1 0 3 3z"/>
+        </svg>
+        <span>@fitoscents</span>
+      </a>
+      <a href="https://www.facebook.com/profile.php?id=61584221924570" target="_blank" rel="noopener noreferrer" class="social-btn facebook">
+        <i class="bi bi-facebook"></i><span>Fitoscents</span>
+      </a>
+    </div>
+    <a href="./faq.html" class="footer-faq-link">
+      <i class="bi bi-question-circle-fill"></i> Preguntas frecuentes sobre decants
+    </a>
+  </div>
+  <!-- Newsletter: el correo se guarda en Firestore (suscriptores) y se envía con Brevo -->
+  <div class="footer-news">
+    <p class="footer-news-titulo"><i class="bi bi-envelope-heart" aria-hidden="true"></i> Novedades cada martes</p>
+    <p class="footer-news-texto">Te avisamos de los decants y perfumes nuevos. Sin spam, te das de baja cuando quieras.</p>
+    <form class="footer-news-form" novalidate onsubmit="event.preventDefault(); suscribirNewsletter(this)">
+      <label class="footer-news-oculto" for="news-email">Tu correo</label>
+      <input type="email" id="news-email" name="email" placeholder="tu@correo.com" autocomplete="email" inputmode="email" maxlength="120" required>
+      <button type="submit">Suscribirme</button>
+    </form>
+    <p class="footer-news-msg" role="status" aria-live="polite"></p>
+  </div>
+  <div class="footer-copy">
+    <p>© 2026 <a href="https://wa.me/526648162623" target="_blank" rel="noopener">Fitoscents</a> · Tijuana y Rosarito, B.C.</p>
+  </div>
+</footer>
+
+
+<script type="module" src="./assets/js/catalog.js?v=2.49"></script>
+
+<script>
+(function(){
+  const bg = document.getElementById('particles-bg');
+  for(let i = 0; i < 14; i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 3 + 2;
+    p.style.cssText = [
+      `width:${size}px`, `height:${size}px`,
+      `left:${Math.random()*100}%`,
+      `bottom:${Math.random()*15-8}%`,
+      `animation-duration:${Math.random()*12+10}s`,
+      `animation-delay:${Math.random()*10}s`
+    ].join(';');
+    bg.appendChild(p);
+  }
+})();
+
+window.onPanelSort = (radio) => {
+  const sEl = document.getElementById('sort');
+  if (sEl) sEl.value = radio.value;
+  if (typeof renderGrid === 'function') renderGrid();
+};
+
+(function(){
+  const handle = document.getElementById('cart-handle');
+  const drawer = document.getElementById('cart-drawer');
+  if (!handle || !drawer) return;
+  let startY = 0, dragging = false;
+  function onStart(e){ startY=(e.touches?e.touches[0].clientY:e.clientY); dragging=true; }
+  function onMove(e){ if(!dragging)return; const dy=(e.touches?e.touches[0].clientY:e.clientY)-startY; if(dy>0) drawer.style.transform=`translateY(${dy}px)`; }
+  function onEnd(e){ if(!dragging)return; dragging=false; const dy=(e.changedTouches?e.changedTouches[0].clientY:e.clientY)-startY; drawer.style.transform=''; if(dy>90&&typeof closeCart==='function') closeCart(); }
+  handle.addEventListener('touchstart', onStart, {passive:true});
+  handle.addEventListener('touchmove',  onMove,  {passive:true});
+  handle.addEventListener('touchend',   onEnd);
+  handle.addEventListener('mousedown',  onStart);
+  window.addEventListener('mousemove',  onMove);
+  window.addEventListener('mouseup',    onEnd);
+})();
+
+// Toggle Vista (Cuadrícula / Lista)
+window.toggleViewMode = function() {
+  const grid = document.getElementById('grid');
+  const icon = document.getElementById('view-icon');
+  
+  if (grid.classList.contains('list-view')) {
+    grid.classList.remove('list-view');
+    icon.className = 'bi bi-grid-fill';
+    localStorage.setItem('viewMode', 'grid');
+  } else {
+    grid.classList.add('list-view');
+    icon.className = 'bi bi-list-ul';
+    localStorage.setItem('viewMode', 'list');
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const savedView = localStorage.getItem('viewMode');
+  if (savedView === 'list') {
+    const grid = document.getElementById('grid');
+    const icon = document.getElementById('view-icon');
+    if (grid && icon) {
+      grid.classList.add('list-view');
+      icon.className = 'bi bi-list-ul';
+    }
+  }
+});
+</script>
+</body>
+</html>

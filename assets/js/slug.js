@@ -25,12 +25,33 @@ export function perfumeURL(p) {
   return '#/perfumes/' + toSlug(base);
 }
 
+/** slugDe(p) → 'rasasi-hawas-london' (marca + nombre). */
+export function slugDe(p) {
+  return toSlug([p && p.marca, p && p.nombre].filter(Boolean).join(' '));
+}
+
 /**
- * perfumeFullURL(p) → 'https://rodolfohubster.github.io/decants/#/perfumes/hawas-london'
+ * Cada perfume tiene su propia página: rutaProducto(p) → 'producto.html?p=rasasi-hawas-london'.
+ * Antes la ficha era un modal con hash (#/perfumes/...); esos links viejos se
+ * redirigen a esta página (ver catalog.js).
  */
+export function rutaProducto(p) {
+  return 'producto.html?p=' + encodeURIComponent(slugDe(p));
+}
+
+/** Carpeta del sitio a partir de una URL: '.../decants/producto.html?p=x' → '.../decants/'. */
+export function carpetaDe(href) {
+  return new URL('.', href).href;
+}
+
+/** El slug que trae la página de producto: '?p=rasasi-hawas-london' → 'rasasi-hawas-london'. */
+export function slugDeBusqueda(search) {
+  return new URLSearchParams(search || '').get('p') || null;
+}
+
+/** perfumeFullURL(p) → 'https://rodolfohubster.github.io/decants/producto.html?p=hawas-london' */
 export function perfumeFullURL(p) {
-  const origin = window.location.origin + window.location.pathname.replace(/\/$/, '');
-  return origin + perfumeURL(p);
+  return carpetaDe(window.location.href) + rutaProducto(p);
 }
 
 /**

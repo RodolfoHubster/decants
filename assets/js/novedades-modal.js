@@ -302,7 +302,8 @@ async function buildSlideDOM(nov) {
         document.getElementById('nov-overlay').classList.remove('open');
         document.body.style.overflow = '';
         if (typeof window.openModal === 'function') {
-          setTimeout(() => window.openModal(p.id), 180);
+          // Cada perfume tiene su página: se lleva ahí (antes abría el modal).
+          setTimeout(() => (window.verProducto || window.openModal)(p.id), 180);
         }
       });
       grid.appendChild(card);

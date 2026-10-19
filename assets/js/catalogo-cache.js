@@ -13,7 +13,7 @@
  */
 
 /** Subir la versión invalida lo guardado cuando cambia la forma de los datos. */
-const CLAVE = 'catalogo_v2'; // v2: trae la temporada de config/tienda
+const CLAVE = 'catalogo_v3'; // v3: trae la temporada y el precio del PRO de config/tienda
 
 /**
  * Cinco minutos: acota cuánto puede tardar en verse un cambio de stock hecho

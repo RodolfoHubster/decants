@@ -1,0 +1,509 @@
+/* producto.css — Página propia de cada perfume (producto.html).
+   La ficha usa el mismo marcado que el modal de la tienda (#modal, .modal-box…);
+   aquí se muestra como página normal, no encima del catálogo. */
+
+body[data-pagina="producto"] { min-height: 100vh; }
+
+.producto-pagina {
+  position: relative;
+  z-index: 2;   /* sobre el pie: si no, la barra flotante de comprar quedaba detrás */
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 14px 16px 64px;
+}
+
+/* ── Volver y ruta ───────────────────────────────────────────────── */
+/* Fija bajo el encabezado: volver al catálogo siempre a la mano. */
+.producto-barra {
+  position: sticky;
+  top: 62px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: -14px -16px 14px;
+  padding: 9px 16px;
+  background: rgba(13, 12, 10, .94);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, .06);
+  /* el fondo llega de orilla a orilla aunque la página tenga ancho máximo */
+  box-shadow: 0 0 0 100vmax rgba(13, 12, 10, .94);
+  clip-path: inset(0 -100vmax);
+}
+.volver-corto, .wa-corto { display: none; }
+.producto-volver { flex: none; }
+.producto-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--gold-b);
+  border-radius: 99px;
+  background: var(--gold-s);
+  color: var(--gold);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+.producto-volver:hover { background: rgba(201, 168, 76, .2); border-color: var(--gold); }
+.producto-migas {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.producto-migas a { color: var(--muted); text-decoration: none; }
+.producto-migas a:hover { color: var(--gold); }
+.producto-migas i { font-size: 10px; opacity: .6; }
+.producto-migas a, .producto-migas i { flex: none; }
+.producto-migas span { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+
+.producto-fin { display: flex; justify-content: center; margin-top: 28px; }
+.producto-volver-grande { min-height: 48px; padding: 0 26px; font-size: 14px; }
+
+/* ── Teléfono: los botones de comprar ───────────────────────────────
+   Viven en su lugar, debajo de las tallas. Solo cuando ese lugar sale de la
+   pantalla (al bajar a la pirámide o antes de llegar) bajan a una barra
+   flotante; al volver a verse su lugar, regresan ahí. catalog.js pone la
+   clase .flotando y .acciones-sitio guarda el hueco para que nada brinque. */
+@media (max-width: 859.98px) {
+  body[data-pagina="producto"] .producto-pagina { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+  body[data-pagina="producto"] #modal .modal-actions {
+    position: static;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border-top: none;
+  }
+  body[data-pagina="producto"] .acciones-sitio { margin: 4px 0 22px; }
+  body[data-pagina="producto"] #modal .modal-actions.flotando {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: rgba(13, 12, 10, .95);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--gold-b);
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, .5);
+  }
+  body[data-pagina="producto"] #modal .modal-actions.flotando #modal-cart-wrapper { flex: 1; min-width: 0; }
+  body[data-pagina="producto"] #modal .modal-actions.flotando .btn-wa-modal {
+    flex: none;
+    width: auto;
+    min-height: 50px;
+    padding: 0 16px;
+    border: 1px solid rgba(37, 211, 102, .45);
+    border-radius: 14px;
+    background: rgba(37, 211, 102, .1);
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  body[data-pagina="producto"] #modal .modal-actions.flotando .btn-wa-modal:hover { text-decoration: none; }
+  body[data-pagina="producto"] .modal-actions.flotando .wa-largo { display: none; }
+  body[data-pagina="producto"] .modal-actions.flotando .wa-corto { display: inline; }
+  /* Mientras flota: el WhatsApp redondo sobra y el carrito sube para no taparla. */
+  body.compra-flotando #wa-fab { display: none; }
+  body.compra-flotando .cart-fab { bottom: calc(86px + env(safe-area-inset-bottom)); right: 16px; }
+}
+/* Papel picado de Día de Muertos: en la página no hay X de cerrar, así que va
+   parejo de orilla a orilla (en el modal termina antes de la X). */
+@media (max-width: 859.98px) {
+  html[data-temporada="halloween"] body[data-pagina="producto"] .modal-box[data-variante="muertos"] .md-papel { left: 0; width: 100%; }
+  html[data-temporada="halloween"] body[data-pagina="producto"] .modal-box[data-variante="muertos"] .md-flores { top: 32px; }
+}
+
+@media (max-width: 420px) {
+  .producto-barra .volver-largo { display: none; }
+  .producto-barra .volver-corto { display: inline; }
+  .producto-barra .producto-volver { min-height: 36px; padding: 0 12px; }
+}
+
+/* ── La ficha como página (no flotante) ─────────────────────────── */
+body[data-pagina="producto"] #modal {
+  position: static;
+  inset: auto;
+  display: block;
+  padding: 0;
+  opacity: 1;
+  pointer-events: auto;
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  z-index: auto;
+}
+body[data-pagina="producto"] #modal[hidden] { display: none; }
+body[data-pagina="producto"] #modal .modal-box {
+  transform: none;
+  max-height: none;
+  height: auto;
+  overflow: visible;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 20px;
+  transition: none;
+}
+body[data-pagina="producto"] .modal-img { border-radius: 20px 20px 0 0; max-height: max(240px, 36vh); } /* tallas a la vista al abrir en el teléfono */
+body[data-pagina="producto"] .modal-nombre { font-size: 26px; }
+
+/* En PC el botón de comprar va justo después de las presentaciones, sin
+   barra pegada (tapaba las tallas). En el teléfono es la barra fija de abajo.
+   La ficha olfativa va después del botón: primero se elige la talla. */
+@media (min-width: 860px) {
+  body[data-pagina="producto"] #modal .modal-actions {
+    position: static;
+    margin: 4px 0 24px;
+    padding: 0;
+    background: none;
+    border-top: none;
+  }
+}
+
+@media (min-width: 860px) {
+  body[data-pagina="producto"] #modal .modal-box {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    height: auto;
+    overflow: visible;
+  }
+  /* Pirámide, duración y estela: franja a todo lo ancho debajo de la foto y
+     la compra (catalog.js la mueve ahí en escritorio). Salida, corazón y
+     fondo van lado a lado; abajo duración, estela y cuándo usarlo. La foto ya
+     no es sticky: se deslizaba encima de esta franja al bajar. */
+  body[data-pagina="producto"] #modal .modal-box > .modal-ficha {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    align-items: center;
+    margin: 0;
+    padding: 26px 32px 32px;
+    border-top: 1px solid rgba(255, 255, 255, .07);
+  }
+  body[data-pagina="producto"] #modal .modal-box > .modal-ficha[hidden] { display: none; }
+  body[data-pagina="producto"] #modal .modal-box > .modal-ficha .ficha-tit { grid-column: 1 / -1; }
+  body[data-pagina="producto"] #modal .modal-box > .modal-ficha .piramide {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 14px;
+  }
+  body[data-pagina="producto"] #modal .modal-box > .modal-ficha .piso { width: 100%; padding: 14px 16px; }
+  body[data-pagina="producto"] #modal .modal-box > .modal-ficha .piso-tit { flex-wrap: wrap; }
+  body[data-pagina="producto"] #modal .modal-box > .modal-ficha .medidores { grid-column: 1 / span 2; gap: 14px; }
+  body[data-pagina="producto"] #modal .modal-box > .modal-ficha .uso { grid-column: 3; }
+  body[data-pagina="producto"] #modal .modal-box > .modal-ficha .piramide + .uso { grid-column: 1 / -1; }
+  /* La decoración de temporada va en la esquina de la foto, no flotando abajo. */
+  html[data-temporada="halloween"] body[data-pagina="producto"] .modal-box[data-variante] .md-calabaza {
+    top: 16px; bottom: auto; left: 16px;
+  }
+  html[data-temporada="halloween"] body[data-pagina="producto"] .modal-box[data-variante] .md-flores {
+    top: 40px; bottom: auto; left: 16px;
+  }
+  /* El papel picado cubre parejo el ancho de la foto (columna izquierda). */
+  html[data-temporada="halloween"] body[data-pagina="producto"] .modal-box[data-variante="muertos"] .md-papel {
+    left: 0; width: 50%; height: 28px;
+  }
+  body[data-pagina="producto"] .modal-img {
+    height: auto;
+    max-height: none;
+    aspect-ratio: 1 / 1;
+    border-radius: 20px 0 0 20px;
+  }
+  body[data-pagina="producto"] .modal-content { overflow: visible; padding: 32px 32px 0; }
+  body[data-pagina="producto"] .modal-nombre { font-size: 34px; }
+}
+
+/* ── Presentaciones y PRO ───────────────────────────────────────── */
+.modal-sizes-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.modal-sizes-row .modal-sizes-label { margin-bottom: 10px; }
+.pro-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #1a1a1a;
+  border: 1px solid var(--gold-b);
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  vertical-align: 1px;
+}
+.mpill.sel .pro-tag, .mpill:hover .pro-tag { background: #14120e; color: #c9a84c; border-color: #14120e; }
+.pro-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--gold-b);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--gold);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pro-info[hidden] { display: none; }
+.pro-info:hover { background: var(--gold-s); }
+
+.pro-colores {
+  margin: -6px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--gold-b);
+  border-radius: 14px;
+  background: var(--gold-s);
+}
+.pro-colores[hidden] { display: none; }
+.pro-colores-titulo { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.pro-colores-titulo strong { color: var(--text); }
+.pro-colores-lista { display: flex; flex-wrap: wrap; gap: 10px; }
+.pro-color {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .18);
+  background: var(--c);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .25);
+  cursor: pointer;
+  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+.pro-color:hover { transform: scale(1.08); }
+.pro-color.sel { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201, 168, 76, .35), inset 0 0 0 2px rgba(0, 0, 0, .25); }
+.pro-color:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+/* ── ¿Qué es PRO? (hoja que sube) ───────────────────────────────── */
+.pro-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 520;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: rgba(0, 0, 0, .7);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+.pro-sheet.open { opacity: 1; pointer-events: auto; }
+.pro-sheet-box {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 26px 22px calc(22px + env(safe-area-inset-bottom));
+  border: 1px solid var(--gold-b);
+  border-bottom: none;
+  border-radius: 22px 22px 0 0;
+  background: var(--bg2, #141210);
+  transform: translateY(24px);
+  transition: transform .25s;
+}
+.pro-sheet.open .pro-sheet-box { transform: none; }
+@media (min-width: 600px) {
+  .pro-sheet { align-items: center; padding: 24px; }
+  .pro-sheet-box { border-bottom: 1px solid var(--gold-b); border-radius: 22px; }
+}
+.pro-sheet-x {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .05);
+  color: var(--text);
+  cursor: pointer;
+}
+.pro-sheet-kicker { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--gold); font-weight: 600; margin-bottom: 8px; }
+.pro-sheet h3 { font-size: 21px; margin: 0 0 8px; color: var(--text); }
+.pro-sheet p { font-size: 14px; color: var(--muted); line-height: 1.5; margin: 0 0 14px; }
+.pro-sheet ul { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.pro-sheet li { display: flex; gap: 12px; align-items: flex-start; font-size: 14px; line-height: 1.45; color: var(--muted); }
+.pro-sheet li strong { color: var(--text); }
+.pro-sheet li i { color: var(--gold); font-size: 18px; margin-top: 1px; flex-shrink: 0; }
+.pro-sheet-colores { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.pro-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 5px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  font-size: 12px;
+  color: var(--text);
+}
+.pro-chip i { width: 16px; height: 16px; border-radius: 50%; background: var(--c); border: 1px solid rgba(255, 255, 255, .25); }
+.pro-sheet-ok {
+  width: 100%;
+  min-height: 46px;
+  border: none;
+  border-radius: 12px;
+  background: #c9a84c;
+  color: #14120e;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ── No encontrado ──────────────────────────────────────────────── */
+.producto-no-encontrado {
+  max-width: 460px;
+  margin: 40px auto;
+  padding: 32px 20px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 20px;
+}
+.producto-no-encontrado[hidden] { display: none; }
+.producto-no-encontrado > i { font-size: 34px; color: var(--gold); }
+.producto-no-encontrado h1 { font-size: 22px; margin: 12px 0 6px; }
+.producto-no-encontrado p { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
+
+/* ── Productos similares ────────────────────────────────────────── */
+.similares { margin-top: 36px; }
+.similares[hidden] { display: none; }
+.similares-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.similares-head h2 { font-family: 'Playfair Display', serif; font-size: 24px; margin: 0; color: var(--text); }
+.similares-flechas { display: none; gap: 8px; }
+.similares-flechas button {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--gold-b);
+  background: var(--gold-s);
+  color: var(--gold);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.similares-flechas button:hover { background: rgba(201, 168, 76, .22); }
+@media (min-width: 860px) { .similares-flechas { display: flex; } }
+.similares-lista {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(158px, 46%);
+  gap: 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 10px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 600px) { .similares-lista { grid-auto-columns: minmax(180px, 30%); } }
+@media (min-width: 900px) { .similares-lista { grid-auto-columns: calc((100% - 36px) / 4); } }
+.similares-lista > .pcard { scroll-snap-align: start; }
+
+/* ══ Movimiento: que cada toque responda y la página entre suave ══════ */
+.producto-volver { transition: background .18s, border-color .18s, transform .14s, box-shadow .2s; }
+.producto-volver i { transition: transform .2s ease; }
+.producto-volver:hover { box-shadow: 0 6px 18px rgba(201, 168, 76, .18); }
+.producto-volver:hover i { transform: translateX(-3px); }
+.producto-volver-grande:hover i { transform: scale(1.15) rotate(-6deg); }
+.producto-volver:active { transform: scale(.95); }
+.producto-migas a { transition: color .15s; }
+
+/* Tallas: se levantan al pasar, se hunden al tocar y la elegida da un saltito */
+body[data-pagina="producto"] .mpill { transition: background .15s, border-color .15s, color .15s, transform .14s, box-shadow .2s; }
+body[data-pagina="producto"] .mpill:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(201, 168, 76, .22); }
+body[data-pagina="producto"] .mpill:active { transform: scale(.93); box-shadow: none; }
+body[data-pagina="producto"] .mpill.sel { box-shadow: 0 0 0 3px rgba(201, 168, 76, .25); animation: elegido .32s ease-out; }
+.pro-color.sel { animation: elegido .32s ease-out; }
+.pro-color:active { transform: scale(.9); }
+.pro-info { transition: background .18s, border-color .18s, transform .14s; }
+.pro-info:hover { border-color: var(--gold); }
+.pro-info:active { transform: scale(.95); }
+
+/* Agregar al pedido: brillo al pasar, se hunde al tocar; el contador aparece con un pop */
+body[data-pagina="producto"] .btn-add-cart { position: relative; overflow: hidden; transition: background .15s, transform .14s, box-shadow .2s; }
+body[data-pagina="producto"] .btn-add-cart:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(201, 168, 76, .32); }
+body[data-pagina="producto"] .btn-add-cart:not(:disabled):active { transform: scale(.97); box-shadow: 0 4px 10px rgba(201, 168, 76, .2); }
+body[data-pagina="producto"] .btn-add-cart:not(:disabled)::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .35) 50%, transparent 70%);
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+body[data-pagina="producto"] .btn-add-cart:not(:disabled):hover::after { transform: translateX(120%); transition: transform .7s ease; }
+body[data-pagina="producto"] .modal-qty-controls { animation: pop .3s ease-out; }
+body[data-pagina="producto"] .modal-actions.flotando .modal-qty-controls { margin-bottom: 0; }
+body[data-pagina="producto"] .mqty-btn { transition: background .15s, transform .12s; }
+body[data-pagina="producto"] .mqty-btn:active:not(:disabled) { transform: scale(.85); }
+body[data-pagina="producto"] .btn-wa-modal { transition: color .15s, background .18s, border-color .18s, transform .14s; }
+body[data-pagina="producto"] .btn-wa-modal:active { transform: scale(.95); }
+body[data-pagina="producto"] .modal-actions.flotando .btn-wa-modal:hover { background: rgba(37, 211, 102, .2); border-color: #25D366; }
+
+/* Pirámide, duración y estela: se iluminan al pasar */
+body[data-pagina="producto"] .piso,
+body[data-pagina="producto"] .medidor { transition: border-color .2s, transform .2s, background .2s; }
+body[data-pagina="producto"] .piso:hover,
+body[data-pagina="producto"] .medidor:hover { border-color: rgba(201, 168, 76, .4); transform: translateY(-2px); }
+body[data-pagina="producto"] .nota { transition: background .15s, color .15s; }
+body[data-pagina="producto"] .nota:hover { background: rgba(201, 168, 76, .18); color: #f3e3b5; }
+
+.similares-flechas button { transition: background .18s, transform .14s; }
+.similares-flechas button:active { transform: scale(.88); }
+
+@keyframes elegido { 0% { transform: scale(.9); } 60% { transform: scale(1.07); } 100% { transform: scale(1); } }
+@keyframes pop { 0% { transform: scale(.92); opacity: .4; } 70% { transform: scale(1.03); opacity: 1; } 100% { transform: none; } }
+@keyframes sube-suave { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes foto-entra { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
+@keyframes barra-llena { from { transform: scaleX(0); } to { transform: none; } }
+
+/* Las animaciones de esta página van SIEMPRE, aunque el sistema pida menos
+   movimiento (Windows con "Efectos de animación" apagado lo pide y las
+   apagaba todas). */
+
+/* Entrada: al abrir el perfume la foto se asienta y el contenido sube en cascada. */
+body[data-pagina="producto"] .modal-box:not(.cargando) .modal-img img { animation: foto-entra .7s ease-out both; }
+/* .acciones-sitio queda fuera: un transform en curso desacomodaría la barra flotante */
+body[data-pagina="producto"] .modal-box:not(.cargando) .modal-content > :not(.acciones-sitio) { animation: sube-suave .5s cubic-bezier(.2, .8, .2, 1) both; }
+body[data-pagina="producto"] .modal-box:not(.cargando) .modal-content > :nth-child(2) { animation-delay: .05s; }
+body[data-pagina="producto"] .modal-box:not(.cargando) .modal-content > :nth-child(3) { animation-delay: .1s; }
+body[data-pagina="producto"] .modal-box:not(.cargando) .modal-content > :nth-child(4) { animation-delay: .15s; }
+body[data-pagina="producto"] .modal-box:not(.cargando) .modal-content > :nth-child(5) { animation-delay: .2s; }
+body[data-pagina="producto"] .modal-box:not(.cargando) .modal-content > :nth-child(n+6) { animation-delay: .25s; }
+
+/* Al deslizar: lo que va entrando a la pantalla aparece subiendo (catalog.js
+   pone .revela y luego .visto). Las barras de duración/estela se llenan. */
+.revela { opacity: 0; transform: translateY(28px) scale(.96); transition: opacity .6s ease, transform .6s cubic-bezier(.2, .8, .2, 1); }
+.revela.visto { opacity: 1; transform: none; }
+body[data-pagina="producto"] .medidores .barras i.on { transform-origin: left; transition: transform .8s cubic-bezier(.2, .8, .2, 1) .2s; }
+body[data-pagina="producto"] .medidores.revela:not(.visto) .barras i.on { transform: scaleX(0); }
+body[data-pagina="producto"] .medidores .barras i.on:nth-child(2) { transition-delay: .35s; }
+body[data-pagina="producto"] .medidores .barras i.on:nth-child(3) { transition-delay: .5s; }
+
+/* Al bajar, la foto se hace chiquita y se desvanece (catalog.js da --encoge de 0 a 1);
+   la barra de volver se compacta. */
+body[data-pagina="producto"] .modal-img {
+  transform: scale(calc(1 - .16 * var(--encoge, 0)));
+  opacity: calc(1 - .6 * var(--encoge, 0));
+  transform-origin: center top;
+  will-change: transform;
+}
+.producto-barra { transition: padding .25s ease, border-color .25s ease; }
+.producto-barra.compacta { padding-top: 5px; padding-bottom: 5px; border-bottom-color: var(--gold-b); }

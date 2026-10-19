@@ -311,3 +311,19 @@ describe('Calaverita: precio con paquete en el total y en WhatsApp', () => {
     expect(texto([cal(1)])).not.toContain('precio con paquete');
   });
 });
+
+describe('PRO en el carrito', () => {
+  test('el WhatsApp dice la talla PRO y el color', () => {
+    const cart = [{ key: 'k', id: 'p', marca: 'Rasasi', nombre: 'Hawas Ice', size: '5', price: 105, qty: 1, pro: true, color: 'dorado' }];
+    const msg = decodeURIComponent(buildWhatsAppURL(cart, '52').split('text=')[1]);
+    expect(msg).toContain('Rasasi - Hawas Ice (5ml PRO · Dorado) x1 — $105 MXN');
+  });
+  test('revalidar pasa el renglón para que el PRO no parezca cambio de precio', () => {
+    const p = { id: 'p', precios: { 5: 90 } };
+    const r = revalidarCarrito([{ id: 'p', size: '5', price: 105, pro: true, nombre: 'x' }], {
+      buscar: () => p, disponible: () => true,
+      precioDe: (prod, size, it) => Number(prod.precios[size]) + (it && it.pro ? 15 : 0),
+    });
+    expect(r.actualizados).toEqual([]);
+  });
+});

@@ -4,6 +4,7 @@
  */
 
 import { preciosDelCarrito, desgloseSorpresa } from './sorpresa.js';
+import { etiquetaTalla } from './pro.js';
 
 export const MAX_QTY = 5;
 
@@ -86,7 +87,7 @@ export function buildWhatsAppURL(cart, waNumber) {
   const lines = cart.map((i, n) => {
     const r = renglones[n];
     const nombre = i.esSorpresa ? `${i.nombre} sorpresa` : i.nombre;
-    let base = `• ${i.marca} - ${nombre} (${i.size.replace('Paquete ', '')}ml) x${i.qty} — $${r.total} MXN`;
+    let base = `• ${i.marca} - ${nombre} (${etiquetaTalla(i)}) x${i.qty} — $${r.total} MXN`;
     // Cuáles van a precio de extra y cuáles a precio normal.
     if (r.conExtra === r.qty) base += ' (precio con paquete)';
     else if (r.conExtra) base += `
@@ -132,7 +133,8 @@ export function revalidarCarrito(cart, { buscar, disponible, precioDe, itemsDisp
   const quitados = [], actualizados = [], nuevo = [];
   (cart || []).forEach(it => {
     const p = buscar(it.id);
-    const precio = p ? Number(precioDe(p, it.size)) || 0 : 0;
+    // El renglón va como tercer dato: un PRO cuesta su talla + el extra.
+    const precio = p ? Number(precioDe(p, it.size, it)) || 0 : 0;
     const comboOk = !it.customItems || !itemsDisponibles || itemsDisponibles(it.customItems);
     if (!p || !disponible(p) || precio <= 0 || !comboOk) { quitados.push(it.nombre); return; }
     if (precio !== Number(it.price)) {

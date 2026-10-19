@@ -223,6 +223,7 @@ html[data-temporada="halloween"] .tf-card {
   color: var(--text-primary);
   font-family: var(--font-body);
   text-align: left;
+  text-decoration: none;   /* ahora es un link a la página del perfume */
   cursor: pointer;
   overflow: hidden;
   transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);

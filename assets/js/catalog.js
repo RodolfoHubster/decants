@@ -3,8 +3,11 @@ import { db, auth, collection, getDocs, query, where, onAuthStateChanged, doc, u
 import { addItem, decrementItem, removeItem, clearCart as pureCleart,
          calcTotal, totalUnits, buildWhatsAppURL, getItemQty, MAX_QTY,
          saveCart, loadCart, clearSavedCart, cartExpiresInMinutes, revalidarCarrito }
-  from './cart.js?v=4';
-import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug } from './slug.js';
+  from './cart.js?v=5';
+import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug, rutaProducto, slugDeBusqueda } from './slug.js?v=2';
+import { similares } from './similares.js';
+import { opcionesPro, sufijoPro, etiquetaTalla, COLORES_PRO } from './pro.js';
+import { correoValido, suscripcion } from './newsletter.js';
 import { imgCard, imgModal, imgCart, imgOg } from './cloudinary.js';
 import { heroStats, pickShowcase, construirColecciones, barajar } from './hero.js';
 import { resolverItemsPaquete, contarDisponibles, paqueteArmable } from './stock.js';
@@ -13,8 +16,30 @@ import { sorpresaDisponible, opcionesSorpresa, preciosDelCarrito, desgloseSorpre
 
 // Temporada especial vigente (Halloween…) o null. La pone load() desde config/tienda.
 let temporada = null;
+
+// ── Página propia de cada perfume ───────────────────────────────
+// producto.html carga este mismo archivo con <body data-pagina="producto">: la
+// ficha usa el mismo código que antes era el modal (presentaciones, paquetes,
+// Truco o Trato, Calaverita, carrito), pero mostrada como página.
+const ES_PRODUCTO = document.body?.dataset.pagina === 'producto';
+
+/** Link a la página del perfume. En localhost conserva ?temporada= para probar. */
+function linkProducto(p) {
+  const prueba = new URLSearchParams(window.location.search).get('temporada');
+  return rutaProducto(p) + (prueba ? `&temporada=${encodeURIComponent(prueba)}` : '');
+}
+
+// Los links viejos de la ficha (#/perfumes/slug) llevan a su página nueva.
+if (!ES_PRODUCTO) {
+  const slugViejo = getSlugFromHash();
+  if (slugViejo) {
+    const q = new URLSearchParams(window.location.search);
+    q.set('p', slugViejo);
+    window.location.replace('producto.html?' + q.toString());
+  }
+}
 const NOMBRE_TEMPORADA = { halloween: 'Halloween' };
-import { leerCache, guardarCache, borrarCache } from './catalogo-cache.js?v=2';
+import { leerCache, guardarCache, borrarCache } from './catalogo-cache.js?v=3';
 import { precargarImagen } from './imagenes.js';
 import { parsearFicha } from './ficha.js';
 import { CLAVE_DUENO, CLAVE_ULTIMO_DIA, diaLocal, debeContar } from './visitas.js';
@@ -467,7 +492,7 @@ function iniciarCarrusel(lista) {
   // ── Abrir la ficha ───────────────────────────────────────────────────
   shot.addEventListener('click', () => {
     if (huboDesliz) { huboDesliz = false; return; }   // fue un deslizamiento
-    if (actual) openModal(actual.id);
+    if (actual) window.location.href = linkProducto(actual);
   });
 
   // ── Pausas ───────────────────────────────────────────────────────────
@@ -533,7 +558,7 @@ async function traerDeFirestore() {
   famData.sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre));
   famData = famData.filter(f => famUsadas.has(f.nombre));
 
-  return { all: items, disable2ml, famData, temporadaConfig: tienda.temporada || null };
+  return { all: items, disable2ml, famData, temporadaConfig: tienda.temporada || null, proExtra: Number(tienda.reforzadaVenta) || 0 };
 }
 
 /** Pantalla de error con reintento: antes los esqueletos giraban sin fin. */
@@ -544,6 +569,18 @@ function mostrarErrorCarga(err) {
     esqueleto.classList.remove('cargando');
     document.getElementById('modal').classList.remove('open');
     document.body.style.overflow = '';
+  }
+  if (ES_PRODUCTO) {
+    document.getElementById('modal').hidden = true;
+    const nf = document.getElementById('producto-no-encontrado');
+    if (nf) {
+      nf.hidden = false;
+      nf.innerHTML = `<i class="bi bi-wifi-off" aria-hidden="true"></i>
+        <h1>No pudimos cargar este perfume</h1>
+        <p>Revisa tu conexión e inténtalo de nuevo. Si sigue igual, escríbenos por WhatsApp.</p>
+        <button type="button" class="producto-volver" onclick="window.recargarCatalogo()"><i class="bi bi-arrow-clockwise"></i> Reintentar</button>`;
+    }
+    return;
   }
   const g = document.getElementById('grid');
   if (!g) return;
@@ -564,7 +601,11 @@ function mostrarErrorCarga(err) {
 }
 
 /** Reintento desde la pantalla de error: descarta lo guardado y vuelve a pedir. */
-window.recargarCatalogo = () => { borrarCache(); load(); };
+window.recargarCatalogo = () => {
+  borrarCache();
+  if (ES_PRODUCTO) { window.location.reload(); return; }
+  load();
+};
 
 async function load() {
   showSkeletons();
@@ -583,6 +624,7 @@ async function load() {
 
   all = datos.all;
   window.disable2ml = datos.disable2ml;
+  window.proExtra = Number(datos.proExtra) || 0;
   iconosFamilia = Object.fromEntries((datos.famData || []).map(f => [f.nombre, f.emoji || '']));
 
   // Tipos: los 3 fijos — se usan para filtrar por p.categoria
@@ -634,8 +676,11 @@ async function load() {
   
   updateFilterBtnBadge();
 
-  renderHero();
-  renderGrid();
+  if (!ES_PRODUCTO) {
+    renderHero();
+    renderGrid();
+    restaurarVuelta();
+  }
   // El pedido guardado se revisa contra el catálogo de hoy: si cambió un precio
   // o algo se agotó, el WhatsApp ya no sale con datos viejos.
   let avisoPedido = '';
@@ -643,7 +688,8 @@ async function load() {
     const rev = revalidarCarrito(cart, {
       buscar: id => all.find(x => x.id === id),
       disponible: prod => !agotadoEnTienda(prod),
-      precioDe: precioActualDeTalla,
+      // Un PRO cuesta su talla + el extra; sin esto se "corregía" al precio normal.
+      precioDe: (prod, size, it) => precioActualDeTalla(prod, size) + (it && it.pro ? (window.proExtra || 0) : 0),
       itemsDisponibles: items => !resolverItemsPaquete(items, all).some(i => i.agotado),
     });
     if (rev.quitados.length || rev.actualizados.length) {
@@ -674,13 +720,7 @@ async function load() {
     updateCartBadge();
   }
 
-  const slug = getSlugFromHash();
-  if (slug) {
-    const p = findBySlug(all, slug);
-    if (p) openModal(p.id, false);
-    else if (document.getElementById('modal').classList.contains('open')) doCloseModal();
-    else window.location.hash = '';
-  }
+  if (ES_PRODUCTO) mostrarProducto();
 }
 
 // ── Poblar los 3 paneles dinámicos ────────────────────────────────
@@ -789,7 +829,14 @@ window.clearAllFilters = () => {
 };
 
 window.addEventListener('hashchange', () => {
+  if (ES_PRODUCTO) return;
   const slug = getSlugFromHash();
+  if (slug) {
+    const q = new URLSearchParams(window.location.search);
+    q.set('p', slug);
+    window.location.href = 'producto.html?' + q.toString();
+    return;
+  }
   const modal = document.getElementById('modal');
   if (slug) {
     const p = findBySlug(all, slug);
@@ -863,7 +910,7 @@ function cardHTML(p) {
     : deTemporada
     ? `<div class="tag-temporada"><i class="bi bi-moon-stars-fill"></i> ${escFicha((NOMBRE_TEMPORADA[temporada.id] || temporada.id).toUpperCase())}</div>`
     : (p.tipo === 'paquete' ? `<div style="position:absolute;top:8px;left:8px;background:var(--gold-s);border:1px solid var(--gold-b);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;z-index:2;display:flex;align-items:center;gap:4px;"><i class="bi bi-box2-heart-fill"></i> PAQUETE</div>` : '');
-  return `<div class="pcard ${p.tipo === 'paquete' ? 'pcard-paquete' : ''}${deTemporada ? ' pcard-temporada' : ''}" onclick="openModal('${p.id}')" data-id="${p.id}" ${p.tipo === 'paquete' ? 'style="border:1px solid var(--gold-b); box-shadow:0 4px 20px rgba(201,168,76,0.1);"' : ''}>
+  return `<a class="pcard ${p.tipo === 'paquete' ? 'pcard-paquete' : ''}${deTemporada ? ' pcard-temporada' : ''}" href="${linkProducto(p)}" data-id="${p.id}" ${p.tipo === 'paquete' ? 'style="border:1px solid var(--gold-b); box-shadow:0 4px 20px rgba(201,168,76,0.1);"' : ''}>
     <div class="card-img">
       ${etiqueta}
       ${savingsTag}
@@ -878,7 +925,7 @@ function cardHTML(p) {
       <div class="card-nombre">${p.nombre}</div>
       <div class="card-pills">${pills || '<span style="font-size:12px;color:#444">Sin precios</span>'}</div>
     </div>
-  </div>`;
+  </a>`;
 }
 
 // ── Temporada especial ───────────────────────────────────────────
@@ -914,7 +961,7 @@ function pintarFranjaTemporada(paquetes) {
     const ahorro = Math.max(0, ...sizes.map(([k, v]) => ahorroPaquete(p, sizes, k, v)));
     const src = imgCard(p.imagen);
     const agotado = agotadoEnTienda(p);
-    return `<button type="button" class="tf-card${agotado ? ' agotado' : ''}" role="listitem" onclick="openModal('${p.id}')">
+    return `<a class="tf-card${agotado ? ' agotado' : ''}" role="listitem" href="${linkProducto(p)}">
       <span class="tf-img">${src
         ? `<img src="${src}" alt="${escFicha(p.nombre)}" loading="lazy" width="400" height="400" decoding="async" draggable="false">`
         : '<i class="bi bi-box2-heart"></i>'}
@@ -924,7 +971,7 @@ function pintarFranjaTemporada(paquetes) {
       ${p.esSorpresa && +p.precioExtra > 0
         ? `<span class="tf-ahorro">$${+p.precioExtra} con otro paquete</span>`
         : (ahorro > 0 ? `<span class="tf-ahorro">Ahorras $${ahorro}</span>` : '')}
-    </button>`;
+    </a>`;
   }).join('');
   franja.hidden = false;
 }
@@ -979,6 +1026,216 @@ window.setModoTT = (modo) => {
   const algun = document.querySelector('.custom-pkg-chk');
   if (algun) window.toggleCustomPkgItem({ checked: false, value: '__ninguno__', dataset: {} }, max);
   else syncModalCartBtn();
+};
+
+// ── Página de producto ───────────────────────────────────────────
+window.verProducto = id => {
+  const p = all.find(x => x.id === id);
+  if (p) window.location.href = linkProducto(p);
+};
+
+function mostrarProducto() {
+  const slug = slugDeBusqueda(window.location.search);
+  const p = findBySlug(all, slug) || all.find(x => x.id === slug);
+  if (!p) {
+    document.getElementById('modal').hidden = true;
+    const nf = document.getElementById('producto-no-encontrado');
+    if (nf) nf.hidden = false;
+    document.title = 'Perfume no encontrado — Fitoscents';
+    return;
+  }
+  openModal(p.id, false);
+  colocarFichaEnPagina();
+  pintarMigas(p);
+  pintarSimilares(p);
+  requestAnimationFrame(animarPagina);
+  const ex = document.getElementById('pro-sheet-extra');
+  if (ex) ex.textContent = `+$${window.proExtra || 0}`;
+  const cs = document.getElementById('pro-sheet-colores');
+  if (cs) cs.innerHTML = COLORES_PRO.map(c => `<span class="pro-chip"><i style="--c:${c.hex}"></i>${c.nombre}</span>`).join('');
+}
+
+// En escritorio la pirámide, duración y estela van en una franja a todo lo
+// ancho, debajo de la foto y la compra: arriba quedan dos columnas parejas y las
+// presentaciones y el botón de comprar se ven sin bajar (antes quedaba un hueco
+// negro bajo la foto). En el celular va debajo del botón de comprar: primero
+// la descripción corta y las presentaciones, luego pirámide, duración y estela.
+const ESCRITORIO = window.matchMedia('(min-width: 860px)');
+function colocarFichaEnPagina() {
+  const ficha = document.getElementById('modal-ficha');
+  const caja = document.querySelector('#modal .modal-box');
+  const ancla = document.querySelector('#modal .acciones-sitio') || document.querySelector('#modal .modal-actions');
+  if (!ficha || !caja || !ancla) return;
+  if (ESCRITORIO.matches) {
+    if (ficha.parentElement !== caja) caja.appendChild(ficha);
+  } else if (ficha.previousElementSibling !== ancla) {
+    ancla.after(ficha);
+  }
+}
+if (ES_PRODUCTO) ESCRITORIO.addEventListener('change', colocarFichaEnPagina);
+
+// Teléfono: Agregar al pedido y Dudas se quedan en su lugar (debajo de las
+// tallas) mientras ese lugar se ve; cuando sale de la pantalla bajan a una
+// barra flotante y regresan al volver a verse. El hueco se conserva para que
+// la página no brinque.
+function compraInteligente() {
+  const sitio = document.querySelector('#modal .acciones-sitio');
+  const acciones = sitio && sitio.querySelector('.modal-actions');
+  if (!sitio || !acciones || !('IntersectionObserver' in window)) return;
+  let visible = true;
+  const suave = 'cubic-bezier(.2, .8, .2, 1)';
+  const aplicar = () => {
+    const flotar = !visible && !ESCRITORIO.matches;
+    if (flotar === acciones.classList.contains('flotando')) return;
+    const antes = acciones.getBoundingClientRect();
+    if (flotar) sitio.style.minHeight = acciones.offsetHeight + 'px';
+    acciones.classList.toggle('flotando', flotar);
+    document.body.classList.toggle('compra-flotando', flotar);
+    if (!acciones.animate) return;
+    if (flotar) {
+      // sube desde abajo
+      acciones.animate([{ transform: 'translateY(110%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 360, easing: suave });
+    } else {
+      // vuela desde la barra hasta su lugar debajo de las tallas
+      const despues = acciones.getBoundingClientRect();
+      acciones.animate([
+        { transform: `translate(${antes.left - despues.left}px, ${antes.top - despues.top}px) scale(.94)`, opacity: .6 },
+        { transform: 'none', opacity: 1 },
+      ], { duration: 460, easing: suave });
+    }
+  };
+  // arriba se descuenta el encabezado y la barra de volver, que lo tapan
+  new IntersectionObserver(([e]) => { visible = e.isIntersecting; aplicar(); }, { rootMargin: '-118px 0px 0px 0px' }).observe(sitio);
+  ESCRITORIO.addEventListener('change', aplicar);
+}
+if (ES_PRODUCTO) compraInteligente();
+
+// Animaciones al deslizar en la página del perfume. Van aunque el sistema pida
+// menos movimiento: con "Efectos de animación" de Windows apagado no se veía
+// ninguna, y el dueño las quiere.
+function animarPagina() {
+  if (!('IntersectionObserver' in window)) return;
+  const io = new IntersectionObserver(entradas => entradas.forEach(e => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add('visto');
+    io.unobserve(e.target);
+    // ya en su lugar se quita la clase: así vuelven sus propios hover
+    setTimeout(() => { e.target.classList.remove('revela', 'visto'); e.target.style.transitionDelay = ''; }, 1400);
+  }), { rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.modal-ficha .ficha-tit, .modal-ficha .piso, .modal-ficha .medidores, .modal-ficha .uso, '
+    + '.similares-head, .similares-lista > .pcard, .producto-fin, .footer-news, .footer-social').forEach(el => {
+    if (el.getBoundingClientRect().top < innerHeight * .92) return;   // ya se ve: no se esconde
+    el.classList.add('revela');
+    const hermanos = el.parentElement ? [...el.parentElement.children].indexOf(el) : 0;
+    if (el.matches('.pcard, .piso')) el.style.transitionDelay = Math.min(hermanos * .08, .32) + 's';
+    io.observe(el);
+  });
+
+  // La foto se encoge y se desvanece al bajar (teléfono); la barra de volver se compacta.
+  const foto = document.querySelector('#modal .modal-img');
+  const barra = document.querySelector('.producto-barra');
+  let pendiente = false;
+  const alDeslizar = () => {
+    pendiente = false;
+    if (barra) barra.classList.toggle('compacta', scrollY > 8);
+    if (!foto) return;
+    if (ESCRITORIO.matches) { foto.style.removeProperty('--encoge'); return; }
+    const p = Math.min(1, Math.max(0, scrollY / (foto.offsetHeight || 1)));
+    foto.style.setProperty('--encoge', p.toFixed(3));
+  };
+  // mostrarProducto puede correr dos veces (caché y luego Firestore): un solo listener
+  if (!animarPagina.escuchando) {
+    animarPagina.escuchando = true;
+    window.addEventListener('scroll', () => { if (!pendiente) { pendiente = true; requestAnimationFrame(alDeslizar); } }, { passive: true });
+  }
+  alDeslizar();
+}
+
+function pintarMigas(p) {
+  const el = document.getElementById('producto-migas');
+  if (!el) return;
+  const prueba = new URLSearchParams(window.location.search).get('temporada');
+  const extra = prueba ? `&temporada=${encodeURIComponent(prueba)}` : '';
+  const grupo = p.tipo === 'paquete'
+    ? { txt: 'Paquetes', href: `index.html?tab=paquetes${extra}` }
+    : (['Caballero', 'Dama', 'Unisex'].includes(p.genero) ? { txt: p.genero, href: `index.html?genero=${p.genero}${extra}` } : null);
+  el.innerHTML = `<a href="index.html${prueba ? `?temporada=${encodeURIComponent(prueba)}` : ''}">Inicio</a>
+    ${grupo ? `<i class="bi bi-chevron-right" aria-hidden="true"></i><a href="${grupo.href}">${escFicha(grupo.txt)}</a>` : ''}
+    <i class="bi bi-chevron-right" aria-hidden="true"></i><span aria-current="page">${escFicha(p.nombre)}</span>`;
+}
+
+function pintarSimilares(p) {
+  const sec = document.getElementById('similares');
+  const lista = document.getElementById('similares-lista');
+  if (!sec || !lista) return;
+  const items = similares(p, all, { n: 12, agotado: agotadoEnTienda });
+  if (!items.length) { sec.hidden = true; return; }
+  lista.innerHTML = items.map(cardHTML).join('');
+  sec.hidden = false;
+}
+
+window.moverSimilares = dir => {
+  const lista = document.getElementById('similares-lista');
+  if (lista) lista.scrollBy({ left: dir * lista.clientWidth * 0.85, behavior: 'smooth' });
+};
+
+/** "← Volver": regresa al catálogo como lo dejaste (filtros y lugar de la lista). */
+window.volverAlCatalogo = () => {
+  let desdeCatalogo = false;
+  try {
+    const ref = new URL(document.referrer);
+    desdeCatalogo = ref.origin === window.location.origin && !ref.pathname.endsWith('producto.html');
+  } catch (e) { /* sin referrer */ }
+  try { sessionStorage.setItem('fs_volver_click', '1'); } catch (e) { /* sin storage */ }
+  if (desdeCatalogo && history.length > 1) { history.back(); return; }
+  const prueba = new URLSearchParams(window.location.search).get('temporada');
+  window.location.href = 'index.html' + (prueba ? `?temporada=${encodeURIComponent(prueba)}` : '');
+};
+
+// Al ir del catálogo a un perfume se guarda dónde ibas, para regresar ahí.
+const CLAVE_VUELTA = 'fs_vuelta_catalogo';
+if (!ES_PRODUCTO) {
+  document.addEventListener('click', e => {
+    if (!e.target.closest('a.pcard, a.tf-card')) return;
+    try { sessionStorage.setItem(CLAVE_VUELTA, JSON.stringify({ y: window.scrollY, paginas: currentPage, url: window.location.search })); } catch (err) { /* sin storage */ }
+  });
+}
+
+function restaurarVuelta() {
+  let v = null;
+  try { v = JSON.parse(sessionStorage.getItem(CLAVE_VUELTA) || 'null'); sessionStorage.removeItem(CLAVE_VUELTA); } catch (e) { return; }
+  if (!v) return;
+  const nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+  let porBoton = false;
+  try { porBoton = sessionStorage.getItem('fs_volver_click') === '1'; sessionStorage.removeItem('fs_volver_click'); } catch (e) { /* sin storage */ }
+  const regreso = (nav && nav.type === 'back_forward') || porBoton;
+  if (!regreso || v.url !== window.location.search) return;
+  for (let n = 1; n < (v.paginas || 1); n++) window.loadMore();
+  requestAnimationFrame(() => window.scrollTo(0, v.y || 0));
+  setTimeout(() => window.scrollTo(0, v.y || 0), 150);
+}
+
+// ── Newsletter ────────────────────────────────────────────────────
+// El id del documento es el correo: si ya existe, la regla no deja "volver a
+// crearlo" y Firestore responde permission-denied — eso es "ya estabas".
+window.suscribirNewsletter = async (form) => {
+  const input = form.querySelector('input[type="email"]');
+  const msg = form.parentElement.querySelector('.footer-news-msg');
+  const btn = form.querySelector('button');
+  const decir = (txt, tipo) => { msg.textContent = txt; msg.dataset.tipo = tipo; };
+  if (!correoValido(input.value)) { decir('Revisa tu correo, parece que le falta algo.', 'error'); input.focus(); return; }
+  const { id, datos } = suscripcion(input.value, ES_PRODUCTO ? 'producto' : 'tienda');
+  btn.disabled = true;
+  try {
+    await setDoc(doc(db, 'suscriptores', id), datos);
+    decir('¡Listo! Te llegarán las novedades cada martes.', 'ok');
+    input.value = '';
+  } catch (e) {
+    if (e && e.code === 'permission-denied') { decir('¡Ya estabas en la lista! Te llegarán las novedades cada martes.', 'ok'); input.value = ''; }
+    else decir('No se pudo guardar. Intenta de nuevo en un momento.', 'error');
+  } finally {
+    btn.disabled = false;
+  }
 };
 
 // ── Render grid ───────────────────────────────────────────────
@@ -1173,7 +1430,7 @@ window.setG = btn => {
 window.clearFilters = () => { clearAllFilters(); };
 
 // ── Modal ───────────────────────────────────────────────
-window.openModal = (id, pushHash = true) => {
+window.openModal = (id, pushHash = false) => {
   const p = all.find(x => x.id === id);
   if (!p) return;
   modalData = p;
@@ -1345,6 +1602,14 @@ window.openModal = (id, pushHash = true) => {
         }).join('')
       : '<span style="font-size:13px;color:#555">Sin presentaciones disponibles.</span>';
   }
+  // PRO (decant reforzado): 5 y 10 ml a +$extra; el cliente elige el color.
+  const pros = (p.tipo === 'paquete' || p.tipo === 'accesorio' || isAgotado) ? [] : opcionesPro(pr, window.proExtra);
+  if (pros.length) {
+    pillsHTML += pros.map(o => `<button class="mpill mpill-pro" data-size="${o.talla}" data-price="${o.precio}" data-pro="1" onclick="selPill(this)">${o.talla}ml <b class="pro-tag">PRO</b> — $${o.precio}</button>`).join('');
+  }
+  window.colorPro = window.colorPro || COLORES_PRO[0].id;
+  const proInfo = document.getElementById('pro-info');
+  if (proInfo) proInfo.hidden = !pros.length;
   const pillsEl = document.getElementById('modal-pills');
   pillsEl.innerHTML = pillsHTML;
   
@@ -1363,7 +1628,8 @@ window.openModal = (id, pushHash = true) => {
   document.querySelectorAll('#modal .modal-box, #modal .modal-content').forEach(el => { el.scrollTop = 0; });
   document.querySelector('#modal .modal-box')?.classList.remove('cargando');
   document.getElementById('modal').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  if (!ES_PRODUCTO) document.body.style.overflow = 'hidden';
+  actualizarPanelPro();
 };
 
 /** Categoría, concentración, familia y género como etiquetas con ícono. */
@@ -1482,7 +1748,7 @@ function syncModalCartBtn() {
     return;
   }
   
-  let key = modalData.id + '-' + sel.dataset.size;
+  let key = modalData.id + '-' + sel.dataset.size + sufijoPro(!!sel.dataset.pro, window.colorPro);
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable) {
     key += sufijoCustom();
   }
@@ -1533,7 +1799,7 @@ window.modalIncrement = () => {
   const sel = document.querySelector('.mpill.sel');
   if (!sel) return;
   checkCartTTL();
-  let key = modalData.id + '-' + sel.dataset.size;
+  let key = modalData.id + '-' + sel.dataset.size + sufijoPro(!!sel.dataset.pro, window.colorPro);
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable && window.customPackageSelections) {
     key += sufijoCustom();
   }
@@ -1550,7 +1816,7 @@ window.modalDecrement = () => {
   const sel = document.querySelector('.mpill.sel');
   if (!sel) return;
   checkCartTTL();
-  let key = modalData.id + '-' + sel.dataset.size;
+  let key = modalData.id + '-' + sel.dataset.size + sufijoPro(!!sel.dataset.pro, window.colorPro);
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable && window.customPackageSelections) {
     key += sufijoCustom();
   }
@@ -1565,10 +1831,34 @@ window.modalDecrement = () => {
 
 window.selPill = btn => {
   document.querySelectorAll('.mpill').forEach(b => b.classList.remove('sel'));
-  btn.classList.add('sel'); syncModalCartBtn();
+  btn.classList.add('sel'); actualizarPanelPro(); syncModalCartBtn();
 };
 
+/** Con una presentación PRO elegida aparecen los colores. */
+function actualizarPanelPro() {
+  const panel = document.getElementById('pro-colores');
+  if (!panel) return;
+  const sel = document.querySelector('.mpill.sel');
+  const esPro = !!(sel && sel.dataset.pro);
+  panel.hidden = !esPro;
+  if (!esPro) return;
+  panel.innerHTML = `<div class="pro-colores-titulo">Color de tu PRO: <strong>${(COLORES_PRO.find(c => c.id === window.colorPro) || COLORES_PRO[0]).nombre}</strong></div>
+    <div class="pro-colores-lista" role="radiogroup" aria-label="Color del PRO">
+      ${COLORES_PRO.map(c => `<button type="button" class="pro-color${c.id === window.colorPro ? ' sel' : ''}" role="radio" aria-checked="${c.id === window.colorPro}" aria-label="${c.nombre}" title="${c.nombre}" style="--c:${c.hex}" onclick="elegirColorPro('${c.id}')"></button>`).join('')}
+    </div>`;
+}
+
+window.elegirColorPro = id => {
+  window.colorPro = id;
+  actualizarPanelPro();
+  syncModalCartBtn();
+};
+
+window.abrirInfoPro = () => document.getElementById('pro-sheet')?.classList.add('open');
+window.cerrarInfoPro = () => document.getElementById('pro-sheet')?.classList.remove('open');
+
 function doCloseModal() {
+  if (ES_PRODUCTO) { window.volverAlCatalogo(); return; }
   const ov = document.getElementById('modal');
   if (!ov.classList.contains('open') && !modalData) return;  // nada que cerrar
   ov.classList.remove('open');
@@ -1594,6 +1884,7 @@ window.closeModal = e => {
 window.doCloseModal = doCloseModal;
 
 document.addEventListener('keydown', e => {
+  if (ES_PRODUCTO) { if (e.key === 'Escape') window.cerrarInfoPro(); return; }
   if (e.key === 'Escape' && document.getElementById('modal')?.classList.contains('open')) doCloseModal();
 });
 
@@ -1610,8 +1901,11 @@ window.pedirModal = () => {
   }
   if (esTruco()) extra += '\n+1 sorpresa de Fito';
   if (modalData.esSorpresa) extra += '\nPerfume sorpresa: Fito lo elige al preparar el pedido';
+  const tamano = sel && sel.dataset.pro
+    ? etiquetaTalla({ size: sel.dataset.size, pro: true, color: window.colorPro })
+    : (sel ? `${sel.dataset.size}${modalData.tipo === 'paquete' ? '' : 'ml'}` : '');
   const msg = sel
-    ? `Hola! Me interesa:\n${title}\nTamaño: ${sel.dataset.size}${modalData.tipo === 'paquete' ? '' : 'ml'}\nPrecio: $${sel.dataset.price} MXN${extra}\n${url}`
+    ? `Hola! Me interesa:\n${title}\nTamaño: ${tamano}\nPrecio: $${sel.dataset.price} MXN${extra}\n${url}`
     : `Hola! Me interesa:\n${title}${extra}\n${url}`;
   window.open(`https://wa.me/526648162623?text=${encodeURIComponent(msg)}`, '_blank');
 };
@@ -1656,7 +1950,7 @@ window.addToCart = () => {
     }
   }
 
-  let key = modalData.id + '-' + sel.dataset.size;
+  let key = modalData.id + '-' + sel.dataset.size + sufijoPro(!!sel.dataset.pro, window.colorPro);
   let customItems = null;
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable) {
     key += sufijoCustom();
@@ -1671,6 +1965,8 @@ window.addToCart = () => {
     // ─ imgCart: 80x80 para el drawer, mínimo peso ─
     imagen: imgCart(modalData.imagen) || '',
     size:   sel.dataset.size,
+    pro:    !!sel.dataset.pro,
+    color:  sel.dataset.pro ? window.colorPro : null,
     price:  +sel.dataset.price,
     qty:    1,
     customItems: customItems,
@@ -1827,7 +2123,7 @@ function renderCartDrawer() {
       <div class="cart-item-info">
         <div class="cart-item-marca">${item.marca}</div>
         <div class="cart-item-nombre">${item.nombre}</div>
-        <div class="cart-item-size">${item.size}ml — ${precio}</div>
+        <div class="cart-item-size">${item.pro ? etiquetaTalla(item) : `${item.size}ml`} — ${precio}</div>
         ${r.conExtra && r.conExtra < r.qty ? `<div class="cart-item-extra">${desgloseSorpresa(r)}</div>` : ''}
         ${item.esSorpresa ? '<div class="cart-item-caldero"><i class="bi bi-question-diamond"></i> Perfume sorpresa: lo elige Fito</div>' : ''}
         ${item.customItems ? `<div style="font-size:10px; color:var(--text-faint); margin-top:2px;">[${item.customItems.map(c=>c.nombre).join(', ')}]</div>` : ''}
@@ -1885,17 +2181,4 @@ function showToast(msg) {
 
 load();
 
-// ── Link compartido: la ficha aparece de inmediato ─────────────────────
-// Antes se veía primero la página de inicio y, cuando terminaba de cargar el
-// catálogo, saltaba al perfume. Ahora se abre la ficha con un esqueleto y se
-// llena en cuanto llegan los datos (o se cierra si el perfume ya no existe).
-(function abrirFichaDeLink() {
-  if (!getSlugFromHash() || modalData) return;
-  const ov = document.getElementById('modal');
-  const box = ov && ov.querySelector('.modal-box');
-  if (!box) return;
-  box.classList.add('cargando');
-  document.getElementById('modal-img').innerHTML = '';
-  ov.classList.add('open');
-  document.body.style.overflow = 'hidden';
-})();
+// Los links compartidos (#/perfumes/...) ahora redirigen a producto.html (arriba).

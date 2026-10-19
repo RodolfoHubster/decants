@@ -57,17 +57,17 @@ describe('vigencia', () => {
 
 describe('resistencia a datos malos', () => {
   test('un JSON corrupto no revienta: se pide de nuevo', () => {
-    const a = almacenFalso({ catalogo_v2: '{esto no es json' });
+    const a = almacenFalso({ catalogo_v3: '{esto no es json' });
     expect(leerCache(a, 1000)).toBeNull();
   });
 
   test('sin marca de tiempo se descarta', () => {
-    const a = almacenFalso({ catalogo_v2: JSON.stringify({ datos: catalogo }) });
+    const a = almacenFalso({ catalogo_v3: JSON.stringify({ datos: catalogo }) });
     expect(leerCache(a, 1000)).toBeNull();
   });
 
   test('sin datos se descarta', () => {
-    const a = almacenFalso({ catalogo_v2: JSON.stringify({ guardadoEn: 1000 }) });
+    const a = almacenFalso({ catalogo_v3: JSON.stringify({ guardadoEn: 1000 }) });
     expect(leerCache(a, 1000)).toBeNull();
   });
 
