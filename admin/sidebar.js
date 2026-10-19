@@ -19,16 +19,20 @@ auth.onAuthStateChanged(user => {
  */
 async function sincronizarConfigTienda() {
   try {
-    if (sessionStorage.getItem('fs_tienda_sync')) return;
+    if (sessionStorage.getItem('fs_tienda_sync2')) return;
     const [costos, tienda] = await Promise.all([
       getDoc(doc(db, 'config', 'costosOperativos')),
       getDoc(doc(db, 'config', 'tienda'))
     ]);
-    const disable2ml = !!(costos.exists() && costos.data().disable2ml);
-    if (!tienda.exists() || !!tienda.data().disable2ml !== disable2ml) {
-      await setDoc(doc(db, 'config', 'tienda'), { disable2ml }, { merge: true });
+    const c = costos.exists() ? costos.data() : {};
+    const disable2ml = !!c.disable2ml;
+    // Lo que cobra el PRO (decant reforzado) también es público: lo muestra la tienda.
+    const reforzadaVenta = Number(c.reforzadaVenta) || 0;
+    const t = tienda.exists() ? tienda.data() : {};
+    if (!tienda.exists() || !!t.disable2ml !== disable2ml || Number(t.reforzadaVenta || 0) !== reforzadaVenta) {
+      await setDoc(doc(db, 'config', 'tienda'), { disable2ml, reforzadaVenta }, { merge: true });
     }
-    sessionStorage.setItem('fs_tienda_sync', '1');
+    sessionStorage.setItem('fs_tienda_sync2', '1');
   } catch (e) { console.warn('No se pudo sincronizar config/tienda', e); }
 }
 
@@ -83,6 +87,7 @@ export function renderSidebar(active) {
       <li><a href="./costos.html"       class="${active==='costos'?'active':''}"><i class="bi bi-wallet2"></i> Costos</a></li>
       <li><a href="./clientes.html"     class="${active==='clientes'?'active':''}"><i class="bi bi-people"></i> Clientes</a></li>
       <li><a href="./pedidos.html"      class="${active==='pedidos'?'active':''}"><i class="bi bi-globe2"></i> Pedidos web</a></li>
+      <li><a href="./suscriptores.html" class="${active==='suscriptores'?'active':''}"><i class="bi bi-envelope-heart"></i> Suscriptores</a></li>
 
       <li class="sb-label">Catálogo</li>
       <li><a href="./paquetes.html" class="${active==='paquetes'?'active':''}"><i class="bi bi-box2-heart"></i> Paquetes</a></li>

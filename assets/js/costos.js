@@ -78,7 +78,7 @@ window.guardarCostosGenerales = async () => {
     
     await setDoc(doc(db, 'config', 'costosOperativos'), data);
     // La tienda solo lee esto; tus costos quedan privados (config/costosOperativos).
-    await setDoc(doc(db, 'config', 'tienda'), { disable2ml: data.disable2ml }, { merge: true });
+    await setDoc(doc(db, 'config', 'tienda'), { disable2ml: data.disable2ml, reforzadaVenta: data.reforzadaVenta }, { merge: true });
     toast('Costos actualizados correctamente', 'success');
   } catch(e) {
     toast('Error al guardar: ' + e.message, 'error');
