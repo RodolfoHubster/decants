@@ -119,3 +119,29 @@ export function buscarCliente(indice, nombre) {
   if (!n) return null;
   return (indice || []).find(c => normNombre(c.nombre) === n) || null;
 }
+
+/**
+ * Clientes del índice que coinciden con lo que se va escribiendo, para
+ * sugerirlos al registrar una venta. Cada palabra escrita debe ser el inicio
+ * de una palabra del nombre ("ju lo" → "Juan López"), sin importar acentos.
+ * Primero los que empiezan igual, luego los que más compran.
+ * No sugiere nada para "Cliente 3" (los de paso no se agrupan).
+ *
+ * @param {Array<{nombre:string,compras:number,ultima:number}>} indice  De indiceClientes().
+ * @param {string} texto
+ * @param {number} [max]
+ */
+export function sugerirClientes(indice, texto, max = 6) {
+  const palabras = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const q = palabras(texto);
+  if (!q.length || esNombreGenerico(texto)) return [];
+  return (indice || [])
+    .map(c => ({ c, w: palabras(c.nombre) }))
+    .filter(({ w }) => q.every(x => w.some(y => y.startsWith(x))))
+    .sort((a, b) => (Number(b.w[0].startsWith(q[0])) - Number(a.w[0].startsWith(q[0])))
+      || ((b.c.compras || 0) - (a.c.compras || 0))
+      || ((b.c.ultima || 0) - (a.c.ultima || 0)))
+    .slice(0, max)
+    .map(({ c }) => c);
+}

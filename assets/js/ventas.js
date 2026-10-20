@@ -5,7 +5,7 @@ import { loteParaVenta } from './lotes.js?v=2';
 import { paraVenderEnPanel } from './sorpresa.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
-import { indiceClientes, idCliente } from './clientes-util.js?v=2';
+import { indiceClientes, idCliente, sugerirClientes, buscarCliente } from './clientes-util.js?v=3';
 import { modoDeCanal, nombreTicketNuevo, resumenRenglones, validarRegistro } from './registro-dia.js';
 import { claveCanasta, canastaRestante } from './pos-cliente.js?v=2';
 
@@ -24,6 +24,8 @@ renderSidebar('ventas');
 if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display = 'flex';
 
 let ventas = [], perfumes = [];
+// Clientes con nombre que ya compraron (de las ventas): para sugerirlos al registrar.
+let clientesConocidos = [];
 
 // Índice ligero de clientes para que la canasta reconozca a quien ya compró.
 // Se guarda en el teléfono: la canasta no tiene que leer todas las ventas.
@@ -80,6 +82,7 @@ async function loadAll() {
     ventas.push({ id: d.id, ...data, creadoEn: aMs(data.creadoEn) || data.creadoEn });
   });
   guardarIndiceClientes(ventas);
+  clientesConocidos = indiceClientes(ventas);
   ventas.sort((a,b) => {
     let tA = a.creadoEn ? (typeof a.creadoEn.toMillis === 'function' ? a.creadoEn.toMillis() : a.creadoEn) : 0;
     let tB = b.creadoEn ? (typeof b.creadoEn.toMillis === 'function' ? b.creadoEn.toMillis() : b.creadoEn) : 0;
@@ -1864,6 +1867,7 @@ function updateBatchResumen() {
   document.getElementById('batch-count').textContent =
     `${clientes} ${clientes === 1 ? 'cliente' : 'clientes'} · ${count} ${count === 1 ? 'perfume' : 'perfumes'}`;
   document.getElementById('batch-total').textContent = '$' + total.toLocaleString('es-MX');
+  refrescarFichasClientes();
 }
 
 // ── Tickets: cada cliente es un ticket ──────────────────────────────────────
@@ -1885,12 +1889,13 @@ function crearTicket(nombre = '', { metodo = 'efectivo' } = {}) {
       <div class="ticket-head">
         <i class="bi bi-person-fill"></i>
         <input class="ticket-nombre" type="text" value="${escTicket(nombre)}" placeholder="${placeholderTicket()}"
-               oninput="renombrarTicket('${tid}', this.value)">
+               autocomplete="off" oninput="renombrarTicket('${tid}', this.value)">
         <select class="ticket-metodo" onchange="metodoTicket('${tid}', this.value)" title="Cómo pagó">
           ${op('efectivo', 'Efectivo')}${op('transferencia', 'Transferencia')}${op('tarjeta', 'Tarjeta')}
         </select>
         <button type="button" class="ticket-btn" onclick="agregarLineaATicket('${tid}')"><i class="bi bi-plus-circle"></i> Perfume</button>
         <button type="button" class="ticket-btn ticket-quitar" onclick="quitarTicket('${tid}')" title="Quitar este cliente"><i class="bi bi-x-lg"></i></button>
+        <div class="ticket-cliente" hidden></div>
       </div>
     </td>`;
   document.getElementById('batch-tbody').appendChild(tr);
@@ -1922,7 +1927,108 @@ window.agregarLineaATicket = (tid, { enfocar = true } = {}) => {
 window.renombrarTicket = (tid, nombre) => {
   batchRows.filter(r => r.tid === tid).forEach(r => { r.cliente = nombre.trim(); });
   sepDe(tid)?.querySelector('.ticket-nombre')?.classList.remove('falta');
+  pintarFichaCliente(tid);
 };
+
+// ── Clientes guardados: sugerencias al escribir el nombre ───────────────────
+// Elegir uno pone el nombre tal cual lo tienes, así sus compras se juntan bajo
+// el mismo cliente y su total gastado se va acumulando.
+function pesosCli(n) { return '$' + Math.round(Number(n) || 0).toLocaleString('es-MX'); }
+function totalTicket(tid) {
+  return batchRows.filter(r => r.tid === tid && r.perfumeId)
+    .reduce((s, r) => s + (Number(r.precio) || 0) * (Number(r.cantidad) || 1), 0);
+}
+
+/** Debajo del nombre: si ya es cliente, cuánto lleva gastado y con este ticket. */
+function pintarFichaCliente(tid) {
+  const sep = sepDe(tid);
+  const box = sep && sep.querySelector('.ticket-cliente');
+  if (!box) return;
+  const c = buscarCliente(clientesConocidos, sep.querySelector('.ticket-nombre').value);
+  if (!c) { box.hidden = true; box.innerHTML = ''; return; }
+  const ahora = totalTicket(tid);
+  box.innerHTML = `<i class="bi bi-star-fill"></i> <b>Cliente guardado</b>
+    · ${c.compras} ${c.compras === 1 ? 'compra' : 'compras'} · ${pesosCli(c.total)} gastado
+    ${ahora ? `<span class="ticket-cliente-suma">→ ${pesosCli(c.total + ahora)} con este ticket</span>` : ''}
+    ${c.ultimoPerfume ? `<small>Último: ${escTicket(c.ultimoPerfume)}</small>` : ''}`;
+  box.hidden = false;
+}
+function refrescarFichasClientes() {
+  document.querySelectorAll('#batch-tbody tr.client-separator').forEach(tr => pintarFichaCliente(tr.dataset.tid));
+}
+
+const listaCli = document.createElement('ul');
+listaCli.className = 'cli-sugerencias';
+listaCli.hidden = true;
+document.body.appendChild(listaCli);
+let cliInput = null, cliOpciones = [], cliActivo = -1;
+
+function colocarListaCli() {
+  if (!cliInput || listaCli.hidden) return;
+  const r = cliInput.getBoundingClientRect();
+  listaCli.style.left = Math.max(8, r.left) + 'px';
+  listaCli.style.top = (r.bottom + 4) + 'px';
+  listaCli.style.width = Math.max(240, r.width) + 'px';
+}
+function cerrarListaCli() { listaCli.hidden = true; cliActivo = -1; }
+function pintarListaCli() {
+  if (!cliInput) return;
+  cliOpciones = sugerirClientes(clientesConocidos, cliInput.value);
+  // si ya escribiste exacto el nombre de alguien, no estorba la lista
+  if (!cliOpciones.length || (cliOpciones.length === 1 && buscarCliente(cliOpciones, cliInput.value))) { cerrarListaCli(); return; }
+  cliActivo = -1;
+  listaCli.innerHTML = cliOpciones.map((c, i) => `
+    <li data-i="${i}">
+      <span class="cli-nombre">${escTicket(c.nombre)}</span>
+      <span class="cli-datos">${c.compras} ${c.compras === 1 ? 'compra' : 'compras'} · ${pesosCli(c.total)}${c.ultimoPerfume ? ' · ' + escTicket(c.ultimoPerfume) : ''}</span>
+    </li>`).join('');
+  listaCli.hidden = false;
+  colocarListaCli();
+}
+function elegirCli(i) {
+  const c = cliOpciones[i];
+  if (!c || !cliInput) return;
+  cliInput.value = c.nombre;
+  const tid = cliInput.closest('tr')?.dataset.tid;
+  if (tid) window.renombrarTicket(tid, c.nombre);
+  cerrarListaCli();
+}
+listaCli.addEventListener('mousedown', e => {
+  const li = e.target.closest('li[data-i]');
+  if (!li) return;
+  e.preventDefault();   // que el campo no pierda el foco antes de elegir
+  elegirCli(+li.dataset.i);
+});
+document.addEventListener('focusin', e => {
+  if (!e.target.matches?.('.ticket-nombre')) return;
+  cliInput = e.target;
+  if (cliInput.value.trim()) pintarListaCli();
+});
+document.addEventListener('input', e => {
+  if (!e.target.matches?.('.ticket-nombre')) return;
+  cliInput = e.target;
+  pintarListaCli();
+});
+document.addEventListener('focusout', e => {
+  if (e.target === cliInput) setTimeout(cerrarListaCli, 120);
+});
+document.addEventListener('keydown', e => {
+  if (listaCli.hidden || e.target !== cliInput) return;
+  const items = listaCli.querySelectorAll('li');
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    cliActivo = (cliActivo + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+    items.forEach((li, i) => li.classList.toggle('activo', i === cliActivo));
+  } else if (e.key === 'Enter' && cliActivo >= 0) {
+    e.preventDefault();
+    elegirCli(cliActivo);
+  } else if (e.key === 'Escape') {
+    cerrarListaCli();
+  }
+});
+// Al desplazar o cambiar el tamaño (el teclado del teléfono) solo se reacomoda.
+window.addEventListener('scroll', colocarListaCli, true);
+window.addEventListener('resize', colocarListaCli);
 
 window.metodoTicket = (tid, metodo) => {
   batchRows.filter(r => r.tid === tid).forEach(r => { r.metodoPago = metodo; });

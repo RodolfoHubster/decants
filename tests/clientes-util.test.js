@@ -2,7 +2,7 @@
  * Pruebas del módulo real assets/js/clientes-util.js
  */
 
-import { esNombreGenerico, esClienteTemporal, claveCliente, idCliente } from '../assets/js/clientes-util.js';
+import { sugerirClientes, esNombreGenerico, esClienteTemporal, claveCliente, idCliente } from '../assets/js/clientes-util.js';
 
 describe('esNombreGenerico', () => {
   test.each([
@@ -164,5 +164,31 @@ describe('idCliente y acentos', () => {
   test('claveCliente une los ids viejos que borraban la letra acentuada', () => {
     expect(claveCliente({ clienteId: 'NAMED-maralpez', cliente: 'María López' })).toBe('NAMED-marialopez');
     expect(claveCliente({ clienteId: 'SR-2026-10-03-007', cliente: 'Cliente 7' })).toBe('SR-2026-10-03-007');
+  });
+});
+
+describe('sugerirClientes', () => {
+  const indice = [
+    { nombre: 'Juan López', compras: 2, ultima: 30 },
+    { nombre: 'María Juárez', compras: 5, ultima: 20 },
+    { nombre: 'Juana Pérez', compras: 7, ultima: 10 },
+    { nombre: 'Pedro Ruiz', compras: 1, ultima: 40 },
+  ];
+  const nombres = r => r.map(c => c.nombre);
+
+  test('cada palabra escrita es el inicio de una palabra del nombre, sin acentos', () => {
+    expect(nombres(sugerirClientes(indice, 'ju lo'))).toEqual(['Juan López']);
+    expect(nombres(sugerirClientes(indice, 'perez'))).toEqual(['Juana Pérez']);
+  });
+  test('primero los que empiezan igual y luego los que más compran', () => {
+    expect(nombres(sugerirClientes(indice, 'ju'))).toEqual(['Juana Pérez', 'Juan López', 'María Juárez']);
+  });
+  test('vacío, sin coincidencias o "Cliente 3" no sugiere nada', () => {
+    expect(sugerirClientes(indice, '')).toEqual([]);
+    expect(sugerirClientes(indice, 'zz')).toEqual([]);
+    expect(sugerirClientes(indice, 'Cliente 3')).toEqual([]);
+  });
+  test('respeta el máximo', () => {
+    expect(sugerirClientes(indice, 'j', 2)).toHaveLength(2);
   });
 });

@@ -56,6 +56,27 @@
     }
     .ticket-nombre:focus { outline: none; border-color: var(--accent); }
     .ticket-nombre.falta { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(224,92,92,.15); }
+    /* Cliente guardado: lo que lleva gastado y cuánto suma con este ticket */
+    .ticket-cliente { flex-basis: 100%; grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
+      font-size: 12.5px; color: var(--text-muted); padding: 6px 10px; border-radius: 8px;
+      background: var(--accent-soft); border: 1px solid var(--accent-border); animation: cli-entra .25s ease-out; }
+    .ticket-cliente[hidden] { display: none; }
+    .ticket-cliente i, .ticket-cliente b { color: var(--accent); }
+    .ticket-cliente-suma { color: var(--text-primary); font-weight: 600; }
+    .ticket-cliente small { flex-basis: 100%; font-size: 11.5px; }
+    /* Lista de clientes guardados al escribir el nombre */
+    .cli-sugerencias { position: fixed; z-index: 99999; margin: 0; padding: 4px 0; list-style: none; max-height: 280px; overflow-y: auto;
+      background: var(--bg-card, #1c1b19); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 32px rgba(0,0,0,.55);
+      animation: cli-entra .18s ease-out; }
+    .cli-sugerencias[hidden] { display: none; }
+    .cli-sugerencias li { display: flex; flex-direction: column; gap: 2px; padding: 9px 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,.05);
+      transition: background .12s; }
+    .cli-sugerencias li:last-child { border-bottom: none; }
+    .cli-sugerencias li:hover, .cli-sugerencias li.activo { background: var(--accent-soft); }
+    .cli-sugerencias .cli-nombre { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .cli-sugerencias .cli-datos { font-size: 11.5px; color: var(--text-muted); }
+    @media (max-width: 700px) { .cli-sugerencias li { padding: 12px 14px; } .cli-sugerencias .cli-nombre { font-size: 15px; } }
+    @keyframes cli-entra { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
     .ticket-metodo {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
       padding: 8px; color: var(--text-primary); font: inherit; font-size: 13px;
@@ -534,6 +555,6 @@ window.buildPerfumePicker = function(wrap, perfumes, onChange) {
   </div>
 </div>
 
-<script type="module" src="../assets/js/ventas.js?v=3.3"></script>
+<script type="module" src="../assets/js/ventas.js?v=3.4"></script>
 </body>
 </html>
