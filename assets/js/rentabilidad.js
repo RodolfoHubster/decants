@@ -221,9 +221,21 @@ export function clientesAtendidos(ventas) {
  * @param {object} p  Perfume con `lotes`.
  * @param {Array} hist  Ventas del perfume (los combos ya repartidos por perfume,
  *   con `talla` en ml y `precio` proporcional).
+ * @param {object} costosOp
+ * @param {Array} [consignados]  [{perfumeId, talla, cantidad, loteId?}] que
+ *   siguen en puntos externos (en exhibición o probadores). Ya salieron de la
+ *   botella aunque no se hayan vendido: cuentan en `usado` como `mlFuera`.
+ *   Antes la tabla solo sumaba ventas y no veía lo dejado en la barbería.
  */
-export function rentabilidadPorBotella(p, hist, costosOp) {
+export function rentabilidadPorBotella(p, hist, costosOp, consignados = []) {
   const lotes = lotesDe(p);
+  // ml en puntos externos por botella: la de la pieza o la asignada.
+  const fuera = new Map();
+  (consignados || []).forEach(c => {
+    if (!c || c.perfumeId !== (p && p.id)) return;
+    const id = resolveLoteId(lotes, c.loteId || (p && p.loteActivo));
+    if (id) fuera.set(id, (fuera.get(id) || 0) + mlDeTalla(c.talla) * (+c.cantidad || 0));
+  });
   const insumo = insumoUnitario(costosOp);
   const precios = (p && p.precios) || {};
   const botellas = lotes.map((l, idx) => {
@@ -249,7 +261,8 @@ export function rentabilidadPorBotella(p, hist, costosOp) {
     });
     const tamano = tamanoDe(l);
     const ajuste = parseFloat(l.mlAjuste) || 0;
-    const usado = restoVendido ? tamano : Math.min(tamano, Math.max(0, mlVentas + ajuste));
+    const mlFuera = fuera.get(l.id) || 0;
+    const usado = restoVendido ? tamano : Math.min(tamano, Math.max(0, mlVentas + mlFuera + ajuste));
     const costoBotella = +l.costo || 0;
     const costoReal = costoBotella + decants * insumo + extra + comision;
     const gananciaReal = ingreso - costoReal;
@@ -274,7 +287,7 @@ export function rentabilidadPorBotella(p, hist, costosOp) {
 
     return {
       id: l.id, idx, fecha: l.fecha, tamano, costoBotella,
-      mlVentas, usado, restoVendido, decants,
+      mlVentas, mlFuera, usado, restoVendido, decants,
       progreso: tamano > 0 ? Math.min(100, Math.round((usado / tamano) * 100)) : 0,
       costoReal, ingreso, gananciaReal, proyeccion,
     };

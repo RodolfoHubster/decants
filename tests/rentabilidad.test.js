@@ -130,6 +130,25 @@ describe('clientesAtendidos', () => {
 });
 
 describe('rentabilidadPorBotella', () => {
+  test('lo dejado en un punto externo cuenta como usado en su botella', () => {
+    // Sauvage: 7 ml vendidos y 4 decants de 5 ml en la barbería (20 ml).
+    const hist = [{ talla: '5', precio: 90, cantidad: 1, loteId: 'lote-b' }, { talla: '2', precio: 60, cantidad: 1, loteId: 'lote-b' }];
+    const fuera = [{ perfumeId: sauvage.id, talla: '5', cantidad: 4, loteId: 'lote-b' }];
+    const r = rentabilidadPorBotella({ ...sauvage, loteActivo: 'lote-b' }, hist, costosOp, fuera);
+    expect(r.botellas[1].mlVentas).toBe(7);
+    expect(r.botellas[1].mlFuera).toBe(20);
+    expect(r.botellas[1].usado).toBe(27);
+    expect(r.botellas[0].mlFuera).toBe(0);
+  });
+  test('sin botella en la pieza, va a la asignada; de otro perfume no cuenta', () => {
+    const fuera = [
+      { perfumeId: sauvage.id, talla: '10', cantidad: 1 },
+      { perfumeId: 'otro', talla: '10', cantidad: 5 },
+    ];
+    const r = rentabilidadPorBotella({ ...sauvage, loteActivo: 'lote-b' }, [], costosOp, fuera);
+    expect(r.botellas[1].mlFuera).toBe(10);
+    expect(r.botellas[0].mlFuera).toBe(0);
+  });
   test('el perfume suma todas sus botellas y la botella en uso es la más vieja sin terminar', () => {
     const hist = [
       { talla: '10', precio: 160, cantidad: 10, loteId: 'lote-a' },

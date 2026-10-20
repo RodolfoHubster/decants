@@ -493,6 +493,8 @@ const pageSizeStats = 20;
 window.renderTable = () => renderProfitability();
 
 function renderProfitability() {
+  // Lo que sigue en puntos externos ya salió de la botella (alertas y tabla igual).
+  const fueraDeBotella = piezasFueraDeBotella(puntos);
   const tbody = document.getElementById('profit-tbody');
   const q = (document.getElementById('f-search')?.value || '').toLowerCase();
   const vista = document.getElementById('f-vista')?.value || 'stock';
@@ -537,18 +539,19 @@ function renderProfitability() {
     
     // Cada botella con su costo; el renglón del perfume suma todas (antes
     // mostraba solo la activa y no cuadraba con las de abajo).
-    const rent = rentabilidadPorBotella({ ...p, lotes }, hist, costosOp);
+    const rent = rentabilidadPorBotella({ ...p, lotes }, hist, costosOp, fueraDeBotella);
     const loteResults = rent.botellas.map(b => ({
       id: b.id,
       nombre: `Botella #${b.idx + 1} (${new Date(b.fecha).toLocaleDateString('es-MX')})`,
       progresoTexto: `${Math.round(b.usado)} / ${b.tamano}ml`,
+      mlFuera: b.mlFuera,
       progresoPorcentaje: b.progreso,
       costoInversionReal: b.costoReal,
       ingresoReal: b.ingreso,
       gananciaReal: b.gananciaReal,
       gananciaNetaFinal: b.proyeccion,
       tamanoBotella: b.tamano,
-      mlVendidosVentas: b.mlVentas,
+      mlVendidosVentas: b.mlVentas + b.mlFuera,
       restoVendido: b.restoVendido,
       enUso: rent.enUso && rent.enUso.id === b.id && rent.botellas.length > 1,
       sinCerrar: b.sinCerrar
@@ -683,7 +686,7 @@ function renderProfitability() {
             <td style="padding-left:35px; border-left:3px solid var(--accent)">↳ ${l.nombre}${l.enUso ? ' <span style="font-size:10.5px;color:var(--accent)">· activa</span>' : ''}${l.sinCerrar ? ' <span class="sin-cerrar" title="Ya compraste otra después y esta no llegó al 100%. Si ya se acabó, toca Ajustar y pon 0 ml.">· ¿ya se acabó? Ajústala</span>' : ''}</td>
             <td>
               <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:flex;align-items:center;gap:8px;">
-                <span>${l.progresoTexto}</span>
+                <span>${l.progresoTexto}${l.mlFuera ? ` <span style="color:var(--accent)" title="Dejados en puntos externos (exhibición y probadores), aún sin vender">· ${Math.round(l.mlFuera)} ml en puntos</span>` : ''}</span>
                 ${!l.restoVendido ? `<button onclick="event.stopPropagation(); window.abrirModalAjuste('${r.pid}', '${l.id}', ${l.tamanoBotella}, ${l.mlVendidosVentas})" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);color:var(--accent);border-radius:5px;padding:2px 8px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><i class='bi bi-pencil-fill'></i> Ajustar</button>` : ''}
               </div>
               <div style="height:4px;background:rgba(255,255,255,0.1);border-radius:2px;width:100%;max-width:120px;overflow:hidden">
