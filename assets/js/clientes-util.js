@@ -127,21 +127,51 @@ export function buscarCliente(indice, nombre) {
  * Primero los que empiezan igual, luego los que más compran.
  * No sugiere nada para "Cliente 3" (los de paso no se agrupan).
  *
+ * Si con eso no se llena la lista, también busca el texto en cualquier parte
+ * del nombre sin espacios ("juanlo", "lopez" dentro de "JuanLopez").
+ *
  * @param {Array<{nombre:string,compras:number,ultima:number}>} indice  De indiceClientes().
  * @param {string} texto
  * @param {number} [max]
  */
-export function sugerirClientes(indice, texto, max = 6) {
+export function sugerirClientes(indice, texto, max = 8) {
   const palabras = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   const q = palabras(texto);
   if (!q.length || esNombreGenerico(texto)) return [];
-  return (indice || [])
-    .map(c => ({ c, w: palabras(c.nombre) }))
-    .filter(({ w }) => q.every(x => w.some(y => y.startsWith(x))))
-    .sort((a, b) => (Number(b.w[0].startsWith(q[0])) - Number(a.w[0].startsWith(q[0])))
-      || ((b.c.compras || 0) - (a.c.compras || 0))
-      || ((b.c.ultima || 0) - (a.c.ultima || 0)))
-    .slice(0, max)
-    .map(({ c }) => c);
+  const junto = q.join('');
+  const orden = (a, b) => (Number(b.w[0].startsWith(q[0])) - Number(a.w[0].startsWith(q[0])))
+    || ((b.c.compras || 0) - (a.c.compras || 0))
+    || ((b.c.ultima || 0) - (a.c.ultima || 0));
+  const todos = (indice || []).map(c => ({ c, w: palabras(c.nombre) })).filter(x => x.w.length);
+  const porInicio = todos.filter(({ w }) => q.every(x => w.some(y => y.startsWith(x)))).sort(orden);
+  const dentro = junto.length >= 2
+    ? todos.filter(x => !porInicio.includes(x) && x.w.join('').includes(junto)).sort(orden)
+    : [];
+  return [...porInicio, ...dentro].slice(0, max).map(({ c }) => c);
+}
+
+/**
+ * Agrega al índice a quien solo tiene encargos de perfume completo (la página
+ * de Clientes también los cuenta). Un encargo entregado suma a lo gastado;
+ * los cancelados no cuentan. Devuelve un índice nuevo.
+ *
+ * @param {Array} indice  De indiceClientes().
+ * @param {Array<{cliente:string, precio?:number, estado?:string, perfume?:string, creadoEn?:any}>} encargos
+ */
+export function sumarEncargos(indice, encargos) {
+  const por = new Map((indice || []).map(c => [normNombre(c.nombre), { ...c, encargos: c.encargos || 0 }]));
+  (encargos || []).forEach(e => {
+    const nombre = String(e && e.cliente || '').trim();
+    if (!nombre || esNombreGenerico(nombre) || e.estado === 'cancelado') return;
+    const clave = normNombre(nombre);
+    const t = typeof e.creadoEn === 'number' ? e.creadoEn
+      : (e.creadoEn && typeof e.creadoEn.seconds === 'number') ? e.creadoEn.seconds * 1000 : 0;
+    const g = por.get(clave) || { clave, nombre, compras: 0, total: 0, ultima: 0, ultimoPerfume: '', encargos: 0 };
+    g.encargos += 1;
+    if (e.estado === 'entregado') g.total += Number(e.precio) || 0;
+    if (t > g.ultima) { g.ultima = t; if (!g.compras) g.ultimoPerfume = e.perfume || g.ultimoPerfume; }
+    por.set(clave, g);
+  });
+  return [...por.values()].sort((a, b) => b.ultima - a.ultima);
 }

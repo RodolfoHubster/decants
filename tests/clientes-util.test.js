@@ -2,7 +2,7 @@
  * Pruebas del módulo real assets/js/clientes-util.js
  */
 
-import { sugerirClientes, esNombreGenerico, esClienteTemporal, claveCliente, idCliente } from '../assets/js/clientes-util.js';
+import { sugerirClientes, sumarEncargos, esNombreGenerico, esClienteTemporal, claveCliente, idCliente } from '../assets/js/clientes-util.js';
 
 describe('esNombreGenerico', () => {
   test.each([
@@ -190,5 +190,36 @@ describe('sugerirClientes', () => {
   });
   test('respeta el máximo', () => {
     expect(sugerirClientes(indice, 'j', 2)).toHaveLength(2);
+  });
+});
+
+describe('sugerirClientes: por pedazo del nombre', () => {
+  const indice = [
+    { nombre: 'JuanLopez', compras: 1, ultima: 1 },
+    { nombre: 'Ana Sofía', compras: 1, ultima: 2 },
+  ];
+  test('encuentra texto dentro del nombre aunque no sea inicio de palabra', () => {
+    expect(sugerirClientes(indice, 'lopez').map(c => c.nombre)).toEqual(['JuanLopez']);
+    expect(sugerirClientes(indice, 'anaso').map(c => c.nombre)).toEqual(['Ana Sofía']);
+  });
+  test('los que empiezan igual van antes que los de "dentro"', () => {
+    const r = sugerirClientes([...indice, { nombre: 'Lopez Ruiz', compras: 1, ultima: 0 }], 'lopez');
+    expect(r.map(c => c.nombre)).toEqual(['Lopez Ruiz', 'JuanLopez']);
+  });
+});
+
+describe('sumarEncargos', () => {
+  test('agrega a quien solo tiene encargos y suma solo los entregados', () => {
+    const r = sumarEncargos([{ nombre: 'Juan López', compras: 2, total: 300, ultima: 5 }], [
+      { cliente: 'Pedro Ruiz', precio: 2500, estado: 'entregado', perfume: 'Aventus', creadoEn: { seconds: 10 } },
+      { cliente: 'pedro ruiz', precio: 1800, estado: 'pendiente' },
+      { cliente: 'juan lopez', precio: 900, estado: 'entregado' },
+      { cliente: 'Ana', precio: 700, estado: 'cancelado' },
+      { cliente: 'Cliente 4', precio: 100, estado: 'entregado' },
+    ]);
+    const pedro = r.find(c => c.nombre === 'Pedro Ruiz');
+    expect(pedro).toMatchObject({ compras: 0, total: 2500, encargos: 2, ultimoPerfume: 'Aventus' });
+    expect(r.find(c => c.nombre === 'Juan López')).toMatchObject({ compras: 2, total: 1200, encargos: 1 });
+    expect(r.some(c => c.nombre === 'Ana' || c.nombre === 'Cliente 4')).toBe(false);
   });
 });

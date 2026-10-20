@@ -5,7 +5,7 @@ import { loteParaVenta } from './lotes.js?v=2';
 import { paraVenderEnPanel } from './sorpresa.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
-import { indiceClientes, idCliente, sugerirClientes, buscarCliente } from './clientes-util.js?v=3';
+import { indiceClientes, idCliente, sugerirClientes, buscarCliente, sumarEncargos } from './clientes-util.js?v=4';
 import { modoDeCanal, nombreTicketNuevo, resumenRenglones, validarRegistro } from './registro-dia.js';
 import { claveCanasta, canastaRestante } from './pos-cliente.js?v=2';
 
@@ -45,13 +45,15 @@ window.costoReforzada = 15; // default
 
 // ── Cargar datos ──────────────────────────────────────────────────────────────
 async function loadAll() {
-  const [vs, ps, pq, confSnap, blSnap, accSnap] = await Promise.all([
+  const [vs, ps, pq, confSnap, blSnap, accSnap, encSnap] = await Promise.all([
     getDocs(collection(db, 'ventas')),
     getDocs(collection(db, 'perfumes')),
     getDocs(collection(db, 'paquetes')),
     getDoc(doc(db, 'config', 'costosOperativos')).catch(() => null),
     getDoc(doc(db, 'config', 'blacklist')).catch(() => null),
-    getDocs(collection(db, 'accesorios')).catch(() => [])
+    getDocs(collection(db, 'accesorios')).catch(() => []),
+    // encargos de perfume completo: sus clientes también se sugieren al registrar
+    getDocs(collection(db, 'ordenes_completos')).catch(() => null)
   ]);
   
   if (confSnap && confSnap.exists()) {
@@ -82,7 +84,9 @@ async function loadAll() {
     ventas.push({ id: d.id, ...data, creadoEn: aMs(data.creadoEn) || data.creadoEn });
   });
   guardarIndiceClientes(ventas);
-  clientesConocidos = indiceClientes(ventas);
+  const encargos = [];
+  if (encSnap) encSnap.forEach(d => encargos.push(d.data()));
+  clientesConocidos = sumarEncargos(indiceClientes(ventas), encargos);
   ventas.sort((a,b) => {
     let tA = a.creadoEn ? (typeof a.creadoEn.toMillis === 'function' ? a.creadoEn.toMillis() : a.creadoEn) : 0;
     let tB = b.creadoEn ? (typeof b.creadoEn.toMillis === 'function' ? b.creadoEn.toMillis() : b.creadoEn) : 0;
@@ -1933,6 +1937,12 @@ window.renombrarTicket = (tid, nombre) => {
 // ── Clientes guardados: sugerencias al escribir el nombre ───────────────────
 // Elegir uno pone el nombre tal cual lo tienes, así sus compras se juntan bajo
 // el mismo cliente y su total gastado se va acumulando.
+function historialCli(c) {
+  const partes = [];
+  if (c.compras) partes.push(`${c.compras} ${c.compras === 1 ? 'compra' : 'compras'}`);
+  if (c.encargos) partes.push(`${c.encargos} ${c.encargos === 1 ? 'encargo' : 'encargos'}`);
+  return partes.join(' · ') || 'sin compras';
+}
 function pesosCli(n) { return '$' + Math.round(Number(n) || 0).toLocaleString('es-MX'); }
 function totalTicket(tid) {
   return batchRows.filter(r => r.tid === tid && r.perfumeId)
@@ -1948,7 +1958,7 @@ function pintarFichaCliente(tid) {
   if (!c) { box.hidden = true; box.innerHTML = ''; return; }
   const ahora = totalTicket(tid);
   box.innerHTML = `<i class="bi bi-star-fill"></i> <b>Cliente guardado</b>
-    · ${c.compras} ${c.compras === 1 ? 'compra' : 'compras'} · ${pesosCli(c.total)} gastado
+    · ${historialCli(c)} · ${pesosCli(c.total)} gastado
     ${ahora ? `<span class="ticket-cliente-suma">→ ${pesosCli(c.total + ahora)} con este ticket</span>` : ''}
     ${c.ultimoPerfume ? `<small>Último: ${escTicket(c.ultimoPerfume)}</small>` : ''}`;
   box.hidden = false;
@@ -1980,7 +1990,7 @@ function pintarListaCli() {
   listaCli.innerHTML = cliOpciones.map((c, i) => `
     <li data-i="${i}">
       <span class="cli-nombre">${escTicket(c.nombre)}</span>
-      <span class="cli-datos">${c.compras} ${c.compras === 1 ? 'compra' : 'compras'} · ${pesosCli(c.total)}${c.ultimoPerfume ? ' · ' + escTicket(c.ultimoPerfume) : ''}</span>
+      <span class="cli-datos">${historialCli(c)} · ${pesosCli(c.total)}${c.ultimoPerfume ? ' · ' + escTicket(c.ultimoPerfume) : ''}</span>
     </li>`).join('');
   listaCli.hidden = false;
   colocarListaCli();
