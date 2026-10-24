@@ -68,6 +68,59 @@
     .tag-agotado { font-size:10px; font-weight:700; color:#ef4444; background:rgba(239,68,68,.12); padding:2px 6px; border-radius:4px; margin-left:6px; }
 
     @media (max-width: 900px) { .decidir { grid-template-columns:1fr; } }
+    .ver-todos { margin-top:8px; width:100%; padding:8px; border:1px dashed var(--accent-border); border-radius:8px; background:none;
+                 color:var(--accent); font:inherit; font-size:12.5px; font-weight:600; cursor:pointer; transition:background .15s; }
+    .ver-todos:hover { background:var(--accent-soft); }
+    .lista-larga { max-height:420px; overflow-y:auto; }
+
+    /* Qué se mueve */
+    .mov { margin-bottom:20px; }
+    .mov h3 { font-size:16px; }
+    .mov > small { display:block; color:var(--text-muted); font-size:12px; margin:-10px 0 14px; }
+    .mov-filtros { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+    .seg { display:inline-flex; border:1px solid var(--border); border-radius:99px; padding:3px; background:var(--bg-card2); }
+    .seg button { border:none; background:none; color:var(--text-muted); font:inherit; font-size:12.5px; font-weight:600; padding:6px 12px; border-radius:99px; cursor:pointer; transition:background .15s, color .15s; }
+    .seg button.on { background:var(--accent); color:#111; }
+    .mov-generos { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px; margin-bottom:16px; }
+    .gen-card { text-align:left; padding:12px 14px; border:1px solid var(--border); border-radius:12px; background:var(--bg-card2); color:var(--text-primary); font:inherit; cursor:pointer; transition:border-color .15s, transform .15s; }
+    .gen-card:hover { border-color:var(--accent-border); transform:translateY(-2px); }
+    .gen-card.on { border-color:var(--accent); box-shadow:0 0 0 2px rgba(201,168,76,.25); }
+    .gen-card .gen-tit { font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); display:flex; justify-content:space-between; }
+    .gen-card .gen-num { font-size:24px; font-weight:700; margin:4px 0 2px; }
+    .gen-card .gen-num small { font-size:12px; font-weight:500; color:var(--text-muted); margin-left:4px; }
+    .gen-card .gen-sub { font-size:12px; color:var(--text-muted); }
+    .gen-card .gen-barra { height:4px; border-radius:2px; background:rgba(255,255,255,.08); margin-top:8px; overflow:hidden; }
+    .gen-card .gen-barra span { display:block; height:100%; background:var(--accent); }
+    .cambio { font-size:11.5px; font-weight:700; }
+    .cambio.sube { color:#4ade80; } .cambio.baja { color:#ef4444; }
+    .mov-cols { display:grid; grid-template-columns:minmax(0, 1.6fr) minmax(0, 1fr); gap:16px; }
+    @media (max-width: 1000px) { .mov-cols { grid-template-columns:1fr; } }
+    .mov h4 { font-size:13.5px; margin:0 0 10px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+    .mov-buscar { max-width:220px; padding:6px 10px; font-size:13px; }
+    .rank { width:100%; border-collapse:collapse; font-size:13px; }
+    .rank th { text-align:left; font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; padding:6px 8px; border-bottom:1px solid var(--border); }
+    .rank td { padding:8px; border-bottom:1px solid rgba(255,255,255,.05); }
+    .rank td.num, .rank th.num { text-align:right; white-space:nowrap; }
+    .rank .pos { width:28px; color:var(--text-faint); font-weight:700; }
+    .rank tr.top .pos { color:var(--accent); }
+    .rank .nom strong { display:block; font-weight:600; }
+    .rank .nom small { color:var(--text-muted); font-size:11.5px; }
+    .chip-gen { display:inline-block; font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:4px; margin-left:4px; background:rgba(255,255,255,.07); color:var(--text-muted); }
+    .chip-gen.Caballero { background:rgba(96,165,250,.15); color:#7fb2f5; }
+    .chip-gen.Dama { background:rgba(244,114,182,.15); color:#f08cc4; }
+    .chip-gen.Unisex { background:rgba(201,168,76,.15); color:var(--accent); }
+    .rank-wrap { overflow-x:auto; }
+    .tallas-tabla { width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:18px; }
+    .tallas-tabla th, .tallas-tabla td { padding:7px 6px; text-align:center; border-bottom:1px solid rgba(255,255,255,.05); }
+    .tallas-tabla th { font-size:11px; color:var(--text-muted); font-weight:600; }
+    .tallas-tabla td:first-child, .tallas-tabla th:first-child { text-align:left; }
+    .tallas-tabla td.max { color:var(--accent); font-weight:700; }
+    .dias { display:flex; flex-direction:column; gap:6px; }
+    .dia { display:grid; grid-template-columns:72px 1fr auto; gap:8px; align-items:center; font-size:12.5px; }
+    .dia .barra { height:10px; border-radius:5px; background:rgba(255,255,255,.07); overflow:hidden; }
+    .dia .barra span { display:block; height:100%; background:var(--accent); border-radius:5px; transition:width .5s ease; }
+    .dia.mejor { font-weight:700; color:var(--accent); }
+    .dia small { color:var(--text-muted); white-space:nowrap; }
 
     @media (max-width: 640px) {
       .kpi-grid { grid-template-columns:1fr 1fr; gap:10px; }
@@ -186,6 +239,41 @@
           <h3><span><i class="bi bi-hourglass-split" style="color:#e0a23c"></i> En stock pero no se mueve</span></h3>
           <small>Sin ventas en 30 días. Candidatos a promoción o a paquete.</small>
           <div id="dec-quietos"><div class="dec-vacio">Calculando…</div></div>
+        </div>
+      </div>
+
+      <!-- Qué se mueve: por género, perfume, talla y día (estadisticas-ventas.js) -->
+      <div class="chart-card mov" id="mov">
+        <h3><span><i class="bi bi-graph-up-arrow" style="color:var(--accent)"></i> Qué se mueve</span></h3>
+        <small>En el periodo elegido arriba. Toca una tarjeta para ver solo ese género.</small>
+        <div class="mov-filtros">
+          <div class="seg" id="mov-tipo" role="tablist" aria-label="Qué contar">
+            <button data-v="decant" class="on">Decants</button>
+            <button data-v="completo">Perfumes completos</button>
+            <button data-v="">Todo</button>
+          </div>
+          <div class="seg" id="mov-genero" role="tablist" aria-label="Género">
+            <button data-v="" class="on">Todos</button>
+            <button data-v="Caballero">Hombre</button>
+            <button data-v="Dama">Mujer</button>
+            <button data-v="Unisex">Unisex</button>
+          </div>
+        </div>
+        <div class="mov-generos" id="mov-generos"></div>
+        <div class="mov-cols">
+          <div>
+            <h4><span id="mov-rank-tit">Perfumes que más se mueven</span>
+              <input class="form-control mov-buscar" id="mov-buscar" placeholder="Buscar perfume…" autocomplete="off"></h4>
+            <div class="rank-wrap" id="mov-ranking"></div>
+          </div>
+          <div>
+            <div id="mov-tallas-wrap">
+              <h4>Tallas que compra cada género</h4>
+              <div id="mov-tallas"></div>
+            </div>
+            <h4>Qué día se vende más</h4>
+            <div class="dias" id="mov-dias"></div>
+          </div>
         </div>
       </div>
 
@@ -320,6 +408,6 @@
   </div>
 </div>
 
-<script type="module" src="../assets/js/estadisticas.js?v=2.5"></script>
+<script type="module" src="../assets/js/estadisticas.js?v=2.6"></script>
 </body>
 </html>

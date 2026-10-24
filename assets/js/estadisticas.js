@@ -5,6 +5,10 @@ import { topVendidos, sinMovimiento, aMs } from './alertas.js';
 import { contextoRentabilidad, resumenGanancia, clientesAtendidos, rentabilidadPorBotella, consumoDePerfume } from './rentabilidad.js';
 import { sumarVisitas } from './visitas.js';
 import { piezasFueraDeBotella, costoProbadores } from './puntos-externos.js';
+import {
+  GENEROS, SIN_GENERO, piezasVendidas, filtrarPiezas, resumenPorGenero, rankingPerfumes,
+  tallasPorGenero, porDiaSemana, periodoAnterior, cambioPct,
+} from './estadisticas-ventas.js';
 
 let ventas = [];
 let ventasFiltradas = [];
@@ -13,6 +17,7 @@ let costosOp = { botella: 0, etiqueta: 0, bolsa: 0 };
 let accesorios = [];
 let visitasPorDia = {};
 let puntos = [];
+let piezasTodas = [];   // cada decant o botella vendida (estadisticas-ventas.js)
 let ctxRent = null;
 let chartTallasObj = null;
 let chartTopObj = null;
@@ -33,13 +38,16 @@ window.loadData = async () => {
   if(btn) btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
   
   try {
-    const [vs, ps, confSnap, accSnap, visSnap, consSnap] = await Promise.all([
+    const [vs, ps, confSnap, accSnap, visSnap, consSnap, encSnap, compSnap] = await Promise.all([
       getDocs(collection(db, 'ventas')),
       getDocs(collection(db, 'perfumes')),
       getDoc(doc(db, 'config', 'costosOperativos')).catch(() => null),
       getDocs(collection(db, 'accesorios')).catch(() => null),
       getDocs(collection(db, 'visitas')).catch(() => null),
-      getDocs(collection(db, 'consignaciones')).catch(() => null)
+      getDocs(collection(db, 'consignaciones')).catch(() => null),
+      // perfumes completos: encargos entregados y el catálogo (para su género)
+      getDocs(collection(db, 'ordenes_completos')).catch(() => null),
+      getDocs(collection(db, 'perfumes_completos')).catch(() => null)
     ]);
     accesorios = [];
     if (accSnap) accSnap.forEach(d => accesorios.push({ id: d.id, ...d.data() }));
@@ -74,6 +82,10 @@ window.loadData = async () => {
       costosOp = confSnap.data();
     }
     ctxRent = contextoRentabilidad({ perfumes, accesorios, costosOp, ventas });
+    const encargos = [], completos = [];
+    if (encSnap) encSnap.forEach(d => encargos.push(d.data()));
+    if (compSnap) compSnap.forEach(d => completos.push({ id: d.id, ...d.data() }));
+    piezasTodas = piezasVendidas(ventas, { perfumes, completos, encargos, ctx: ctxRent });
     
     aplicarFiltroFecha();
   } catch(e) {
@@ -121,6 +133,7 @@ function aplicarFiltroFecha() {
   renderTopClientes();
   renderAlertasInventario();
   renderDecisiones();
+  renderMovimiento();
 }
 
 // Cambiar de periodo no necesita volver a leer Firestore: los datos ya están.
@@ -137,32 +150,136 @@ const mxn = n => (n || 0).toLocaleString('es-MX', { style: 'currency', currency:
 const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Listas con "Ver todos": antes se cortaban en 6 y 8 ("y 47 más") sin poder verlas.
+const abiertas = new Set();
+function listaConVerTodos(el, clave, items, fila, n, vacio) {
+  if (!el) return;
+  if (!items.length) { el.innerHTML = `<div class="dec-vacio">${vacio}</div>`; return; }
+  const todas = abiertas.has(clave);
+  el.innerHTML = `<div class="${todas ? 'lista-larga' : ''}">${(todas ? items : items.slice(0, n)).map(fila).join('')}</div>`
+    + (items.length > n ? `<button type="button" class="ver-todos" data-lista="${clave}">${todas ? 'Ver menos' : `Ver los ${items.length} (${items.length - n} más)`}</button>` : '');
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-lista]');
+  if (!b) return;
+  const k = b.dataset.lista;
+  if (abiertas.has(k)) abiertas.delete(k); else abiertas.add(k);
+  if (k === 'mov') renderMovimiento(); else renderDecisiones();
+});
+
 function renderDecisiones() {
-  const top = topVendidos(ventasFiltradas, 0, 6).sort((a, b) => b.total - a.total);
-  const elTop = document.getElementById('dec-top');
-  if (elTop) {
-    elTop.innerHTML = top.length
-      ? top.map(t => `
+  const top = topVendidos(ventasFiltradas, 0, Infinity).sort((a, b) => b.total - a.total);
+  listaConVerTodos(document.getElementById('dec-top'), 'top', top, (t, i) => `
           <div class="dec-item">
-            <strong>${escHtml(t.nombre)}</strong>
+            <strong>${i + 1}. ${escHtml(t.nombre)}</strong>
             <span>${t.unidades} pzs · <em>${mxn(t.total)}</em></span>
-          </div>`).join('')
-      : '<div class="dec-vacio">Sin ventas en este periodo.</div>';
-  }
+          </div>`, 6, 'Sin ventas en este periodo.');
 
   const quietos = sinMovimiento(perfumes, ventas, Date.now(), 30);
-  const elQ = document.getElementById('dec-quietos');
-  if (elQ) {
-    elQ.innerHTML = quietos.length
-      ? quietos.slice(0, 8).map(q => `
+  listaConVerTodos(document.getElementById('dec-quietos'), 'quietos', quietos, q => `
           <div class="dec-item">
             <strong>${escHtml(q.nombre)}</strong>
             <span>${q.dias === null ? 'nunca se ha vendido' : `hace ${q.dias} días`}</span>
-          </div>`).join('') +
-        (quietos.length > 8 ? `<div class="dec-vacio">y ${quietos.length - 8} más</div>` : '')
-      : '<div class="dec-vacio">Todo lo que tienes se está moviendo.</div>';
-  }
+          </div>`, 8, 'Todo lo que tienes se está moviendo.');
 }
+
+// ── Qué se mueve ────────────────────────────────────────────────────────────
+let movTipo = 'decant', movGenero = '', movBuscar = '';
+const ETIQ_GEN = { Caballero: 'Hombre', Dama: 'Mujer', Unisex: 'Unisex', [SIN_GENERO]: 'Sin género' };
+const fechaCorta = t => t ? new Date(t).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '—';
+
+function renderMovimiento() {
+  const cont = document.getElementById('mov');
+  if (!cont) return;
+  const ahora = Date.now();
+  const enPeriodo = filtrarPiezas(piezasTodas, { desde: periodoDesde, tipo: movTipo });
+  const ant = periodoAnterior(periodoDesde, ahora);
+  const resumen = resumenPorGenero(enPeriodo);
+  const resumenAnt = ant ? resumenPorGenero(filtrarPiezas(piezasTodas, { ...ant, tipo: movTipo })) : null;
+  const unidad = movTipo === 'completo' ? 'botellas' : movTipo === 'decant' ? 'decants' : 'piezas';
+
+  // Tarjetas por género
+  const generos = [...GENEROS, ...(resumen[SIN_GENERO].piezas ? [SIN_GENERO] : [])];
+  document.getElementById('mov-generos').innerHTML = generos.map(g => {
+    const r = resumen[g];
+    const pct = resumen.total.piezas ? Math.round((r.piezas / resumen.total.piezas) * 100) : 0;
+    const c = resumenAnt ? cambioPct(r.piezas, resumenAnt[g].piezas) : null;
+    const cambio = c === null ? '' : `<span class="cambio ${c >= 0 ? 'sube' : 'baja'}" title="Contra el periodo anterior del mismo largo">${c >= 0 ? '▲' : '▼'} ${Math.abs(c)}%</span>`;
+    return `<button type="button" class="gen-card${movGenero === g ? ' on' : ''}" data-gen="${g}">
+      <div class="gen-tit"><span>${ETIQ_GEN[g]}</span>${cambio}</div>
+      <div class="gen-num">${r.piezas}<small>${r.piezas === 1 ? unidad.slice(0, -1) : unidad}</small></div>
+      <div class="gen-sub">${mxn(r.importe)}${r.ml ? ` · ${Math.round(r.ml)} ml` : ''} · ${r.perfumes} ${r.perfumes === 1 ? 'perfume' : 'perfumes'}</div>
+      <div class="gen-barra"><span style="width:${pct}%"></span></div>
+      <div class="gen-sub" style="margin-top:4px">${pct}% de lo vendido</div>
+    </button>`;
+  }).join('');
+
+  // Ranking completo
+  const piezasGen = movGenero ? enPeriodo.filter(x => x.genero === movGenero) : enPeriodo;
+  let rank = rankingPerfumes(piezasGen).map((r, i) => ({ ...r, pos: i + 1 }));
+  const q = movBuscar.trim().toLowerCase();
+  if (q) rank = rank.filter(r => `${r.nombre} ${r.marca}`.toLowerCase().includes(q));
+  document.getElementById('mov-rank-tit').textContent =
+    `${movGenero ? `De ${ETIQ_GEN[movGenero].toLowerCase()}` : 'Todos'}: ${rank.length} ${rank.length === 1 ? 'perfume' : 'perfumes'}`;
+  const todas = abiertas.has('mov') || !!q;
+  const visibles = todas ? rank : rank.slice(0, 10);
+  const conMl = movTipo !== 'completo';
+  document.getElementById('mov-ranking').innerHTML = rank.length ? `
+    <table class="rank">
+      <thead><tr><th>#</th><th>Perfume</th><th class="num">${unidad === 'botellas' ? 'Botellas' : 'Piezas'}</th>${conMl ? '<th class="num">ml</th>' : ''}<th class="num">Dinero</th><th class="num">Última</th></tr></thead>
+      <tbody>${visibles.map(r => `
+        <tr class="${r.pos <= 5 ? 'top' : ''}">
+          <td class="pos">${r.pos <= 3 ? ['🥇', '🥈', '🥉'][r.pos - 1] : r.pos}</td>
+          <td class="nom"><strong>${escHtml(r.nombre)}</strong><small>${escHtml(r.marca)}${!movGenero ? `<span class="chip-gen ${r.genero}">${ETIQ_GEN[r.genero]}</span>` : ''}${movTipo === '' ? ` · ${r.tipo === 'completo' ? 'botella' : 'decant'}` : ''}</small></td>
+          <td class="num">${r.piezas}</td>${conMl ? `<td class="num">${Math.round(r.ml) || '—'}</td>` : ''}
+          <td class="num">${mxn(r.importe)}</td>
+          <td class="num">${fechaCorta(r.ultima)}</td>
+        </tr>`).join('')}</tbody>
+    </table>${!q && rank.length > 10 ? `<button type="button" class="ver-todos" data-lista="mov">${todas ? 'Ver solo el top 10' : `Ver la lista completa (${rank.length})`}</button>` : ''}`
+    : `<div class="dec-vacio">${q ? 'Ningún perfume con ese nombre.' : 'Sin ventas en este periodo.'}</div>`;
+
+  // Tallas por género (solo decants)
+  const tallasWrap = document.getElementById('mov-tallas-wrap');
+  tallasWrap.hidden = movTipo === 'completo';
+  if (!tallasWrap.hidden) {
+    const t = tallasPorGenero(enPeriodo);
+    const filas = generos.filter(g => !movGenero || g === movGenero);
+    document.getElementById('mov-tallas').innerHTML = `<table class="tallas-tabla">
+      <thead><tr><th></th><th>2 ml</th><th>3 ml</th><th>5 ml</th><th>10 ml</th></tr></thead>
+      <tbody>${filas.map(g => {
+        const vals = [2, 3, 5, 10].map(k => t[g][k]);
+        const max = Math.max(...vals);
+        return `<tr><td>${ETIQ_GEN[g]}</td>${vals.map(v => `<td class="${v && v === max ? 'max' : ''}">${v || '—'}</td>`).join('')}</tr>`;
+      }).join('')}</tbody></table>`;
+  }
+
+  // Día de la semana
+  const dias = porDiaSemana(piezasGen);
+  const maxDia = Math.max(...dias.map(d => d.piezas), 0);
+  document.getElementById('mov-dias').innerHTML = maxDia ? dias.map(d => `
+    <div class="dia${d.piezas === maxDia ? ' mejor' : ''}">
+      <span>${d.dia}</span>
+      <div class="barra"><span style="width:${Math.round((d.piezas / maxDia) * 100)}%"></span></div>
+      <small>${d.piezas} · ${mxn(d.importe)}</small>
+    </div>`).join('') : '<div class="dec-vacio">Sin ventas en este periodo.</div>';
+}
+
+document.addEventListener('click', e => {
+  const seg = e.target.closest('#mov-tipo button, #mov-genero button');
+  const card = e.target.closest('.gen-card');
+  if (!seg && !card) return;
+  if (seg && seg.closest('#mov-tipo')) movTipo = seg.dataset.v;
+  else movGenero = card ? (movGenero === card.dataset.gen ? '' : card.dataset.gen) : seg.dataset.v;
+  document.querySelectorAll('#mov-tipo button').forEach(b => b.classList.toggle('on', b.dataset.v === movTipo));
+  document.querySelectorAll('#mov-genero button').forEach(b => b.classList.toggle('on', b.dataset.v === movGenero));
+  abiertas.delete('mov');
+  renderMovimiento();
+});
+document.addEventListener('input', e => {
+  if (e.target.id !== 'mov-buscar') return;
+  movBuscar = e.target.value;
+  renderMovimiento();
+});
 
 function renderKPIs() {
   // El costo de cada venta sale de SU botella (rentabilidad.js): si un perfume

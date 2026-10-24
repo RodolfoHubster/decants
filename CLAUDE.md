@@ -41,6 +41,7 @@ tests/*.test.js                                 ← Jest, importan los módulos 
 `sorpresa.js` (paquetes sorpresa como la Calaverita: disponibilidad, una a `precioExtra` por paquete de su temporada, "elige 1" al venderla en el panel) ·
 `similares.js` (productos similares de la página de producto) · `pro.js` (decant PRO: 5/10 ml a +`reforzadaVenta`, 7 colores) ·
 `newsletter.js` (validar correo, documento `suscriptores/<correo>`, armar el correo de novedades para Brevo) ·
+`estadisticas-ventas.js` (qué se mueve: piezas por perfume, género, talla y día; incluye perfumes completos de ventas y encargos entregados) ·
 `ia-perfume.js` (prompt de la IA de decants) · `ia-completos.js` (prompt de la IA de perfumes completos: presentaciones que existen, precio de mercado en México y sugerido; descarta precios fuera de rango)
 
 **Página de producto:** `producto.html` carga el mismo `catalog.js` con `<body data-pagina="producto">`
