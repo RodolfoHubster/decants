@@ -42,12 +42,14 @@ tests/*.test.js                                 ← Jest, importan los módulos 
 `similares.js` (productos similares de la página de producto) · `pro.js` (decant PRO: 5/10 ml a +`reforzadaVenta`, 7 colores) ·
 `newsletter.js` (validar correo, documento `suscriptores/<correo>`, armar el correo de novedades para Brevo) ·
 `estadisticas-ventas.js` (qué se mueve: piezas por perfume, género, talla y día; incluye perfumes completos de ventas y encargos entregados) ·
+`esqueleto.js` (esqueletos de carga del panel: un contenedor pide el suyo con `data-esq="tabla:10:8:foto"`, `tarjetas:6:150` o `lista:5:44` y `sidebar.js` lo pinta; las ruedas son solo para botones) · `prueba-estres.js` (`?estres=1` en Live Server agrega productos exagerados en memoria para probar la tienda) ·
 `ia-perfume.js` (prompt de la IA de decants) · `ia-completos.js` (prompt de la IA de perfumes completos: presentaciones que existen, precio de mercado en México y sugerido; descarta precios fuera de rango)
 
 **Página de producto:** `producto.html` carga el mismo `catalog.js` con `<body data-pagina="producto">`
 (`ES_PRODUCTO`); la ficha es el marcado del antiguo modal (`#modal`) mostrado como página. Las tarjetas
 son `<a href="producto.html?p=...">` y los links viejos `#/perfumes/slug` redirigen. El encabezado,
-el carrito, el pie y la decoración de temporada están **duplicados en index.html y producto.html**:
+el carrito, el pie y la decoración de temporada están **duplicados en index.html y producto.html**
+(en PC, `colocarFichaEnPagina` baja la pirámide y los perfumes de un paquete a franjas a todo lo ancho):
 un cambio ahí va en los dos. Los estilos de la tienda viven en `assets/css/tienda.css` (antes inline).
 
 `config/costosOperativos` es **privado**; la tienda solo lee `config/tienda` (`disable2ml`, `reforzadaVenta`, `temporada`).
@@ -84,7 +86,7 @@ Búscalos con `grep -n 'nombreDeFuncion' archivo` y lee solo el rango con
   sobreescribir el objeto completo.
 - **Nunca mostrar precio por mililitro** al cliente. Para empujar la talla grande se usa
   el **ahorro absoluto** (`precios.js → ahorroPorTalla`).
-- **Clientes temporales**: los `Cliente 12` de Sobre Ruedas son gente de paso. Nunca
+- **Clientes temporales**: los `Cliente 12` de Sobre Ruedas son gente de paso: no salen en el directorio (`claveDirectorio`). Nunca
   agruparlos por nombre ni contarlos como recurrentes (`clientes-util.js`).
 - **Un campo de precio vacío significa "esa talla no se vende"**, no "falta llenarlo".
   Nada automático debe rellenarlo al editar un perfume existente.
@@ -95,6 +97,9 @@ Búscalos con `grep -n 'nombreDeFuncion' archivo` y lee solo el rango con
 - **No hacer commits por el dueño**: editar, copiar al checkout principal y darle los comandos.
 - **Imágenes siempre por `cloudinary.js`** (`imgCard`, `imgCart`, `imgThumb`): nunca `src="${p.imagen}"`
   directo — descarga el original y se salta el modo ahorro.
+- **"Volver" usa `history.back()`**: el navegador puede revivir la página (bfcache) sin correr `load()`, con su memoria vieja. Lo que dependa de otra página se relee en `pageshow` (`e.persisted`); el carrito ya lo hace con `refrescarPedido`.
+- **Ningún tamaño viene marcado al abrir un perfume** (`cart.js → tallaPreelegida`): solo si hay una opción o ya lleva uno en el pedido. Con el primero marcado, la gente compraba 2 ml sin querer.
+- **Esqueletos de la tienda**: se arman con las clases de la tarjeta real (`.card-img`, `.card-body`, `.cpill`) y texto transparente, para que midan igual que lo que llega.
 - **Variables CSS**: usar los tokens de `variables.css`. `--surface`, `--text`, `--gold` son alias.
 - **Familias olfativas en masculino** (Cítrico, Amaderado, Marino): los perfumes guardan el nombre
   exacto; una variante crea un duplicado.
