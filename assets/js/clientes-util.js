@@ -29,7 +29,7 @@ const normNombre = t => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '
 export function esNombreGenerico(nombre) {
   const n = (nombre || '').trim().toLowerCase();
   if (!n) return true;
-  return RE_GENERICO.test(n) || n === 'cliente (sin nombre)';
+  return RE_GENERICO.test(n) || n === 'cliente (sin nombre)' || n === 'venta física' || n === 'venta fisica';
 }
 
 /**
@@ -62,6 +62,21 @@ export function claveCliente(venta) {
   // "mara"), así que la misma persona tenía dos ids. Se recalcula del nombre.
   if (nombre && !esNombreGenerico(nombre)) return `NAMED-${normNombre(nombre)}`;
   return id || null;
+}
+
+/**
+ * Clave para el directorio de clientes: solo gente con nombre. Los "Cliente 12"
+ * de Sobre Ruedas y las ventas sin nombre vinieron, compraron y se fueron: no
+ * son clientes registrados (null). Va por el nombre y no por el id: una venta
+ * vieja con id SR- pero con nombre real sí es de esa persona.
+ *
+ * @param {{cliente?:string}} venta  Venta o encargo.
+ * @returns {string|null}
+ */
+export function claveDirectorio(venta) {
+  const nombre = ((venta && venta.cliente) || '').trim();
+  if (esNombreGenerico(nombre)) return null;
+  return normNombre(nombre) ? `NAMED-${normNombre(nombre)}` : null;
 }
 
 /**

@@ -1,7 +1,7 @@
 import { db, collection, getDocs, doc, updateDoc, writeBatch, getDoc, setDoc } from './firebase-config.js';
 import { toast } from './toast.js';
 import { renderSidebar } from '../../admin/sidebar.js';
-import { claveCliente, idCliente } from './clientes-util.js?v=2';
+import { claveDirectorio, idCliente } from './clientes-util.js?v=5';
 import { aMs } from './alertas.js';
 
 // Fecha local YYYY-MM-DD (toISOString da la de UTC: en la tarde ya era mañana).
@@ -17,6 +17,7 @@ if (window.innerWidth <= 768) {
 
 let clientesData = []; // Array of { nombre, ventas: [], encargos: [] }
 window.blacklistCache = []; // To keep it globally available
+let pendientesDePaso = 0;   // ventas por cobrar de gente sin nombre: no tienen tarjeta
 
 async function loadData() {
   try {
@@ -32,6 +33,7 @@ async function loadData() {
       window.blacklistCache = [];
     }
 
+    pendientesDePaso = 0;
     const ventas = [];
     // creadoEn siempre en ms: con Timestamp salía "Invalid Date" y el orden fallaba.
     vs.forEach(d => { const data = d.data(); ventas.push({ id: d.id, ...data, creadoEn: aMs(data.creadoEn) || data.creadoEn }); });
@@ -43,17 +45,15 @@ async function loadData() {
     const grupos = {};
 
     const addGroup = (docData) => {
-      // Un id por persona: los "Cliente N" llevan su id del día y los demás
-      // el de su nombre sin acentos (María López = Maria Lopez).
-      const key = claveCliente(docData);
-      let name = docData.cliente || '';
+      // Solo gente con nombre, una vez por persona (María López = Maria Lopez).
+      // Los "Cliente N" de Sobre Ruedas no son clientes registrados.
+      const key = claveDirectorio(docData);
       if (!key) return null;
       
       if (!grupos[key]) {
         grupos[key] = {
           id: key,
-          nombreOriginal: name.trim() || 'Cliente Sin Nombre',
-          tipo: key.startsWith('SR-') ? 'temporal' : 'personalizado',
+          nombreOriginal: docData.cliente.trim(),
           ventas: [],
           encargos: []
         };
@@ -66,6 +66,8 @@ async function loadData() {
       if (v.canal === 'consignacion') return;
       const g = addGroup(v);
       if (g) g.ventas.push(v);
+      // Sin ficha de cliente, pero ese dinero sigue por cobrar.
+      else if (v.estado === 'pendiente') pendientesDePaso++;
     });
 
     encargos.forEach(e => {
@@ -130,7 +132,7 @@ function updateKPIs() {
   const encActivos = clientesData.reduce((sum, c) => sum + c.pendingEncargos, 0);
   document.getElementById('k-encargos').textContent = encActivos;
   
-  const venPendientes = clientesData.reduce((sum, c) => sum + c.pendingVentas, 0);
+  const venPendientes = clientesData.reduce((sum, c) => sum + c.pendingVentas, 0) + pendientesDePaso;
   document.getElementById('k-pendientes').textContent = venPendientes;
 }
 
@@ -241,17 +243,14 @@ window.renderClientes = () => {
       statsHtml.push(`<div class="client-stat"><i class="bi bi-box-seam"></i> ${c.pendingEncargos} encargo(s)</div>`);
     }
     
-    // Si es SR, mostrar ID
-    const nameLabel = c.tipo === 'temporal' ? `${c.nombreOriginal} <span style="font-size:11px;color:var(--text-muted);font-weight:normal;margin-left:8px;">(${c.id})</span>` : c.nombreOriginal;
-
     return `
       <div class="client-card ${c.isBanned ? 'banned' : ''}">
         <div class="client-header" onclick="toggleClient('${idx}')">
           <div style="display:flex;flex-direction:column;gap:4px;">
             <h3 class="client-name">
-              <i class="bi bi-person-circle"></i> ${nameLabel} 
-              ${c.tipo === 'personalizado' ? `<button class="btn-edit-client" onclick="event.stopPropagation(); renameClient('${c.nombreOriginal.replace(/'/g, "\\'")}')" title="Renombrar cliente"><i class="bi bi-pencil"></i></button>` : ''}
-              ${c.tipo === 'personalizado' ? `<button class="btn-ban-client" onclick="event.stopPropagation(); toggleBan('${c.nombreOriginal.replace(/'/g, "\\'")}')" title="${c.isBanned ? 'Desbloquear cliente' : 'Añadir a Lista Negra'}"><i class="bi bi-slash-circle"></i></button>` : ''}
+              <i class="bi bi-person-circle"></i> ${c.nombreOriginal}
+              <button class="btn-edit-client" onclick="event.stopPropagation(); renameClient('${c.nombreOriginal.replace(/'/g, "\\'")}')" title="Renombrar cliente"><i class="bi bi-pencil"></i></button>
+              <button class="btn-ban-client" onclick="event.stopPropagation(); toggleBan('${c.nombreOriginal.replace(/'/g, "\\'")}')" title="${c.isBanned ? 'Desbloquear cliente' : 'Añadir a Lista Negra'}"><i class="bi bi-slash-circle"></i></button>
               ${c.isBanned ? '<span class="badge-banned"><i class="bi bi-exclamation-triangle-fill"></i> LISTA NEGRA</span>' : ''}
             </h3>
             <div class="client-summary">
@@ -270,27 +269,9 @@ window.renderClientes = () => {
     `;
   };
 
-  const namedClients = filtered.filter(c => c.tipo === 'personalizado');
-  const srClients = filtered.filter(c => c.tipo === 'temporal');
-
-  // sort SR clients by descending ID (which encodes the date)
-  srClients.sort((a,b) => b.id.localeCompare(a.id));
-
-  let html = '';
-  if (namedClients.length > 0) {
-    html += '<h2 style="color:var(--gold); margin-top:10px; margin-bottom:15px; font-size:16px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; text-transform:uppercase; letter-spacing:1px;"><i class="bi bi-person-badge"></i> Clientes Personalizados</h2>';
-    html += '<div style="display:flex; flex-direction:column; gap:16px;">';
-    html += namedClients.map((c, i) => renderClientCard(c, 'n'+i)).join('');
-    html += '</div>';
-  }
-  if (srClients.length > 0) {
-    html += '<h2 style="color:var(--gold); margin-top:30px; margin-bottom:15px; font-size:16px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; text-transform:uppercase; letter-spacing:1px;"><i class="bi bi-shop"></i> Clientes Sobre Ruedas</h2>';
-    html += '<div style="display:flex; flex-direction:column; gap:16px;">';
-    html += srClients.map((c, i) => renderClientCard(c, 's'+i)).join('');
-    html += '</div>';
-  }
-
-  container.innerHTML = html;
+  container.innerHTML = `<div style="display:flex; flex-direction:column; gap:16px;">
+    ${filtered.map((c, i) => renderClientCard(c, 'n' + i)).join('')}
+  </div>`;
 };
 
 loadData();

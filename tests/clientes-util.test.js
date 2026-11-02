@@ -2,7 +2,7 @@
  * Pruebas del módulo real assets/js/clientes-util.js
  */
 
-import { sugerirClientes, sumarEncargos, esNombreGenerico, esClienteTemporal, claveCliente, idCliente } from '../assets/js/clientes-util.js';
+import { claveDirectorio, sugerirClientes, sumarEncargos, esNombreGenerico, esClienteTemporal, claveCliente, idCliente } from '../assets/js/clientes-util.js';
 
 describe('esNombreGenerico', () => {
   test.each([
@@ -221,5 +221,22 @@ describe('sumarEncargos', () => {
     expect(pedro).toMatchObject({ compras: 0, total: 2500, encargos: 2, ultimoPerfume: 'Aventus' });
     expect(r.find(c => c.nombre === 'Juan López')).toMatchObject({ compras: 2, total: 1200, encargos: 1 });
     expect(r.some(c => c.nombre === 'Ana' || c.nombre === 'Cliente 4')).toBe(false);
+  });
+});
+
+describe('claveDirectorio', () => {
+  test('los de paso y las ventas sin nombre no son clientes', () => {
+    expect(claveDirectorio({ cliente: 'Cliente 12', clienteId: 'SR-2026-10-25-012' })).toBeNull();
+    expect(claveDirectorio({ cliente: 'cliente' })).toBeNull();
+    expect(claveDirectorio({ cliente: 'Venta física' })).toBeNull();
+    expect(claveDirectorio({ cliente: '' })).toBeNull();
+    expect(claveDirectorio({ cliente: '---' })).toBeNull();
+    expect(claveDirectorio(null)).toBeNull();
+  });
+  test('una persona con nombre es la misma aunque cambien acentos o mayúsculas', () => {
+    expect(claveDirectorio({ cliente: 'María López' })).toBe(claveDirectorio({ cliente: 'maria lopez' }));
+  });
+  test('una venta vieja con id SR- pero con nombre real sí cuenta como esa persona', () => {
+    expect(claveDirectorio({ cliente: 'Abel UABC', clienteId: 'SR-2026-01-01-003' })).toBe('NAMED-abeluabc');
   });
 });

@@ -1,5 +1,6 @@
 import { db, auth, onAuthStateChanged } from './firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
+import { esNombreGenerico } from './clientes-util.js?v=5';
 import {
   collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
@@ -546,7 +547,7 @@ window.fetchClientsForDropdown = async function() {
     vs.forEach(d => {
       const v = d.data();
       const nom = (v.cliente || '').trim();
-      if (!nom) return;
+      if (esNombreGenerico(nom)) return;   // los "Cliente 12" de Sobre Ruedas no son clientes
       if (!clientsMap.has(nom.toLowerCase())) {
         clientsMap.set(nom.toLowerCase(), { nombre: nom, medio: 'whatsapp', contacto: '' });
       }
