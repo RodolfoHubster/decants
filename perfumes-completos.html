@@ -248,12 +248,8 @@
       background:var(--card); border:1px solid var(--border);
       border-radius:16px; overflow:hidden;
     }
-    .skel-img  { aspect-ratio:1/1; }
-    .skel-body { padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
-    .skel-line { height:12px; }
-    .skel-line.w60 { width:60%; }
-    .skel-line.w80 { width:80%; }
-    .skel-line.w40 { width:40%; }
+    .skeleton-card { pointer-events:none; }
+    .sk-t { display:inline-block; color:transparent !important; border-color:transparent !important; }
 
     /* ── EMPTY STATE ─────────────────────────────────── */
     .empty-state {
@@ -670,69 +666,93 @@
     <span class="count-badge" id="count-badge">Cargando...</span>
   </div>
   <div class="grid" id="grid">
-    <!-- skeletons iniciales -->
-    <div class="skeleton-card">
-      <div class="skeleton skel-img"></div>
-      <div class="skel-body">
-        <div class="skeleton skel-line w40"></div>
-        <div class="skeleton skel-line w80"></div>
-        <div class="skeleton skel-line w60"></div>
+    <!-- Esqueletos con las clases de la tarjeta real: miden lo mismo -->
+    <div class="card skeleton-card" aria-hidden="true">
+      <div class="card-img skeleton"></div>
+      <div class="card-body">
+        <div class="card-marca"><span class="skeleton sk-t" style="width:45%">&nbsp;</span></div>
+        <div class="card-nombre"><span class="skeleton sk-t" style="width:76%">&nbsp;</span></div>
+        <div class="card-conc skeleton sk-t">EDP</div>
+        <div class="card-stock"><span class="badge-stock skeleton sk-t">En stock</span></div>
+        <div class="card-precios"><span class="skeleton sk-t" style="width:60%">&nbsp;</span></div>
+        <div class="card-btn-wa skeleton sk-t">&nbsp;</div>
       </div>
     </div>
-    <div class="skeleton-card">
-      <div class="skeleton skel-img"></div>
-      <div class="skel-body">
-        <div class="skeleton skel-line w40"></div>
-        <div class="skeleton skel-line w80"></div>
-        <div class="skeleton skel-line w60"></div>
+    <div class="card skeleton-card" aria-hidden="true">
+      <div class="card-img skeleton"></div>
+      <div class="card-body">
+        <div class="card-marca"><span class="skeleton sk-t" style="width:45%">&nbsp;</span></div>
+        <div class="card-nombre"><span class="skeleton sk-t" style="width:76%">&nbsp;</span></div>
+        <div class="card-conc skeleton sk-t">EDP</div>
+        <div class="card-stock"><span class="badge-stock skeleton sk-t">En stock</span></div>
+        <div class="card-precios"><span class="skeleton sk-t" style="width:60%">&nbsp;</span></div>
+        <div class="card-btn-wa skeleton sk-t">&nbsp;</div>
       </div>
     </div>
-    <div class="skeleton-card">
-      <div class="skeleton skel-img"></div>
-      <div class="skel-body">
-        <div class="skeleton skel-line w40"></div>
-        <div class="skeleton skel-line w80"></div>
-        <div class="skeleton skel-line w60"></div>
+    <div class="card skeleton-card" aria-hidden="true">
+      <div class="card-img skeleton"></div>
+      <div class="card-body">
+        <div class="card-marca"><span class="skeleton sk-t" style="width:45%">&nbsp;</span></div>
+        <div class="card-nombre"><span class="skeleton sk-t" style="width:76%">&nbsp;</span></div>
+        <div class="card-conc skeleton sk-t">EDP</div>
+        <div class="card-stock"><span class="badge-stock skeleton sk-t">En stock</span></div>
+        <div class="card-precios"><span class="skeleton sk-t" style="width:60%">&nbsp;</span></div>
+        <div class="card-btn-wa skeleton sk-t">&nbsp;</div>
       </div>
     </div>
-    <div class="skeleton-card">
-      <div class="skeleton skel-img"></div>
-      <div class="skel-body">
-        <div class="skeleton skel-line w40"></div>
-        <div class="skeleton skel-line w80"></div>
-        <div class="skeleton skel-line w60"></div>
+    <div class="card skeleton-card" aria-hidden="true">
+      <div class="card-img skeleton"></div>
+      <div class="card-body">
+        <div class="card-marca"><span class="skeleton sk-t" style="width:45%">&nbsp;</span></div>
+        <div class="card-nombre"><span class="skeleton sk-t" style="width:76%">&nbsp;</span></div>
+        <div class="card-conc skeleton sk-t">EDP</div>
+        <div class="card-stock"><span class="badge-stock skeleton sk-t">En stock</span></div>
+        <div class="card-precios"><span class="skeleton sk-t" style="width:60%">&nbsp;</span></div>
+        <div class="card-btn-wa skeleton sk-t">&nbsp;</div>
       </div>
     </div>
-    <div class="skeleton-card">
-      <div class="skeleton skel-img"></div>
-      <div class="skel-body">
-        <div class="skeleton skel-line w40"></div>
-        <div class="skeleton skel-line w80"></div>
-        <div class="skeleton skel-line w60"></div>
+    <div class="card skeleton-card" aria-hidden="true">
+      <div class="card-img skeleton"></div>
+      <div class="card-body">
+        <div class="card-marca"><span class="skeleton sk-t" style="width:45%">&nbsp;</span></div>
+        <div class="card-nombre"><span class="skeleton sk-t" style="width:76%">&nbsp;</span></div>
+        <div class="card-conc skeleton sk-t">EDP</div>
+        <div class="card-stock"><span class="badge-stock skeleton sk-t">En stock</span></div>
+        <div class="card-precios"><span class="skeleton sk-t" style="width:60%">&nbsp;</span></div>
+        <div class="card-btn-wa skeleton sk-t">&nbsp;</div>
       </div>
     </div>
-    <div class="skeleton-card">
-      <div class="skeleton skel-img"></div>
-      <div class="skel-body">
-        <div class="skeleton skel-line w40"></div>
-        <div class="skeleton skel-line w80"></div>
-        <div class="skeleton skel-line w60"></div>
+    <div class="card skeleton-card" aria-hidden="true">
+      <div class="card-img skeleton"></div>
+      <div class="card-body">
+        <div class="card-marca"><span class="skeleton sk-t" style="width:45%">&nbsp;</span></div>
+        <div class="card-nombre"><span class="skeleton sk-t" style="width:76%">&nbsp;</span></div>
+        <div class="card-conc skeleton sk-t">EDP</div>
+        <div class="card-stock"><span class="badge-stock skeleton sk-t">En stock</span></div>
+        <div class="card-precios"><span class="skeleton sk-t" style="width:60%">&nbsp;</span></div>
+        <div class="card-btn-wa skeleton sk-t">&nbsp;</div>
       </div>
     </div>
-    <div class="skeleton-card">
-      <div class="skeleton skel-img"></div>
-      <div class="skel-body">
-        <div class="skeleton skel-line w40"></div>
-        <div class="skeleton skel-line w80"></div>
-        <div class="skeleton skel-line w60"></div>
+    <div class="card skeleton-card" aria-hidden="true">
+      <div class="card-img skeleton"></div>
+      <div class="card-body">
+        <div class="card-marca"><span class="skeleton sk-t" style="width:45%">&nbsp;</span></div>
+        <div class="card-nombre"><span class="skeleton sk-t" style="width:76%">&nbsp;</span></div>
+        <div class="card-conc skeleton sk-t">EDP</div>
+        <div class="card-stock"><span class="badge-stock skeleton sk-t">En stock</span></div>
+        <div class="card-precios"><span class="skeleton sk-t" style="width:60%">&nbsp;</span></div>
+        <div class="card-btn-wa skeleton sk-t">&nbsp;</div>
       </div>
     </div>
-    <div class="skeleton-card">
-      <div class="skeleton skel-img"></div>
-      <div class="skel-body">
-        <div class="skeleton skel-line w40"></div>
-        <div class="skeleton skel-line w80"></div>
-        <div class="skeleton skel-line w60"></div>
+    <div class="card skeleton-card" aria-hidden="true">
+      <div class="card-img skeleton"></div>
+      <div class="card-body">
+        <div class="card-marca"><span class="skeleton sk-t" style="width:45%">&nbsp;</span></div>
+        <div class="card-nombre"><span class="skeleton sk-t" style="width:76%">&nbsp;</span></div>
+        <div class="card-conc skeleton sk-t">EDP</div>
+        <div class="card-stock"><span class="badge-stock skeleton sk-t">En stock</span></div>
+        <div class="card-precios"><span class="skeleton sk-t" style="width:60%">&nbsp;</span></div>
+        <div class="card-btn-wa skeleton sk-t">&nbsp;</div>
       </div>
     </div>
   </div>

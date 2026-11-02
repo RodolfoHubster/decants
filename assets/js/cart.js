@@ -35,6 +35,34 @@ export function loadCart() {
   } catch (_) { return []; }
 }
 
+/** ¿Hay un pedido guardado que ya venció? Si lo quitaron a mano no hay nada que avisar. */
+export function pedidoVencido() {
+  try {
+    const raw = localStorage.getItem(CART_KEY);
+    return !!raw && Date.now() > JSON.parse(raw).expiresAt;
+  } catch (_) { return false; }
+}
+
+/**
+ * Qué tamaño viene marcado al abrir un perfume. Ninguno, salvo que no haya nada
+ * que elegir o que ya lleve uno en el pedido: con el primero marcado, la gente
+ * le daba a "Agregar" y se llevaba 2 ml sin querer.
+ *
+ * @param {Array<{size:string, pro?:boolean}>} opciones  Las que se pueden elegir.
+ * @param {Array} enPedido  Renglones del pedido de este producto.
+ * @returns {number} Índice en `opciones`, o -1 si el cliente debe elegir.
+ */
+export function tallaPreelegida(opciones, enPedido = []) {
+  const lista = opciones || [];
+  if (lista.length === 1) return 0;
+  for (let i = enPedido.length - 1; i >= 0; i--) {
+    const it = enPedido[i];
+    const idx = lista.findIndex(o => String(o.size) === String(it.size) && !!o.pro === !!it.pro);
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
+
 export function clearSavedCart() {
   try { localStorage.removeItem(CART_KEY); } catch (_) {}
 }

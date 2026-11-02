@@ -487,21 +487,34 @@ header {
   border-color: rgba(201,168,76,.25);
 }
 
+/* Etiquetas de la foto: arriba el tipo y abajo el ahorro, a todo lo ancho.
+   Giradas en la esquina se encimaban con "Paquete" en cuadrícula y en lista. */
+.tag-paquete {
+  position: absolute;
+  top: 8px; left: 8px;
+  z-index: 2;
+  display: flex; align-items: center; gap: 4px;
+  max-width: calc(100% - 16px);
+  padding: 2px 8px;
+  background: rgba(20, 18, 14, .82);
+  border: 1px solid var(--gold-b);
+  border-radius: 12px;
+  color: var(--gold);
+  font-size: 10px; font-weight: 700;
+  white-space: nowrap;
+}
 .savings-tag {
   position: absolute;
-  top: 12px;
-  right: 8px;
-  transform: rotate(-15deg);
-  background: #c9a84c;
-  color: #000;
-  padding: 3px 10px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  left: 0; right: 0; bottom: 0;
   z-index: 2;
+  padding: 4px 6px;
+  background: rgba(201, 168, 76, .95);
+  color: #000;
+  font-size: 10.5px; font-weight: 700;
   letter-spacing: .03em;
+  text-align: center; text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
 }
 
 .card-img {
@@ -733,16 +746,25 @@ header {
 
 /* ── Cargando (link compartido): la ficha aparece al instante ── */
 .modal-skeleton { display: none; }
-.modal-box.cargando .modal-skeleton { display: flex; flex-direction: column; gap: 10px; padding: 4px 0 24px; }
+.modal-box.cargando .modal-skeleton { display: flex; flex-direction: column; gap: 12px; padding: 4px 0 24px; }
+/* Cada pieza mide como lo que va a llegar: nombre, etiquetas, descripción, tallas y botón. */
 .modal-skeleton i {
-  display: block; height: 14px; border-radius: 8px;
+  display: block; flex: none; height: 15px; border-radius: 8px;
   background: linear-gradient(90deg, #1d1a15 0%, #2a261f 50%, #1d1a15 100%);
   background-size: 200% 100%;
   animation: ficha-brillo 1.2s linear infinite;
 }
-.modal-skeleton i:nth-child(1) { width: 35%; }
-.modal-skeleton i:nth-child(2) { width: 80%; height: 24px; }
-.modal-skeleton i:nth-child(3) { width: 60%; }
+.modal-skeleton .sk-fila { display: flex; flex-wrap: wrap; gap: 8px; }
+.modal-skeleton .sk-marca { width: 32%; height: 13px; }
+.modal-skeleton .sk-nombre { width: 82%; height: 34px; margin-bottom: 4px; }
+.modal-skeleton .sk-tag { width: 92px; height: 32px; border-radius: 99px; }
+.modal-skeleton .sk-linea { width: 100%; }
+.modal-skeleton .sk-linea.corta { width: 62%; }
+.modal-skeleton .sk-etiqueta { width: 40%; height: 12px; margin-top: 8px; }
+.modal-skeleton .sk-pill { width: 96px; height: 38px; border-radius: 99px; }
+.modal-skeleton .sk-boton { width: 100%; height: 52px; border-radius: 12px; margin-top: 8px; }
+.modal-skeleton .sk-ayuda { width: 56%; height: 14px; margin: 4px auto 0; }
+.modal-skeleton .sk-ficha { width: 100%; height: 470px; margin-top: 16px; border-radius: 14px; }
 .modal-box.cargando .modal-img {
   background: linear-gradient(90deg, #1d1a15 0%, #2a261f 50%, #1d1a15 100%);
   background-size: 200% 100%;
@@ -814,8 +836,18 @@ header {
   gap: 8px;
   margin-bottom: 18px;
 }
-.modal-pills.flash { animation: flash-pills .5s ease; }
-@keyframes flash-pills { 0%,100%{opacity:1} 50%{opacity:.3} }
+/* Tocaron "Agregar" sin elegir tamaño */
+.modal-pills.falta .mpill:not(:disabled) {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, .35);
+  animation: falta-talla .4s ease;
+}
+.modal-sizes-row:has(+ .modal-pills.falta) .modal-sizes-label { color: #ef4444; }
+@keyframes falta-talla {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
 
 .mpill {
   padding: 7px 11px;
@@ -833,6 +865,58 @@ header {
 /* Ahorro frente a comprar varias tallas chicas. Nunca precio por ml:
    eso invita a compararlo con la botella completa. */
 .mpill .pill-ahorro { display: block; font-size: 10px; font-weight: 700; opacity: .85; }
+/* Presentaciones de un paquete: una por renglón, precio a la izquierda y ahorro a
+   la derecha. Si no cabe en un teléfono chico, el ahorro baja sin encimarse. */
+.mpill-paq {
+  flex: 1 1 100%;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 4px 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  text-align: left;
+}
+.mpill-paq .paq-precio { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 6px; min-width: 0; }
+.mpill-paq del { font-size: .85em; opacity: .6; }
+.mpill-paq small { font-size: .85em; font-weight: 500; }
+.mpill-paq .pill-saving {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--gold);
+  color: #000;
+  font-size: 11px; font-weight: 700;
+  white-space: nowrap;
+}
+.mpill-paq.sel .pill-saving, .mpill-paq:hover .pill-saving { background: #14120e; color: var(--gold); }
+.mpill-paq.agotada { opacity: .5; cursor: not-allowed; }
+.mpill-paq.agotada .paq-precio { text-decoration: line-through; }
+
+/* Perfumes del paquete: lista con límite y su propio scroll */
+.pkg-lista {
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 318px;
+  overflow-y: auto;
+  padding-right: 6px;
+  margin-bottom: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-b) transparent;
+}
+.pkg-lista::-webkit-scrollbar { width: 6px; }
+.pkg-lista::-webkit-scrollbar-thumb { background: var(--gold-b); border-radius: 3px; }
+.pkg-lista > * { flex: none; }
+.pkg-lista[data-vacia="1"]::after { content: 'Ningún perfume con ese nombre.'; padding: 10px 2px; font-size: 13px; color: var(--muted); }
+.pkg-buscar {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+  font: inherit; font-size: 14px;
+}
+.pkg-buscar:focus { outline: none; border-color: var(--gold); }
 
 .modal-or, .modal-btn-divider {
   display: flex; align-items: center; gap: 10px;
@@ -1078,10 +1162,17 @@ header {
   animation: shimmer 1.4s ease-in-out infinite;
   border-radius: 8px;
 }
-.skel-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
-.skel-img  { aspect-ratio: 4/3; }
-.skel-body { padding: 14px 16px 16px; }
-.skel-line { height: 12px; margin-bottom: 8px; border-radius: 99px; }
+/* La tarjeta de carga usa las clases de la real: solo se le quita el texto. */
+.skel-pcard { pointer-events: none; }
+.skel-txt {
+  display: inline-block;
+  color: transparent;
+  border-color: transparent;
+  background: linear-gradient(90deg, var(--card) 25%, var(--card2) 50%, var(--card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
 
 /* ============================================
    FOOTER
@@ -1493,6 +1584,8 @@ footer p { font-size: 13px; color: var(--muted); }
   flex-shrink: 0;
   border-radius: 12px 0 0 12px;
 }
+/* En lista la foto mide 110 px: el aviso "en tu pedido" va sobre la franja de ahorro. */
+.grid.list-view .card-in-cart { top: auto; bottom: 28px; right: 6px; padding: 2px 8px; }
 .grid.list-view .card-body {
   padding: 12px 14px;
   flex: 1;

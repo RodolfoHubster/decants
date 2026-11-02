@@ -2,8 +2,8 @@ import { db, auth, collection, getDocs, query, where, onAuthStateChanged, doc, u
   from './firebase-config.js';
 import { addItem, decrementItem, removeItem, clearCart as pureCleart,
          calcTotal, totalUnits, buildWhatsAppURL, getItemQty, MAX_QTY,
-         saveCart, loadCart, clearSavedCart, cartExpiresInMinutes, revalidarCarrito }
-  from './cart.js?v=5';
+         saveCart, loadCart, clearSavedCart, cartExpiresInMinutes, revalidarCarrito, pedidoVencido, tallaPreelegida }
+  from './cart.js?v=6';
 import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug, rutaProducto, slugDeBusqueda } from './slug.js?v=2';
 import { similares } from './similares.js';
 import { opcionesPro, sufijoPro, etiquetaTalla, COLORES_PRO } from './pro.js';
@@ -23,11 +23,17 @@ let temporada = null;
 // Truco o Trato, Calaverita, carrito), pero mostrada como página.
 const ES_PRODUCTO = document.body?.dataset.pagina === 'producto';
 
-/** Link a la página del perfume. En localhost conserva ?temporada= para probar. */
+/** Link a la página del perfume. En localhost conserva ?temporada= y ?estres= para probar. */
 function linkProducto(p) {
-  const prueba = new URLSearchParams(window.location.search).get('temporada');
-  return rutaProducto(p) + (prueba ? `&temporada=${encodeURIComponent(prueba)}` : '');
+  const q = new URLSearchParams(window.location.search);
+  const prueba = q.get('temporada');
+  return rutaProducto(p) + (prueba ? `&temporada=${encodeURIComponent(prueba)}` : '')
+    + (q.has('estres') ? '&estres=1' : '');
 }
+
+/** ?estres=1 en Live Server agrega productos de prueba con todo exagerado. */
+const hayEstres = () => new URLSearchParams(window.location.search).has('estres')
+  && ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
 
 // Los links viejos de la ficha (#/perfumes/slug) llevan a su página nueva.
 if (!ES_PRODUCTO) {
@@ -517,17 +523,27 @@ function iniciarCarrusel(lista) {
 }
 
 // ── Skeletons ───────────────────────────────────────────────
+// Esqueleto con las mismas clases que la tarjeta real (y su fila de tallas): así
+// mide igual y al llegar los perfumes nada brinca de tamaño.
+const TARJETA_ESQ = `
+  <div class="pcard skel-pcard" aria-hidden="true">
+    <div class="card-img skel"></div>
+    <div class="card-body">
+      <div class="card-marca"><span class="skel-txt" style="width:45%">&nbsp;</span></div>
+      <div class="card-nombre"><span class="skel-txt" style="width:72%">&nbsp;</span></div>
+      <div class="card-pills"><span class="cpill skel-txt">2ml — $80</span><span class="cpill skel-txt">3ml — $120</span><span class="cpill skel-txt">5ml — $170</span><span class="cpill skel-txt">10ml — $320</span></div>
+    </div>
+  </div>`;
+
 function showSkeletons() {
   const g = document.getElementById('grid');
-  if (g) g.innerHTML = Array(8).fill(`
-    <div class="skel-card">
-      <div class="skel-img skel"></div>
-      <div class="skel-body">
-        <div class="skel-line skel" style="width:45%"></div>
-        <div class="skel-line skel" style="width:70%"></div>
-        <div class="skel-line skel" style="width:55%"></div>
-      </div>
-    </div>`).join('');
+  if (g) g.innerHTML = TARJETA_ESQ.repeat(8);
+  // En la página del perfume, los similares también reservan su lugar.
+  const sim = document.getElementById('similares-lista');
+  if (sim) {
+    sim.innerHTML = TARJETA_ESQ.repeat(4);
+    document.getElementById('similares').hidden = false;
+  }
 }
 
 // ── Load data ───────────────────────────────────────────────
@@ -572,6 +588,7 @@ function mostrarErrorCarga(err) {
   }
   if (ES_PRODUCTO) {
     document.getElementById('modal').hidden = true;
+    document.getElementById('similares').hidden = true;
     const nf = document.getElementById('producto-no-encontrado');
     if (nf) {
       nf.hidden = false;
@@ -623,6 +640,10 @@ async function load() {
   }
 
   all = datos.all;
+  if (hayEstres()) {
+    const { productosEstres } = await import('./prueba-estres.js');
+    all = [...productosEstres(all), ...all];
+  }
   window.disable2ml = datos.disable2ml;
   window.proExtra = Number(datos.proExtra) || 0;
   iconosFamilia = Object.fromEntries((datos.famData || []).map(f => [f.nombre, f.emoji || '']));
@@ -878,6 +899,24 @@ function calcSavings(paquete, size) {
   };
 }
 
+/** Con muchos perfumes en un paquete, un buscador sobre su lista con scroll. */
+function buscadorPaquete(items) {
+  if (items.length <= 8) return '';
+  return `<input class="pkg-buscar" type="search" placeholder="Buscar entre ${items.length} perfumes…" aria-label="Buscar perfume del paquete" autocomplete="off" oninput="filtrarPaquete(this)">`;
+}
+window.filtrarPaquete = input => {
+  const lista = input.nextElementSibling;
+  const q = input.value.trim();
+  let hay = 0;
+  [...lista.querySelectorAll('[data-busca]')].forEach(el => {
+    const si = !q || matchSearch(q, el.dataset.busca);
+    el.hidden = !si;
+    el.style.display = si ? 'flex' : 'none';
+    if (si) hay++;
+  });
+  lista.dataset.vacia = hay ? '' : '1';
+};
+
 function cardHTML(p) {
   let pills = '';
   let savingsTag = '';
@@ -909,7 +948,7 @@ function cardHTML(p) {
     ? '<div class="tag-temporada tag-sorpresa"><i class="bi bi-question-diamond-fill"></i> SORPRESA</div>'
     : deTemporada
     ? `<div class="tag-temporada"><i class="bi bi-moon-stars-fill"></i> ${escFicha((NOMBRE_TEMPORADA[temporada.id] || temporada.id).toUpperCase())}</div>`
-    : (p.tipo === 'paquete' ? `<div style="position:absolute;top:8px;left:8px;background:var(--gold-s);border:1px solid var(--gold-b);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;z-index:2;display:flex;align-items:center;gap:4px;"><i class="bi bi-box2-heart-fill"></i> PAQUETE</div>` : '');
+    : (p.tipo === 'paquete' ? '<div class="tag-paquete"><i class="bi bi-box2-heart-fill"></i> PAQUETE</div>' : '');
   return `<a class="pcard ${p.tipo === 'paquete' ? 'pcard-paquete' : ''}${deTemporada ? ' pcard-temporada' : ''}" href="${linkProducto(p)}" data-id="${p.id}" ${p.tipo === 'paquete' ? 'style="border:1px solid var(--gold-b); box-shadow:0 4px 20px rgba(201,168,76,0.1);"' : ''}>
     <div class="card-img">
       ${etiqueta}
@@ -1039,6 +1078,7 @@ function mostrarProducto() {
   const p = findBySlug(all, slug) || all.find(x => x.id === slug);
   if (!p) {
     document.getElementById('modal').hidden = true;
+    document.getElementById('similares').hidden = true;
     const nf = document.getElementById('producto-no-encontrado');
     if (nf) nf.hidden = false;
     document.title = 'Perfume no encontrado — Fitoscents';
@@ -1060,16 +1100,23 @@ function mostrarProducto() {
 // presentaciones y el botón de comprar se ven sin bajar (antes quedaba un hueco
 // negro bajo la foto). En el celular va debajo del botón de comprar: primero
 // la descripción corta y las presentaciones, luego pirámide, duración y estela.
+// Los perfumes de un paquete hacen lo mismo en PC: con ellos en la columna de
+// compra, esa columna crecía y dejaba el hueco bajo la foto. En el celular se
+// quedan arriba de las presentaciones.
 const ESCRITORIO = window.matchMedia('(min-width: 860px)');
 function colocarFichaEnPagina() {
   const ficha = document.getElementById('modal-ficha');
   const caja = document.querySelector('#modal .modal-box');
   const ancla = document.querySelector('#modal .acciones-sitio') || document.querySelector('#modal .modal-actions');
   if (!ficha || !caja || !ancla) return;
+  const paquete = document.getElementById('modal-paquete-items');
+  const tallas = document.querySelector('#modal .modal-sizes-row');
   if (ESCRITORIO.matches) {
     if (ficha.parentElement !== caja) caja.appendChild(ficha);
-  } else if (ficha.previousElementSibling !== ancla) {
-    ancla.after(ficha);
+    if (paquete && paquete.parentElement !== caja) caja.insertBefore(paquete, ficha);
+  } else {
+    if (ficha.previousElementSibling !== ancla) ancla.after(ficha);
+    if (paquete && tallas && paquete.nextElementSibling !== tallas) tallas.before(paquete);
   }
 }
 if (ES_PRODUCTO) ESCRITORIO.addEventListener('change', colocarFichaEnPagina);
@@ -1123,7 +1170,7 @@ function animarPagina() {
     setTimeout(() => { e.target.classList.remove('revela', 'visto'); e.target.style.transitionDelay = ''; }, 1400);
   }), { rootMargin: '0px 0px -8% 0px' });
   document.querySelectorAll('.modal-ficha .ficha-tit, .modal-ficha .piso, .modal-ficha .medidores, .modal-ficha .uso, '
-    + '.similares-head, .similares-lista > .pcard, .producto-fin, .footer-news, .footer-social').forEach(el => {
+    + '.modal-box > #modal-paquete-items, .similares-head, .similares-lista > .pcard, .producto-fin, .footer-news, .footer-social').forEach(el => {
     if (el.getBoundingClientRect().top < innerHeight * .92) return;   // ya se ve: no se esconde
     el.classList.add('revela');
     const hermanos = el.parentElement ? [...el.parentElement.children].indexOf(el) : 0;
@@ -1363,9 +1410,11 @@ function patchGridBadges() {
 }
 
 function checkCartTTL() {
+  const vencido = pedidoVencido();   // antes de loadCart(), que lo borra
   if (cart.length > 0 && loadCart().length === 0) {
     cart = [];
-    showToast('Tu carrito anterior expiró por inactividad');
+    // También pasa si lo vaciaron en otra página: ahí no hay nada que avisar.
+    if (vencido) showToast('Tu carrito anterior expiró por inactividad');
     // Antes solo se vaciaba en memoria: el cajón seguía mostrando el pedido
     // viejo, el total decía $0 y los botones no encontraban nada que cambiar.
     updateCartBadge(); renderCartDrawer(); patchGridBadges();
@@ -1378,6 +1427,8 @@ function checkCartTTL() {
 /** Ver el pedido cuenta como actividad: renueva sus 60 minutos si sigue vigente. */
 function renovarPedido() {
   if (checkCartTTL()) return;
+  // Primero lo guardado: la memoria puede venir de antes y borraría lo nuevo.
+  refrescarPedido();
   if (cart.length) saveCart(cart);
 }
 
@@ -1389,16 +1440,32 @@ function persistCart() {
   else clearSavedCart();
 }
 
-window.addEventListener('storage', (e) => {
-  if (e.key === 'decants_cart') {
-    cart = loadCart();
-    updateCartBadge();
-    if (document.getElementById('cart-drawer')?.classList.contains('open')) {
-      renderCartDrawer();
-    }
-    patchGridBadges();
-    syncModalCartBtn();
+/** Lo guardado manda: otra página u otra pestaña pudo cambiar el pedido. */
+function refrescarPedido() {
+  cart = loadCart();
+  updateCartBadge();
+  if (document.getElementById('cart-drawer')?.classList.contains('open')) {
+    renderCartDrawer();
   }
+  patchGridBadges();
+  syncModalCartBtn();
+}
+
+window.addEventListener('storage', (e) => {
+  if (e.key === 'decants_cart') refrescarPedido();
+});
+
+// "Volver" usa el atrás del navegador, que puede revivir la página tal como quedó
+// (bfcache): no corre load() y su carrito en memoria es el de antes de agregar.
+// Sin esto lo recién agregado no se veía y, al guardarse encima, se perdía.
+window.addEventListener('pageshow', (e) => {
+  if (!e.persisted) return;
+  refrescarPedido();
+  // restaurarVuelta() no corrió: su marca haría brincar la próxima carga normal.
+  try {
+    sessionStorage.removeItem('fs_volver_click');
+    sessionStorage.removeItem(CLAVE_VUELTA);
+  } catch (err) { /* sin storage */ }
 });
 
 window.loadMore = () => {
@@ -1506,9 +1573,10 @@ window.openModal = (id, pushHash = false) => {
         <div style="margin-bottom:8px; padding:8px 12px; border-radius:8px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.35); color:#fca5a5; font-size:12px; line-height:1.4;">
           <i class="bi bi-exclamation-triangle-fill"></i> Por ahora solo hay ${disponibles} de ${maxSel} perfumes disponibles en este paquete. Escríbenos por WhatsApp y te decimos cuándo vuelve.
         </div>` : ''}
-        <div style="display:flex; flex-direction:column; gap:6px;">
+        ${buscadorPaquete(itemsPq)}
+        <div class="pkg-lista">
           ${itemsPq.map(i => `
-            <label class="custom-pkg-label" style="cursor:${i.agotado ? 'not-allowed' : 'pointer'}; display:flex; align-items:center; gap:12px; background:var(--bg-card2); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); transition:background 0.2s;${i.agotado ? ' opacity:0.45;' : ''}">
+            <label class="custom-pkg-label" data-busca="${escFicha(`${i.nombre} ${i.marca || ''}`)}" style="cursor:${i.agotado ? 'not-allowed' : 'pointer'}; display:flex; align-items:center; gap:12px; background:var(--bg-card2); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); transition:background 0.2s;${i.agotado ? ' opacity:0.45;' : ''}">
               <input type="checkbox" class="custom-pkg-chk" value="${i.id}" data-name="${i.nombre}"${i.agotado ? ' data-agotado="1" disabled' : ''} onchange="toggleCustomPkgItem(this, ${maxSel})" style="width:18px;height:18px;accent-color:var(--gold);${i.agotado ? 'cursor:not-allowed;' : ''}">
               <div style="width:40px; height:40px; border-radius:6px; overflow:hidden; background:var(--bg-card); flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.2);${i.agotado ? ' filter:grayscale(1);' : ''}" onclick="event.preventDefault(); window.showZoom('${i.imagen || ''}')">
                 ${i.imagen ? `<img src="${imgCart(i.imagen)}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="bi bi-droplet" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:16px;"></i>'}
@@ -1535,10 +1603,11 @@ window.openModal = (id, pushHash = false) => {
         </div>`;
     } else {
       pqItemsEl.innerHTML = `
-        <div style="margin-top:10px; margin-bottom:8px; font-size:11px; font-weight:600; color:var(--gold); text-transform:uppercase; letter-spacing:1px;">Perfumes incluidos en el paquete:</div>
-        <div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="margin-top:10px; margin-bottom:8px; font-size:11px; font-weight:600; color:var(--gold); text-transform:uppercase; letter-spacing:1px;">Perfumes incluidos en el paquete (${itemsPq.length}):</div>
+        ${buscadorPaquete(itemsPq)}
+        <div class="pkg-lista">
           ${itemsPq.map(i => `
-            <div onclick="window.showZoom('${i.imagen || ''}')" title="Ver imagen" style="cursor:pointer; display:flex; align-items:center; gap:12px; background:var(--bg-card2); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); transition:background 0.2s, transform 0.1s;${i.agotado ? ' opacity:0.45;' : ''}" onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.transform='scale(1.01)';" onmouseout="this.style.background='var(--bg-card2)'; this.style.transform='scale(1)';">
+            <div onclick="window.showZoom('${i.imagen || ''}')" title="Ver imagen" data-busca="${escFicha(`${i.nombre} ${i.marca || ''}`)}" style="cursor:pointer; display:flex; align-items:center; gap:12px; background:var(--bg-card2); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); transition:background 0.2s, transform 0.1s;${i.agotado ? ' opacity:0.45;' : ''}" onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.transform='scale(1.01)';" onmouseout="this.style.background='var(--bg-card2)'; this.style.transform='scale(1)';">
               <div style="width:40px; height:40px; border-radius:6px; overflow:hidden; background:var(--bg-card); flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.2);${i.agotado ? ' filter:grayscale(1);' : ''}">
                 ${i.imagen ? `<img src="${imgCart(i.imagen)}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="bi bi-droplet" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:16px;"></i>'}
               </div>
@@ -1563,25 +1632,21 @@ window.openModal = (id, pushHash = false) => {
   const sizes = Object.entries(pr).filter(([, v]) => +v > 0).sort((a, b) => +a[0] - +b[0]);
 
   const sizesLabel = document.querySelector('.modal-sizes-label');
-  if (sizesLabel) {
-    sizesLabel.style.display = sizes.length <= 1 ? 'none' : 'block';
-  }
 
   const isAgotado = agotadoEnTienda(p);
   let pillsHTML = '';
   if (p.tipo === 'paquete') {
     pillsHTML = sizes.length
-      ? sizes.map(([k, v], i) => {
+      ? sizes.map(([k, v]) => {
           const sv = calcSavings(p, k);
-          const savingHtml = sv.saving > 0 ? `<div class="pill-saving" style="font-size:11px;color:#000;background:var(--gold);padding:2px 6px;border-radius:4px;font-weight:700;">Ahorras $${sv.saving}</div>` : '';
-          const crossHtml = sv.original > 0 ? `<del style="opacity:0.6;font-size:0.85em;margin-right:4px;">$${sv.original}</del>` : '';
-          return `<button class="mpill ${!isAgotado && i===0?'sel':''}" data-size="Paquete ${k}" data-price="${v}" ${isAgotado ? 'disabled style="display:flex; align-items:center; gap:8px; text-decoration:line-through; opacity:0.5; cursor:not-allowed;"' : 'onclick="selPill(this)" style="display:flex; align-items:center; gap:8px;"'}>${crossHtml}$${v} MXN (${k}ml)${savingHtml}</button>`;
+          const savingHtml = sv.saving > 0 ? `<span class="pill-saving">Ahorras $${sv.saving}</span>` : '';
+          const crossHtml = sv.original > 0 ? `<del>$${sv.original}</del>` : '';
+          return `<button class="mpill mpill-paq${isAgotado ? ' agotada' : ''}" data-size="Paquete ${k}" data-price="${v}" ${isAgotado ? 'disabled' : 'onclick="selPill(this)"'}><span class="paq-precio">${crossHtml}<b>$${v} MXN</b> <small>(${k}ml)</small></span>${savingHtml}</button>`;
         }).join('')
       : '<span style="font-size:13px;color:#555">Sin presentaciones disponibles.</span>';
   } else {
-    let firstAvailableFound = false;
     pillsHTML = sizes.length
-      ? sizes.map(([k, v], i) => {
+      ? sizes.map(([k, v]) => {
           const isSizeAgotado = isAgotado || (window.disable2ml && k === '2');
           // Nunca se muestra el precio por ml: invita a compararlo con la
           // botella completa (que sale a un tercio) y ahí el decant siempre
@@ -1592,13 +1657,7 @@ window.openModal = (id, pushHash = false) => {
           if (window.disable2ml && k === '2' && !isAgotado) label += ' (Agotado)';
           else if (ahorro > 0) label += `<span class="pill-ahorro">Ahorras $${ahorro}</span>`;
 
-          let selCls = '';
-          if (!isSizeAgotado && !firstAvailableFound) {
-            selCls = 'sel';
-            firstAvailableFound = true;
-          }
-          
-          return `<button class="mpill ${selCls}" data-size="${k}" data-price="${v}" ${isSizeAgotado ? 'disabled style="text-decoration:line-through; opacity:0.5; cursor:not-allowed;"' : 'onclick="selPill(this)"'}>${label}</button>`;
+          return `<button class="mpill" data-size="${k}" data-price="${v}" ${isSizeAgotado ? 'disabled style="text-decoration:line-through; opacity:0.5; cursor:not-allowed;"' : 'onclick="selPill(this)"'}>${label}</button>`;
         }).join('')
       : '<span style="font-size:13px;color:#555">Sin presentaciones disponibles.</span>';
   }
@@ -1612,14 +1671,16 @@ window.openModal = (id, pushHash = false) => {
   if (proInfo) proInfo.hidden = !pros.length;
   const pillsEl = document.getElementById('modal-pills');
   pillsEl.innerHTML = pillsHTML;
-  
-  if (p.tipo === 'paquete' && p.esPersonalizable) {
-    // Disable pills initially
-    document.querySelectorAll('.mpill').forEach(el => {
-      el.disabled = true;
-      el.style.opacity = '0.5';
-      el.style.cursor = 'not-allowed';
-    });
+
+  // Ningún tamaño viene marcado, salvo que no haya más opción o ya lleve uno (cart.js).
+  const opciones = [...pillsEl.querySelectorAll('.mpill:not(:disabled)')];
+  if (sizesLabel) sizesLabel.style.display = opciones.length <= 1 ? 'none' : 'block';
+  const enPedido = cart.filter(i => i.id === p.id && !i.customItems);
+  const elegida = tallaPreelegida(opciones.map(el => ({ size: el.dataset.size, pro: !!el.dataset.pro })), enPedido);
+  if (elegida !== -1) {
+    opciones[elegida].classList.add('sel');
+    const pro = opciones[elegida].dataset.pro && enPedido.filter(i => i.pro).pop();
+    if (pro && pro.color) window.colorPro = pro.color;
   }
 
   syncModalCartBtn();
@@ -1708,12 +1769,6 @@ window.toggleCustomPkgItem = (chk, maxSel) => {
     if (lbl && !agotado) lbl.style.opacity = (maxReached && !el.checked) ? '0.5' : '1';
   });
   
-  document.querySelectorAll('.mpill').forEach(el => {
-    el.disabled = !maxReached;
-    el.style.opacity = maxReached ? '1' : '0.5';
-    el.style.cursor = maxReached ? 'pointer' : 'not-allowed';
-  });
-  
   syncModalCartBtn();
 };
 
@@ -1738,7 +1793,7 @@ function syncModalCartBtn() {
   
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable) {
     if (window.customPackageSelections.length < (requeridos())) {
-      wrapper.innerHTML = `<button class="btn-add-cart" disabled style="opacity:0.5; cursor:not-allowed;"><i class="bi bi-bag-plus"></i> Selecciona ${requeridos()} perfumes</button>`;
+      wrapper.innerHTML = `<button class="btn-add-cart" disabled style="opacity:0.5; cursor:not-allowed;"><i class="bi bi-bag-plus"></i> Selecciona ${requeridos()} perfumes${ES_PRODUCTO && ESCRITORIO.matches ? ' abajo' : ''}</button>`;
       return;
     }
   }
@@ -1830,6 +1885,7 @@ window.modalDecrement = () => {
 };
 
 window.selPill = btn => {
+  document.getElementById('modal-pills')?.classList.remove('falta');
   document.querySelectorAll('.mpill').forEach(b => b.classList.remove('sel'));
   btn.classList.add('sel'); actualizarPanelPro(); syncModalCartBtn();
 };
@@ -1933,7 +1989,7 @@ window.addToCart = () => {
   if (!modalData) return;
   if (agotadoEnTienda(modalData)) { showToast('Este producto no está disponible por ahora', 'warning'); return; }
   const sel = document.querySelector('.mpill.sel');
-  if (!sel) { flashPills(); return; }
+  if (!sel) { pedirTalla(); return; }
   checkCartTTL();
   if (modalData.tipo === 'paquete' && modalData.esPersonalizable) {
     if (window.customPackageSelections.length < (requeridos())) {
@@ -2165,9 +2221,19 @@ function precioActualDeTalla(p, size) {
   return +pr[k] || 0;
 }
 
-function flashPills() {
+/** "Agregar" sin tamaño: contorno rojo, aviso y, si no se ven, los lleva a la pantalla. */
+function pedirTalla() {
+  showToast('Selecciona un tamaño');
   const pills = document.getElementById('modal-pills');
-  if (pills) { pills.classList.add('flash'); setTimeout(() => pills.classList.remove('flash'), 600); }
+  if (!pills) return;
+  pills.classList.remove('falta');
+  void pills.offsetWidth;   // para que el jalón se repita en cada toque
+  pills.classList.add('falta');
+  // Arriba tapan el encabezado y la barra de volver; abajo, la barra de comprar.
+  const r = pills.getBoundingClientRect();
+  if (r.top < 120 || r.bottom > window.innerHeight - 90) pills.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  clearTimeout(pills._falta);
+  pills._falta = setTimeout(() => pills.classList.remove('falta'), 2800);
 }
 
 function showToast(msg) {

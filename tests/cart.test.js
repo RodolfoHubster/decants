@@ -239,7 +239,7 @@ describe('countUniqueProducts', () => {
   });
 });
 
-import { revalidarCarrito } from '../assets/js/cart.js';
+import { revalidarCarrito, saveCart, loadCart, clearSavedCart, pedidoVencido, tallaPreelegida } from '../assets/js/cart.js';
 
 describe('revalidarCarrito', () => {
   const catalogo = {
@@ -325,5 +325,66 @@ describe('PRO en el carrito', () => {
       precioDe: (prod, size, it) => Number(prod.precios[size]) + (it && it.pro ? 15 : 0),
     });
     expect(r.actualizados).toEqual([]);
+  });
+});
+
+describe('pedidoVencido', () => {
+  const guardado = new Map();
+  beforeAll(() => {
+    globalThis.localStorage = {
+      getItem: k => (guardado.has(k) ? guardado.get(k) : null),
+      setItem: (k, v) => guardado.set(k, v),
+      removeItem: k => guardado.delete(k),
+    };
+  });
+  afterAll(() => { delete globalThis.localStorage; });
+  beforeEach(() => guardado.clear());
+
+  const item = { key: 'a-5', id: 'a', nombre: 'A', size: '5', price: 90, qty: 1 };
+
+  test('un pedido vigente no está vencido y se puede leer', () => {
+    saveCart([item]);
+    expect(pedidoVencido()).toBe(false);
+    expect(loadCart()).toHaveLength(1);
+  });
+  test('pasada la hora está vencido, y al leerlo ya no hay pedido', () => {
+    saveCart([item]);
+    const real = Date.now;
+    Date.now = () => real() + 61 * 60 * 1000;
+    try {
+      expect(pedidoVencido()).toBe(true);
+      expect(loadCart()).toEqual([]);
+    } finally { Date.now = real; }
+  });
+  test('un pedido vaciado a mano no cuenta como vencido', () => {
+    saveCart([item]);
+    clearSavedCart();
+    expect(pedidoVencido()).toBe(false);
+  });
+});
+
+describe('tallaPreelegida', () => {
+  const tallas = [{ size: '2' }, { size: '5' }, { size: '10' }, { size: '5', pro: true }];
+
+  test('con varias opciones no viene ninguna marcada', () => {
+    expect(tallaPreelegida(tallas)).toBe(-1);
+    expect(tallaPreelegida(tallas, [])).toBe(-1);
+  });
+  test('con una sola opción no hay nada que elegir', () => {
+    expect(tallaPreelegida([{ size: 'Paquete 5' }])).toBe(0);
+  });
+  test('si ya lleva uno en el pedido, se marca ese', () => {
+    expect(tallaPreelegida(tallas, [{ size: '10' }])).toBe(2);
+  });
+  test('distingue el PRO del normal de la misma talla', () => {
+    expect(tallaPreelegida(tallas, [{ size: '5' }])).toBe(1);
+    expect(tallaPreelegida(tallas, [{ size: '5', pro: true }])).toBe(3);
+  });
+  test('con varios en el pedido gana el último que agregó', () => {
+    expect(tallaPreelegida(tallas, [{ size: '2' }, { size: '10' }])).toBe(2);
+  });
+  test('una talla que ya no se ofrece no marca nada', () => {
+    expect(tallaPreelegida(tallas, [{ size: '3' }])).toBe(-1);
+    expect(tallaPreelegida([], [{ size: '3' }])).toBe(-1);
   });
 });

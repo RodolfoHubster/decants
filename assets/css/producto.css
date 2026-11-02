@@ -219,12 +219,41 @@ body[data-pagina="producto"] .modal-nombre { font-size: 26px; }
   html[data-temporada="halloween"] body[data-pagina="producto"] .modal-box[data-variante="muertos"] .md-papel {
     left: 0; width: 50%; height: 28px;
   }
+  /* Cargando: la franja de la pirámide ya aparta su lugar bajo las dos columnas */
+  .modal-skeleton .sk-ficha { display: none; }
+  body[data-pagina="producto"] #modal .modal-box.cargando::after {
+    content: '';
+    grid-column: 1 / -1;
+    height: 248px;
+    margin: 26px 32px 32px;
+    border-radius: 14px;
+    background: linear-gradient(90deg, #1d1a15 0%, #2a261f 50%, #1d1a15 100%);
+    background-size: 200% 100%;
+    animation: ficha-brillo 1.2s linear infinite;
+  }
   body[data-pagina="producto"] .modal-img {
     height: auto;
     max-height: none;
     aspect-ratio: 1 / 1;
     border-radius: 20px 0 0 20px;
   }
+  /* Perfumes del paquete: franja a todo lo ancho bajo la foto y la compra, en
+     columnas. Foto y compra quedan parejas y ya no sobra espacio bajo la foto. */
+  body[data-pagina="producto"] #modal .modal-box > #modal-paquete-items {
+    grid-column: 1 / -1;
+    padding: 22px 32px 30px;
+    border-top: 1px solid rgba(255, 255, 255, .07);
+  }
+  body[data-pagina="producto"] .modal-box > #modal-paquete-items .pkg-buscar { max-width: 340px; }
+  body[data-pagina="producto"] .modal-box > #modal-paquete-items .pkg-lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+    gap: 8px;
+    max-height: 314px;
+    margin-bottom: 0;
+  }
+  /* Con muchas presentaciones van en dos columnas: la compra no crece de más. */
+  body[data-pagina="producto"] .modal-pills:has(.mpill-paq:nth-child(4)) .mpill-paq { flex-basis: calc(50% - 4px); padding: 8px 12px; }
   body[data-pagina="producto"] .modal-content { overflow: visible; padding: 32px 32px 0; }
   body[data-pagina="producto"] .modal-nombre { font-size: 34px; }
 }
