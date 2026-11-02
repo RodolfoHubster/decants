@@ -134,6 +134,7 @@ function aplicarFiltroFecha() {
   renderAlertasInventario();
   renderDecisiones();
   renderMovimiento();
+  document.querySelectorAll('.esq-grafica').forEach(el => el.classList.remove('esq-grafica'));
 }
 
 // Cambiar de periodo no necesita volver a leer Firestore: los datos ya están.

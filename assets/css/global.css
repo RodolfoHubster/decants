@@ -500,3 +500,55 @@ body.filtros-open { overflow: hidden; }
   color:var(--text-faint); list-style:none;
 }
 .sidebar-nav > .sb-label:first-child{ padding-top:8px; }
+
+
+/* ══ Esqueletos de carga (esqueleto.js) ══════════════════════════════════
+   Para páginas y secciones completas; la rueda se queda solo en botones.
+   Miden lo mismo que lo que va a llegar, y siempre se animan. */
+@keyframes esq-brillo { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.esq {
+  display: block;
+  height: 12px;
+  max-width: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255,255,255,.05) 0%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.05) 100%);
+  background-size: 200% 100%;
+  animation: esq-brillo 1.3s linear infinite;
+}
+.esq-foto { width: 44px; height: 44px; border-radius: 8px; }
+.esq-chico { width: 56px; height: 10px; flex: none; }
+.esq-num { display: inline-block; width: 110px; height: .8em; vertical-align: middle; border-radius: 8px; }
+.esq-fila td { height: var(--alto, 63px); pointer-events: none; }
+/* En el teléfono el texto se parte y las filas crecen. Las tablas que se vuelven
+   tarjetas no usan el alto de la celda: ahí la fila reserva el lugar. */
+@media (max-width: 768px) {
+  .esq-fila td { height: max(var(--alto, 63px), 117px); }
+  table[data-tarjetas] .esq-fila, .ventas-tabla .esq-fila { min-height: 120px; }
+  table[data-tarjetas] .esq-fila td, .ventas-tabla .esq-fila td { height: auto; }
+}
+.esq-tarjeta {
+  display: flex; flex-direction: column; justify-content: center; gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+}
+.esq-renglon {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.esq-renglon .esq:first-child { flex: 0 1 auto; }
+.esq-pila { display: flex; flex-direction: column; gap: 16px; }
+.esq-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+/* Gráficas: el recuadro brilla hasta que se dibujan */
+.esq-grafica { position: relative; }
+.esq-grafica canvas { opacity: 0; }
+.esq-grafica::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(255,255,255,.04) 0%, rgba(255,255,255,.1) 50%, rgba(255,255,255,.04) 100%);
+  background-size: 200% 100%;
+  animation: esq-brillo 1.3s linear infinite;
+}

@@ -185,45 +185,45 @@
       <div class="kpi-grid">
         <div class="kpi-card">
           <span class="kpi-title">Ganancia Neta</span>
-          <span class="kpi-value profit" id="kpi-ganancia">$0</span>
+          <span class="kpi-value profit" id="kpi-ganancia"><i class="esq esq-num"></i></span>
           <span class="kpi-nota" id="kpi-ganancia-nota"></span>
         </div>
         <div class="kpi-card">
           <span class="kpi-title">Ingresos Totales</span>
-          <span class="kpi-value" id="kpi-ingresos">$0</span>
+          <span class="kpi-value" id="kpi-ingresos"><i class="esq esq-num"></i></span>
         </div>
         <div class="kpi-card">
           <span class="kpi-title">Lo que te costó lo vendido</span>
-          <span class="kpi-value" id="kpi-costo" style="color:#ef4444">$0</span>
+          <span class="kpi-value" id="kpi-costo" style="color:#ef4444"><i class="esq esq-num"></i></span>
           <span class="kpi-nota">Costo real de cada botella + insumos + comisiones + probadores</span>
         </div>
         <div class="kpi-card">
           <span class="kpi-title">Margen Global</span>
-          <span class="kpi-value" id="kpi-margen">0%</span>
+          <span class="kpi-value" id="kpi-margen"><i class="esq esq-num"></i></span>
         </div>
         <div class="kpi-card">
           <span class="kpi-title">Ticket Promedio</span>
-          <span class="kpi-value" id="kpi-ticket">$0</span>
+          <span class="kpi-value" id="kpi-ticket"><i class="esq esq-num"></i></span>
         </div>
         <div class="kpi-card">
           <span class="kpi-title">Clientes Atendidos</span>
-          <span class="kpi-value" id="kpi-clientes">0</span>
+          <span class="kpi-value" id="kpi-clientes"><i class="esq esq-num"></i></span>
         </div>
         <div class="kpi-card">
           <span class="kpi-title">Decants / Ml Despachados</span>
           <div style="display:flex; align-items:baseline; gap:8px;">
-            <span class="kpi-value" id="kpi-decants">0</span>
+            <span class="kpi-value" id="kpi-decants"><i class="esq esq-num"></i></span>
             <span style="color:var(--text-muted); font-size:14px" id="kpi-ml">0 ml</span>
           </div>
         </div>
         <div class="kpi-card">
           <span class="kpi-title">Accesorios</span>
-          <span class="kpi-value" id="kpi-acc">$0</span>
+          <span class="kpi-value" id="kpi-acc"><i class="esq esq-num"></i></span>
           <span class="kpi-nota" id="kpi-acc-nota">Aparte de los decants</span>
         </div>
         <div class="kpi-card">
           <span class="kpi-title">Visitas a tu tienda</span>
-          <span class="kpi-value" id="kpi-visitas">—</span>
+          <span class="kpi-value" id="kpi-visitas"><i class="esq esq-num"></i></span>
           <span class="kpi-nota" id="kpi-visitas-nota">Personas distintas por día, sin contarte a ti</span>
         </div>
       </div>
@@ -233,12 +233,12 @@
         <div class="chart-card">
           <h3><span><i class="bi bi-cash-stack" style="color:var(--accent)"></i> Lo que más dinero te dejó</span></h3>
           <small>En el periodo elegido. Esto es lo que vale la pena recomprar.</small>
-          <div id="dec-top"><div class="dec-vacio">Calculando…</div></div>
+          <div id="dec-top" data-esq="lista:6:38"></div>
         </div>
         <div class="chart-card">
           <h3><span><i class="bi bi-hourglass-split" style="color:#e0a23c"></i> En stock pero no se mueve</span></h3>
           <small>Sin ventas en 30 días. Candidatos a promoción o a paquete.</small>
-          <div id="dec-quietos"><div class="dec-vacio">Calculando…</div></div>
+          <div id="dec-quietos" data-esq="lista:6:38"></div>
         </div>
       </div>
 
@@ -259,20 +259,20 @@
             <button data-v="Unisex">Unisex</button>
           </div>
         </div>
-        <div class="mov-generos" id="mov-generos"></div>
+        <div class="mov-generos" id="mov-generos" data-esq="tarjetas:3:118"></div>
         <div class="mov-cols">
           <div>
             <h4><span id="mov-rank-tit">Perfumes que más se mueven</span>
               <input class="form-control mov-buscar" id="mov-buscar" placeholder="Buscar perfume…" autocomplete="off"></h4>
-            <div class="rank-wrap" id="mov-ranking"></div>
+            <div class="rank-wrap" id="mov-ranking" data-esq="lista:8:48"></div>
           </div>
           <div>
             <div id="mov-tallas-wrap">
               <h4>Tallas que compra cada género</h4>
-              <div id="mov-tallas"></div>
+              <div id="mov-tallas" data-esq="lista:4:32"></div>
             </div>
             <h4>Qué día se vende más</h4>
-            <div class="dias" id="mov-dias"></div>
+            <div class="dias" id="mov-dias" data-esq="lista:7:22"></div>
           </div>
         </div>
       </div>
@@ -280,41 +280,37 @@
       <!-- Gráficos Principales -->
       <div class="chart-card" style="margin-bottom:20px;">
         <h3>Tendencia de Ingresos <span style="font-size:12px;color:var(--text-muted);font-weight:normal" id="trend-label"></span></h3>
-        <div style="height:250px; width:100%"><canvas id="chartTendencia"></canvas></div>
+        <div class="esq-grafica" style="height:250px; width:100%"><canvas id="chartTendencia"></canvas></div>
       </div>
 
       <!-- Gráficos Secundarios -->
       <div class="chart-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:15px;" id="grid-4-charts">
         <div class="chart-card">
           <h3>Distribución por Canal</h3>
-          <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:200px;"><canvas id="chartCanales"></canvas></div>
+          <div class="esq-grafica" style="flex:1; display:flex; align-items:center; justify-content:center; min-height:200px;"><canvas id="chartCanales"></canvas></div>
         </div>
         <div class="chart-card">
           <h3>Método de Pago</h3>
-          <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:200px;"><canvas id="chartMetodos"></canvas></div>
+          <div class="esq-grafica" style="flex:1; display:flex; align-items:center; justify-content:center; min-height:200px;"><canvas id="chartMetodos"></canvas></div>
         </div>
         <div class="chart-card">
           <h3>Top 5 Tamaños Favoritos</h3>
-          <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:200px;"><canvas id="chartTallas"></canvas></div>
+          <div class="esq-grafica" style="flex:1; display:flex; align-items:center; justify-content:center; min-height:200px;"><canvas id="chartTallas"></canvas></div>
         </div>
         <div class="chart-card">
           <h3>Top 5 Marcas Rentables</h3>
-          <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:200px;"><canvas id="chartMarcas"></canvas></div>
+          <div class="esq-grafica" style="flex:1; display:flex; align-items:center; justify-content:center; min-height:200px;"><canvas id="chartMarcas"></canvas></div>
         </div>
       </div>
 
       <div class="chart-grid">
         <div class="chart-card">
           <h3>🏆 Top 5 Mejores Clientes</h3>
-          <div id="top-clientes-list" style="display:flex; flex-direction:column; flex:1">
-            <div style="text-align:center; padding:20px; color:var(--text-faint)">Cargando clientes...</div>
-          </div>
+          <div id="top-clientes-list" style="display:flex; flex-direction:column; flex:1" data-esq="lista:5:48"></div>
         </div>
         <div class="chart-card">
           <h3>⚠️ Alertas de Inventario (Por acabarse)</h3>
-          <div id="alertas-inventario-list" style="display:flex; flex-direction:column; flex:1; overflow-y:auto; max-height:300px">
-            <div style="text-align:center; padding:20px; color:var(--text-faint)">Cargando inventario...</div>
-          </div>
+          <div id="alertas-inventario-list" style="display:flex; flex-direction:column; flex:1; overflow-y:auto; max-height:300px" data-esq="lista:5:48"></div>
         </div>
       </div>
 
@@ -352,9 +348,7 @@
               <th class="text-right">Proyección Final</th>
             </tr>
           </thead>
-          <tbody id="profit-tbody">
-            <tr><td colspan="6" style="text-align:center;color:var(--text-faint)">Cargando proyecciones...</td></tr>
-          </tbody>
+          <tbody id="profit-tbody" data-esq="tabla:6:8::86"></tbody>
         </table>
         
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
@@ -408,6 +402,6 @@
   </div>
 </div>
 
-<script type="module" src="../assets/js/estadisticas.js?v=2.6"></script>
+<script type="module" src="../assets/js/estadisticas.js?v=2.7"></script>
 </body>
 </html>

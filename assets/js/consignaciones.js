@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadData() {
-  document.getElementById('loading').style.display = 'block';
+  document.getElementById('loading').style.display = '';
   document.getElementById('cons-grid').style.display = 'none';
   document.getElementById('empty-state').style.display = 'none';
 

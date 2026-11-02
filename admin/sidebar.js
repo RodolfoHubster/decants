@@ -5,6 +5,11 @@ import { initFiltrosAdmin } from '../assets/js/admin-filtros.js';
 import { siguienteClienteId, nombreCliente } from '../assets/js/pos-cliente.js';
 import { imgCart, imgOPlaceholder } from '../assets/js/cloudinary.js';
 import { buscarCliente } from '../assets/js/clientes-util.js';
+import { desdeAtributo } from '../assets/js/esqueleto.js';
+
+// Esqueletos de carga: cada contenedor pide el suyo con data-esq. Corre antes
+// que el módulo de la página, así se ven desde el primer momento.
+document.querySelectorAll('[data-esq]').forEach(el => { el.innerHTML = desdeAtributo(el.dataset.esq); });
 
 auth.onAuthStateChanged(user => {
   if (!user) return;
