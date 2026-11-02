@@ -1,7 +1,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc } from '../../assets/js/firebase-config.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import '../../admin/auth-guard.js';
-import { resumenVentas, topVendidos, pendientes } from './alertas.js';
+import { resumenVentas, topVendidos, pendientes, agruparCatalogo } from './alertas.js?v=2';
 import { indiceClientes } from './clientes-util.js';
 import { FRECUENCIAS, PLANTILLAS, urlGoogleCalendar, ordenarRecordatorios } from './recordatorios.js';
 
@@ -82,22 +82,13 @@ function pintarPendientes(lista) {
     </a>`).join('');
 }
 
+// Solo los 3 de arriba: la lista completa, por género, ya vive en Estadísticas.
 function pintarTop(top) {
-  const ol = $('top-mes');
-  if (!top.length) {
-    ol.innerHTML = '<li class="pend-cargando">Aún no hay ventas este mes.</li>';
-    return;
-  }
-  const max = top[0].unidades;
-  ol.innerHTML = top.map((t, i) => `
-    <li>
-      <span class="top-pos">${i + 1}</span>
-      <span class="top-info">
-        <strong>${esc(t.nombre)}</strong>
-        <span class="top-barra"><span style="width:${Math.max(8, (t.unidades / max) * 100)}%"></span></span>
-      </span>
-      <span class="top-num">${t.unidades}<small> pzs</small><em>${dinero(t.total)}</em></span>
-    </li>`).join('');
+  $('top-mes').innerHTML = top.length
+    ? `<i class="bi bi-fire"></i> <span>Lo más vendido del mes: ${top.slice(0, 3)
+      .map(t => `<strong>${esc(t.nombre)}</strong> (${t.unidades})`).join(', ')}</span>
+       <a href="estadisticas.html">Ver todo <i class="bi bi-arrow-right"></i></a>`
+    : '<i class="bi bi-fire"></i> <span>Aún no hay ventas este mes.</span>';
 }
 
 function pintarCatalogo(perfumes) {
@@ -124,7 +115,7 @@ async function cargar() {
 
   guardarIndiceClientes(ventas);
   pintarDinero(resumenVentas(ventas, ahora));
-  pintarPendientes(pendientes({ perfumes, ventas, encargos, pedidos, consignaciones }, ahora));
+  pintarPendientes(agruparCatalogo(pendientes({ perfumes, ventas, encargos, pedidos, consignaciones }, ahora)));
   const d = new Date(ahora);
   pintarTop(topVendidos(ventas, new Date(d.getFullYear(), d.getMonth(), 1).getTime()));
   pintarCatalogo(perfumes);

@@ -1,4 +1,4 @@
-import { aMs, resumenVentas, topVendidos, pendientes } from '../assets/js/alertas.js';
+import { aMs, resumenVentas, topVendidos, pendientes, agruparCatalogo } from '../assets/js/alertas.js';
 
 const DIA = 24 * 60 * 60 * 1000;
 // Miércoles 15 de octubre 2026, 14:00 hora local.
@@ -170,5 +170,25 @@ describe('sinMovimiento', () => {
     const r = sinMovimiento([p('en-paquete')],
       [venta(2, 300, { paqueteItems: [{ id: 'en-paquete' }] })], AHORA);
     expect(r).toEqual([]);
+  });
+});
+
+describe('agruparCatalogo', () => {
+  const p = (clave, nivel, titulo, items = []) => ({ clave, nivel, titulo, detalle: 'x', href: 'perfumes.html', items });
+  test('junta sin precio, sin foto y fotos externas en un aviso', () => {
+    const r = agruparCatalogo([
+      p('cobrar', 'alta', '1 venta por cobrar'),
+      p('sin-precio', 'alta', '2 perfumes sin precio', ['A', 'B']),
+      p('sin-imagen', 'media', '1 perfume sin foto', ['B']),
+      p('img-externa', 'media', '1 foto de otros sitios', ['C']),
+      p('sin-ventas', 'baja', '5 días sin registrar ventas'),
+    ]);
+    expect(r.map(x => x.clave)).toEqual(['cobrar', 'catalogo', 'sin-ventas']);
+    expect(r[1]).toMatchObject({ nivel: 'alta', titulo: 'Revisa tu catálogo', items: ['A', 'B', 'C'] });
+    expect(r[1].detalle).toBe('2 perfumes sin precio · 1 perfume sin foto · 1 foto de otros sitios');
+  });
+  test('con uno solo no cambia nada', () => {
+    const lista = [p('sin-imagen', 'media', '1 perfume sin foto')];
+    expect(agruparCatalogo(lista)).toEqual(lista);
   });
 });

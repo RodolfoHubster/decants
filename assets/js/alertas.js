@@ -202,6 +202,30 @@ export function pendientes(datos, ahora) {
 }
 
 /**
+ * Junta en un solo aviso los pendientes del catálogo (sin precio, sin foto,
+ * fotos de otros sitios): todos llevan a Perfumes y se veían como tres iguales.
+ * Si solo hay uno, se queda como está.
+ */
+export function agruparCatalogo(lista) {
+  const CLAVES = ['sin-precio', 'sin-imagen', 'img-externa'];
+  const grupo = (lista || []).filter(p => CLAVES.includes(p.clave));
+  if (grupo.length < 2) return lista || [];
+  const nivel = grupo.some(p => p.nivel === 'alta') ? 'alta' : 'media';
+  const unido = {
+    nivel,
+    clave: 'catalogo',
+    titulo: 'Revisa tu catálogo',
+    detalle: grupo.map(p => p.titulo).join(' · '),
+    href: 'perfumes.html',
+    items: [...new Set(grupo.flatMap(p => p.items))].slice(0, 5),
+  };
+  const i = (lista || []).findIndex(p => CLAVES.includes(p.clave));
+  const resto = lista.filter(p => !CLAVES.includes(p.clave));
+  resto.splice(Math.min(i, resto.length), 0, unido);
+  return resto;
+}
+
+/**
  * Perfumes en stock que no se han vendido en `dias`. Es dinero parado en el
  * estante: candidatos a promoción, a paquete o a dejar de recomprar.
  * Devuelve los más viejos primero (o los que nunca se han vendido).

@@ -232,24 +232,17 @@
 .pend-cargando { color: var(--text-faint); font-size: 13px; padding: 8px 0; list-style: none; }
 
 /* ── Top del mes ────────────────────────────── */
-.top-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.top-lista li { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 12px; }
-.top-pos {
-  width: 28px; height: 28px; border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 700;
-  background: var(--accent-soft); color: var(--accent);
+.hoy-top {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  padding: 12px 16px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg-card);
+  font-size: 13.5px; color: var(--text-muted);
 }
-.top-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.top-info strong {
-  font-size: 13.5px; color: var(--text-primary);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.top-barra { height: 4px; border-radius: 99px; background: rgba(255,255,255,.06); overflow: hidden; }
-.top-barra span { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
-.top-num { text-align: right; font-weight: 700; font-size: 15px; color: var(--text-primary); line-height: 1.2; }
-.top-num small { font-size: 11px; color: var(--text-muted); font-weight: 500; }
-.top-num em { display: block; font-style: normal; font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.hoy-top > i { color: var(--accent); }
+.hoy-top > span { flex: 1; min-width: 200px; }
+.hoy-top strong { color: var(--text-primary); }
+.hoy-top a { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
 
 /* ── Catálogo ───────────────────────────────── */
 .hoy-catalogo {
