@@ -15,8 +15,11 @@ const MIN_SELECTS  = 3;     // con uno o dos no vale la pena esconderlos
 
 let estado = null;          // { bar, selects: [{el, padre, siguiente}], … }
 
-/** ¿El select está en algo distinto a su opción neutra ("Todas las marcas")? */
-const estaActivo = (sel) => sel.selectedIndex > 0;
+/**
+ * ¿El select está en algo distinto a su opción neutra ("Todas las marcas")?
+ * El orden (data-orden) no cuenta ni se limpia: no esconde nada.
+ */
+const estaActivo = (sel) => sel.selectedIndex > 0 && !sel.dataset.orden;
 
 /** Texto de la primera opción: sirve de etiqueta del campo en el panel. */
 const etiquetaDe = (sel) => (sel.options[0]?.text || 'Filtro').trim();

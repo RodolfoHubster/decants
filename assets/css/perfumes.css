@@ -141,3 +141,62 @@ td.col-clicks {
 #insp-extra { margin-top: 10px; }
 .insp-preview { display: block; width: 72px; height: 72px; object-fit: contain; margin-top: 8px; border-radius: 10px; background: #f4f1ea; }
 .insp-preview[hidden] { display: none; }
+
+/* ── Filtros del catálogo (filtros-perfumes.js) ─────────────────────────────
+   Arriba buscador y orden; en medio los selects, del mismo ancho y sin cortar
+   el texto; abajo los atajos de "Revisar" con cuántos hay de cada uno. */
+/* nowrap: en columna con wrap (lo de .filter-bar), el navegador medía los selects
+   uno debajo de otro y luego estiraba cada renglón a 125px. */
+.fp-filtros { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 10px; }
+.fp-fila { display: flex; gap: 10px; align-items: center; }
+.fp-fila .search-input-wrap { flex: 1; min-width: 0; }
+.fp-orden { flex: 0 0 220px; max-width: 220px; }
+.fp-selects { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.fp-sel { width: 100%; max-width: none !important; }
+.fp-sel.activo { border-color: var(--accent); color: var(--accent); background-color: var(--accent-soft); }
+.fp-atajos-fila { display: flex; align-items: flex-start; gap: 10px; }
+.fp-atajos-tit {
+  font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-faint); white-space: nowrap; padding-top: 9px;
+}
+.fp-atajos { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
+.fp-atajo {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px;
+  border-radius: 99px; border: 1px solid var(--border); background: var(--bg-card);
+  color: var(--text-muted); font: inherit; font-size: 12.5px; white-space: nowrap; cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+}
+.fp-atajo i { font-size: 12px; }
+.fp-atajo b {
+  min-width: 22px; padding: 1px 7px; border-radius: 99px; text-align: center;
+  background: rgba(255,255,255,.06); color: var(--text-primary); font-size: 11.5px; font-weight: 700;
+}
+.fp-atajo:hover:not(:disabled) { border-color: var(--accent-border); color: var(--text-primary); }
+.fp-atajo.aviso:not(:disabled) b { color: var(--warning); }
+.fp-atajo.peligro:not(:disabled) b { color: var(--danger); }
+.fp-atajo.activo { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.fp-atajo.activo b { background: var(--accent); color: #14120e; }
+.fp-atajo:disabled { opacity: .38; cursor: default; }
+.fp-limpiar {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 4px; margin-left: auto;
+  border: 0; background: none; color: var(--text-muted); font: inherit; font-size: 12.5px;
+  white-space: nowrap; cursor: pointer;
+}
+.fp-limpiar:hover { color: var(--danger); }
+.fp-limpiar[hidden] { display: none; }
+
+/* Teléfono: admin-filtros.js mete los selects en el panel "Filtros" y pone su
+   botón al final de la barra; aquí se acomoda junto al buscador, y los atajos
+   quedan en una tira que se desliza con el dedo. */
+@media (max-width: 768px) {
+  .fp-filtros { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .fp-fila { flex: 1 1 0; min-width: 0; order: 1; }
+  .fp-filtros > .fbtn-filtros { order: 2; }
+  .fp-selects { display: none; }
+  .fp-atajos-fila { order: 3; flex: 1 1 100%; flex-wrap: wrap; min-width: 0; max-width: 100%; }
+  .fp-atajos-tit { display: none; }
+  .fp-atajos { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; flex: 1 1 100%; width: 100%; min-width: 0; }
+  .fp-atajos::-webkit-scrollbar { display: none; }
+  .fp-atajo { min-height: 38px; }
+  .fp-limpiar { margin-left: 0; }
+}

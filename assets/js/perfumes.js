@@ -11,6 +11,7 @@ import { toast } from './toast.js';
 import { sugiereNuevoCliente, siguienteClienteId, nombreCliente } from './pos-cliente.js';
 import { construirPrompt, parsearRespuesta, emparejarOpcion } from './ia-perfume.js';
 import { buscarEnCatalogo, armarInspirado, etiquetaCatalogo, agotadoBasico } from './inspirado.js?v=2';
+import { ATAJOS, FILTROS_VACIOS, filtrarPerfumes, contarAtajos, cuantosActivos, ordenarPerfumes, restaurarFiltros } from './filtros-perfumes.js';
 
 const CLOUDINARY_CLOUD  = 'dxo761td7';
 const CLOUDINARY_PRESET = 'FITOSCENTS-DECANTS';
@@ -182,14 +183,80 @@ async function loadAll() {
   pq.forEach(d => window.paquetesData.push(paraVenderEnPanel({ id: d.id, ...d.data(), isPaquete: true })));
 
   const cOpts = cats.map(c => `<option>${c.nombre}</option>`).join('');
-  document.getElementById('f-cat').innerHTML   = `<option value="">Todas las categorias</option>${cOpts}`;
+  document.getElementById('f-cat').innerHTML   = `<option value="">Todas las categorías</option>${cOpts}`;
   document.getElementById('p-cat').innerHTML   = `<option value="">Selecciona</option>${cOpts}`;
   document.getElementById('f-marca').innerHTML = `<option value="">Todas las marcas</option>` +
     marcas.map(m => `<option>${m.nombre}</option>`).join('');
 
   initFiltrosSelects();
+  // Rehacer las opciones dejaba los selects en "Todas": se vuelven a poner los
+  // filtros que tenías (al guardar un perfume se pasa por aquí).
+  ponerFiltrosEnPantalla();
+  catalogoListo = true;
   window.renderTable();
 }
+
+// ── Filtros (la lógica vive en filtros-perfumes.js) ──────────────────────────
+const CLAVE_FILTROS = 'fsFiltrosPerfumes';
+const SELECTS_FILTRO = { genero: 'f-genero', categoria: 'f-cat', marca: 'f-marca', familia: 'f-familia', tipo: 'f-tipo', orden: 'f-orden' };
+let filtros = (() => {
+  try { return restaurarFiltros(sessionStorage.getItem(CLAVE_FILTROS)); } catch (e) { return { ...FILTROS_VACIOS }; }
+})();
+let firmaFiltros = '';
+// Antes de la primera carga los selects no tienen opciones: leerlos borraría los filtros guardados.
+let catalogoListo = false;
+
+let sincronizando = false;
+
+/** Pasa los filtros guardados a los controles; lo que ya no existe se quita. */
+function ponerFiltrosEnPantalla() {
+  sincronizando = true;
+  document.getElementById('search').value = filtros.q;
+  Object.entries(SELECTS_FILTRO).forEach(([k, id]) => {
+    const sel = document.getElementById(id);
+    sel.value = filtros[k];
+    if (sel.value !== filtros[k]) { sel.selectedIndex = 0; filtros[k] = ''; }
+    // Avisa al botón "Filtros" del teléfono (admin-filtros.js) para que cuente bien;
+    // el orden no, porque su change quitaría el orden por columna.
+    if (k !== 'orden') sel.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  sincronizando = false;
+}
+
+function leerFiltrosDePantalla() {
+  const f = { ...filtros, q: document.getElementById('search').value.trim() };
+  Object.entries(SELECTS_FILTRO).forEach(([k, id]) => { f[k] = document.getElementById(id).value; });
+  return f;
+}
+
+/** Atajos con su conteo, selects marcados y el botón de quitar filtros. */
+function pintarFiltros(conteo) {
+  const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  document.getElementById('fp-atajos').innerHTML = ATAJOS.map(a => {
+    const n = conteo[a.id] || 0, activo = filtros.atajo === a.id;
+    return `<button type="button" class="fp-atajo${a.tono ? ' ' + a.tono : ''}${activo ? ' activo' : ''}"
+      onclick="elegirAtajo('${a.id}')" aria-pressed="${activo}" ${!n && !activo ? 'disabled' : ''}>
+      <i class="bi ${a.icono}"></i> ${esc(a.etiqueta)} <b>${n}</b></button>`;
+  }).join('');
+  Object.entries(SELECTS_FILTRO).forEach(([k, id]) => {
+    if (k !== 'orden') document.getElementById(id).classList.toggle('activo', !!filtros[k]);
+  });
+  const n = cuantosActivos(filtros);
+  document.getElementById('fp-limpiar').hidden = !n;
+  document.getElementById('fp-limpiar-n').textContent = n > 1 ? `(${n})` : '';
+}
+
+window.elegirAtajo = (id) => {
+  filtros.atajo = filtros.atajo === id ? '' : id;
+  window.renderTable();
+};
+
+/** Quita todos los filtros; el orden se queda (no esconde perfumes). */
+window.limpiarFiltros = () => {
+  filtros = { ...FILTROS_VACIOS, orden: filtros.orden };
+  ponerFiltrosEnPantalla();
+  window.renderTable();
+};
 
 window.loadMarcas = () => {
   const cat = document.getElementById('p-cat').value;
@@ -232,35 +299,18 @@ window.renderPagination = (totalItems, start, end, totalPages) => {
 };
 
 window.renderTable = () => {
-  const q      = document.getElementById('search').value.toLowerCase();
-  const fg     = document.getElementById('f-genero').value;
-  const fc     = document.getElementById('f-cat').value;
-  const fm     = document.getElementById('f-marca').value;
-  const ffa    = document.getElementById('f-familia').value;
-  const fti    = document.getElementById('f-tipo').value;
-  const fnov   = document.getElementById('f-novedad').value;
-  const fstock = document.getElementById('f-stock').value;
-  const orden  = document.getElementById('f-orden').value;
+  if (!catalogoListo || sincronizando) return;
+  filtros = leerFiltrosDePantalla();
+  try { sessionStorage.setItem(CLAVE_FILTROS, JSON.stringify(filtros)); } catch (e) { /* sin storage */ }
+  const opciones = { archivados: window.activeTab === 'archived' };
+  // Otro filtro: a la primera página. Recargar tras guardar no cambia la firma: te quedas donde estabas.
+  const firma = JSON.stringify([filtros, opciones]);
+  if (firma !== firmaFiltros) { if (firmaFiltros) currentPage = 1; firmaFiltros = firma; }
+  pintarFiltros(contarAtajos(perfumes, filtros, opciones));
 
-  let fil = perfumes.filter(p =>
-    (!q      || matchSearch(q, p.nombre + ' ' + (p.marca || ''))) &&
-    (!fg     || p.genero    === fg)  &&
-    (!fc     || p.categoria === fc)  &&
-    (!fm     || p.marca     === fm)  &&
-    (!ffa    || p.familia   === ffa) &&
-    (!fti    || p.tipo      === fti) &&
-    (!fnov   || p.novedad   === true) &&
-    (!fstock || p.estadoStock === fstock)
-  );
-
-  if (window.activeTab === 'archived') {
-    fil = fil.filter(p => p.archivado === true);
-  } else {
-    fil = fil.filter(p => p.archivado !== true);
-  }
-
-  fil.sort((a, b) => {
-    if (tableSortCol) {
+  let fil = filtrarPerfumes(perfumes, filtros, opciones);
+  if (tableSortCol) {
+    fil.sort((a, b) => {
       const vA = a[tableSortCol] || (tableSortCol === 'clicks' ? 0 : '');
       const vB = b[tableSortCol] || (tableSortCol === 'clicks' ? 0 : '');
       let cmp = 0;
@@ -270,15 +320,10 @@ window.renderTable = () => {
         cmp = vA > vB ? 1 : vA < vB ? -1 : 0;
       }
       return tableSortDir === 'asc' ? cmp : -cmp;
-    } else {
-      if (orden === 'clicks') return (b.clicks || 0) - (a.clicks || 0);
-      if (orden === 'recientes') return (b.creadoEn || 0) - (a.creadoEn || 0);
-      if (orden === 'antiguos') return (a.creadoEn || 0) - (b.creadoEn || 0);
-      if (orden === 'az')     return a.nombre.localeCompare(b.nombre);
-      if (orden === 'za')     return b.nombre.localeCompare(a.nombre);
-      return 0;
-    }
-  });
+    });
+  } else {
+    fil = ordenarPerfumes(fil, filtros.orden);
+  }
 
     document.querySelectorAll('.sort-icon').forEach(el => {
       el.className = 'bi bi-chevron-expand sort-icon';
@@ -292,7 +337,7 @@ window.renderTable = () => {
       }
     }
 
-    document.getElementById('count-label').textContent = fil.length + ' perfumes';
+    document.getElementById('count-label').textContent = `${fil.length} perfume${fil.length === 1 ? '' : 's'}`;
     const tb = document.getElementById('tbody');
     const ds = localStorage.getItem('adminDataSaver') === '1';
 
