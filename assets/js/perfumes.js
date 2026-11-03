@@ -10,7 +10,7 @@ import { buildSelectOptions } from './filtros-config.js';
 import { toast } from './toast.js';
 import { sugiereNuevoCliente, siguienteClienteId, nombreCliente } from './pos-cliente.js';
 import { construirPrompt, parsearRespuesta, emparejarOpcion } from './ia-perfume.js';
-import { buscarEnCatalogo, armarInspirado, etiquetaCatalogo } from './inspirado.js';
+import { buscarEnCatalogo, armarInspirado, etiquetaCatalogo, agotadoBasico } from './inspirado.js?v=2';
 
 const CLOUDINARY_CLOUD  = 'dxo761td7';
 const CLOUDINARY_PRESET = 'FITOSCENTS-DECANTS';
@@ -1056,8 +1056,10 @@ window.revisarInspirado = () => {
   const estado = $('insp-estado'), extra = $('insp-extra'), preview = $('insp-preview');
   const prod = texto ? buscarEnCatalogo(texto, perfumes, $('p-id').value) : null;
   estado.hidden = !texto;
-  estado.classList.toggle('ok', !!prod && prod.activo !== false);
-  if (prod && prod.activo !== false) {
+  estado.classList.toggle('ok', !!prod && prod.activo !== false && !agotadoBasico(prod));
+  if (prod && prod.activo !== false && agotadoBasico(prod)) {
+    estado.innerHTML = '<i class="bi bi-hourglass-split"></i> Lo tienes, pero está agotado: se muestra sin enlace (y sin decir agotado) hasta que vuelva.';
+  } else if (prod && prod.activo !== false) {
     estado.innerHTML = '<i class="bi bi-check-circle"></i> Lo tienes en la tienda: la ficha llevará a su página.';
   } else if (prod) {
     estado.innerHTML = '<i class="bi bi-eye-slash"></i> Lo tienes, pero está oculto: mientras, se muestra con la imagen de abajo.';

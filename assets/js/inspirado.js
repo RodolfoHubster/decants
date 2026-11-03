@@ -47,12 +47,18 @@ export function armarInspirado({ nombre = '', marca = '', imagen = '', perfumeId
   return r.nombre ? r : null;
 }
 
+/** Agotado según el panel ("Estado Stock Físico"); la tienda pasa el suyo. */
+export const agotadoBasico = p => !!p && p.estadoStock === 'agotado';
+
 /**
  * Para la ficha de la tienda.
+ * @param {object} [opciones]
+ * @param {function} [opciones.agotado]  Si el original está agotado se muestra
+ *   igual (con su foto), pero sin enlace y sin decir que está agotado.
  * @returns {{nombre:string, marca:string, imagen:string, producto:object|null}|null}
- *   `producto` es el original si está en la tienda (para enlazarlo).
+ *   `producto` es el original si está en la tienda y se puede comprar (para enlazarlo).
  */
-export function resolverInspirado(p, todos) {
+export function resolverInspirado(p, todos, { agotado = agotadoBasico } = {}) {
   const ins = p && p.inspiradoEn;
   if (!ins || !ins.nombre) return null;
   const lista = todos || [];
@@ -63,6 +69,6 @@ export function resolverInspirado(p, todos) {
     nombre: producto ? producto.nombre : ins.nombre,
     marca: (producto ? producto.marca : ins.marca) || '',
     imagen: (producto && producto.imagen) || ins.imagen || '',
-    producto: producto || null,
+    producto: producto && !agotado(producto) ? producto : null,
   };
 }

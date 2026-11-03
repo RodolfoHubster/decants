@@ -1,4 +1,4 @@
-import { buscarEnCatalogo, armarInspirado, resolverInspirado, etiquetaCatalogo } from '../assets/js/inspirado.js';
+import { buscarEnCatalogo, armarInspirado, resolverInspirado, etiquetaCatalogo, agotadoBasico } from '../assets/js/inspirado.js';
 
 const sauvage = { id: 's1', nombre: 'Sauvage Elixir', marca: 'Dior', imagen: 'https://img/sauvage.jpg' };
 const sauvageEdt = { id: 's2', nombre: 'Sauvage', marca: 'Dior', imagen: 'https://img/edt.jpg' };
@@ -57,6 +57,17 @@ describe('resolverInspirado', () => {
   test('si no está (u ocultaron el original), muestra nombre e imagen guardados', () => {
     const r = resolverInspirado({ ...asad, inspiradoEn: { nombre: 'Sauvage Elixir', marca: 'Dior', perfumeId: 's1', imagen: 'guardada.jpg' } }, [asad]);
     expect(r).toEqual({ nombre: 'Sauvage Elixir', marca: 'Dior', imagen: 'guardada.jpg', producto: null });
+  });
+  test('si el original está agotado, se queda con su foto pero sin enlace', () => {
+    const agotado = { ...sauvage, estadoStock: 'agotado' };
+    const r = resolverInspirado({ ...asad, inspiradoEn: { nombre: 'Sauvage Elixir', perfumeId: 's1' } }, [asad, agotado]);
+    expect(r).toEqual({ nombre: 'Sauvage Elixir', marca: 'Dior', imagen: 'https://img/sauvage.jpg', producto: null });
+  });
+  test('la tienda puede pasar su propia regla de agotado', () => {
+    const r = resolverInspirado({ ...asad, inspiradoEn: { nombre: 'Sauvage Elixir', perfumeId: 's1' } }, catalogo, { agotado: () => true });
+    expect(r.producto).toBeNull();
+    expect(agotadoBasico({ estadoStock: 'por_acabarse' })).toBe(false);
+    expect(agotadoBasico({ estadoStock: 'agotado' })).toBe(true);
   });
   test('sin imagen guardada, imagen vacía', () => {
     const r = resolverInspirado({ ...asad, inspiradoEn: { nombre: 'Erba Pura' } }, catalogo);

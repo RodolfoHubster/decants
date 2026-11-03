@@ -49,7 +49,7 @@ import { leerCache, guardarCache, borrarCache } from './catalogo-cache.js?v=3';
 import { precargarImagen } from './imagenes.js';
 import { parsearFicha } from './ficha.js';
 import { significadoNota } from './notas-olfativas.js';
-import { resolverInspirado } from './inspirado.js';
+import { resolverInspirado } from './inspirado.js?v=2';
 import { CLAVE_DUENO, CLAVE_ULTIMO_DIA, diaLocal, debeContar } from './visitas.js';
 import { temporadaVigente, temporadaSimulada, paquetesDeTemporada, seleccionRequerida, ofreceTrucoOTrato, varianteModal, progresoScroll } from './temporada.js?v=2';
 
@@ -1825,7 +1825,8 @@ window.addEventListener('resize', () => { if (notaActiva) ocultarGlobo(); });
 function pintarInspirado(p) {
   const el = document.getElementById('modal-inspirado');
   if (!el) return;
-  const ins = (p.tipo === 'paquete' || p.tipo === 'accesorio') ? null : resolverInspirado(p, all);
+  // Agotado: se queda la tarjeta, sin enlace ni aviso.
+  const ins = (p.tipo === 'paquete' || p.tipo === 'accesorio') ? null : resolverInspirado(p, all, { agotado: agotadoEnTienda });
   if (!ins) { el.hidden = true; el.innerHTML = ''; return; }
   const src = imgThumb(ins.imagen);
   const foto = src
