@@ -10,6 +10,7 @@ import { buildSelectOptions } from './filtros-config.js';
 import { toast } from './toast.js';
 import { sugiereNuevoCliente, siguienteClienteId, nombreCliente } from './pos-cliente.js';
 import { construirPrompt, parsearRespuesta, emparejarOpcion } from './ia-perfume.js';
+import { buscarEnCatalogo, armarInspirado, etiquetaCatalogo } from './inspirado.js';
 
 const CLOUDINARY_CLOUD  = 'dxo761td7';
 const CLOUDINARY_PRESET = 'FITOSCENTS-DECANTS';
@@ -1025,8 +1026,83 @@ function limpiarFormularioPerfume() {
   document.getElementById('preview-img').src = '';
   document.getElementById('preview-wrap').style.display = 'none';
 
+  ['p-insp-nombre', 'p-insp-marca', 'p-insp-img', 'p-insp-file'].forEach(id => { document.getElementById(id).value = ''; });
+  llenarListaInspirado();
+  window.revisarInspirado();
+
   window.currentLotes = [];
   window.activeLoteId = null;
+}
+
+// ── Inspirado en (dupe) ──────────────────────────────────────────────────────
+
+/** El buscador ofrece los perfumes de la tienda como "Nombre · Marca". */
+function llenarListaInspirado() {
+  const lista = document.getElementById('insp-lista');
+  if (!lista) return;
+  const esc = t => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  lista.innerHTML = perfumes.filter(p => !p.isAccesorio)
+    .map(p => `<option value="${esc(etiquetaCatalogo(p))}"></option>`).join('');
+}
+
+/**
+ * Dice si el original está en la tienda (se enlazará a su página) o no (pide
+ * marca e imagen para mostrarlo). Si está pero oculto, también pide imagen:
+ * mientras siga oculto, la tienda muestra la guardada.
+ */
+window.revisarInspirado = () => {
+  const $ = id => document.getElementById(id);
+  const texto = $('p-insp-nombre').value.trim();
+  const estado = $('insp-estado'), extra = $('insp-extra'), preview = $('insp-preview');
+  const prod = texto ? buscarEnCatalogo(texto, perfumes, $('p-id').value) : null;
+  estado.hidden = !texto;
+  estado.classList.toggle('ok', !!prod && prod.activo !== false);
+  if (prod && prod.activo !== false) {
+    estado.innerHTML = '<i class="bi bi-check-circle"></i> Lo tienes en la tienda: la ficha llevará a su página.';
+  } else if (prod) {
+    estado.innerHTML = '<i class="bi bi-eye-slash"></i> Lo tienes, pero está oculto: mientras, se muestra con la imagen de abajo.';
+  } else {
+    estado.innerHTML = '<i class="bi bi-info-circle"></i> No está en tu tienda: se mostrará con su nombre y la imagen que pongas.';
+    // "Nombre · Marca" escrito a mano o por la IA: la marca va a su campo.
+    const marcaTxt = (texto.split('·')[1] || '').trim();
+    if (marcaTxt && !$('p-insp-marca').value) $('p-insp-marca').value = marcaTxt;
+  }
+  extra.hidden = !texto || (!!prod && prod.activo !== false);
+
+  const archivo = $('p-insp-file').files[0];
+  const url = prod && prod.activo !== false ? prod.imagen : $('p-insp-img').value.trim();
+  if (archivo && !(prod && prod.activo !== false)) {
+    const r = new FileReader();
+    r.onload = e => { preview.src = e.target.result; preview.hidden = false; };
+    r.readAsDataURL(archivo);
+  } else {
+    preview.hidden = !url;
+    if (url) preview.src = imgThumb(url);
+  }
+};
+
+/** Lo que se guarda en `inspiradoEn` (sube la imagen si eligieron archivo). */
+async function leerInspirado(idActual) {
+  const $ = id => document.getElementById(id);
+  const texto = $('p-insp-nombre').value.trim();
+  if (!texto) return null;
+  const prod = buscarEnCatalogo(texto, perfumes, idActual);
+  if (prod && prod.activo !== false) {
+    // La foto se guarda también, por si un día ocultas el original.
+    return armarInspirado({ nombre: prod.nombre, marca: prod.marca, imagen: prod.imagen || '', perfumeId: prod.id });
+  }
+  let imagen = $('p-insp-img').value.trim();
+  const archivo = $('p-insp-file').files[0];
+  if (archivo) {
+    toast('Subiendo imagen del original...', 'info');
+    imagen = await uploadToCloudinary(archivo);
+  }
+  return armarInspirado({
+    nombre: prod ? prod.nombre : texto.split('·')[0],
+    marca: $('p-insp-marca').value || (prod && prod.marca) || '',
+    imagen: imagen || (prod && prod.imagen) || '',
+    perfumeId: prod ? prod.id : '',
+  });
 }
 
 window.openModal = () => {
@@ -1130,6 +1206,14 @@ window.edit = (id) => {
   if (p.imagen) {
     document.getElementById('p-img-url').value = p.imagen;
     window.previewUrl();
+  }
+  const ins = p.inspiradoEn;
+  if (ins && ins.nombre) {
+    const original = ins.perfumeId && perfumes.find(x => x.id === ins.perfumeId);
+    document.getElementById('p-insp-nombre').value = original ? etiquetaCatalogo(original) : ins.nombre;
+    document.getElementById('p-insp-marca').value = ins.marca || '';
+    document.getElementById('p-insp-img').value = ins.imagen || '';
+    window.revisarInspirado();
   }
   document.getElementById('modal-title').textContent = 'Editar Perfume';
   document.getElementById('modal').classList.add('open');
@@ -1289,6 +1373,10 @@ function aplicarRespuestaIA(ai, { forzarNombre = false } = {}) {
   });
 
   if (ai.desc && !$('p-desc').value) $('p-desc').value = ai.desc;
+  if (ai.inspiredBy && String(ai.inspiredBy).trim() && !$('p-insp-nombre').value) {
+    $('p-insp-nombre').value = String(ai.inspiredBy).trim();
+    window.revisarInspirado();
+  }
   aplicarPreciosIA(ai);
 }
 
@@ -1366,6 +1454,7 @@ window.save = async () => {
     const tamanos = Object.keys(precios).filter(k => precios[k] > 0);
     const estado = document.getElementById('p-estado').value;
     const estadoStock = document.getElementById('p-stock').value || 'normal';
+    const inspiradoEn = await leerInspirado(id);
 
     const data = {
       nombre, genero, categoria, marca,
@@ -1376,7 +1465,8 @@ window.save = async () => {
       activo:    (estado === 'visible'),
       archivado: (estado === 'archivado'),
       novedad: document.getElementById('p-novedad').checked,
-      lotes: window.currentLotes, loteActivo: window.activeLoteId, estadoStock
+      lotes: window.currentLotes, loteActivo: window.activeLoteId, estadoStock,
+      inspiradoEn
     };
     
     // Auto-desmarcar novedad después de 3 días

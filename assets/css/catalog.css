@@ -728,6 +728,76 @@ header {
   background: rgba(255,255,255,.06); color: #ece6d8;
 }
 
+/* Notas con significado: botón con globito al pasar el cursor o tocar (catalog.js) */
+button.nota {
+  border: 0; font-family: inherit; line-height: inherit; cursor: help;
+  -webkit-tap-highlight-color: transparent; transition: background .15s, color .15s;
+}
+button.nota:hover, button.nota.activa { background: rgba(201,168,76,.18); color: #f3e3b5; }
+button.nota:focus-visible { outline: 2px solid #c9a84c; outline-offset: 2px; }
+.modal-ficha .ficha-tit { flex-wrap: wrap; row-gap: 2px; }
+.ficha-ayuda {
+  margin-left: auto; font-size: 11px; font-weight: 500; letter-spacing: 0;
+  text-transform: none; color: #6f6a60; white-space: nowrap;
+}
+@media (max-width: 600px) { .ficha-ayuda { flex-basis: 100%; margin-left: 0; } }
+.ficha-ayuda .con-cursor { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .ficha-ayuda .con-cursor { display: inline; }
+  .ficha-ayuda .con-dedo { display: none; }
+}
+.nota-globo {
+  position: fixed; z-index: 10000; max-width: min(270px, calc(100vw - 20px));
+  padding: 10px 13px 11px; border-radius: 12px;
+  background: #1c1912; border: 1px solid rgba(201,168,76,.45);
+  box-shadow: 0 12px 32px rgba(0,0,0,.55);
+  color: #d9d2c3; font-size: 12.5px; line-height: 1.45;
+  pointer-events: none; opacity: 0; transform: translateY(4px) scale(.97);
+  transition: opacity .16s ease, transform .16s ease;
+}
+.nota-globo.abajo { transform: translateY(-4px) scale(.97); }
+.nota-globo.visible { opacity: 1; transform: none; }
+.nota-globo small {
+  display: block; font-size: 10px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: #c9a84c;
+}
+.nota-globo b { display: block; margin: 1px 0 3px; font-size: 14px; color: #f3e3b5; }
+.nota-globo p { margin: 0; }
+.nota-globo::after {
+  content: ''; position: absolute; left: var(--flecha, 50%); bottom: -6px;
+  width: 10px; height: 10px; background: #1c1912;
+  border: solid rgba(201,168,76,.45); border-width: 0 1px 1px 0;
+  transform: translateX(-50%) rotate(45deg);
+}
+.nota-globo.abajo::after { bottom: auto; top: -6px; border-width: 1px 0 0 1px; }
+
+/* Inspirado en: el original del dupe (catalog.js → pintarInspirado) */
+.modal-inspirado { margin: 4px 0 18px; }
+.modal-inspirado[hidden] { display: none; }
+.insp-card {
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px 10px 10px;
+  border-radius: 14px; background: rgba(201,168,76,.06);
+  border: 1px solid rgba(201,168,76,.22); color: inherit; text-decoration: none;
+}
+a.insp-card { transition: border-color .2s, background .2s, transform .2s; }
+a.insp-card:hover { border-color: rgba(201,168,76,.55); background: rgba(201,168,76,.1); transform: translateY(-2px); }
+a.insp-card:active { transform: scale(.98); }
+.insp-foto {
+  width: 54px; height: 54px; flex-shrink: 0; border-radius: 10px; overflow: hidden;
+  background: #f4f1ea; display: grid; place-items: center;
+}
+.insp-foto img { width: 100%; height: 100%; object-fit: contain; }
+.insp-foto i { color: #c9a84c; font-size: 22px; }
+.insp-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.25; }
+.insp-txt small {
+  font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #c9a84c;
+}
+.insp-txt b { margin-top: 2px; font-size: 15px; color: #ece6d8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.insp-txt em { font-style: normal; font-size: 12px; color: #8a8478; }
+.insp-ir { font-size: 12.5px; font-weight: 600; color: #c9a84c; white-space: nowrap; }
+.insp-ir i { font-size: 11px; transition: transform .2s; display: inline-block; }
+a.insp-card:hover .insp-ir i { transform: translateX(3px); }
+
 .medidores { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .medidor {
   padding: 10px 12px; border-radius: 12px;

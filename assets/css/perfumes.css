@@ -132,3 +132,12 @@ td.col-clicks {
    y ya no se encima con el nombre ni con el botón de copiar precios. */
 #pos-m-media.sin-foto { height: 46px; border-bottom: 1px solid var(--border); }
 #pos-m-media.sin-foto .btn-icon { top: 7px !important; background: transparent !important; color: var(--text-muted) !important; }
+
+/* Inspirado en (dupe) */
+.insp-admin { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px; }
+.insp-admin > label small { color: var(--text-faint); font-weight: 400; margin-left: 4px; }
+.insp-estado { margin-top: 6px; font-size: 12.5px; color: var(--text-muted); }
+.insp-estado.ok { color: var(--success, #22c55e); }
+#insp-extra { margin-top: 10px; }
+.insp-preview { display: block; width: 72px; height: 72px; object-fit: contain; margin-top: 8px; border-radius: 10px; background: #f4f1ea; }
+.insp-preview[hidden] { display: none; }

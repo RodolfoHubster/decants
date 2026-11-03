@@ -77,6 +77,11 @@ describe('construirPrompt', () => {
     expect(p).toContain('exactamente una de: Elixir, Eau de Parfum');
     expect(p).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u);
   });
+  test('pide el original si es dupe, como "Nombre · Marca" (lo lee inspirado.js)', () => {
+    const p = construirPrompt({ nombre: 'Asad', ...listas });
+    expect(p).toContain('"inspiredBy"');
+    expect(p).toContain('Nombre · Marca');
+  });
   test('no pide prosa poética', () => {
     expect(construirPrompt({ nombre: 'X' }).toLowerCase()).not.toContain('poétic');
   });

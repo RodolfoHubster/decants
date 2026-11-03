@@ -113,6 +113,7 @@ REGLAS IMPORTANTES:
   "family": "Familia olfativa, exactamente una de: ${lista(familias, 'Cítrico, Floral, Amaderado, Oriental')}",
   "type": "Concentración, exactamente una de: ${lista(tipos, 'Eau de Toilette, Eau de Parfum, Parfum, Extrait de Parfum')}",
   "confianza": "alta, media o baja segun lo seguro que estes de este perfume en concreto",
+  "inspiredBy": "Si es un clon o dupe conocido de otro perfume (muy comun en casas arabes), el original en formato 'Nombre · Marca', por ejemplo 'Sauvage Elixir · Dior'. Vacio si no es dupe o no estas seguro",
   "desc": "Ficha en texto plano con saltos de linea reales, en este formato exacto y sin encabezados extra:\\n\\n<Una sola frase que defina la personalidad del perfume y a quien le queda: para que ocasion y que proyecta>\\n\\nSalida: <3-4 notas, lo que se huele en los primeros minutos>\\nCorazon: <3-4 notas, el cuerpo del aroma>\\nFondo: <3-4 notas, lo que permanece en piel y ropa>\\n\\nDuracion: <Baja (2-4 h) | Moderada (4-6 h) | Alta (mas de 8 h)> · Estela: <discreta | moderada | fuerte>\\nIdeal para: <Dia | Noche | Dia y noche> · <Clima calido | Clima frio | Todo el año>",
   "px2": "Precio competitivo MXN 2ml: 80-120 diseñador, 180-280 nicho, 50-90 árabe",
   "px3": "Precio competitivo MXN 3ml: 120-170 diseñador, 250-380 nicho, 70-110 árabe",

@@ -8,7 +8,7 @@ import { perfumeURL, perfumeFullURL, getSlugFromHash, findBySlug, rutaProducto, 
 import { similares } from './similares.js';
 import { opcionesPro, sufijoPro, etiquetaTalla, COLORES_PRO } from './pro.js';
 import { correoValido, suscripcion } from './newsletter.js';
-import { imgCard, imgModal, imgCart, imgOg } from './cloudinary.js';
+import { imgCard, imgModal, imgCart, imgOg, imgThumb } from './cloudinary.js';
 import { heroStats, pickShowcase, construirColecciones, barajar } from './hero.js';
 import { resolverItemsPaquete, contarDisponibles, paqueteArmable } from './stock.js';
 import { ahorroPorTalla } from './precios.js';
@@ -48,6 +48,8 @@ const NOMBRE_TEMPORADA = { halloween: 'Halloween' };
 import { leerCache, guardarCache, borrarCache } from './catalogo-cache.js?v=3';
 import { precargarImagen } from './imagenes.js';
 import { parsearFicha } from './ficha.js';
+import { significadoNota } from './notas-olfativas.js';
+import { resolverInspirado } from './inspirado.js';
 import { CLAVE_DUENO, CLAVE_ULTIMO_DIA, diaLocal, debeContar } from './visitas.js';
 import { temporadaVigente, temporadaSimulada, paquetesDeTemporada, seleccionRequerida, ofreceTrucoOTrato, varianteModal, progresoScroll } from './temporada.js?v=2';
 
@@ -1541,6 +1543,7 @@ window.openModal = (id, pushHash = false) => {
   descEl.textContent = ficha.estructurada ? ficha.frase : (p.descripcion || 'Sin descripción disponible.');
   pintarEtiquetas(p);
   pintarFicha(ficha);
+  pintarInspirado(p);
   prepararDescripcion(descEl);
 
   window.customPackageSelections = [];
@@ -1716,7 +1719,12 @@ function pintarFicha(f) {
   if (!el) return;
   if (!f.estructurada) { el.hidden = true; el.innerHTML = ''; return; }
 
-  const notas = arr => `<div class="notas">${arr.map(n => `<span class="nota">${escFicha(n)}</span>`).join('')}</div>`;
+  // Las que tienen significado (notas-olfativas.js) son botones: al pasar el cursor o tocarlas sale su globito.
+  const nota = n => significadoNota(n)
+    ? `<button type="button" class="nota" data-nota="${escFicha(n)}">${escFicha(n)}</button>`
+    : `<span class="nota">${escFicha(n)}</span>`;
+  const notas = arr => `<div class="notas">${arr.map(nota).join('')}</div>`;
+  const conSignificado = [...f.salida, ...f.corazon, ...f.fondo, ...f.notas].some(n => significadoNota(n));
   const piso = (n, titulo, ayuda, arr) => arr.length
     ? `<div class="piso piso-${n}"><div class="piso-tit">${titulo}<small>${ayuda}</small></div>${notas(arr)}</div>` : '';
   const piramide = f.notas.length
@@ -1738,8 +1746,94 @@ function pintarFicha(f) {
       ${f.clima ? `<span class="mtag"><i class="bi ${iconoClima(f.clima)}"></i>${escFicha(f.clima)}</span>` : ''}
     </div>` : '';
 
-  el.innerHTML = `<div class="ficha-tit"><i class="bi bi-triangle"></i> Pirámide olfativa</div>
+  const ayuda = conSignificado
+    ? '<small class="ficha-ayuda"><span class="con-cursor">Pasa el cursor por</span><span class="con-dedo">Toca</span> una nota para saber qué es</small>' : '';
+  el.innerHTML = `<div class="ficha-tit"><i class="bi bi-triangle"></i> Pirámide olfativa${ayuda}</div>
     <div class="piramide">${piramide}</div>${medidores}${uso}`;
+  el.hidden = false;
+}
+
+// ── Globito de las notas ─────────────────────────────────────────
+// Con mouse sale al pasar el cursor; en el teléfono, al tocar la nota (otro
+// toque, o tocar fuera o desplazarse, lo cierra). Es uno solo, pegado al body,
+// para que no lo recorte la pirámide ni la hoja del modal.
+const conCursor = window.matchMedia('(hover: hover) and (pointer: fine)');
+let globo = null, notaActiva = null;
+
+function mostrarGlobo(chip) {
+  const s = significadoNota(chip.dataset.nota);
+  if (!s) return;
+  if (!globo) {
+    globo = document.createElement('div');
+    globo.className = 'nota-globo';
+    globo.id = 'nota-globo';
+    globo.setAttribute('role', 'tooltip');
+    document.body.appendChild(globo);
+  }
+  ocultarGlobo();
+  notaActiva = chip;
+  chip.classList.add('activa');
+  chip.setAttribute('aria-describedby', 'nota-globo');
+  globo.innerHTML = `<small>${escFicha(s.tipo)}</small><b>${escFicha(s.nombre)}</b><p>${escFicha(s.texto)}</p>`;
+  globo.style.left = '0px'; globo.style.top = '0px';
+  const r = chip.getBoundingClientRect();
+  const ancho = globo.offsetWidth, alto = globo.offsetHeight, margen = 10;
+  // Arriba de la nota; si no cabe (la nota está pegada al borde de arriba), abajo.
+  const arriba = r.top - alto - 12 > margen;
+  const left = Math.min(Math.max(margen, r.left + r.width / 2 - ancho / 2), window.innerWidth - ancho - margen);
+  globo.style.left = `${left}px`;
+  globo.style.top = `${arriba ? r.top - alto - 10 : r.bottom + 10}px`;
+  globo.style.setProperty('--flecha', `${r.left + r.width / 2 - left}px`);
+  globo.classList.toggle('abajo', !arriba);
+  void globo.offsetWidth;   // para que la entrada se anime también al pasar de una nota a otra
+  globo.classList.add('visible');
+}
+
+function ocultarGlobo() {
+  if (notaActiva) {
+    notaActiva.classList.remove('activa');
+    notaActiva.removeAttribute('aria-describedby');
+    notaActiva = null;
+  }
+  globo?.classList.remove('visible');
+}
+
+const notaDe = e => e.target instanceof Element ? e.target.closest('.nota[data-nota]') : null;
+document.addEventListener('mouseover', e => {
+  const chip = notaDe(e);
+  if (conCursor.matches && chip && chip !== notaActiva) mostrarGlobo(chip);
+});
+document.addEventListener('mouseout', e => {
+  const chip = notaDe(e);
+  if (conCursor.matches && chip && !chip.contains(e.relatedTarget)) ocultarGlobo();
+});
+document.addEventListener('click', e => {
+  const chip = notaDe(e);
+  if (!chip) { ocultarGlobo(); return; }
+  if (chip === notaActiva && !conCursor.matches) ocultarGlobo();
+  else mostrarGlobo(chip);
+});
+document.addEventListener('focusin', e => { const chip = notaDe(e); if (chip && chip !== notaActiva) mostrarGlobo(chip); });
+document.addEventListener('focusout', e => { if (notaDe(e)) ocultarGlobo(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') ocultarGlobo(); });
+document.addEventListener('scroll', () => { if (notaActiva) ocultarGlobo(); }, { passive: true, capture: true });
+window.addEventListener('resize', () => { if (notaActiva) ocultarGlobo(); });
+
+/** "Inspirado en": el original del dupe. Si está en la tienda, lleva a su página. */
+function pintarInspirado(p) {
+  const el = document.getElementById('modal-inspirado');
+  if (!el) return;
+  const ins = (p.tipo === 'paquete' || p.tipo === 'accesorio') ? null : resolverInspirado(p, all);
+  if (!ins) { el.hidden = true; el.innerHTML = ''; return; }
+  const src = imgThumb(ins.imagen);
+  const foto = src
+    ? `<img src="${escFicha(src)}" alt="" width="100" height="100" loading="lazy" decoding="async">`
+    : '<i class="bi bi-droplet"></i>';
+  const texto = `<span class="insp-foto">${foto}</span>
+    <span class="insp-txt"><small>Inspirado en</small><b>${escFicha(ins.nombre)}</b>${ins.marca ? `<em>${escFicha(ins.marca)}</em>` : ''}</span>`;
+  el.innerHTML = ins.producto
+    ? `<a class="insp-card" href="${escFicha(linkProducto(ins.producto))}">${texto}<span class="insp-ir">Lo tenemos <i class="bi bi-chevron-right"></i></span></a>`
+    : `<div class="insp-card">${texto}</div>`;
   el.hidden = false;
 }
 
