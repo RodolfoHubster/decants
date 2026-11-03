@@ -119,6 +119,7 @@ Búscalos con `grep -n 'nombreDeFuncion' archivo` y lee solo el rango con
   con `JSON.stringify` da "distinto" entre dos lecturas idénticas. Para verificar, ordenar claves en
   todos los niveles. Y guardar el estado previo en `window`, no en `const` (no sobrevive entre llamadas).
 - **Heredocs largos fallan en esta shell** (~130+ líneas): escribir el script a un archivo y ejecutarlo.
+- La **tienda guarda el catálogo 5 min por pestaña** (`catalogo-cache.js`): un cambio del panel no se ve en una pestaña ya abierta. En el navegador del dueño (`fs_dueno`, lo pone `admin/sidebar.js`) siempre se trae fresco.
 - Los **errores viejos de consola persisten** en el panel citando `?v=` que ya no se cargan.
   Confirma la versión real antes de creerles.
 

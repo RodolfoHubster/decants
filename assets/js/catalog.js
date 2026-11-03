@@ -630,7 +630,9 @@ async function load() {
   showSkeletons();
 
   // Si la visita ya trajo el catálogo hace poco, se reusa: 0 lecturas.
-  let datos = leerCache();
+  // Tú no (el panel marca tu navegador): lo que acabas de cambiar se ve al
+  // recargar, sin esperar los 5 minutos de la copia.
+  let datos = esDueno ? null : leerCache();
   if (!datos) {
     try {
       datos = await traerDeFirestore();
