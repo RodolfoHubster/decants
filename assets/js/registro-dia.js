@@ -79,3 +79,17 @@ export function validarRegistro(rows, modo) {
   }
   return { mensaje: '' };
 }
+
+/**
+ * La misma hora, en otro día. Al editar un día ya guardado, cada venta conservaba
+ * su fecha original y cambiar la Fecha de arriba no hacía nada.
+ * @param {number} ms        creadoEn de la venta.
+ * @param {string} fechaStr  'AAAA-MM-DD', hora local.
+ */
+export function moverAlDia(ms, fechaStr) {
+  const [y, m, d] = String(fechaStr || '').split('-').map(Number);
+  if (!ms || !y || !m || !d) return ms;
+  const f = new Date(ms);
+  f.setFullYear(y, m - 1, d);
+  return f.getTime();
+}

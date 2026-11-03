@@ -6,7 +6,7 @@ import { paraVenderEnPanel } from './sorpresa.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
 import { indiceClientes, idCliente, sugerirClientes, buscarCliente, sumarEncargos } from './clientes-util.js?v=4';
-import { modoDeCanal, nombreTicketNuevo, resumenRenglones, validarRegistro } from './registro-dia.js';
+import { modoDeCanal, nombreTicketNuevo, resumenRenglones, validarRegistro, moverAlDia } from './registro-dia.js?v=2';
 import { claveCanasta, canastaRestante } from './pos-cliente.js?v=2';
 
 /**
@@ -2240,7 +2240,9 @@ window.saveDia = async () => {
         p = window.paquetesData.find(x => x.id === r.perfumeId);
         if (p) isPaquete = true;
       }
-      
+      // Las ya guardadas pasan a la fecha de arriba con su misma hora.
+      const creado = r.creadoEn ? moverAlDia(aMs(r.creadoEn), fechaStr) : fechaTs + (r.creadoEnOffset || 0);
+
       let paqueteItemsToSave = null;
       if (isPaquete) {
         let arr = r.paqueteItems;
@@ -2262,7 +2264,8 @@ window.saveDia = async () => {
             return {
               id: subPerf ? subPerf.id : (cid || ''),
               nombre: item.nombre || '',
-              loteId: window.getSmartLoteId(subPerf, r.creadoEn || (fechaTs + (r.creadoEnOffset || 0)))
+              // La botella de la que salió no cambia por editar o mover el día.
+              loteId: item.loteId || window.getSmartLoteId(subPerf, creado)
             };
           });
         }
@@ -2291,8 +2294,8 @@ window.saveDia = async () => {
         canal: r.docId ? (r.canalOriginal || canalVal) : canalVal,
         metodoPago: r.metodoPago || metodoVal,
         lugar: r.docId ? (r.lugarOriginal ?? lugarStr) : lugarStr,
-        creadoEn: r.creadoEn || (fechaTs + (r.creadoEnOffset || 0)),
-        loteId: r.loteId || window.getSmartLoteId(p, r.creadoEn || (fechaTs + (r.creadoEnOffset || 0))),
+        creadoEn: creado,
+        loteId: r.loteId || window.getSmartLoteId(p, creado),
         reforzada: r.reforzada || false,
         basePrecio: r.basePrecio || 0
       };
