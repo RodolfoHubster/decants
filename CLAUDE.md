@@ -98,6 +98,7 @@ Búscalos con `grep -n 'nombreDeFuncion' archivo` y lee solo el rango con
 - **Imágenes siempre por `cloudinary.js`** (`imgCard`, `imgCart`, `imgThumb`): nunca `src="${p.imagen}"`
   directo — descarga el original y se salta el modo ahorro.
 - **"Volver" usa `history.back()`**: el navegador puede revivir la página (bfcache) sin correr `load()`, con su memoria vieja. Lo que dependa de otra página se relee en `pageshow` (`e.persisted`); el carrito ya lo hace con `refrescarPedido`.
+- **Botella sellada** (talla `'Completo'`, `registro-dia.js → esSellada`): no sale de la botella abierta, así que no lleva lote, y siempre lleva `costoCompleto` (sin él, la ganancia usaba el costo de la botella abierta). Lo piden Editar venta y Registrar ventas.
 - **Ningún tamaño viene marcado al abrir un perfume** (`cart.js → tallaPreelegida`): solo si hay una opción o ya lleva uno en el pedido. Con el primero marcado, la gente compraba 2 ml sin querer.
 - **Esqueletos de la tienda**: se arman con las clases de la tarjeta real (`.card-img`, `.card-body`, `.cpill`) y texto transparente, para que midan igual que lo que llega.
 - **Variables CSS**: usar los tokens de `variables.css`. `--surface`, `--text`, `--gold` son alias.

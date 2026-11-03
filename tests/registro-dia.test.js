@@ -1,4 +1,4 @@
-import { modoDeCanal, nombreTicketNuevo, resumenRenglones, ticketsSinNombre, validarRegistro, moverAlDia } from '../assets/js/registro-dia.js';
+import { modoDeCanal, nombreTicketNuevo, resumenRenglones, ticketsSinNombre, validarRegistro, moverAlDia, esSellada, tieneCosto, precioAlSellar } from '../assets/js/registro-dia.js';
 
 const fila = (extra = {}) => ({ tid: 't1', perfumeId: 'p1', talla: '5', precio: 100, cantidad: 1, cliente: 'Laura', ...extra });
 
@@ -85,5 +85,52 @@ describe('moverAlDia', () => {
     expect(moverAlDia(venta, '')).toBe(venta);
     expect(moverAlDia(venta, 'mañana')).toBe(venta);
     expect(moverAlDia(0, '2026-10-30')).toBe(0);
+  });
+});
+
+describe('botella sellada', () => {
+  const sellada = (extra = {}) => fila({ rid: 7, talla: 'Completo', precio: 1500, ...extra });
+
+  test('sin costo no se puede guardar, y señala el renglón', () => {
+    expect(validarRegistro([fila(), sellada()], 'ruedas')).toEqual({ mensaje: 'Pon cuánto te costó la botella sellada', tid: 't1', rid: 7 });
+    expect(validarRegistro([sellada({ costoCompleto: '' }), sellada({ rid: 8, costoCompleto: null })], 'ruedas').mensaje)
+      .toBe('A 2 botellas selladas les falta lo que te costaron');
+  });
+  test('con costo se guarda; 0 vale (regalo)', () => {
+    expect(validarRegistro([sellada({ costoCompleto: 1100 })], 'ruedas').mensaje).toBe('');
+    expect(validarRegistro([sellada({ costoCompleto: '0' })], 'ruedas').mensaje).toBe('');
+  });
+  test('los decants no piden costo', () => {
+    expect(validarRegistro([fila({ talla: '10' }), fila({ talla: 'Resto' })], 'ruedas').mensaje).toBe('');
+  });
+  test('esSellada y tieneCosto', () => {
+    expect(esSellada('Completo')).toBe(true);
+    expect(esSellada('Resto')).toBe(false);
+    expect(esSellada('5')).toBe(false);
+    expect(tieneCosto(0)).toBe(true);
+    expect(tieneCosto('1350')).toBe(true);
+    expect(tieneCosto('')).toBe(false);
+    expect(tieneCosto(null)).toBe(false);
+    expect(tieneCosto(-5)).toBe(false);
+    expect(tieneCosto('abc')).toBe(false);
+  });
+});
+
+describe('precioAlSellar', () => {
+  const catalogo = ['90', '180', '320', ''];
+
+  test('borra el precio que venía del decant elegido', () => {
+    expect(precioAlSellar('90', catalogo)).toBe('');
+    expect(precioAlSellar(320, catalogo)).toBe('');
+  });
+  test('también si era el de reforzada', () => {
+    expect(precioAlSellar('195', catalogo, 15)).toBe('');
+  });
+  test('deja el que escribió a mano', () => {
+    expect(precioAlSellar('1500', catalogo, 15)).toBe('1500');
+  });
+  test('vacío se queda vacío', () => {
+    expect(precioAlSellar('', catalogo)).toBe('');
+    expect(precioAlSellar(null, catalogo)).toBe(null);
   });
 });

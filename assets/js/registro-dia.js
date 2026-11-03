@@ -55,8 +55,32 @@ export function ticketsSinNombre(rows) {
 const tienePrecio = r => r.precio !== '' && r.precio != null && !Number.isNaN(Number(r.precio)) && Number(r.precio) >= 0;
 
 /**
+ * Botella sellada: no sale de la botella abierta (no lleva lote ni descuenta ml)
+ * y su ganancia depende de lo que costó. Sin ese costo, Estadísticas usaba el de
+ * la botella abierta del perfume, que no tiene nada que ver.
+ */
+export const esSellada = talla => talla === 'Completo';
+
+/** Lo que costó la botella sellada: 0 vale (regalo); vacío o no numérico, no. */
+export const tieneCosto = costo => costo !== '' && costo != null && Number.isFinite(Number(costo)) && Number(costo) >= 0;
+
+/**
+ * Al pasar a botella sellada no hay precio de catálogo, y el que quedaba era el
+ * del decant que estaba elegido (salía una botella a $90). Si coincide con un
+ * precio del catálogo (o con el de reforzada) se borra; si lo escribió a mano, se deja.
+ */
+export function precioAlSellar(precio, preciosCatalogo = [], extraReforzada = 0) {
+  const n = Number(precio);
+  if (precio === '' || precio == null || !Number.isFinite(n)) return precio;
+  const deCatalogo = (preciosCatalogo || []).map(Number).filter(x => x > 0)
+    .some(x => x === n || x + (Number(extraReforzada) || 0) === n);
+  return deCatalogo ? '' : precio;
+}
+
+/**
  * Qué falta para guardar.
- * @returns {{mensaje:string, tid?:string}} mensaje vacío si todo bien.
+ * @returns {{mensaje:string, tid?:string, rid?:number}} mensaje vacío si todo bien;
+ *   `rid` señala el renglón cuando lo que falta es el costo de una botella sellada.
  */
 export function validarRegistro(rows, modo) {
   const lista = (rows || []).filter(Boolean);
@@ -71,6 +95,14 @@ export function validarRegistro(rows, modo) {
   }
   const validas = lista.filter(r => r.perfumeId && r.talla && tienePrecio(r));
   if (!validas.length) return { mensaje: 'Agrega al menos un perfume con talla y precio' };
+  const sinCosto = validas.filter(r => esSellada(r.talla) && !tieneCosto(r.costoCompleto));
+  if (sinCosto.length) {
+    return {
+      mensaje: sinCosto.length === 1 ? 'Pon cuánto te costó la botella sellada' : `A ${sinCosto.length} botellas selladas les falta lo que te costaron`,
+      tid: sinCosto[0].tid,
+      rid: sinCosto[0].rid,
+    };
+  }
   if (modo === 'entregas') {
     const sin = ticketsSinNombre(rows);
     if (sin.length) {

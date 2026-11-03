@@ -6,7 +6,7 @@ import { paraVenderEnPanel } from './sorpresa.js';
 import { renderSidebar } from '../../admin/sidebar.js';
 import { toast } from './toast.js';
 import { indiceClientes, idCliente, sugerirClientes, buscarCliente, sumarEncargos } from './clientes-util.js?v=4';
-import { modoDeCanal, nombreTicketNuevo, resumenRenglones, validarRegistro, moverAlDia } from './registro-dia.js?v=2';
+import { modoDeCanal, nombreTicketNuevo, resumenRenglones, validarRegistro, moverAlDia, esSellada, tieneCosto, precioAlSellar } from './registro-dia.js?v=3';
 import { claveCanasta, canastaRestante } from './pos-cliente.js?v=2';
 
 /**
@@ -440,6 +440,7 @@ window.onPerfumeChange = () => {
       loteGrp.style.display = 'none';
       document.getElementById('v-lote').innerHTML = '';
     }
+    camposSellada(tallaSel.value);
     return;
   }
   if (customInp) { customInp.style.display = 'none'; customInp.value = ''; }
@@ -485,6 +486,26 @@ window.onPerfumeChange = () => {
   window.updateTallaOptions(id, actLoteId, isPaquete);
 };
 
+/**
+ * Botella sellada: pide lo que costó y no muestra botella asignada (no sale de
+ * la abierta). Antes el lote salía igual y el costo se quedaba de la venta anterior.
+ */
+function camposSellada(talla) {
+  const sellada = esSellada(talla);
+  const costoGrp = document.getElementById('v-costo-group');
+  const costoEl = document.getElementById('v-costo');
+  if (costoGrp) costoGrp.style.display = sellada ? 'block' : 'none';
+  if (costoEl && !sellada) costoEl.value = '';
+  document.getElementById('v-precio').placeholder = sellada ? '¿En cuánto la vendiste?' : '0.00';
+  const loteGrp = document.getElementById('v-lote-group');
+  const loteSel = document.getElementById('v-lote');
+  if (loteGrp && loteSel) {
+    const pid = document.getElementById('v-perfume').value;
+    const esPaq = !!(window.paquetesData && window.paquetesData.some(x => x.id === pid));
+    loteGrp.style.display = !sellada && !esPaq && loteSel.options.length ? 'block' : 'none';
+  }
+}
+
 window.onTallaChange = () => {
   const tallaSel = document.getElementById('v-talla');
   const precioEl = document.getElementById('v-precio');
@@ -496,21 +517,14 @@ window.onTallaChange = () => {
   let basePrecio = 0;
   
   const val = tallaSel.value;
-  const costoGrp = document.getElementById('v-costo-group');
-  if (costoGrp) {
-    if (val === 'Completo') costoGrp.style.display = 'block';
-    else { costoGrp.style.display = 'none'; document.getElementById('v-costo').value = ''; }
-  }
-  
+  camposSellada(val);
+
   if (opt?.dataset.precio) {
     basePrecio = parseFloat(opt.dataset.precio) || 0;
     precioEl.value = basePrecio || '';
-    if (val === 'Completo') {
-       precioEl.placeholder = 'Costo opcional en Notas'; // Or we can add an extra field
-       document.getElementById('v-reforzada-wrap').style.display = 'none';
-    } else {
-       precioEl.placeholder = '0.00';
-    }
+  } else if (esSellada(val)) {
+    const catalogo = [...tallaSel.options].map(o => o.dataset.precio);
+    precioEl.value = precioAlSellar(precioEl.value, catalogo, window.costoReforzada);
   }
   
   // Solo aplica para 5ml y 10ml, y no para paquetes
@@ -931,6 +945,8 @@ window.openModal = () => {
   const pWrap = document.getElementById('v-perfume-wrap');
   if (pWrap && pWrap._perfReset) pWrap._perfReset();
   document.getElementById('v-talla').innerHTML = '<option value="">Selecciona talla</option>';
+  document.getElementById('v-lote').innerHTML = '';
+  camposSellada('');
   const customItemsCont = document.getElementById('v-custom-items-container');
   if (customItemsCont) {
     customItemsCont.style.display = 'none';
@@ -1028,12 +1044,10 @@ window.editVenta = (id) => {
       opts.push(`<option value="Completo" data-precio="">Botella Sellada</option>`);
     }
     tallaSel.innerHTML = '<option value="">Selecciona talla</option>' + opts.join('');
-    
-    tallaSel.onchange = () => {
-      const opt = tallaSel.selectedOptions[0];
-      if (opt?.dataset.precio) precioEl.value = opt.dataset.precio;
-    };
-    
+    // Al cambiar de talla corre onTallaChange (el onchange del HTML). Aquí se
+    // reemplazaba por uno que solo ponía el precio, y desde la primera edición ya
+    // no se mostraba ni limpiaba el costo de la botella sellada.
+
     const loteGroup = document.getElementById('v-lote-group');
     const loteSel = document.getElementById('v-lote');
     if (loteGroup && loteSel && !isPaquete) {
@@ -1060,6 +1074,10 @@ window.editVenta = (id) => {
   }
   
   tallaSel.value = v.talla || '';
+  // El costo es el de ESTA venta: antes el campo se quedaba con el de la anterior
+  // y al guardar se le pegaba a esta.
+  document.getElementById('v-costo').value = v.costoCompleto ?? '';
+  camposSellada(tallaSel.value);
   // Cargar el perfume dispara el precio automático de la talla con el catálogo
   // de hoy: se restaura lo que se cobró y si llevaba botella reforzada.
   precioEl.value = v.precio ?? '';
@@ -1094,9 +1112,14 @@ window.save = async () => {
   const metodoPago = document.getElementById('v-metodopago').value;
   const clienteName = document.getElementById('v-cliente').value.trim();
   const costoStr = document.getElementById('v-costo')?.value;
-  const costo = costoStr ? +costoStr : null;
-  
+  const costo = esSellada(talla) && tieneCosto(costoStr) ? +costoStr : null;
+
   if (!perfumeId || !talla || !precio) { toast('Completa perfume, talla y precio (*)', 'error'); return; }
+  if (esSellada(talla) && costo === null) {
+    toast('Pon cuánto te costó la botella', 'error');
+    document.getElementById('v-costo')?.focus();
+    return;
+  }
   
   if (clienteName && window.blacklistCache && window.blacklistCache.map(n => n.toLowerCase()).includes(clienteName.toLowerCase())) {
     Swal.fire({
@@ -1174,7 +1197,7 @@ window.save = async () => {
                 : parseFloat(document.getElementById('v-precio').value)
   };
   
-  if (costo !== null && costo >= 0) {
+  if (costo !== null) {
     data.costoCompleto = costo;
   }
 
@@ -1182,7 +1205,8 @@ window.save = async () => {
     data.paqueteItems = paqueteItemsToSave;
   }
 
-  if (perfumeId !== 'custom') {
+  // La sellada no sale de ninguna botella abierta: no se le asigna lote.
+  if (perfumeId !== 'custom' && !esSellada(talla)) {
     let p = perfumes.find(x => x.id === perfumeId);
     if (!p && window.paquetesData) p = window.paquetesData.find(x => x.id === perfumeId);
     
@@ -1702,7 +1726,17 @@ function buildBatchRowEl(row) {
       r.precio = base + (r.reforzada ? window.costoReforzada : 0);
       inPrecio.value = r.precio;
     }
-    
+
+    const sellada = esSellada(val);
+    if (sellada) {
+      r.precio = precioAlSellar(r.precio, items.map(i => i.precio), window.costoReforzada);
+      inPrecio.value = r.precio ?? '';
+    } else {
+      r.costoCompleto = null;
+      inCosto.value = '';
+    }
+    inCosto.style.display = sellada ? 'block' : 'none';
+
     // Toggle reforzada visibility
     if (val === '5' || val === '10') {
       refWrap.style.display = 'flex';
@@ -1750,6 +1784,16 @@ function buildBatchRowEl(row) {
   refLbl.textContent = 'Reforzada';
   refWrap.appendChild(refLbl);
   tdTalla.appendChild(refWrap);
+
+  // Botella sellada: lo que costó, para que la ganancia salga bien.
+  const inCosto = document.createElement('input');
+  inCosto.type = 'number'; inCosto.min = '0'; inCosto.id = `brow-costo-${rid}`;
+  inCosto.className = 'brow-costo';
+  inCosto.placeholder = '¿Cuánto te costó? $';
+  inCosto.style.display = 'none';
+  inCosto.value = row.costoCompleto ?? '';
+  inCosto.oninput = () => { batchSet(rid, 'costoCompleto', inCosto.value); inCosto.classList.remove('falta'); };
+  tdTalla.appendChild(inCosto);
 
   // ── Celda Cantidad ────────────────────────────────────────────────────────
   const tdCant = document.createElement('td');
@@ -2199,7 +2243,12 @@ window.saveDia = async () => {
   const falta = validarRegistro(batchRows, modo);
   if (falta.mensaje) {
     toast(falta.mensaje, 'error');
-    if (falta.tid) {
+    const costoFalta = falta.rid && document.getElementById(`brow-costo-${falta.rid}`);
+    if (costoFalta) {
+      costoFalta.classList.add('falta');
+      costoFalta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      costoFalta.focus({ preventScroll: true });
+    } else if (falta.tid) {
       const sep = sepDe(falta.tid);
       sep?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       // En rojo solo si lo que falta es el nombre; si es talla o precio, solo se muestra el cliente.
@@ -2313,7 +2362,9 @@ window.saveDia = async () => {
       }
       // Lo que costó una botella completa (lo pide el POS); antes nunca se guardaba.
       if (r.costoCompleto != null && r.costoCompleto !== '') dataObj.costoCompleto = +r.costoCompleto;
-      
+      // La sellada no sale de la botella abierta (como en Editar venta).
+      if (esSellada(r.talla) && !r.loteId) delete dataObj.loteId;
+
       r._tempDataObj = dataObj; // save for overflow check
       batch.set(ref, dataObj, { merge: true });
     });
