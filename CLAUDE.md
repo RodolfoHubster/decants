@@ -94,7 +94,7 @@ Búscalos con `grep -n 'nombreDeFuncion' archivo` y lee solo el rango con
 - **Un campo de precio vacío significa "esa talla no se vende"**, no "falta llenarlo".
   Nada automático debe rellenarlo al editar un perfume existente.
 - `firestore.rules` **no se aplica al guardarlo**. Requiere `firebase deploy --only firestore:rules`.
-- **Producción es GitHub Pages** (`rodolfohubster.github.io/decants`, se publica en cada push a
+- **Producción es GitHub Pages** en `fitoscents.com` (dominio de Cloudflare; archivo `CNAME`; el viejo `rodolfohubster.github.io/decants` redirige). Se publica en cada push a
   `main`). `firebase.json` no aplica al sitio en vivo. GitHub guarda ~10 min en caché, así que
   un `import` de un módulo al que le agregaste exports va con versión: `from './cart.js?v=2'`.
 - **No hacer commits por el dueño**: editar, copiar al checkout principal y darle los comandos.

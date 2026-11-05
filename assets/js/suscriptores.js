@@ -7,7 +7,7 @@ import { rutaProducto } from './slug.js?v=2';
 
 // Suscriptores del newsletter y correo de novedades para pegar en Brevo.
 // Los links del correo van al sitio publicado (no a localhost).
-const SITIO = 'https://rodolfohubster.github.io/decants/';
+const SITIO = 'https://fitoscents.com/';
 
 let suscriptores = [];
 let perfumes = [];

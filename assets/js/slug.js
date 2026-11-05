@@ -49,7 +49,7 @@ export function slugDeBusqueda(search) {
   return new URLSearchParams(search || '').get('p') || null;
 }
 
-/** perfumeFullURL(p) → 'https://rodolfohubster.github.io/decants/producto.html?p=hawas-london' */
+/** perfumeFullURL(p) → 'https://fitoscents.com/producto.html?p=hawas-london' */
 export function perfumeFullURL(p) {
   return carpetaDe(window.location.href) + rutaProducto(p);
 }
