@@ -547,6 +547,110 @@ header {
   backdrop-filter: blur(4px);
 }
 
+/* Compra rápida (catalog.js): la tarjeta muestra "Desde $X ▾"; el menú
+   despliega tamaños y PRO; elegido uno, la bolsita de la foto se enciende. */
+.pcard { position: relative; }
+.card-quick {
+  position: absolute; right: 8px; bottom: 8px; z-index: 4;
+  width: 38px; height: 38px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 1px solid rgba(201,168,76,.6);
+  background: rgba(20,18,14,.72); color: #c9a84c; font-size: 17px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,.45);
+  backdrop-filter: blur(6px);
+  transition: transform .15s, background .2s, color .2s, border-color .2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.card-quick:hover { transform: scale(1.08); border-color: #c9a84c; }
+.card-quick:active { transform: scale(.92); }
+.card-quick:focus-visible { outline: 2px solid #f3e3b5; outline-offset: 2px; }
+/* Ya eligió: la bolsita se enciende y late para decir "agrégalo". */
+.card-quick.activa { background: #c9a84c; color: #14120e; border-color: transparent; }
+.card-quick.activa.avisa { animation: bolsa-late 1.4s ease-out 2; }
+.card-quick.listo { background: #22c55e; color: #fff; border-color: transparent; animation: quick-listo .45s ease; }
+@keyframes bolsa-late {
+  0% { box-shadow: 0 0 0 0 rgba(201,168,76,.7), 0 4px 14px rgba(0,0,0,.45); }
+  70% { box-shadow: 0 0 0 12px rgba(201,168,76,0), 0 4px 14px rgba(0,0,0,.45); }
+  100% { box-shadow: 0 0 0 0 rgba(201,168,76,0), 0 4px 14px rgba(0,0,0,.45); }
+}
+@keyframes quick-listo { 0% { transform: scale(.8); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+
+.card-elige {
+  margin-top: 10px; width: 100%;
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  padding: 8px 12px; border-radius: 99px;
+  border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04);
+  color: #b5ae9f; font: inherit; font-size: 12.5px; text-align: left; cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.card-elige b { color: #f3e3b5; font-weight: 700; }
+/* La etiqueta PRO vive en producto.css; el inicio no la carga. */
+.card-elige .pro-tag, .elige-pop .pro-tag {
+  display: inline-block; padding: 1px 6px; border-radius: 6px;
+  background: #1a1a1a; border: 1px solid var(--gold-b); color: var(--gold);
+  font-size: 10px; font-weight: 800; letter-spacing: .06em; line-height: 1.3;
+}
+.card-elige .pro-tag { font-size: 9px; padding: 1px 5px; }
+.card-elige > .bi { font-size: 11px; color: #c9a84c; flex-shrink: 0; transition: transform .2s; }
+.card-elige[aria-expanded="true"] > .bi { transform: rotate(180deg); }
+.card-elige:hover, .card-elige[aria-expanded="true"] { border-color: rgba(201,168,76,.55); color: #ece6d8; }
+.card-elige.elegido { border-color: #c9a84c; background: rgba(201,168,76,.1); color: #ece6d8; }
+.ce-txt { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ce-color { width: 10px; height: 10px; flex-shrink: 0; border-radius: 50%; border: 1px solid rgba(255,255,255,.45); }
+.card-desde { margin-top: 10px; font-size: 12.5px; color: #9a9384; }
+.card-desde b { color: #f3e3b5; }
+.card-desde del { margin-right: 4px; opacity: .6; font-size: .9em; }
+.card-desde.agotado { color: #ef4444; font-weight: 600; }
+
+/* El menú: pegado al body para que no lo recorte la tarjeta */
+.elige-pop {
+  position: fixed; z-index: 10001; max-height: calc(100vh - 20px); overflow-y: auto;
+  padding: 6px; border-radius: 16px;
+  background: #17140f; border: 1px solid rgba(201,168,76,.4);
+  box-shadow: 0 18px 48px rgba(0,0,0,.65);
+  animation: ep-entra .16s ease;
+}
+.elige-pop.arriba { animation-name: ep-entra-arriba; }
+@keyframes ep-entra { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes ep-entra-arriba { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.ep-head {
+  display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 8px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #c9a84c;
+}
+.ep-x { padding: 4px 6px; border: 0; background: none; color: #8a8478; font-size: 12px; cursor: pointer; }
+.ep-x:hover { color: #ece6d8; }
+.ep-op {
+  width: 100%; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px;
+  padding: 11px 12px; border-radius: 11px; border: 1px solid transparent; background: none;
+  color: #e6dfd0; font: inherit; font-size: 14px; text-align: left; cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.ep-op + .ep-op { margin-top: 2px; }
+.ep-op:hover, .ep-op:focus-visible { background: rgba(255,255,255,.06); outline: none; }
+.ep-op.sel { border-color: #c9a84c; background: rgba(201,168,76,.12); }
+.ep-ml { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.ep-ahorro {
+  display: inline-block; padding: 2px 7px; border-radius: 99px;
+  background: rgba(201,168,76,.18); color: #e0b95a; font-size: 10px; font-weight: 700; white-space: nowrap;
+}
+.ep-precio { color: #f3e3b5; font-size: 14.5px; }
+.ep-sep {
+  display: flex; align-items: center; gap: 6px; margin: 8px 8px 4px; padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.08); color: #9a9384; font-size: 11px; line-height: 1.35;
+}
+.ep-colores { padding: 8px 8px 6px; }
+.ep-colores[hidden] { display: none; }
+.ep-colores > span { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #c9a84c; }
+.ep-swatches { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.ep-color {
+  width: 28px; height: 28px; border-radius: 50%; padding: 0; cursor: pointer;
+  background: var(--c); border: 2px solid rgba(255,255,255,.2);
+  transition: transform .12s, outline-color .12s;
+}
+.ep-color:hover { transform: scale(1.1); }
+.ep-color.sel { outline: 2px solid #c9a84c; outline-offset: 2px; }
+
 .card-body { padding: 14px 16px 16px; }
 .card-marca { font-size: 11px; color: #c9a84c; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 3px; }
 .card-nombre { font-size: 15px; font-weight: 600; line-height: 1.3; margin-bottom: 6px; }
@@ -1656,6 +1760,7 @@ footer p { font-size: 13px; color: var(--muted); }
 }
 /* En lista la foto mide 110 px: el aviso "en tu pedido" va sobre la franja de ahorro. */
 .grid.list-view .card-in-cart { top: auto; bottom: 28px; right: 6px; padding: 2px 8px; }
+.grid.list-view .card-quick { width: 32px; height: 32px; right: 6px; bottom: 6px; font-size: 14px; }
 .grid.list-view .card-body {
   padding: 12px 14px;
   flex: 1;

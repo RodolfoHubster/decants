@@ -41,7 +41,9 @@ tests/*.test.js                                 ← Jest, importan los módulos 
 `sorpresa.js` (paquetes sorpresa como la Calaverita: disponibilidad, una a `precioExtra` por paquete de su temporada, "elige 1" al venderla en el panel) ·
 `notas-olfativas.js` (qué significa cada nota de la pirámide: el globito al pasar el cursor o tocarla; busca alias, la nota contenida más larga y la familia) ·
 `inspirado.js` ("Inspirado en": el original del dupe en `perfume.inspiradoEn`; si está en la tienda enlaza a su página, si no muestra nombre e imagen guardados) ·
+`estado-stock.js` (agotado / por acabarse según lo que queda en la botella en uso y las compradas después; al registrar ventas solo sube, al medir en Estadísticas manda lo medido) ·
 `filtros-perfumes.js` (filtros, atajos de "Revisar" con conteo y orden del catálogo del panel; se guardan en la sesión y sobreviven al guardar un perfume) ·
+`compra-rapida.js` (la tarjeta ya no lista precios: "Desde $X ▾" despliega tamaños y PRO con color, y la bolsita de la foto agrega; el renglón del carrito lleva la misma `key` que la ficha) ·
 `similares.js` (productos similares de la página de producto) · `pro.js` (decant PRO: 5/10 ml a +`reforzadaVenta`, 7 colores) ·
 `newsletter.js` (validar correo, documento `suscriptores/<correo>`, armar el correo de novedades para Brevo) ·
 `estadisticas-ventas.js` (qué se mueve: piezas por perfume, género, talla y día; incluye perfumes completos de ventas y encargos entregados) ·

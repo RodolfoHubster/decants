@@ -50,6 +50,7 @@ import { precargarImagen } from './imagenes.js';
 import { parsearFicha } from './ficha.js';
 import { significadoNota } from './notas-olfativas.js';
 import { resolverInspirado } from './inspirado.js?v=2';
+import { opcionesRapidas, precioDesde, eleccionCompleta, itemRapido } from './compra-rapida.js?v=2';
 import { CLAVE_DUENO, CLAVE_ULTIMO_DIA, diaLocal, debeContar } from './visitas.js';
 import { temporadaVigente, temporadaSimulada, paquetesDeTemporada, seleccionRequerida, ofreceTrucoOTrato, varianteModal, progresoScroll } from './temporada.js?v=2';
 
@@ -533,7 +534,7 @@ const TARJETA_ESQ = `
     <div class="card-body">
       <div class="card-marca"><span class="skel-txt" style="width:45%">&nbsp;</span></div>
       <div class="card-nombre"><span class="skel-txt" style="width:72%">&nbsp;</span></div>
-      <div class="card-pills"><span class="cpill skel-txt">2ml — $80</span><span class="cpill skel-txt">3ml — $120</span><span class="cpill skel-txt">5ml — $170</span><span class="cpill skel-txt">10ml — $320</span></div>
+      <div class="card-elige skel-txt"><span class="ce-txt">Desde $000</span></div>
     </div>
   </div>`;
 
@@ -928,20 +929,21 @@ function cardHTML(p) {
   const sizes = Object.entries(pr).filter(([k, v]) => +v > 0 && sin2ml(p, k)).sort((a, b) => +a[0] - +b[0]);
 
   if (p.tipo === 'paquete') {
-    pills = sizes.map(([k, v]) => {
-      const sv = calcSavings(p, k);
-      const cross = sv.original > 0 ? `<del style="opacity:0.6;font-size:0.85em;margin-right:4px;">$${sv.original}</del>` : '';
-      return `<div class="cpill" style="border-color:var(--gold-b); background:var(--gold-s); color:var(--gold);">${k}ml — ${cross}$${v}</div>`;
-    }).join('');
     if (sizes.length > 0) {
+      const sv0 = calcSavings(p, sizes[0][0]);
+      pills = `<div class="card-desde">Desde ${sv0.original > 0 ? `<del>$${sv0.original}</del>` : ''}<b>$${sizes[0][1]}</b></div>`;
       const minSize = sizes[0][0];
       const sv = calcSavings(p, minSize);
       if (sv.saving > 0) {
         savingsTag = `<div class="savings-tag">Ahorras $${sv.saving}</div>`;
       }
     }
-  } else {
-    pills = sizes.map(([k, v]) => `<div class="cpill">${k}ml — $${v}</div>`).join('');
+  } else if (rapidas(p).length) {
+    pills = botonElige(p);
+  } else if (agotadoEnTienda(p) && sizes.length) {
+    pills = '<div class="card-desde agotado">Agotado por ahora</div>';
+  } else if (sizes.length) {
+    pills = `<div class="card-desde">Desde <b>$${Math.min(...sizes.map(([, v]) => +v))}</b></div>`;
   }
   
   const units = cart.filter(i => i.id === p.id).reduce((s, i) => s + i.qty, 0);
@@ -962,11 +964,12 @@ function cardHTML(p) {
         : `<div class="card-no-img"><i class="bi ${p.tipo === 'paquete' ? 'bi-box2-heart' : (p.tipo === 'accesorio' ? 'bi-bag' : 'bi-droplet')}"></i></div>`}
       ${agotadoEnTienda(p) ? `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:5;pointer-events:none;"><div style="background:#ef4444;color:white;padding:4px 12px;border-radius:20px;font-weight:bold;font-size:12px;letter-spacing:1px;box-shadow:0 2px 10px rgba(239,68,68,0.3);">AGOTADO</div></div>` : ''}
       ${units > 0 ? `<div class="card-in-cart"><i class="bi bi-bag-check-fill"></i>${units > 1 ? ` <span>${units}</span>` : ''}</div>` : ''}
+      ${rapidas(p).length ? `<button type="button" class="card-quick${eleccionDe(p) ? ' activa' : ''}" aria-label="Agregar ${escFicha(p.nombre)} al pedido"><i class="bi bi-bag-plus"></i></button>` : ''}
     </div>
     <div class="card-body">
       <div class="card-marca" style="${p.tipo === 'paquete' ? 'color:var(--gold);' : ''}">${p.marca || (p.tipo === 'paquete' ? 'Combos Fitoscents' : '')}</div>
       <div class="card-nombre">${p.nombre}</div>
-      <div class="card-pills">${pills || '<span style="font-size:12px;color:#444">Sin precios</span>'}</div>
+      ${pills || '<div class="card-desde">Sin precios</div>'}
     </div>
   </a>`;
 }
@@ -2136,6 +2139,180 @@ window.addToCart = () => {
   showToast(`✓ ${modalData.nombre} ${sel.dataset.size}ml agregado`);
   syncModalCartBtn(); updateCartBadge(); patchGridBadges();
 };
+
+// ── Compra rápida desde la tarjeta (compra-rapida.js) ──────────────
+// La tarjeta ya no lista precios: "Desde $X ▾" despliega los tamaños (y los
+// PRO, que piden color). Elegido uno, la pestaña lo muestra y la bolsita de la
+// foto se enciende; tocarla lo agrega. Tocar la bolsita sin elegir abre el menú.
+const elegidos = new Map();   // id → { opId, color }
+let pop = null, popCard = null;
+
+function rapidas(p) {
+  return opcionesRapidas(p, { permitida: k => sin2ml(p, k), agotado: agotadoEnTienda(p), proExtra: window.proExtra });
+}
+
+/** Lo elegido en la tarjeta, completo (el PRO con color), o null. Con una sola opción, esa. */
+function eleccionDe(p, ops = rapidas(p)) {
+  const e = elegidos.get(p.id);
+  const op = e ? ops.find(o => o.id === e.opId) : (ops.length === 1 ? ops[0] : null);
+  const color = e ? e.color : null;
+  return op && eleccionCompleta(op, color) ? { op, color } : null;
+}
+
+function textoElige(p, ops = rapidas(p)) {
+  const el = eleccionDe(p, ops);
+  if (!el) return `<span class="ce-txt">Desde <b>$${precioDesde(ops)}</b></span>`;
+  const c = el.op.pro && COLORES_PRO.find(x => x.id === el.color);
+  return `<span class="ce-txt">${c ? `<i class="ce-color" style="background:${c.hex}"></i>` : ''}${escFicha(el.op.size)}ml${el.op.pro ? ' <b class="pro-tag">PRO</b>' : ''} · <b>$${el.op.price}</b></span>`;
+}
+
+function botonElige(p) {
+  return `<button type="button" class="card-elige${eleccionDe(p) ? ' elegido' : ''}" aria-haspopup="listbox" aria-expanded="false"
+    aria-label="Elegir tamaño de ${escFicha(p.nombre)}">${textoElige(p)}<i class="bi bi-chevron-down"></i></button>`;
+}
+
+/** Repinta la pestaña y la bolsita de una tarjeta tras elegir. */
+function refrescarTarjeta(card, p) {
+  const listo = !!eleccionDe(p);
+  const trig = card.querySelector('.card-elige');
+  if (trig) { trig.innerHTML = `${textoElige(p)}<i class="bi bi-chevron-down"></i>`; trig.classList.toggle('elegido', listo); }
+  const b = card.querySelector('.card-quick');
+  if (b) {
+    b.classList.toggle('activa', listo);
+    if (listo) { b.classList.remove('avisa'); void b.offsetWidth; b.classList.add('avisa'); }
+  }
+}
+
+function cerrarElige() {
+  if (!pop) return;
+  pop.remove(); pop = null;
+  popCard?.querySelector('.card-elige')?.setAttribute('aria-expanded', 'false');
+  popCard = null;
+}
+
+function abrirElige(card, p) {
+  cerrarElige();
+  const ops = rapidas(p);
+  const e = elegidos.get(p.id) || {};
+  const fila = o => `<button type="button" role="option" class="ep-op${e.opId === o.id ? ' sel' : ''}" data-op="${escFicha(o.id)}" aria-selected="${e.opId === o.id}">
+      <span class="ep-ml">${escFicha(o.size)} ml${o.pro ? ' <b class="pro-tag">PRO</b>' : ''}</span>
+      <span>${o.ahorro > 0 ? `<span class="ep-ahorro">Ahorras $${o.ahorro}</span>` : ''}</span>
+      <b class="ep-precio">$${o.price}</b></button>`;
+  const normales = ops.filter(o => !o.pro), pros = ops.filter(o => o.pro);
+  const proElegido = pros.some(o => o.id === e.opId);
+  pop = document.createElement('div');
+  pop.className = 'elige-pop';
+  pop.setAttribute('role', 'listbox');
+  pop.setAttribute('aria-label', `Tamaños de ${p.nombre}`);
+  pop.innerHTML = `<div class="ep-head"><span>Elige tu tamaño</span><button type="button" class="ep-x" aria-label="Cerrar"><i class="bi bi-x-lg"></i></button></div>
+    ${normales.map(fila).join('')}
+    ${pros.length ? `<div class="ep-sep"><b class="pro-tag">PRO</b> Envase reforzado de aluminio, ideal para viaje</div>
+      ${pros.map(fila).join('')}
+      <div class="ep-colores"${proElegido ? '' : ' hidden'}><span>Elige el color</span>
+        <div class="ep-swatches">${COLORES_PRO.map(c => `<button type="button" class="ep-color${e.color === c.id ? ' sel' : ''}" data-color="${c.id}" style="--c:${c.hex}" title="${c.nombre}" aria-label="${c.nombre}"></button>`).join('')}</div></div>` : ''}`;
+  document.body.appendChild(pop);
+  popCard = card;
+  card.querySelector('.card-elige')?.setAttribute('aria-expanded', 'true');
+  colocarElige();
+
+  pop.addEventListener('click', ev => {
+    const el = ev.target instanceof Element ? ev.target : null;
+    if (!el) return;
+    if (el.closest('.ep-x')) { cerrarElige(); return; }
+    const opEl = el.closest('.ep-op');
+    if (opEl) {
+      const op = ops.find(o => o.id === opEl.dataset.op);
+      if (!op) return;
+      const previo = elegidos.get(p.id);
+      elegidos.set(p.id, { opId: op.id, color: op.pro ? (previo && previo.color) || null : null });
+      if (!op.pro) { cerrarElige(); refrescarTarjeta(card, p); return; }
+      // PRO: falta el color; el menú se queda abierto con los colores.
+      pop.querySelectorAll('.ep-op').forEach(b => { b.classList.toggle('sel', b === opEl); b.setAttribute('aria-selected', b === opEl); });
+      pop.querySelector('.ep-colores').hidden = false;
+      refrescarTarjeta(card, p);
+      colocarElige();
+      return;
+    }
+    const colorEl = el.closest('.ep-color');
+    if (colorEl) {
+      const actual = elegidos.get(p.id);
+      if (!actual) return;
+      elegidos.set(p.id, { ...actual, color: colorEl.dataset.color });
+      window.colorPro = colorEl.dataset.color;
+      cerrarElige();
+      refrescarTarjeta(card, p);
+    }
+  });
+}
+
+/** Debajo de la pestaña si cabe, si no arriba; nunca fuera de la pantalla. */
+function colocarElige() {
+  if (!pop || !popCard) return;
+  const trig = popCard.querySelector('.card-elige');
+  if (!trig) { cerrarElige(); return; }
+  const r = trig.getBoundingClientRect(), rc = popCard.getBoundingClientRect();
+  const ancho = Math.min(Math.max(rc.width, 260), window.innerWidth - 20);
+  pop.style.width = `${ancho}px`;
+  pop.style.left = `${Math.min(Math.max(10, rc.left + (rc.width - ancho) / 2), window.innerWidth - ancho - 10)}px`;
+  // Del lado donde cabe; si no cabe en ninguno, del que tenga más espacio y
+  // con desplazamiento adentro (sin tapar la propia pestaña).
+  pop.style.maxHeight = '';
+  const alto = pop.offsetHeight;
+  const espacioAbajo = window.innerHeight - r.bottom - 16, espacioArriba = r.top - 16;
+  const abajo = alto <= espacioAbajo || (alto > espacioArriba && espacioAbajo >= espacioArriba);
+  const cabe = Math.min(alto, abajo ? espacioAbajo : espacioArriba);
+  pop.style.maxHeight = `${Math.max(160, cabe)}px`;
+  pop.style.top = `${abajo ? r.bottom + 6 : Math.max(10, r.top - cabe - 6)}px`;
+  pop.classList.toggle('arriba', !abajo);
+}
+
+function agregarRapido(p, op, color) {
+  if (agotadoEnTienda(p)) { showToast('Este producto no está disponible por ahora'); return false; }
+  checkCartTTL();
+  const item = itemRapido(p, op, color, imgCart(p.imagen) || '');
+  const { cart: nuevo, added, reason } = addItem(cart, item);
+  if (!added) { if (reason === 'max_qty') showToast(`Máximo ${MAX_QTY} unidades por talla`); return false; }
+  cart = nuevo; persistCart();
+  showToast(`✓ ${p.nombre} ${etiquetaTalla(item)} agregado`);
+  updateCartBadge(); patchGridBadges();
+  if (modalData?.id === p.id) syncModalCartBtn();
+  return true;
+}
+
+/** La bolsita se vuelve ✓ un momento: quedó en tu pedido. */
+function confirmarRapida(card) {
+  const b = card.querySelector('.card-quick');
+  if (!b) return;
+  b.classList.remove('listo', 'avisa'); void b.offsetWidth; b.classList.add('listo');
+  b.innerHTML = '<i class="bi bi-check-lg"></i>';
+  clearTimeout(b._listo);
+  b._listo = setTimeout(() => { b.classList.remove('listo'); b.innerHTML = '<i class="bi bi-bag-plus"></i>'; }, 1500);
+}
+
+// En captura: antes de que el link de la tarjeta navegue.
+document.addEventListener('click', e => {
+  const el = e.target instanceof Element ? e.target : null;
+  if (pop && el && pop.contains(el)) return;   // lo maneja el menú
+  const card = el && el.closest('.pcard[data-id]');
+  const trig = el && el.closest('.card-elige');
+  const bolsa = el && el.closest('.card-quick');
+  if (!trig && !bolsa) {
+    // Con el menú abierto, el primer toque fuera solo lo cierra (no te saca a la ficha).
+    if (pop) { if (card) { e.preventDefault(); e.stopPropagation(); } cerrarElige(); }
+    return;
+  }
+  e.preventDefault(); e.stopPropagation();
+  const p = card && all.find(x => x.id === card.dataset.id);
+  if (!p) return;
+  if (trig) { if (popCard === card) cerrarElige(); else abrirElige(card, p); return; }
+  const el2 = eleccionDe(p);
+  if (!el2) { abrirElige(card, p); return; }
+  cerrarElige();
+  if (agregarRapido(p, el2.op, el2.color)) confirmarRapida(card);
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarElige(); });
+document.addEventListener('scroll', e => { if (pop && !(e.target instanceof Node && pop.contains(e.target))) cerrarElige(); }, { passive: true, capture: true });
+window.addEventListener('resize', () => cerrarElige());
 
 window.incrementCartItem = key => {
   checkCartTTL();
