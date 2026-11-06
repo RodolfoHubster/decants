@@ -5,6 +5,7 @@ import { topVendidos, sinMovimiento, aMs } from './alertas.js';
 import { contextoRentabilidad, resumenGanancia, clientesAtendidos, rentabilidadPorBotella, consumoDePerfume } from './rentabilidad.js';
 import { sumarVisitas } from './visitas.js';
 import { piezasFueraDeBotella, costoProbadores } from './puntos-externos.js';
+import { estadoStockAuto, siguienteEstado } from './estado-stock.js';
 import {
   GENEROS, SIN_GENERO, piezasVendidas, filtrarPiezas, resumenPorGenero, rankingPerfumes,
   tallasPorGenero, porDiaSemana, periodoAnterior, cambioPct,
@@ -956,44 +957,16 @@ window.guardarAjusteLiquido = async () => {
     const localP = perfumes.find(x => x.id === ajusteActual.pid);
     if (localP) localP.lotes = lotes;
     
-    // Auto-update estadoStock based on the new ajuste level
+    // Agotado / por acabarse con la misma cuenta que la tabla de botellas
+    // (estado-stock.js). Lo medido manda: también puede quitar un agotado.
     if (localP) {
-      // Recalculate total sold for this perfume
-      let totalCap = 0;
-      let totalSold = 0;
-      (localP.lotes || []).forEach(l => {
-        const lCap = +l.tamano || 0;
-        totalCap += lCap;
-        // Gather sold ml from ventas
-        let lSold = 0;
-        ventas.forEach(v => {
-          if (v.paqueteItems && Array.isArray(v.paqueteItems)) {
-            const t = parseFloat(String(v.talla).replace('Paquete ', '')) || 0;
-            v.paqueteItems.forEach(pi => {
-              if (pi.id === localP.id && (pi.loteId || 'lote-1') === l.id) {
-                lSold += t * (+v.cantidad || 1);
-              }
-            });
-          } else if (v.perfumeId === localP.id && (v.loteId || 'lote-1') === l.id) {
-            if (v.talla === 'Resto') { lSold = lCap; }
-            else if (v.talla !== 'Completo' && v.talla !== 'Otro') {
-              const t = parseFloat(v.talla);
-              if (!isNaN(t) && t > 0) lSold += t * (+v.cantidad || 1);
-            }
-          }
-        });
-        lSold += parseFloat(l.mlAjuste) || 0;
-        totalSold += lSold;
-      });
-      
-      const pct = totalCap > 0 ? (totalSold / totalCap) * 100 : 0;
-      let newEstado = 'normal';
-      if (pct >= 100) newEstado = 'agotado';
-      else if (pct >= 85) newEstado = 'por_acabarse';
-      
-      if (localP.estadoStock !== newEstado) {
-        localP.estadoStock = newEstado;
-        await updateDoc(pRef, { estadoStock: newEstado });
+      const { estado } = estadoStockAuto(localP, ventas, piezasFueraDeBotella(puntos));
+      const nuevo = siguienteEstado(localP.estadoStock, estado);
+      if (nuevo) {
+        localP.estadoStock = nuevo;
+        await updateDoc(pRef, { estadoStock: nuevo });
+        const txt = { agotado: 'marcado como agotado', por_acabarse: 'marcado como por acabarse', normal: 'vuelve a estar disponible' }[nuevo];
+        alert(`${localP.nombre}: ${txt}.`);
       }
     }
     

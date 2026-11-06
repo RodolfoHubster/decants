@@ -8,6 +8,7 @@ import { toast } from './toast.js';
 import { indiceClientes, idCliente, sugerirClientes, buscarCliente, sumarEncargos } from './clientes-util.js?v=4';
 import { modoDeCanal, nombreTicketNuevo, resumenRenglones, validarRegistro, moverAlDia, esSellada, tieneCosto, precioAlSellar } from './registro-dia.js?v=3';
 import { claveCanasta, canastaRestante } from './pos-cliente.js?v=2';
+import { estadoStockAuto, siguienteEstado } from './estado-stock.js';
 
 /**
  * Fecha local YYYY-MM-DD. toISOString() da la de UTC: en Tijuana, después de
@@ -1254,14 +1255,12 @@ window.save = async () => {
       } else {
         if (['2','3','5','10'].includes(data.talla)) {
           if (window.checkLoteOverflow) window.checkLoteOverflow(data.perfumeId, data.loteId, parseInt(data.talla) * (+data.cantidad||1));
-        } else if (data.talla === 'Resto') {
-          try {
-            await updateDoc(doc(db, 'perfumes', data.perfumeId), { estadoStock: 'agotado' });
-            toast('Perfume marcado como agotado automáticamente', 'info');
-          } catch(e) { console.error('Error auto-agotando', e); }
         }
       }
     }
+    // Agotado / por acabarse según lo que quede en la botella (también al editar).
+    const idsVenta = data.paqueteItems ? data.paqueteItems.map(s => s.id) : [data.perfumeId];
+    revisarStock(idsVenta, [{ ...data, id: editId || undefined, creadoEn: Date.now() }]);
     
     closeModal();
     loadAll();
@@ -2395,15 +2394,16 @@ window.saveDia = async () => {
           } else {
             if (['2','3','5','10'].includes(dataObj.talla)) {
               if (window.checkLoteOverflow) window.checkLoteOverflow(dataObj.perfumeId, dataObj.loteId, parseInt(dataObj.talla) * (+dataObj.cantidad||1));
-            } else if (dataObj.talla === 'Resto') {
-              updateDoc(doc(db, 'perfumes', dataObj.perfumeId), { estadoStock: 'agotado' })
-                .then(() => toast('Perfume marcado como agotado automáticamente', 'info'))
-                .catch(e => console.error('No se pudo marcar agotado', e));
             }
           }
         }
       }
     });
+    // Agotado / por acabarse según lo que quede en cada botella. Antes solo el
+    // "Resto" marcaba agotado (aunque hubiera otra botella nueva) y vender
+    // decants hasta vaciarla no marcaba nada.
+    const guardadas = validas.filter(r => r._tempDataObj).map(r => ({ ...r._tempDataObj, id: r.docId || undefined }));
+    revisarStock(guardadas.flatMap(v => v.paqueteItems ? v.paqueteItems.map(s => s.id) : [v.perfumeId]), guardadas);
     // Una sola resta por accesorio, después de juntar todas las líneas (antes
     // estaba dentro del recorrido de combos: sin combos no bajaba el stock y con
     // varios combos lo bajaba de más). Sin pasar de 0, como antes.
@@ -2516,6 +2516,29 @@ window.openPackageSelectionModal = (p, onComplete, selectedMl = null) => {
     close();
   };
 };
+
+/**
+ * Tras guardar ventas: si la botella en uso se acabó o le queda poco, el
+ * perfume pasa solo a agotado o por acabarse (estado-stock.js). Solo sube: si
+ * faltan ventas por registrar, no te quita un agotado puesto a mano.
+ * @param {string[]} ids        Perfumes tocados (los de un paquete también).
+ * @param {object[]} guardadas  Las ventas recién guardadas (con `id` si eran edición).
+ */
+async function revisarStock(ids, guardadas) {
+  const reemplazadas = new Set(guardadas.map(v => v.id).filter(Boolean));
+  const todas = [...ventas.filter(v => !reemplazadas.has(v.id)), ...guardadas];
+  for (const id of new Set(ids.filter(Boolean))) {
+    const p = perfumes.find(x => x.id === id);
+    if (!p) continue;   // accesorios y perfumes manuales
+    const nuevo = siguienteEstado(p.estadoStock, estadoStockAuto(p, todas).estado, { soloSubir: true });
+    if (!nuevo) continue;
+    try {
+      await updateDoc(doc(db, 'perfumes', id), { estadoStock: nuevo });
+      p.estadoStock = nuevo;
+      toast(nuevo === 'agotado' ? `${p.nombre}: se acabó la botella, quedó como agotado` : `${p.nombre}: le queda poco, quedó como por acabarse`, 'info');
+    } catch (e) { console.error('No se pudo actualizar el stock', e); }
+  }
+}
 
 window.checkLoteOverflow = (perfId, loteId, mlToSell) => {
   if (!perfumes || !ventas) return;
