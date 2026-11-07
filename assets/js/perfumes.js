@@ -1,4 +1,4 @@
-import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onAuthStateChanged }
+import { db, collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, onAuthStateChanged }
   from './firebase-config.js';
 import { paraVenderEnPanel } from './sorpresa.js';
 import { renderSidebar } from '../../admin/sidebar.js';
@@ -12,6 +12,7 @@ import { sugiereNuevoCliente, siguienteClienteId, nombreCliente } from './pos-cl
 import { construirPrompt, parsearRespuesta, emparejarOpcion } from './ia-perfume.js';
 import { buscarEnCatalogo, armarInspirado, etiquetaCatalogo, agotadoBasico } from './inspirado.js?v=2';
 import { ATAJOS, FILTROS_VACIOS, filtrarPerfumes, contarAtajos, cuantosActivos, ordenarPerfumes, restaurarFiltros } from './filtros-perfumes.js';
+import { textoPrecios } from './compartir-perfume.js?v=2';
 
 const CLOUDINARY_CLOUD  = 'dxo761td7';
 const CLOUDINARY_PRESET = 'FITOSCENTS-DECANTS';
@@ -36,6 +37,9 @@ if (window.innerWidth <= 768) document.getElementById('menu-btn').style.display 
 let perfumes = [], cats = [], marcas = [], imgMode = 'url';
 let familiasData = [];
 let tiposData    = [];
+// Lo que la tienda vende de verdad (2 ml apagado, precio del PRO): el texto y
+// la imagen de un perfume dicen lo mismo que la tienda.
+let tiendaCfg = { disable2ml: false, proExtra: 0 };
 // ── Definir addToPosCart para la vista POS Rápido ──
 function leerCanasta() {
   try { return JSON.parse(localStorage.getItem('posCart') || '[]'); }
@@ -138,7 +142,11 @@ async function loadAll() {
     getDocs(collection(db, 'familias_olfativas')),
     getDocs(collection(db, 'tipos_perfume')),
     getDocs(collection(db, 'paquetes')),
-    getDocs(collection(db, 'accesorios'))
+    getDocs(collection(db, 'accesorios')),
+    getDoc(doc(db, 'config', 'tienda')).then(snap => {
+      const t = snap.exists() ? snap.data() : {};
+      tiendaCfg = { disable2ml: !!t.disable2ml, proExtra: Number(t.reforzadaVenta) || 0 };
+    }).catch(() => {})
   ]);
 
   cats   = []; cs.forEach(d => cats.push({ id: d.id,   ...d.data() }));
@@ -397,7 +405,8 @@ window.renderTable = () => {
         <td><div style="display:flex;gap:6px">
           <button class="btn-icon estrella ${p.destacado ? 'on' : ''}" onclick="toggleDestacado('${pid}')" title="${p.destacado ? 'Quitar de Recomendados' : 'Recomendar en la tienda'}"><i class="bi ${p.destacado ? 'bi-star-fill' : 'bi-star'}"></i></button>
           <button class="btn btn-outline btn-sm" onclick="openPosItemModal('${pid}')" title="Añadir a Canasta"><i class="bi bi-cart-plus" style="color:var(--accent)"></i></button>
-          <button class="btn btn-outline btn-sm" onclick="copiarLista('${pid}')" title="Copiar lista de precios"><i class="bi bi-clipboard"></i></button>
+          <button class="btn btn-outline btn-sm" onclick="copiarLista('${pid}')" title="Copiar precios para el chat"><i class="bi bi-clipboard"></i></button>
+          ${p.isAccesorio ? '' : `<button class="btn btn-outline btn-sm" onclick="imagenPerfume('${pid}')" title="Imagen para compartir"><i class="bi bi-image"></i></button>`}
           <button class="btn-icon" onclick="edit('${pid}')" title="Editar"><i class="bi bi-pencil"></i></button>
           <button class="btn-icon" onclick="del('${pid}','${pnom}')" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
         </div></td>
@@ -663,6 +672,8 @@ window.openPosItemModal = (id) => {
   document.getElementById('pos-m-nombre').textContent = p.nombre;
   document.getElementById('pos-m-marca').textContent = isPaquete ? 'Combos Fitoscents' : (p.marca || 'Sin marca');
   document.getElementById('pos-m-familia').textContent = isPaquete ? 'Paquete Especial' : (p.familia || 'Sin familia');
+  const btnImg = document.getElementById('btn-img-pos');
+  if (btnImg) btnImg.hidden = isPaquete || !!p.isAccesorio;
   
   const btnContainer = document.getElementById('pos-m-precios');
   btnContainer.innerHTML = '';
@@ -733,24 +744,9 @@ window.copyPosPrices = () => {
     if (p) isPaquete = true;
   }
   if (!p) return;
-  let text = `*${p.nombre}*\n`;
-  if (!isPaquete) text += `${p.marca}\n\n`;
-  
-  if (isPaquete) {
-    const pr = p.precios || {};
-    const available = Object.entries(pr).filter(([, v]) => v > 0).sort((a,b)=>a[0]-b[0]);
-    available.forEach(([ml, price]) => {
-      text += `Paquete ${ml}ml — $${price} MXN\n`;
-    });
-  } else {
-    const pr = p.precios || {};
-    const available = Object.entries(pr).filter(([, v]) => v > 0).sort((a,b)=>a[0]-b[0]);
-    available.forEach(([ml, price]) => {
-      text += `${ml}ml — $${price} MXN\n`;
-    });
-  }
-  text += `\n*Decants 100% Originales*`;
-  
+  const text = textoPrecios(isPaquete ? { ...p, esPaquete: true } : p, tiendaCfg);
+  if (!text) { toast('Este perfume no tiene precios configurados', 'error'); return; }
+
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('btn-copy-pos');
     if (btn) {
@@ -758,13 +754,22 @@ window.copyPosPrices = () => {
       btn.innerHTML = '<i class="bi bi-check2" style="color:var(--gold,#C9A84C);"></i>';
       setTimeout(() => btn.innerHTML = origHTML, 1500);
     }
-    if (window.showToast) window.showToast('¡Copiado!');
-    else if (window.toast) window.toast('¡Copiado!', 'success');
-  }).catch(() => {
-    if (window.showToast) window.showToast('Error al copiar', 'error');
-    else if (window.toast) window.toast('Error al copiar', 'error');
-  });
+    toast('Precios copiados', 'success');
+  }).catch(() => toast('No se pudo copiar', 'error'));
 };
+
+/** Foto, notas, precios y logo en una imagen para mandar por el chat (lienzo-perfume.js). */
+window.imagenPerfume = async (id) => {
+  const p = perfumes.find(x => x.id === id);
+  if (!p || p.isAccesorio) return;
+  try {
+    const { abrirImagenPerfume } = await import('./lienzo-perfume.js?v=2');
+    abrirImagenPerfume(p, tiendaCfg);
+  } catch (e) {
+    toast('No se pudo abrir la imagen: ' + e.message, 'error');
+  }
+};
+window.imagenPos = () => { if (currentPosId) window.imagenPerfume(currentPosId); };
 
 window.closePosModal = () => {
   currentPosId = null;
@@ -990,15 +995,10 @@ window.toggleDestacado = async (id) => {
 window.copiarLista = (id) => {
   const p = perfumes.find(x => x.id === id);
   if (!p) return;
-  const pr = p.precios || {};
-  const lineas = Object.entries(pr)
-    .filter(([, v]) => +v > 0)
-    .sort(([a], [b]) => +a - +b)
-    .map(([k, v]) => `${k}ml -> $${v}`);
-  if (!lineas.length) { toast('Este perfume no tiene precios configurados', 'error'); return; }
-  const texto = `${p.nombre}\n${lineas.join(' | ')}`;
+  const texto = textoPrecios(p, tiendaCfg);
+  if (!texto) { toast('Este perfume no tiene precios configurados', 'error'); return; }
   navigator.clipboard.writeText(texto)
-    .then(() => toast('Lista copiada al portapapeles', 'success'))
+    .then(() => toast('Precios copiados', 'success'))
     .catch(() => toast('No se pudo copiar', 'error'));
 };
 

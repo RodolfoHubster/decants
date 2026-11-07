@@ -200,3 +200,21 @@ td.col-clicks {
   .fp-atajo { min-height: 38px; }
   .fp-limpiar { margin-left: 0; }
 }
+
+/* ══ Imagen para compartir (lienzo-perfume.js) ═════════════════════════ */
+/* Encima del POS rápido (z-index 9020), que también la abre. */
+.modal-overlay.imgp { z-index: 9030; }
+.imgp .modal-box { max-width: 480px; }
+.imgp-vista {
+  width: min(100%, calc(58vh * .8));
+  aspect-ratio: 4 / 5;
+  margin: 0 auto;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-card2);
+}
+.imgp-vista img { display: block; width: 100%; height: 100%; }
+.imgp-esq { width: 100%; height: 100%; border-radius: 12px; }
+.imgp-nota { margin: 10px 0 0; font-size: 12px; color: var(--text-muted); text-align: center; }
+.imgp-nota:empty { display: none; }
+.imgp .modal-footer [hidden] { display: none; }

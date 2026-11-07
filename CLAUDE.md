@@ -26,6 +26,7 @@ assets/js/*.js                                  ← un módulo por página + mó
 assets/css/*.css                                ← variables.css + global.css + uno por página
 firestore.rules                                 ← reglas de seguridad
 tests/*.test.js                                 ← Jest, importan los módulos puros
+cloudflare/vista-previa.js                      ← Worker (se pega a mano en Cloudflare, no se publica con el push)
 ```
 
 ### Módulos puros (sin DOM, los que cubren los tests)
@@ -44,6 +45,8 @@ tests/*.test.js                                 ← Jest, importan los módulos 
 `estado-stock.js` (agotado / por acabarse según lo que queda en la botella en uso y las compradas después; al registrar ventas solo sube, al medir en Estadísticas manda lo medido) ·
 `filtros-perfumes.js` (filtros, atajos de "Revisar" con conteo y orden del catálogo del panel; se guardan en la sesión y sobreviven al guardar un perfume) ·
 `compra-rapida.js` (la tarjeta ya no lista precios: "Desde $X ▾" despliega tamaños y PRO con color, y la bolsita de la foto agrega; el renglón del carrito lleva la misma `key` que la ficha) ·
+`compartir-perfume.js` (lo que mandas cuando preguntan por un perfume: el texto de "copiar precios" del panel, sin asteriscos, y los datos de la imagen; `VISTA_PREVIA` es la dirección del Worker) ·
+`lienzo-perfume.js` (DOM: dibuja la imagen 1080×1350 en canvas y la ventana Compartir/Copiar/Guardar; botón 🖼 en Perfumes y en el POS) ·
 `similares.js` (productos similares de la página de producto) · `pro.js` (decant PRO: 5/10 ml a +`reforzadaVenta`, 7 colores) ·
 `newsletter.js` (validar correo, documento `suscriptores/<correo>`, armar el correo de novedades para Brevo) ·
 `estadisticas-ventas.js` (qué se mueve: piezas por perfume, género, talla y día; incluye perfumes completos de ventas y encargos entregados) ·

@@ -100,6 +100,15 @@ export function imgOg(url) {
 }
 
 /**
+ * Foto para la imagen de compartir (lienzo-perfume.js): cuadrada y completa
+ * (c_pad, sin recortar el frasco), con el fondo de la propia foto. Ignora el
+ * modo ahorro: la pides a propósito.
+ */
+export function imgCompartir(url) {
+  return transform(url, 'w_900,h_900,c_pad,b_auto,f_jpg,q_auto:good');
+}
+
+/**
  * Placeholder borroso para blur-up.
  */
 export function imgPlaceholder(url) {
