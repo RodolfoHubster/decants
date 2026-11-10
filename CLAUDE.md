@@ -27,6 +27,8 @@ assets/css/*.css                                ← variables.css + global.css +
 firestore.rules                                 ← reglas de seguridad
 tests/*.test.js                                 ← Jest, importan los módulos puros
 cloudflare/vista-previa.js                      ← Worker (se pega a mano en Cloudflare, no se publica con el push)
+assets/fonts/*.ttf                              ← Poppins y Playfair para el catálogo PDF (jsPDF necesita TTF)
+assets/img/marcas/<slug>.png                    ← logos oficiales de las marcas, silueta blanca (el PDF la pinta dorada)
 ```
 
 ### Módulos puros (sin DOM, los que cubren los tests)
@@ -46,6 +48,8 @@ cloudflare/vista-previa.js                      ← Worker (se pega a mano en Cl
 `filtros-perfumes.js` (filtros, atajos de "Revisar" con conteo y orden del catálogo del panel; se guardan en la sesión y sobreviven al guardar un perfume) ·
 `compra-rapida.js` (la tarjeta ya no lista precios: "Desde $X ▾" despliega tamaños y PRO con color, y la bolsita de la foto agrega; el renglón del carrito lleva la misma `key` que la ficha) ·
 `compartir-perfume.js` (lo que mandas cuando preguntan por un perfume: el texto de "copiar precios" del panel, sin asteriscos, y los datos de la imagen; `VISTA_PREVIA` es la dirección del Worker) ·
+`catalogo-paginas.js` (catálogo PDF: qué perfumes entran —sin agotados—, Mujer/Hombre/Unisex por marca A→Z, hojas de 6, índice con número de hoja, datos curiosos, novedades desde una fecha; `LOGOS_MARCAS` debe coincidir con `assets/img/marcas`, lo vigila un test) ·
+`catalogo-pdf.js` (DOM: dibuja el catálogo con jsPDF; modo digital con links y modo imprenta con 3 mm de sangrado) · `catalogo-admin.js` (página admin/catalogo-pdf.html) ·
 `lienzo-perfume.js` (DOM: dibuja la imagen 1080×1350 en canvas y la ventana Compartir/Copiar/Guardar; botón 🖼 en Perfumes y en el POS) ·
 `similares.js` (productos similares de la página de producto) · `pro.js` (decant PRO: 5/10 ml a +`reforzadaVenta`, 7 colores) ·
 `newsletter.js` (validar correo, documento `suscriptores/<correo>`, armar el correo de novedades para Brevo) ·

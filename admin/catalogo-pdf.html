@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/jpeg" href="../assets/img/LogoOficial2.jpeg">
+  <link rel="apple-touch-icon" href="../assets/img/LogoOficial2.jpeg">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Catálogo PDF · Admin Fitoscents</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <!-- jsPDF arma el PDF; qrcode-generator dibuja el QR. -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+  <style>
+    .cat-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    @media (min-width: 1100px) { .cat-grid { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); align-items: start; } }
+    .cat-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+    .cat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; min-width: 0; }
+    .cat-card h2 { font-size: 16px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+    .cat-card h2 i { color: var(--accent); }
+    .cat-ayuda { font-size: 13px; color: var(--text-muted); margin: 0 0 14px; line-height: 1.55; }
+    .cat-cifras { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .cat-cifra { background: var(--bg-card2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px; text-align: center; min-width: 0; }
+    .cat-cifra b { display: block; font-size: 22px; line-height: 1.1; color: var(--text-primary); }
+    .cat-cifra span { font-size: 11.5px; color: var(--text-muted); }
+    .cat-fuera { font-size: 12.5px; color: var(--text-faint); margin: 0 0 14px; }
+    .cat-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+    .cat-acciones .btn { flex: 1 1 200px; justify-content: center; }
+    .cat-notas { margin: 14px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--text-muted); line-height: 1.6; }
+    .cat-notas strong { color: var(--text-primary); font-weight: 600; }
+    .cat-fila { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .cat-fila label { font-size: 13px; color: var(--text-muted); }
+    .cat-fila input[type=date] { max-width: 180px; }
+    .cat-nov-resumen { font-size: 13px; color: var(--text-muted); }
+    .cat-ultimo { font-size: 12.5px; color: var(--text-faint); margin: 12px 0 0; }
+    .cat-estado { font-size: 13px; color: var(--text-muted); min-height: 20px; margin-bottom: 10px; }
+    .cat-barra { height: 6px; border-radius: 3px; background: var(--bg-card2); overflow: hidden; margin-bottom: 14px; }
+    .cat-barra i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+    .cat-barra[hidden] { display: none; }
+    .cat-pdf { width: 100%; height: 72vh; min-height: 420px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #0d0d0d; display: block; }
+    .cat-vacio { border: 1px dashed var(--border); border-radius: var(--radius-md); padding: 36px 16px; text-align: center; color: var(--text-faint); font-size: 13px; }
+    .cat-vacio i { display: block; font-size: 30px; color: var(--accent); opacity: .6; margin-bottom: 8px; }
+    .cat-listo { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .cat-listo[hidden] { display: none; }
+    .cat-aviso { font-size: 12.5px; color: var(--warning, #e0b95a); margin: 0 0 10px; }
+    .cat-aviso:empty { display: none; }
+    @media (max-width: 600px) {
+      .cat-cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .cat-pdf { display: none; }   /* el celular no muestra PDFs incrustados: se descarga o se abre */
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+<div id="sidebar-wrap"></div>
+<div class="main-content">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn-icon" id="menu-btn" onclick="toggleSidebar()" style="display:none"><i class="bi bi-list" style="font-size:20px"></i></button>
+      <span class="topbar-title">Catálogo PDF</span>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <div class="cat-grid">
+      <div class="cat-col">
+        <section class="cat-card">
+          <h2><i class="bi bi-journal-richtext"></i> Catálogo completo</h2>
+          <p class="cat-ayuda">Se arma con lo que tienes hoy en el panel: perfumes activos con precio, por Mujer, Hombre y Unisex, y por marca de la A a la Z. Con portada, cómo pedir, índice, tus marcas, datos curiosos, consejos y contraportada con tus redes y QR. Los agotados no salen. Cada vez que lo generas sale con los precios y perfumes de ese momento.</p>
+          <div class="cat-cifras" id="cat-cifras">
+            <div class="cat-cifra"><b><i class="esq esq-num" style="width:40px;margin:auto"></i></b><span>Mujer</span></div>
+            <div class="cat-cifra"><b><i class="esq esq-num" style="width:40px;margin:auto"></i></b><span>Hombre</span></div>
+            <div class="cat-cifra"><b><i class="esq esq-num" style="width:40px;margin:auto"></i></b><span>Unisex</span></div>
+            <div class="cat-cifra"><b><i class="esq esq-num" style="width:40px;margin:auto"></i></b><span>Hojas</span></div>
+          </div>
+          <p class="cat-fuera" id="cat-fuera"></p>
+          <div class="cat-acciones">
+            <button class="btn btn-primary" data-generar="completo" data-modo="digital" disabled><i class="bi bi-phone"></i> PDF digital</button>
+            <button class="btn btn-outline" data-generar="completo" data-modo="imprenta" disabled><i class="bi bi-printer"></i> PDF para imprenta</button>
+          </div>
+          <ul class="cat-notas">
+            <li><strong>Digital:</strong> ligero para mandarlo por WhatsApp. El índice, tus marcas y cada perfume llevan link (a su hoja o a su página en la tienda).</li>
+            <li><strong>Imprenta:</strong> fotos en alta y 3 mm de "sangrado" por lado, para que la imprenta corte sin dejar orilla blanca. Pide que lo impriman <strong>a sangre, tamaño carta</strong>.</li>
+          </ul>
+        </section>
+
+        <section class="cat-card">
+          <h2><i class="bi bi-stars"></i> Hojas de novedades</h2>
+          <p class="cat-ayuda">Solo lo que agregaste desde una fecha, con el mismo diseño y una portadilla de "Lo nuevo". Imprímelas y mételas antes de la contraportada de tu catálogo impreso, sin reimprimir todo.</p>
+          <div class="cat-fila">
+            <label for="nov-desde">Desde</label>
+            <input type="date" class="form-control" id="nov-desde">
+            <span class="cat-nov-resumen" id="nov-resumen"></span>
+          </div>
+          <div class="cat-acciones">
+            <button class="btn btn-primary" data-generar="novedades" data-modo="digital" disabled><i class="bi bi-phone"></i> Novedades digital</button>
+            <button class="btn btn-outline" data-generar="novedades" data-modo="imprenta" disabled><i class="bi bi-printer"></i> Novedades para imprenta</button>
+          </div>
+          <p class="cat-ultimo" id="cat-ultimo"></p>
+        </section>
+      </div>
+
+      <section class="cat-card">
+        <h2><i class="bi bi-file-earmark-pdf"></i> Tu PDF</h2>
+        <div class="cat-estado" id="cat-estado">Elige qué catálogo quieres generar.</div>
+        <div class="cat-barra" id="cat-barra" hidden><i></i></div>
+        <p class="cat-aviso" id="cat-aviso"></p>
+        <div class="cat-listo" id="cat-listo" hidden>
+          <a class="btn btn-primary" id="cat-descargar" download><i class="bi bi-download"></i> Descargar</a>
+          <a class="btn btn-outline" id="cat-abrir" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> Abrir en otra pestaña</a>
+        </div>
+        <div id="cat-vista"><div class="cat-vacio"><i class="bi bi-journal-richtext"></i>Aquí vas a ver el catálogo antes de descargarlo.</div></div>
+      </section>
+    </div>
+  </div>
+</div>
+</div>
+
+<script type="module" src="../assets/js/catalogo-admin.js?v=1"></script>
+</body>
+</html>

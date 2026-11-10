@@ -49,7 +49,7 @@ function cargarImagen(src) {
  * fondo se vuelve transparente según qué tan claro es cada pixel.
  */
 let logoListo = null;
-function logoSinFondo() {
+export function logoSinFondo() {
   logoListo = logoListo || cargarImagen(LOGO).then(img => {
     if (!img) return null;
     const k = img.naturalWidth / 570;

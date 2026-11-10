@@ -105,7 +105,13 @@ export function imgOg(url) {
  * modo ahorro: la pides a propósito.
  */
 export function imgCompartir(url) {
-  return transform(url, 'w_900,h_900,c_pad,b_auto,f_jpg,q_auto:good');
+  return imgCuadrada(url, 900);
+}
+
+/** Cuadrada y completa (c_pad) del tamaño que se pida, en JPG: catálogo PDF (catalogo-pdf.js). */
+export function imgCuadrada(url, px = 900) {
+  const n = Math.round(Number(px) || 900);
+  return transform(url, `w_${n},h_${n},c_pad,b_auto,f_jpg,q_auto:good`);
 }
 
 /**

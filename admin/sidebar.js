@@ -98,6 +98,7 @@ export function renderSidebar(active) {
       <li><a href="./paquetes.html" class="${active==='paquetes'?'active':''}"><i class="bi bi-box2-heart"></i> Paquetes</a></li>
       <li><a href="./perfumes-completos.html" class="${active==='perfumes-completos'?'active':''}"><i class="bi bi-bag-heart"></i> Botellas completas</a></li>
       <li><a href="./accesorios.html" class="${active==='accesorios'?'active':''}"><i class="bi bi-bag-plus"></i> Accesorios</a></li>
+      <li><a href="./catalogo-pdf.html" class="${active==='catalogo-pdf'?'active':''}"><i class="bi bi-journal-richtext"></i> Catálogo PDF</a></li>
       <li>
         <div class="sb-group-toggle ${isOpen('catalogo','marcas','categorias','notas')}" data-group="catalogo" onclick="toggleSbGroup(this)">
           <i class="bi bi-collection"></i> Marcas y notas
