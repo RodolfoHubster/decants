@@ -54,7 +54,7 @@ assets/img/marcas/<slug>.png                    ← logos oficiales de las marca
 `similares.js` (productos similares de la página de producto) · `pro.js` (decant PRO: 5/10 ml a +`reforzadaVenta`, 7 colores) ·
 `newsletter.js` (validar correo, documento `suscriptores/<correo>`, armar el correo de novedades para Brevo) ·
 `estadisticas-ventas.js` (qué se mueve: piezas por perfume, género, talla y día; incluye perfumes completos de ventas y encargos entregados) ·
-`esqueleto.js` (esqueletos de carga del panel: un contenedor pide el suyo con `data-esq="tabla:10:8:foto"`, `tarjetas:6:150` o `lista:5:44` y `sidebar.js` lo pinta; las ruedas son solo para botones) · `prueba-estres.js` (`?estres=1` en Live Server agrega productos exagerados en memoria para probar la tienda) ·
+`esqueleto.js` (esqueletos de carga del panel: un contenedor pide el suyo con `data-esq="tabla:10:8:foto"`, `tarjetas:6:150` o `lista:5:44` y `arranque-panel.js` lo pinta; las ruedas son solo para botones) · `arranque-panel.js` (DOM: lo primero que corre en cada página del panel, sin esperar a Firebase: esqueletos, cifras "$0"/"0 perfumes" → barra, filtros del celular, vista de Perfumes y la búsqueda guardada de `<input data-recordar="clave:campo">`; lo que escribas mientras carga manda sobre lo guardado) · `prueba-estres.js` (`?estres=1` en Live Server agrega productos exagerados en memoria para probar la tienda) ·
 `ia-perfume.js` (prompt de la IA de decants) · `ia-completos.js` (prompt de la IA de perfumes completos: presentaciones que existen, precio de mercado en México y sugerido; descarta precios fuera de rango)
 
 **Página de producto:** `producto.html` carga el mismo `catalog.js` con `<body data-pagina="producto">`
@@ -106,6 +106,7 @@ Búscalos con `grep -n 'nombreDeFuncion' archivo` y lee solo el rango con
 - **Producción es GitHub Pages** en `fitoscents.com` (dominio de Cloudflare; archivo `CNAME`; el viejo `rodolfohubster.github.io/decants` redirige). Se publica en cada push a
   `main`). `firebase.json` no aplica al sitio en vivo. GitHub guarda ~10 min en caché, así que
   un `import` de un módulo al que le agregaste exports va con versión: `from './cart.js?v=2'`.
+- **Página nueva del panel**: en su `<head>`, después de `global.css?v=2`, va `<script type="module" src="../assets/js/arranque-panel.js"></script>`. Sin él, `.page-body` queda oculto hasta que `sidebar.js` lo importa (o 2.5 s). Lo que el HTML trae en "0" mientras carga, que sea una cifra que la página siempre llena.
 - **No hacer commits por el dueño**: editar, copiar al checkout principal y darle los comandos.
 - **Imágenes siempre por `cloudinary.js`** (`imgCard`, `imgCart`, `imgThumb`): nunca `src="${p.imagen}"`
   directo — descarga el original y se salta el modo ahorro.

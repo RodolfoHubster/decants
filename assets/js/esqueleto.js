@@ -1,8 +1,8 @@
 /**
  * esqueleto.js — Esqueletos de carga del panel. Sin DOM: solo arma el HTML.
  *
- * Un contenedor pide el suyo con un atributo y sidebar.js (que cargan todas las
- * páginas del panel) lo pinta antes de que lleguen los datos:
+ * Un contenedor pide el suyo con un atributo y arranque-panel.js (lo primero
+ * que corre en cada página del panel) lo pinta antes de que lleguen los datos:
  *
  *   <tbody data-esq="tabla:10:8:foto:150">  columnas, filas, foto en la 1ª columna
  *                                           y alto de la fila (63 px si se omite)
@@ -44,6 +44,25 @@ export function lista(n = 5, alto = 44) {
     <div class="esq-renglon" style="height:${alto}px" aria-hidden="true">
       ${barra(ancho(i))}<i class="esq esq-chico"></i>
     </div>`).join('');
+}
+
+/**
+ * ¿Es una cifra de relleno del HTML ("0", "$0", "$0.00", "0 perfumes")? Esas se
+ * cambian por una barra mientras cargan: antes se veía "$0" y luego el dato real.
+ */
+export function esValorDeRelleno(texto) {
+  return /^\$?0(?:\.00)?(?:\s+(?:perfumes?|ventas?|ml))?$/i.test(String(texto || '').trim());
+}
+
+/**
+ * Perfumes en el panel: ¿tabla o tarjetas? Lo último que elegiste; si nunca
+ * elegiste, tarjetas en el celular (480 px o menos). `?pos=1` siempre tarjetas.
+ * La usan arranque-panel.js (para que el esqueleto ya salga en la vista buena)
+ * y perfumes.js.
+ * @returns {'grid'|'table'}
+ */
+export function vistaPerfumes({ guardada = null, pidePos = false, ancho = 1024 } = {}) {
+  return pidePos || guardada === 'grid' || (ancho <= 480 && guardada !== 'table') ? 'grid' : 'table';
 }
 
 /** Lee `data-esq`. Un valor que no reconoce no pinta nada. */

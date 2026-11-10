@@ -90,6 +90,10 @@ onAuthStateChanged(auth, user => {
 // ── Estado global ────────────────────────────────────────────
 const PAGE_SIZE = 10;
 let all = [], gF = '', modalData = null;
+// Hasta que llega el catálogo no se busca: antes, escribir mientras cargaba
+// mostraba "no encontramos" encima de las tarjetas de carga. load() vuelve a
+// pintar con lo que haya en la caja.
+let catalogoCargado = false;
 // true si al abrir la ficha se agregó una entrada al historial (#/perfumes/...).
 // Cerrarla debe regresar esa entrada, no apilar otra encima.
 let fichaEnHistorial = false;
@@ -645,6 +649,7 @@ async function load() {
   }
 
   all = datos.all;
+  catalogoCargado = true;
   if (hayEstres()) {
     const { productosEstres } = await import('./prueba-estres.js');
     all = [...productosEstres(all), ...all];
@@ -690,8 +695,11 @@ async function load() {
   if (qParam) {
     const qEl = document.getElementById('q');
     const qmEl = document.getElementById('q-mobile');
-    if (qEl) qEl.value = qParam;
-    if (qmEl) qmEl.value = qParam;
+    // Si mientras cargaba ya escribiste otra cosa, eso manda (antes se ponía la
+    // búsqueda de la dirección encima y al seguir escribiendo se juntaban).
+    const escrito = (qEl && qEl.value) || (qmEl && qmEl.value) || '';
+    if (qEl && !escrito) qEl.value = qParam;
+    if (qmEl && !escrito) qmEl.value = qParam;
   }
 
   const sParam = params.get('orden');
@@ -1296,6 +1304,7 @@ window.suscribirNewsletter = async (form) => {
 import { matchSearch } from './search-engine.js';
 
 window.renderGrid = () => {
+  if (!catalogoCargado) return;
   currentPage = 1;
   const qEl   = document.getElementById('q');
   const sEl   = document.getElementById('sort');

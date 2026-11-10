@@ -1,4 +1,4 @@
-import { barra, filasTabla, tarjetas, lista, desdeAtributo } from '../assets/js/esqueleto.js';
+import { barra, filasTabla, tarjetas, lista, desdeAtributo, esValorDeRelleno, vistaPerfumes } from '../assets/js/esqueleto.js';
 
 const cuenta = (html, txt) => html.split(txt).length - 1;
 
@@ -51,5 +51,28 @@ describe('desdeAtributo', () => {
   });
   test('números inválidos usan el valor por defecto', () => {
     expect(cuenta(desdeAtributo('tabla:x:y'), '<tr ')).toBe(8);
+  });
+});
+
+describe('esValorDeRelleno', () => {
+  test('las cifras en cero que trae el HTML antes de cargar', () => {
+    for (const t of ['0', '$0', '$0.00', '0 perfumes', '0 ventas', '0 ml', ' 0 ']) expect(esValorDeRelleno(t)).toBe(true);
+  });
+  test('un dato de verdad no se toca', () => {
+    for (const t of ['12', '$150', '10 perfumes', '0.5', '—', '', 'Sin datos', '$0 hoy']) expect(esValorDeRelleno(t)).toBe(false);
+  });
+});
+
+describe('vistaPerfumes', () => {
+  test('lo último que elegiste manda', () => {
+    expect(vistaPerfumes({ guardada: 'grid', ancho: 1400 })).toBe('grid');
+    expect(vistaPerfumes({ guardada: 'table', ancho: 375 })).toBe('table');
+  });
+  test('sin elección: tarjetas en el celular, tabla en la compu', () => {
+    expect(vistaPerfumes({ ancho: 375 })).toBe('grid');
+    expect(vistaPerfumes({ ancho: 1024 })).toBe('table');
+  });
+  test('?pos=1 siempre tarjetas', () => {
+    expect(vistaPerfumes({ guardada: 'table', pidePos: true, ancho: 1400 })).toBe('grid');
   });
 });

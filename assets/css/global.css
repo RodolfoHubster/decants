@@ -506,6 +506,21 @@ body.filtros-open { overflow: hidden; }
    Para páginas y secciones completas; la rueda se queda solo en botones.
    Miden lo mismo que lo que va a llegar, y siempre se animan. */
 @keyframes esq-brillo { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* Hasta que arranque-panel.js pinta los esqueletos, el contenido no se muestra:
+   antes se veía la página a medio armar ("$0", "0 perfumes", tabla vacía) y
+   luego se borraba. Si ese módulo no llegara, a los 2.5 s se muestra igual. */
+html:not(.panel-listo) .page-body { visibility: hidden; animation: panel-mostrar 0s linear 2.5s forwards; }
+@keyframes panel-mostrar { to { visibility: visible; } }
+/* El menú lo pinta JS cuando ya bajó Firebase: mientras, su lugar queda
+   apartado con su mismo fondo, así la página no brinca de lado. */
+@media (min-width: 769px) {
+  #sidebar-wrap:empty { width: 230px; min-width: 230px; flex: none; background: var(--bg-sidebar); border-right: 1px solid var(--border); }
+}
+/* Cifras en carga: del tamaño de lo que va a llegar. */
+.badge .esq-num { width: 56px; height: .9em; }
+.count .esq-num, .stat-mini .esq-num { width: 2em; }
+.kpi-value .esq-num { width: min(110px, 70%); height: .75em; }
 .esq {
   display: block;
   height: 12px;

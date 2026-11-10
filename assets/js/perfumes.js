@@ -13,6 +13,7 @@ import { construirPrompt, parsearRespuesta, emparejarOpcion } from './ia-perfume
 import { buscarEnCatalogo, armarInspirado, etiquetaCatalogo, agotadoBasico } from './inspirado.js?v=2';
 import { ATAJOS, FILTROS_VACIOS, filtrarPerfumes, contarAtajos, cuantosActivos, ordenarPerfumes, restaurarFiltros } from './filtros-perfumes.js';
 import { textoPrecios } from './compartir-perfume.js?v=2';
+import { vistaPerfumes } from './esqueleto.js?v=2';
 
 const CLOUDINARY_CLOUD  = 'dxo761td7';
 const CLOUDINARY_PRESET = 'FITOSCENTS-DECANTS';
@@ -197,6 +198,10 @@ async function loadAll() {
     marcas.map(m => `<option>${m.nombre}</option>`).join('');
 
   initFiltrosSelects();
+  // En la primera carga, lo que hay en la caja de búsqueda manda: ya trae la
+  // búsqueda guardada (arranque-panel.js) o lo que escribiste mientras cargaba.
+  // Antes se reponía la guardada encima y, al seguir escribiendo, se juntaban.
+  if (!catalogoListo) filtros.q = document.getElementById('search').value.trim();
   // Rehacer las opciones dejaba los selects en "Todas": se vuelven a poner los
   // filtros que tenías (al guardar un perfume se pasa por aquí).
   ponerFiltrosEnPantalla();
@@ -477,10 +482,12 @@ window.sortByDropdown = () => {
   window.renderTable();
 };
 
+// arranque-panel.js ya eligió la vista antes de bajar Firebase; esto queda por
+// si esta página se abre sin él (misma regla: esqueleto.js → vistaPerfumes).
 document.addEventListener('DOMContentLoaded', () => {
   const v = localStorage.getItem('adminPerfumeView');
   const pidePos = new URLSearchParams(window.location.search).get('pos') === '1';
-  if(pidePos || v === 'grid' || (window.innerWidth <= 480 && v !== 'table')) {
+  if (vistaPerfumes({ guardada: v, pidePos, ancho: window.innerWidth }) === 'grid') {
     const tableWrap = document.querySelector('.table-wrap');
     const posGrid = document.getElementById('pos-grid');
     const btn = document.getElementById('btn-toggle-view');

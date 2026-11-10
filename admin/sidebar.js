@@ -5,11 +5,10 @@ import { initFiltrosAdmin } from '../assets/js/admin-filtros.js';
 import { siguienteClienteId, nombreCliente } from '../assets/js/pos-cliente.js';
 import { imgCart, imgOPlaceholder } from '../assets/js/cloudinary.js';
 import { buscarCliente } from '../assets/js/clientes-util.js';
-import { desdeAtributo } from '../assets/js/esqueleto.js';
-
-// Esqueletos de carga: cada contenedor pide el suyo con data-esq. Corre antes
-// que el módulo de la página, así se ven desde el primer momento.
-document.querySelectorAll('[data-esq]').forEach(el => { el.innerHTML = desdeAtributo(el.dataset.esq); });
+// Esqueletos de carga: los pinta arranque-panel.js, que cada página carga antes
+// de su módulo (sin esperar a Firebase). Se importa aquí también por si alguna
+// página no trae su etiqueta; es el mismo módulo, corre una sola vez.
+import '../assets/js/arranque-panel.js';
 
 auth.onAuthStateChanged(user => {
   if (!user) return;

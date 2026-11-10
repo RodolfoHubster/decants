@@ -135,8 +135,15 @@ function sincronizar() {
   else if (!movil && estado) desagrupar();
 }
 
-/** Arranca el agrupado y lo mantiene al rotar o cambiar de tamaño. */
+/**
+ * Arranca el agrupado y lo mantiene al rotar o cambiar de tamaño. Lo llaman
+ * arranque-panel.js (en cuanto se lee la página) y sidebar.js: la segunda vez
+ * no hace nada.
+ */
+let iniciado = false;
 export function initFiltrosAdmin() {
+  if (iniciado) return;
+  iniciado = true;
   sincronizar();
   let t = null;
   window.addEventListener('resize', () => {
