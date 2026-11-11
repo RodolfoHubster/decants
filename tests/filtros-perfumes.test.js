@@ -1,6 +1,6 @@
 import {
   FILTROS_VACIOS, ATAJOS, filtrarPerfumes, contarAtajos, cuantosActivos,
-  ordenarPerfumes, restaurarFiltros, tieneCostoBotella,
+  ordenarPerfumes, restaurarFiltros, tieneCostoBotella, ordenarPorBusqueda,
 } from '../assets/js/filtros-perfumes.js';
 
 const PIRAMIDE = 'Frase.\n\nSalida: bergamota\nCorazón: lavanda\nFondo: vainilla';
@@ -119,5 +119,26 @@ describe('restaurarFiltros', () => {
     expect(restaurarFiltros(null)).toEqual(FILTROS_VACIOS);
     expect(restaurarFiltros('{roto')).toEqual(FILTROS_VACIOS);
     expect(restaurarFiltros('"texto"')).toEqual(FILTROS_VACIOS);
+  });
+});
+
+describe('ordenarPorBusqueda', () => {
+  // En el orden manual, el que coincide de verdad quedaba hasta abajo.
+  const lista = [
+    { nombre: 'Jaguar for Him', marca: 'Jaguar', inspiradoEn: { nombre: 'Le Beau Le Parfum' } },
+    { nombre: 'Scandal Le Parfum', marca: 'Jean Paul Gaultier' },
+    { nombre: 'Le Beau Paradise Garden', marca: 'Jean Paul Gaultier' },
+    { nombre: 'Le Beau Le Parfum', marca: 'Jean Paul Gaultier' },
+  ];
+  test('primero lo que más coincide; los dupes al final', () => {
+    expect(ordenarPorBusqueda(lista, 'le beau').map(p => p.nombre))
+      .toEqual(['Le Beau Paradise Garden', 'Le Beau Le Parfum', 'Jaguar for Him', 'Scandal Le Parfum']);
+  });
+  test('en empate se queda el orden que traía (el elegido)', () => {
+    const odyssey = [{ nombre: 'Odyssey Mega' }, { nombre: 'Odyssey Aqua' }, { nombre: 'Odyssey Nexus' }];
+    expect(ordenarPorBusqueda(odyssey, 'odyssey').map(p => p.nombre)).toEqual(['Odyssey Mega', 'Odyssey Aqua', 'Odyssey Nexus']);
+  });
+  test('sin búsqueda no cambia nada', () => {
+    expect(ordenarPorBusqueda(lista, '  ').map(p => p.nombre)).toEqual(lista.map(p => p.nombre));
   });
 });

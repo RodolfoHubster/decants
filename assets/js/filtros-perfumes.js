@@ -10,7 +10,7 @@
  * recargaba el catálogo, se rehacían las opciones de los selects y todo
  * volvía a "Todas".
  */
-import { matchSearch } from './search-engine.js';
+import { matchSearch, puntajeBusqueda } from './search-engine.js?v=2';
 import { parsearFicha } from './ficha.js';
 
 export const FILTROS_VACIOS = Object.freeze({
@@ -86,6 +86,19 @@ export function ordenarPerfumes(lista, orden) {
   else if (orden === 'az') r.sort(nombre);
   else if (orden === 'za') r.sort((a, b) => nombre(b, a));
   return r;
+}
+
+/**
+ * Con una búsqueda escrita, primero lo que más coincide (nombre, luego marca,
+ * luego el original de un dupe); el orden elegido solo desempata. Antes "le
+ * beau" sacaba primero lo que estuviera arriba en el orden manual.
+ */
+export function ordenarPorBusqueda(lista, q) {
+  if (!String(q || '').trim()) return [...(lista || [])];
+  const puntos = new Map((lista || []).map(p => [p, puntajeBusqueda(q, [
+    p.nombre, `${p.marca || ''} ${p.nombre || ''}`, (p.inspiradoEn && p.inspiradoEn.nombre) || '',
+  ])]));
+  return [...(lista || [])].sort((a, b) => puntos.get(b) - puntos.get(a));
 }
 
 /** Filtros guardados en la sesión; ante cualquier cosa rara, vacíos. */

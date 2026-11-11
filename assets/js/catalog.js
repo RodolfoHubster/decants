@@ -1301,7 +1301,7 @@ window.suscribirNewsletter = async (form) => {
 };
 
 // ── Render grid ───────────────────────────────────────────────
-import { matchSearch } from './search-engine.js';
+import { matchSearch, puntajeBusqueda } from './search-engine.js?v=2';
 
 window.renderGrid = () => {
   if (!catalogoCargado) return;
@@ -1344,6 +1344,12 @@ window.renderGrid = () => {
     return true;
   });
 
+  // Con búsqueda y orden "relevancia", primero lo que más coincide (antes "le
+  // beau" sacaba primero los más vistos que solo se parecían).
+  const puntos = q && sort === 'relevancia'
+    ? new Map(filtered.map(p => [p, puntajeBusqueda(q, [p.nombre, `${p.marca || ''} ${p.nombre || ''}`])]))
+    : null;
+
   filtered.sort((a, b) => {
     // 1. Agotados siempre al final
     const aAgotado = agotadoEnTienda(a);
@@ -1352,6 +1358,7 @@ window.renderGrid = () => {
       return aAgotado ? 1 : -1;
     }
 
+    if (puntos && puntos.get(a) !== puntos.get(b)) return puntos.get(b) - puntos.get(a);
     if (sort === 'relevancia')  return (b.clicks || 0) - (a.clicks || 0);
     if (sort === 'recientes')   return (b.creadoEn || 0) - (a.creadoEn || 0);
     if (sort === 'antiguos')    return (a.creadoEn || 0) - (b.creadoEn || 0);

@@ -11,7 +11,7 @@ import { toast } from './toast.js';
 import { sugiereNuevoCliente, siguienteClienteId, nombreCliente } from './pos-cliente.js';
 import { construirPrompt, parsearRespuesta, emparejarOpcion } from './ia-perfume.js';
 import { buscarEnCatalogo, armarInspirado, etiquetaCatalogo, agotadoBasico } from './inspirado.js?v=2';
-import { ATAJOS, FILTROS_VACIOS, filtrarPerfumes, contarAtajos, cuantosActivos, ordenarPerfumes, restaurarFiltros } from './filtros-perfumes.js';
+import { ATAJOS, FILTROS_VACIOS, filtrarPerfumes, contarAtajos, cuantosActivos, ordenarPerfumes, restaurarFiltros, ordenarPorBusqueda } from './filtros-perfumes.js?v=2';
 import { textoPrecios } from './compartir-perfume.js?v=2';
 import { vistaPerfumes } from './esqueleto.js?v=2';
 
@@ -337,6 +337,8 @@ window.renderTable = () => {
   } else {
     fil = ordenarPerfumes(fil, filtros.orden);
   }
+  // Buscando, manda lo que más coincide; el orden de arriba solo desempata.
+  if (filtros.q) fil = ordenarPorBusqueda(fil, filtros.q);
 
     document.querySelectorAll('.sort-icon').forEach(el => {
       el.className = 'bi bi-chevron-expand sort-icon';
